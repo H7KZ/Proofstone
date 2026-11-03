@@ -20,20 +20,25 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** Define the wire contract as JSON Schema and generate Java types from it.
 
 **Do.**
-- Write these schemas: `envelope.json`, `error.json`, `health.json`, `item.json`, `player-state.json`
-  and `command.json`.
+- Write these schemas in `proofstone-protocol/schemas/` (next to `versions.schema.json` from T-M0-04):
+  `envelope.json`, `error.json`, `health.json`, `item.json`, `player-state.json` and `command.json`.
+- Add any new library (for example jsonschema2pojo) to `gradle/libs.versions.toml` with a fixed version.
+  `lintVersions` rejects `+`, ranges, `latest` and `SNAPSHOT`.
 - Generate Java records with a pinned jsonschema2pojo, or hand-write records plus a schema test. Choose
   one and document the choice in the module README.
 - Generate two type sets: one with Java 17 types for the host, and one with Java 8 bytecode types for
-  the agent (a plain-class variant).
+  the agent (a plain-class variant). The module applies `proofstone.java-host` (Java 17 toolchain,
+  `-Werror`, `archTest`). The Java 8 set needs its own source set or module compiled with `--release 8`.
+  Generated code must pass `-Werror` and `archTest`.
 
 **Don't.**
 - Add endpoints that are not in the spec.
 
 **Acceptance.**
-- [ ] Every schema validates its examples in `golden/` (T-M1-02 adds them; use inline examples until
-  then).
+- [ ] Every schema validates its examples in `proofstone-protocol/golden/` (T-M1-02 adds them; use inline
+  examples until then).
 - [ ] Generated types round-trip each example through serialise and parse with equal JSON output.
+- [ ] `./gradlew check` stays green and the module README's **Public surface** section is updated.
 
 **Verify.**
 `./gradlew :proofstone-protocol:test`
@@ -49,15 +54,16 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** Request and response fixtures that every agent must reproduce.
 
 **Do.**
-- Create `golden/<endpoint>/<case>.request.json` and `.response.json` files for these cases:
+- Create `proofstone-protocol/golden/<endpoint>/<case>.request.json` and `.response.json` files for these cases:
   - health OK;
   - 401 unauthorised;
   - player not found;
   - a player with an empty inventory;
   - giving an enchanted sword, then reading it back;
   - a command reply.
-- Specify the placeholder rules for volatile fields (`uuid`, `time`, `requestId`) in `golden/README.md`.
-- Add a `GoldenMatcher` test utility in `proofstone-protocol` (`testFixtures`) that compares responses
+- Specify the placeholder rules for volatile fields (`uuid`, `time`, `requestId`) in
+  `proofstone-protocol/golden/README.md` (`docsCheck` scans it).
+- Add a `GoldenMatcher` test utility in `proofstone-protocol` (apply the `java-test-fixtures` plugin to the module; `proofstone.java-host` does not) that compares responses
   while ignoring the placeholders.
 
 **Don't.**
@@ -72,7 +78,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 ### T-M1-03 · Bukkit agent skeleton: HTTP server, auth, `/v1/health`
 - tier: haiku
 - depends: T-M1-01
-- modules: platforms/bukkit/agent
+- modules: platforms/bukkit/agent (new)
 - adrs: 0002, 0009
 - specs: specs/agent-protocol.md §1, §2 (health), §5
 - test-first: yes
@@ -80,8 +86,18 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** A plugin jar that loads on every Bukkit-family server and answers `/v1/health`.
 
 **Do.**
-- Compile against the Spigot API at the lowest supported level (1.8.8 `spigot-api`, `compileOnly`), with
-  `--release 8`.
+- Create the module: add `platforms:bukkit:agent` to `settings.gradle.kts`, with a `build.gradle.kts` and a
+  README (Purpose, Boundaries, Public surface, How to test). Apply the existing convention plugin
+  `proofstone.java-agent-legacy` (Java 8 release, Shadow, builds on `proofstone.java-host`). The shaded
+  library is relocated into `dev.proofstone.shaded.*`.
+- Compile against the Spigot API at the lowest supported level (1.8.8 `spigot-api`, `compileOnly`). Add the
+  Spigot repository to `dependencyResolutionManagement` in `settings.gradle.kts`, because
+  `FAIL_ON_PROJECT_REPOS` forbids repositories in module builds. The coordinate and version go in
+  `gradle/libs.versions.toml`.
+- **Open issue:** `spigot-api` 1.8.8 is published only as `1.8.8-R0.1-SNAPSHOT`, and `lintVersions` (T-M0-03)
+  has no allowlist and rejects `SNAPSHOT`. Do not weaken the lint rule silently. Either obtain the jar
+  from a pinned, checksummed source, or extend `VersionLint` with one named exception in a separate
+  commit and record why in the PR. If neither is clear, stop and ask.
 - Use `com.sun.net.httpserver.HttpServer`. JSON comes from the shaded, relocated library chosen in T-M1-01.
 - Read the token and port from environment variables. Without a token, the agent logs SEVERE and refuses
   to start the HTTP server.
@@ -95,7 +111,9 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Use any API newer than 1.8.8 without reflection and a capability guard.
 
 **Acceptance.**
-- [ ] `javap -v` shows major version 52 for all agent classes, checked by a build check.
+- [ ] `javap -v` shows major version 52 for all agent classes, checked by the `verifyBytecode` task (to be
+  written in this card and wired into the module's `check`).
+- [ ] `./gradlew check` stays green (`archTest` runs on the new module).
 - [ ] Unit tests cover the auth filter and the health JSON against the golden files.
 
 **Verify.**
@@ -148,6 +166,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** Prove the agent matches the golden files on a real Paper server.
 
 **Do.**
+- The `integrationTest` convention comes from T-M1-07. Do not define a second one.
 - Write an `integrationTest` source set that uses `PaperHost` (T-M1-07) to boot the newest Paper row with
   the agent.
 - Replay each golden request and compare the response with `GoldenMatcher`.
@@ -174,10 +193,16 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** Turn `versions.yml` plus a request (`platform`, `versions[]`) into `Cell` objects.
 
 **Do.**
+- Add `proofstone-protocol` and the catalog's `jackson-dataformat-yaml` and `json-schema-validator` to
+  `proofstone-core`'s dependencies (today it depends only on `proofstone-api`). The schema is
+  `proofstone-protocol/schemas/versions.schema.json`. Do not reuse `VersionsValidator`: it lives in
+  `build-logic`, which is build-time only. The semantic rules in `specs/versions-yml.md` apply to the loader too.
 - Load the YAML, validate it with the schema, and resolve the Java tag from `java-rules`.
 - Resolve `latest` to the highest `required` row. With no `required` rows, use the highest
   `experimental` row and add a warning to `Cell.notes`.
 - Throw on an unknown version, with a list of the valid versions.
+- Locate `versions.yml` explicitly (a constructor argument or the repo root), never by a bare relative path.
+  The seed file has `TODO` pins, so the loader must fail loudly when the chosen row has one (AGENTS.md §3).
 
 **Don't.**
 - Implement the `all` keyword, selectors or capabilities (that is M3 or M5).
@@ -192,7 +217,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 ### T-M1-07 · Core: PaperHost container (Testcontainers), copy-in, readiness
 - tier: sonnet
 - depends: T-M1-06, T-M1-03
-- modules: proofstone-core
+- modules: proofstone-core, build-logic
 - adrs: 0005, 0006
 - specs: architecture.md §3
 - test-first: no
@@ -200,6 +225,14 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** Start a Paper cell reliably, with no bind mounts.
 
 **Do.**
+- Add an `integrationTest` source set and task as a convention (a new `proofstone.integration-test`
+  plugin in `build-logic/src/main/kotlin`, or an addition to `proofstone.java-host`). It is not part of
+  `check`, because it needs Docker. `archTest` must still scan its classes. Add `testcontainers` from the
+  catalog; no bind mounts, so never use `BindMode` (`archTest` bans it).
+- **Prerequisite:** the seed `versions.yml` has `digest: TODO` for the Paper host image and
+  `build`/`sha256: TODO` for some rows. Pin the digest and the newest Paper row first (by hand, with
+  evidence in the PR), or stop. `latest` resolves to a `required` row, and all seed rows are
+  `experimental`, so the planner (T-M1-06) falls back to the highest experimental row.
 - Use `GenericContainer` with the image pinned by digest from `versions.yml`. Set these environment
   variables:
   - `EULA`, set only when the user accepted it;
@@ -222,6 +255,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 
 **Acceptance.**
 - [ ] Boots the newest Paper row and reports the agent's capabilities.
+- [ ] `./gradlew check` stays green; the Docker-only `integrationTest` is not part of it.
 - [ ] A missing artefact glob fails before the container starts, with the glob in the message.
 - [ ] A server that loads without the agent (simulated by a bad jar) fails readiness with a clear message
   that includes the log tail.
@@ -231,8 +265,8 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 
 ### T-M1-08 · mcpl driver: offline login, configuration, keep-alive, chat, command
 - tier: sonnet
-- depends: T-M0-01
-- modules: drivers/mcpl
+- depends: T-M1-07
+- modules: drivers/mcpl (new)
 - adrs: 0004
 - specs: specs/client-driver.md §1, §3
 - test-first: no
@@ -240,6 +274,11 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** A Java client that joins the newest-version server and exchanges chat.
 
 **Do.**
+- Create the module: add `drivers:mcpl` to `settings.gradle.kts`, with a `build.gradle.kts` (apply
+  `proofstone.java-host`) and a README (Purpose, Boundaries, Public surface, How to test). The MCProtocolLib
+  coordinate is already in the catalog as `mcprotocollib-protocol`, at the version pinned in `versions.yml`;
+  keep the two in step. The `integrationTest` convention comes from T-M1-07, which is why that card is now
+  a dependency (the integration test needs a Paper server).
 - Use MCProtocolLib `ClientSession` with offline auth (`MinecraftProtocol(username)`).
 - Handle the configuration phase:
   - acknowledge registries;
@@ -274,6 +313,8 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** The only allowed way to wait.
 
 **Do.**
+- The class must be exactly `dev.proofstone.core.await.Await`. `archTest` (`HardRules.AWAIT`) exempts only
+  that FQN from the `Thread.sleep` ban. Keep the sleep inside it, and name no class `*Retry*` (`NO_RETRIES`).
 - `Await.until(String description, Supplier<T> probe, Predicate<T> ok, Duration timeout)`, returning `T`.
 - Use exponential polling from 25 ms up to 250 ms. Record the last observed value. Exceptions thrown by
   the probe are recorded and polling continues.
@@ -293,7 +334,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 ### T-M1-10 · API: minimal JUnit 5 extension and parameter resolvers
 - tier: sonnet
 - depends: T-M1-06, T-M1-07, T-M1-08, T-M1-09
-- modules: proofstone-api, proofstone-core
+- modules: proofstone-api, proofstone-core, examples/smoke (new)
 - adrs: 0001
 - specs: specs/test-api.md §1–§2
 - test-first: no
@@ -301,6 +342,9 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** Make `@Proofstone`, `@Matrix` and `@CellTest` work for one platform.
 
 **Do.**
+- Create `examples:smoke`: add it to `settings.gradle.kts`, with a `build.gradle.kts` and a README. Its
+  test depends on `proofstone-api` and `proofstone-core`. `:examples:smoke:test` needs Docker, so keep it
+  out of `check`.
 - `@CellTest` is a `TestTemplate` with one invocation context per cell. The display name is
   `paper@1.21.11`.
 - Start one server per class per cell (`PER_CLASS`), stored in the `ExtensionContext.Store` and closed
@@ -332,8 +376,12 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Do.**
 - C01: health and protocol version check.
 - C02: the client runs `/help` and receives a system message.
-- `:conformance:smoke` runs C01 and C02 on the newest Paper row. Remove the placeholder from T-M0-02.
-- Add a CI job, `smoke`, using ubuntu-latest with Docker. It is required on PRs.
+- `:conformance:smoke` runs C01 and C02 on the newest Paper row. Replace the placeholder task in
+  `conformance/build.gradle.kts` (T-M0-02), including its `CI_REQUIRE_SMOKE` guard, and update
+  `conformance/README.md` (it says the task is a placeholder).
+- Add a CI job, `smoke`, to `.github/workflows/ci.yml` using ubuntu-latest with Docker. Pin every action by
+  SHA, as the existing jobs do, and update the file's header comment. Making the job required is a branch
+  protection setting, so say in the PR whether it was set; do not claim it from the diff.
 
 **Don't.**
 - Add more scenarios (those are M2).
