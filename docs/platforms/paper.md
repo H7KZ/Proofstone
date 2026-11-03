@@ -16,6 +16,10 @@
 `NMS`, `DATAPACKS`, `BUKKIT_EVENTS`, `CONSOLE`.
 
 ## Gotchas
+- **`Bukkit.getOnlinePlayers()` changed its return type.** 1.8.8 returns `Player[]`; later APIs return a
+  `Collection`. Code compiled against 1.8.8 that calls it directly throws `NoSuchMethodError` on newer servers.
+  The agent reads it through reflection (`BukkitGame.onlinePlayers`). (Found while writing T-M1-04, unverified
+  on a live server until T-M1-05.)
 - **RCON truncates long SNBT** with `...`. On 26.1, `data get entity <p> Inventory` was cut before the
   enchant list. Never use RCON as an oracle. (Prototype, 2026-11-03.)
 - A flat world with no generator settings logs `No key layers in MapLike[{}]` at ERROR on 1.21.11 and

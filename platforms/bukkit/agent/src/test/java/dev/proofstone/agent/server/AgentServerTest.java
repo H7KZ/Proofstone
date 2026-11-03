@@ -4,32 +4,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.proofstone.agent.protocol.Health;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Real HTTP round trip on an ephemeral port. Health is checked against inline examples until T-M1-02. */
+/** Real HTTP round trip on an ephemeral port, against a {@link FakeGame}. */
 class AgentServerTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String TOKEN = "s3cret";
-    private static final String HEALTH_JSON = "{\"ok\":true,\"data\":{\"agentVersion\":\"0.1.0\","
-            + "\"protocol\":\"1.0\",\"platform\":\"paper\",\"mcVersion\":\"1.8.8\",\"capabilities\":[]}}";
+    private static final String BEARER = "Bearer " + TOKEN;
 
+    private FakeGame game;
     private AgentServer server;
+    private AgentHttp http;
 
     @BeforeEach
     void start() throws IOException {
-        Health health = new Health("0.1.0", "1.0", "paper", "1.8.8", Collections.<String>emptyList());
-        server = new AgentServer(new AgentConfig(TOKEN, 0), health);
+        Health health = new Health("0.1.0", "1.0", "paper", "1.8.8", FakeGame.capabilities());
+        game = new FakeGame();
+        server = new AgentServer(new AgentConfig(TOKEN, 0), health, game);
         server.start();
+        http = new AgentHttp(server.port());
     }
 
     @AfterEach
@@ -38,56 +35,84 @@ class AgentServerTest {
     }
 
     @Test
-    void healthWithTheTokenMatchesTheExample() throws IOException {
-        Response response = get("/v1/health", "Bearer " + TOKEN);
-
-        assertThat(response.status).isEqualTo(200);
-        assertThat(MAPPER.readTree(response.body)).isEqualTo(MAPPER.readTree(HEALTH_JSON));
+    void everyEndpointRequiresTheToken() throws IOException {
+        assertThat(http.send("GET", "/v1/health", null, null).status).isEqualTo(401);
+        assertThat(http.send("GET", "/v1/players", "Bearer nope", null).status).isEqualTo(401);
+        assertThat(http.send("POST", "/v1/command", null, "{\"command\":\"list\"}").status).isEqualTo(401);
     }
 
     @Test
-    void healthWithoutOrWithAWrongTokenIs401() throws IOException {
-        assertThat(get("/v1/health", null).status).isEqualTo(401);
-        assertThat(get("/v1/health", "Bearer nope").status).isEqualTo(401);
+    void commandReturnsTheRawOutputAndPassesTheTimeoutOn() throws IOException {
+        AgentHttp.Response response = http.send("POST", "/v1/command", BEARER,
+                "{\"command\":\"version\",\"timeoutMs\":2500}");
+
+        assertThat(response.status).isEqualTo(200);
+        assertThat(game.lastCommand).isEqualTo("version");
+        assertThat(game.lastTimeoutMs).isEqualTo(2500);
+        assertThat(MAPPER.readTree(response.body).at("/data/raw").asText()).isEqualTo("Server version 1.8.8");
+    }
+
+    @Test
+    void commandDefaultsTheTimeoutToTenSeconds() throws IOException {
+        http.send("POST", "/v1/command", BEARER, "{\"command\":\"version\"}");
+
+        assertThat(game.lastTimeoutMs).isEqualTo(10_000);
+    }
+
+    @Test
+    void aCommandBodyWithoutACommandIsAnInvalidRequest() throws IOException {
+        AgentHttp.Response response = http.send("POST", "/v1/command", BEARER, "{}");
+
+        assertThat(response.status).isEqualTo(400);
+        assertThat(MAPPER.readTree(response.body).at("/error/code").asText()).isEqualTo("INVALID_REQUEST");
+    }
+
+    @Test
+    void aNonJsonBodyIsAnInvalidRequest() throws IOException {
+        AgentHttp.Response response = http.send("POST", "/v1/command", BEARER, "not json");
+
+        assertThat(response.status).isEqualTo(400);
+        assertThat(MAPPER.readTree(response.body).at("/error/code").asText()).isEqualTo("INVALID_REQUEST");
+    }
+
+    @Test
+    void playersListsTheOnlineNames() throws IOException {
+        AgentHttp.Response response = http.send("GET", "/v1/players", BEARER, null);
+
+        assertThat(response.status).isEqualTo(200);
+        assertThat(MAPPER.readTree(response.body).at("/data/players/0").asText()).isEqualTo("Alex");
+    }
+
+    @Test
+    void aMissingPlayerIsPlayerNotFoundWithTheNameAsDetail() throws IOException {
+        AgentHttp.Response response = http.send("GET", "/v1/players/Nobody", BEARER, null);
+
+        assertThat(response.status).isEqualTo(404);
+        assertThat(MAPPER.readTree(response.body).at("/error/code").asText()).isEqualTo("PLAYER_NOT_FOUND");
+        assertThat(MAPPER.readTree(response.body).at("/error/detail/name").asText()).isEqualTo("Nobody");
+    }
+
+    @Test
+    void unknownPathsAreNotFoundAndWrongMethodsAreRejected() throws IOException {
+        assertThat(http.send("GET", "/v1/nothing", BEARER, null).status).isEqualTo(404);
+        assertThat(http.send("GET", "/v1/command", BEARER, null).status).isEqualTo(405);
+        assertThat(http.send("POST", "/v1/health", BEARER, "{}").status).isEqualTo(405);
+    }
+
+    @Test
+    void healthWithTheTokenIsTheEnvelopeWithItsCapabilities() throws IOException {
+        AgentHttp.Response response = http.send("GET", "/v1/health", BEARER, null);
+
+        assertThat(response.status).isEqualTo(200);
+        assertThat(MAPPER.readTree(response.body).at("/data/capabilities").size()).isEqualTo(2);
     }
 
     @Test
     void unauthorisedBodyUsesTheSpecErrorCode() throws IOException {
-        Response response = get("/v1/health", null);
+        AgentHttp.Response response = http.send("GET", "/v1/health", null, null);
 
         // Code per agent-protocol.md §2 and golden/health/unauthorised (American spelling).
         assertThat(MAPPER.readTree(response.body).at("/error/code").asText()).isEqualTo("UNAUTHORIZED");
         assertThat(MAPPER.readTree(response.body).at("/ok").asBoolean()).isFalse();
-    }
-
-    private Response get(String path, String authorization) throws IOException {
-        URL url = new URL("http://127.0.0.1:" + server.port() + path);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        if (authorization != null) {
-            connection.setRequestProperty("Authorization", authorization);
-        }
-        int status = connection.getResponseCode();
-        InputStream stream = status < 400 ? connection.getInputStream() : connection.getErrorStream();
-        return new Response(status, read(stream));
-    }
-
-    private static String read(InputStream in) throws IOException {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        byte[] chunk = new byte[1024];
-        int n;
-        while ((n = in.read(chunk)) != -1) {
-            buffer.write(chunk, 0, n);
-        }
-        return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
-    }
-
-    private static final class Response {
-        final int status;
-        final String body;
-
-        Response(int status, String body) {
-            this.status = status;
-            this.body = body;
-        }
     }
 }
