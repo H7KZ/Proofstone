@@ -1,0 +1,26 @@
+# Single version catalog. Every dependency version lives here (AGENTS.md §3, ADR-0006).
+# No ranges, no `+`, no `latest`, no SNAPSHOT.
+
+[versions]
+junit = "5.14.4"
+testcontainers = "2.0.5"
+jackson = "2.22.4"
+assertj = "3.27.7"
+archunit = "1.5.1"
+mcprotocollib = "26.3-2"
+shadow = "9.6.1"
+
+[libraries]
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
+jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+mcprotocollib-protocol = { module = "org.geysermc.mcprotocollib:protocol", version.ref = "mcprotocollib" }
+
+# Build-logic only. Not on any runtime classpath.
+shadow-gradle-plugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadow" }
