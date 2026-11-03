@@ -40,3 +40,14 @@
   is enough. It stores the downloaded server jar as `/data/paper-*.jar`, which `PaperHost` hashes against the pin.
 - **Bukkit version string on 26.x** is `26.3.build.238-R0.1-SNAPSHOT`: the Paper build sits in the first segment.
   The agent strips `.build.N` (`MinecraftVersion.parse`), or it reports `26.3.build.238` and core refuses the cell.
+- **MCProtocolLib 26.3-2 needs Java 21+.** It is published for JVM 21 or newer, so `drivers:mcpl` overrides the
+  Java 17 host toolchain. The library's default listeners already answer the configuration phase (known packs,
+  registries, finish) and keep-alives; the driver only observes. (T-M1-08)
+- **Chat arrives as translatable components.** The join message is `multiplayer.player.joined` with the name as an
+  argument, not a sentence. The driver flattens to `key arg…` because no language file is loaded, so match on the
+  key (`/joined/`). `/version` output is plain text and matches `/Paper/`.
+- **Offline mode sends no signed-chat session**, so `chat()` sends an unsigned `ServerboundChatPacket`. A stopped
+  server ends the session with `disconnect.endOfStream`, which the driver reports as the reason.
+- **The agent cannot run vanilla `kick`**: `/v1/command` fails with `Cannot make ProofstoneAgent a vanilla command
+  listener`. The capture sender needs a fix on the agent side (not done here). Also, `PaperHost.command` sent
+  `"timeoutMs": null`, which the agent rejects; it now omits null fields.

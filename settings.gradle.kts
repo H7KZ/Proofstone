@@ -25,5 +25,6 @@ include(
     "proofstone-core",
     "proofstone-protocol",
     "conformance",
+    "drivers:mcpl",
     "platforms:bukkit:agent",
 )

@@ -24,6 +24,7 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
 - `dev.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).
 - `dev.proofstone.core.await.AwaitTimeoutException`: thrown on timeout, carries description, elapsed time and last observations.
 - `dev.proofstone.core.host.PaperHost`: `start(cell, options)` boots one pinned Paper container, copies the agent and artefacts into `/plugins`, awaits `Done (` plus agent health, and returns it ready. `command(String)` runs a setup command through the agent; `health()`, `logs()` and `close()`.
+- `PaperHost.gameHost()` and `gamePort()`: where a client driver joins.
 - `dev.proofstone.core.host.PaperHostOptions`, `Eula`, `LogBuffer`, `PaperHostException`: options, the EULA gate (`PROOFSTONE_ACCEPT_EULA=true`), the log buffer for repro bundles, and the failure type (message includes the log tail).
 
 Java tags come from `java-rules` (first match wins). A row's `java:` field overrides them. A version that matches no rule is an error.
@@ -35,3 +36,4 @@ Java tags come from `java-rules` (first match wins). A row's `java:` field overr
 The tests read the real schema and seed from the repo root (`proofstone.repoRoot`, set in `build.gradle.kts`).
 
 `./gradlew :proofstone-core:integrationTest --tests '*PaperHostIT*'` needs Docker and `PROOFSTONE_ACCEPT_EULA=true` (read <https://aka.ms/MinecraftEULA> first; the harness never accepts it for you). Without the variable the server tests are skipped with that reason. It is not part of `check`.
+- `dev.proofstone.core.driver`: the client driver SPI (`ClientDriver`, `ClientSession`, `ConnectSpec`, `ChatMessage`, `ClientDriverException`). Implemented by `drivers/mcpl`.

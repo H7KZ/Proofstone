@@ -1,5 +1,6 @@
 package dev.proofstone.core.host;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +39,7 @@ import org.testcontainers.utility.MountableFile;
 public final class PaperHost implements AutoCloseable {
 
     static final int AGENT_PORT = 25580;
+    private static final int GAME_PORT = 25565;
     private static final String AGENT_URL = "http://127.0.0.1:" + AGENT_PORT;
     private static final int TAIL_LINES = 60;
     private static final String SEED = "1234567";
@@ -46,7 +48,8 @@ public final class PaperHost implements AutoCloseable {
             "gamerule doDaylightCycle false",
             "gamerule doWeatherCycle false",
             "gamerule doMobSpawning false");
-    private static final ObjectMapper JSON = new ObjectMapper();
+    // Absent optional fields are omitted: the agent rejects an explicit "timeoutMs": null (found in T-M1-08).
+    private static final ObjectMapper JSON = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
     private static final Pattern JAVA_MAJOR = Pattern.compile("version \"(\\d+)(?:\\.(\\d+))?");
 
     private final Cell cell;
@@ -122,6 +125,8 @@ public final class PaperHost implements AutoCloseable {
         // The image syncs /plugins into /data/plugins at startup. Copy in, never bind-mount (ADR-0005).
         copyPlugin(options.agentJar());
         artefacts.forEach(this::copyPlugin);
+        // Players join over the game port, so it is the one port always published (T-M1-08).
+        container.addExposedPort(GAME_PORT);
         if (options.debugPorts()) {
             container.addExposedPort(AGENT_PORT);
         }
@@ -274,6 +279,16 @@ public final class PaperHost implements AutoCloseable {
 
     public String logTail() {
         return logs.tail(TAIL_LINES);
+    }
+
+    /** The host name a driver connects to. */
+    public String gameHost() {
+        return container.getHost();
+    }
+
+    /** The host port mapped to the server's game port. */
+    public int gamePort() {
+        return container.getMappedPort(GAME_PORT);
     }
 
     /** The published agent port, or fails when debug mode is off. */
