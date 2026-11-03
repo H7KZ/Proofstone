@@ -154,7 +154,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Add the world, events or config endpoints (those are M2).
 
 **Acceptance.**
-- [ ] Every golden case from T-M1-02 passes in the contract test (T-M1-05).
+- [x] Every golden case from T-M1-02 passes in the contract test (T-M1-05). Evidence: `AgentContractIT` on Paper 26.3, 8 of 8 passed (see the T-M1-05 PR).
 - [x] An unknown material or enchantment returns error `UNKNOWN_KEY`, not a partial item. (Evidence: `ItemBuilderTest`
   and `AgentServerTest.anUnknownKeyIsAnErrorAndLeavesNoItemBehind`; real-server check is T-M1-05.)
 
@@ -183,7 +183,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Use RCON.
 
 **Acceptance.**
-- [ ] Every golden case without a player passes on the newest Paper row.
+- [x] Every golden case without a player passes on the newest Paper row. Evidence: `AgentContractIT` on Paper 26.3 (`health/*`, `command/reply`, `players/not-found`). The player cases pass too, with Alex joined by the mcpl driver.
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:integrationTest`

@@ -28,7 +28,8 @@ setup writes: give, reset and PATCH.
   - `POST /players/{name}/give` with an `Item` body (`item.json`), reply `{}`. Levels are never clamped. Unknown
     material or enchantment: `UNKNOWN_KEY`, nothing given. Full inventory: `INVENTORY_FULL`;
   - `POST /players/{name}/reset`, reply `{}`. Clears inventory, armour, offhand and cursor; XP 0; survival;
-    full heal; teleport to the main world's spawn + (0, 1, 0); closes any open window;
+    full heal; teleport to the main world's spawn block + (0, 1, 0), centred on the block (x and z + 0.5); closes any
+    open window;
   - `PATCH /players/{name}` with any of `level`, `exp` (0–1), `gamemode`, `location` (`world`, `x`, `y`, `z`, and
     optional `yaw`, `pitch`), `op`, reply `{}`. All fields are checked before any is applied.
 - Error codes: `UNAUTHORIZED` 401, `PLAYER_NOT_FOUND` 404, `INVALID_REQUEST` 400, `UNKNOWN_KEY` 400,
@@ -40,8 +41,8 @@ setup writes: give, reset and PATCH.
 - Key resolution (`bukkit.Keys`): `Material.matchMaterial` on the upper-case path (the 1.8 enum name). Its 1.13+
   behaviour is unverified until T-M1-05. Enchantments: legacy name on 1.8, `Enchantment.getByKey` on 1.13+ via
   reflection.
-  Known gap: an item whose 1.8 enum name differs from its key (for example `minecraft:grass_block`) is
-  `UNKNOWN_KEY` until a legacy table covers it.
+  Verified on Paper 26.3 by the T-M1-05 contract test. Known gap: an item whose 1.8 enum name differs from its key
+  (for example `minecraft:grass_block`) is `UNKNOWN_KEY` until a legacy table covers it.
 - `dev.proofstone.agent.scheduler`: `Scheduler` (main-thread hand-off, Folia comes in M5) and `MainThread.call`,
   which waits for a result with the request timeout.
 - Platform detection: `dev.proofstone.agent.platform.PlatformDetector`.
@@ -55,5 +56,10 @@ setup writes: give, reset and PATCH.
   `BukkitGame` on a live server (reset, PATCH, enchantment levels) needs a real server, so it is covered by the
   T-M1-05 contract test, not here. Test-only dependencies: `spigot-api` (no transitives), Guava 17.0 and
   commons-lang 2.6, the versions its POM declares, so the static registries load.
+- `./gradlew :platforms:bukkit:agent:integrationTest`: `contract.AgentContractIT` boots the newest Paper row (`PaperHost`,
+  Docker and `PROOFSTONE_ACCEPT_EULA=true` needed; skipped with that reason otherwise) with the agent jar, joins Alex
+  with the mcpl driver, and replays every golden case in the golden README's order over the debug-published agent
+  port, comparing with `GoldenMatcher`. Its source set compiles at `--release 17` on a JDK 21, because the mcpl driver
+  is Java 21 bytecode. It is not part of `check`.
 - `./gradlew :platforms:bukkit:agent:verifyBytecode`: fails if any agent class is not major version 52.
 - `./gradlew :platforms:bukkit:agent:shadowJar`: builds `build/libs/agent-all.jar` with Jackson relocated.
