@@ -191,9 +191,12 @@ public final class BukkitGame implements Game {
         }
     }
 
-    /** The main world's spawn, one block up (spec section 2, reset). Bukkit lists the main world first. */
+    /**
+     * The main world's spawn block, one block up, centred on the block (spec section 2, reset). Bukkit gives block
+     * corners, and the golden reset is (0.5, 64.0, 0.5), so a corner would not match (golden/README.md).
+     */
     private static Location spawn() {
-        return Bukkit.getWorlds().get(0).getSpawnLocation().add(0, 1, 0);
+        return Bukkit.getWorlds().get(0).getSpawnLocation().add(0.5, 1, 0.5);
     }
 
     /** Null when the body has no game mode. An unknown name is INVALID_REQUEST, never a guess. */
