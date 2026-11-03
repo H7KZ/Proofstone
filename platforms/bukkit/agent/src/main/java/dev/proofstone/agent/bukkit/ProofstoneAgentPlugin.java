@@ -2,10 +2,11 @@ package dev.proofstone.agent.bukkit;
 
 import dev.proofstone.agent.platform.PlatformDetector;
 import dev.proofstone.agent.protocol.Health;
+import dev.proofstone.agent.scheduler.MainThreadScheduler;
 import dev.proofstone.agent.server.AgentConfig;
 import dev.proofstone.agent.server.AgentServer;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.Arrays;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -28,8 +29,8 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     PROTOCOL,
                     PlatformDetector.detect(this::classPresent),
                     minecraftVersion(),
-                    Collections.<String>emptyList());
-            server = new AgentServer(config, health);
+                    Arrays.asList("command", "players"));
+            server = new AgentServer(config, health, new BukkitGame(new MainThreadScheduler(this)));
             server.start();
             getLogger().info("Proofstone agent listening on port " + server.port());
         } catch (IllegalStateException | IOException e) {
