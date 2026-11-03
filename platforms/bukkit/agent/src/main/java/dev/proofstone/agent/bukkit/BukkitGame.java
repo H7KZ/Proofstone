@@ -5,9 +5,6 @@ import dev.proofstone.agent.game.Game;
 import dev.proofstone.agent.protocol.AgentException;
 import dev.proofstone.agent.scheduler.MainThread;
 import dev.proofstone.agent.scheduler.Scheduler;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -21,7 +18,6 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
@@ -37,7 +33,6 @@ import org.bukkit.inventory.meta.ItemMeta;
  */
 public final class BukkitGame implements Game {
 
-    private static final String SENDER_NAME = "ProofstoneAgent";
     private static final int ARMOUR_FIRST_SLOT = 36;
     private static final int ARMOUR_SLOTS = 4;
     private static final List<String> PATCH_FIELDS = Arrays.asList("level", "exp", "gamemode", "location", "op");
@@ -51,9 +46,19 @@ public final class BukkitGame implements Game {
     @Override
     public String command(String command, long timeoutMs) {
         return MainThread.call(scheduler, () -> {
-            List<String> lines = new ArrayList<>();
-            Bukkit.dispatchCommand(captureSender(lines), command);
-            return String.join("\n", lines);
+            // The real console, not a custom sender: the server refuses to run vanilla commands for a sender it
+            // cannot turn into a command source (docs/platforms/paper.md). Output is read from the log instead.
+            LogCapture capture = LogCapture.start();
+            try {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+            } catch (org.bukkit.command.CommandException e) {
+                // Bukkit wraps the real failure; surface it, or the caller only sees "Unhandled exception".
+                Throwable cause = e.getCause() == null ? e : e.getCause();
+                throw new AgentException(500, "INTERNAL", "command failed: " + cause, null);
+            } finally {
+                capture.close();
+            }
+            return String.join("\n", capture.lines());
         }, timeoutMs);
     }
 
@@ -157,49 +162,6 @@ public final class BukkitGame implements Game {
                     Collections.singletonMap("name", name));
         }
         return player;
-    }
-
-    /**
-     * Captures what the command writes to its sender (best-effort, spec §2). Everything else on the
-     * {@link CommandSender} is a fixed answer: a console-like sender with full permissions.
-     */
-    private static CommandSender captureSender(List<String> lines) {
-        return (CommandSender) Proxy.newProxyInstance(
-                CommandSender.class.getClassLoader(),
-                new Class<?>[] {CommandSender.class},
-                (proxy, method, args) -> {
-                    switch (method.getName()) {
-                        case "sendMessage":
-                            for (Object arg : args) {
-                                if (arg instanceof String[]) {
-                                    lines.addAll(Arrays.asList((String[]) arg));
-                                } else if (arg instanceof String) {
-                                    lines.add((String) arg);
-                                }
-                            }
-                            return null;
-                        case "getName":
-                        case "toString":
-                            return SENDER_NAME;
-                        case "isOp":
-                        case "hasPermission":
-                        case "isPermissionSet":
-                            return true;
-                        case "hashCode":
-                            return System.identityHashCode(proxy);
-                        case "equals":
-                            return proxy == args[0];
-                        default:
-                            return defaultValue(method.getReturnType());
-                    }
-                });
-    }
-
-    private static Object defaultValue(Class<?> type) {
-        if (!type.isPrimitive()) {
-            return null;
-        }
-        return type == void.class ? null : Array.get(Array.newInstance(type, 1), 0);
     }
 
     /**
