@@ -68,6 +68,11 @@
 - **Second join from one address fails with `Connection throttled!`.** Paper refuses a reconnect within 4 s
   (`connection-throttle` in `bukkit.yml`). `PaperHost` copies a `bukkit.yml` with `connection-throttle: -1` into
   the container, so tests can join one client per test.
+- **`saveConfig()` rewrites `config.yml`.** Bukkit drops comments and key order on a patch, so the agent snapshots
+  the original bytes on the first patch and restore writes those bytes back. It does not re-save. (T-M2-03)
+- **Restore must reload the config before the plugin.** `disablePlugin` and `enablePlugin` re-run `onEnable`, but
+  `getConfig()` keeps the old in-memory values until `reloadConfig()`. The agent calls it first. (T-M2-03, verified on
+  Paper 26.3 by `AgentContractIT` config cases.)
 - **A plain player cannot run vanilla `/list`** (`Unknown command`): vanilla commands need op. `/version` and
   `/plugins` work for everyone. Use the agent (console) for setup commands.
 

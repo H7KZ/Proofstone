@@ -16,12 +16,24 @@ import java.util.Map;
 final class FakeGame implements Game {
 
     private static final String KNOWN_TYPE = "minecraft:diamond_sword";
+    private static final String FIXTURE_PLUGIN = "proofstone-fixture";
+    private static final String FIXTURE_HOOK = "fixture-reload";
 
     String lastCommand;
     long lastTimeoutMs = -1;
     Map<String, Object> lastPatch;
     String lastReset;
+    String lastReloadHook;
     private Map<String, Object> item;
+    /** The fixture's config.yml as the golden cases expect it: greeting is "hi" until a patch. */
+    private Map<String, Object> config = fixtureConfig();
+    private Map<String, Object> snapshot;
+
+    private static Map<String, Object> fixtureConfig() {
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("greeting", "hi");
+        return config;
+    }
 
     @Override
     public String command(String command, long timeoutMs) {
@@ -102,7 +114,57 @@ final class FakeGame implements Game {
         }
     }
 
+    @Override
+    public Object pluginConfig(String plugin, String path, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        requirePlugin(plugin);
+        Object value = config.get(path);
+        if (value == null) {
+            throw new AgentException(404, "CONFIG_PATH_NOT_FOUND", "no config value at " + path,
+                    Collections.singletonMap("path", path));
+        }
+        return value;
+    }
+
+    @Override
+    public void patchPluginConfig(String plugin, String path, Object value, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        requirePlugin(plugin);
+        if (snapshot == null) {
+            snapshot = new LinkedHashMap<>(config);
+        }
+        config.put(path, value);
+    }
+
+    @Override
+    public void restorePluginConfig(String plugin, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        requirePlugin(plugin);
+        if (snapshot != null) {
+            config = new LinkedHashMap<>(snapshot);
+            snapshot = null;
+        }
+    }
+
+    @Override
+    public void reloadPlugin(String plugin, String hookCommand, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        requirePlugin(plugin);
+        lastReloadHook = hookCommand;
+        if (hookCommand != null && !FIXTURE_HOOK.equals(hookCommand)) {
+            throw new AgentException(400, "INVALID_REQUEST",
+                    "reload hook is not a registered command: " + hookCommand, null);
+        }
+    }
+
+    private static void requirePlugin(String name) {
+        if (!FIXTURE_PLUGIN.equals(name)) {
+            throw new AgentException(404, "PLUGIN_NOT_FOUND", "no plugin named " + name,
+                    Collections.singletonMap("id", name));
+        }
+    }
+
     static List<String> capabilities() {
-        return Arrays.asList("command", "players");
+        return Arrays.asList("command", "players", "config", "reload");
     }
 }

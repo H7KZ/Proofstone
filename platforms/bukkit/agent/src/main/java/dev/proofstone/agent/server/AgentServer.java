@@ -37,6 +37,7 @@ public final class AgentServer {
 
     private static final String PLAYERS = "/v1/players";
     private static final String PLAYERS_PREFIX = PLAYERS + "/";
+    private static final String PLUGINS_PREFIX = "/v1/plugins/";
     private static final TypeReference<Map<String, Object>> OBJECT = new TypeReference<Map<String, Object>>() {
     };
 
@@ -95,6 +96,9 @@ public final class AgentServer {
         if (path.startsWith(PLAYERS_PREFIX)) {
             return player(exchange, method, path.substring(PLAYERS_PREFIX.length()));
         }
+        if (path.startsWith(PLUGINS_PREFIX)) {
+            return PluginRoutes.dispatch(game, exchange, method, path.substring(PLUGINS_PREFIX.length()));
+        }
         throw new AgentException(404, "NOT_FOUND", "no endpoint at " + path, null);
     }
 
@@ -127,19 +131,19 @@ public final class AgentServer {
     }
 
     /** The body's fields without the transport's {@code timeoutMs} (spec §1), which is not a game field. */
-    private static Map<String, Object> fields(JsonNode body) {
+    static Map<String, Object> fields(JsonNode body) {
         Map<String, Object> fields = MAPPER.convertValue(body, OBJECT);
         fields.remove("timeoutMs");
         return fields;
     }
 
-    private static void requireMethod(String actual, String expected) {
+    static void requireMethod(String actual, String expected) {
         if (!expected.equals(actual)) {
             throw new AgentException(405, "METHOD_NOT_ALLOWED", "use " + expected, null);
         }
     }
 
-    private static JsonNode jsonBody(HttpExchange exchange) throws IOException {
+    static JsonNode jsonBody(HttpExchange exchange) throws IOException {
         JsonNode body;
         try {
             body = MAPPER.readTree(exchange.getRequestBody());
@@ -161,7 +165,7 @@ public final class AgentServer {
     }
 
     /** Explicit {@code timeoutMs} must be positive. A malformed value is an error, never the default. */
-    private static long timeoutMs(JsonNode body) {
+    static long timeoutMs(JsonNode body) {
         JsonNode node = body.get("timeoutMs");
         if (node == null) {
             return DEFAULT_TIMEOUT_MS;

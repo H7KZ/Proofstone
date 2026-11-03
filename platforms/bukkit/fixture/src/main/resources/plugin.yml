@@ -1,0 +1,6 @@
+name: proofstone-fixture
+version: 0.1.0
+main: dev.proofstone.fixture.FixturePlugin
+commands:
+  fixture-reload:
+    description: Reload hook named by the agent's reload endpoint (T-M2-03). Does nothing.
