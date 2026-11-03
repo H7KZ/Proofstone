@@ -160,9 +160,13 @@ Lessons that change how M2 cards should be done:
 - Implement clicks (that is T-M2-05).
 
 **Acceptance.**
-- [ ] Opening a chest, anvil or grindstone placed by the agent yields the correct window type and slot
-  count.
-- [ ] The slot contents match the agent's `openWindow` view.
+- [x] Opening a chest, anvil or grindstone placed by the agent yields the correct window type and slot
+  count. Verified by `McplWindowsIT` on Paper 26.3 (chest `minecraft:generic_9x3` 63 slots with the diamond and
+  stick stacks set by `item replace`; anvil and grindstone 39). Blocks were placed with console `setblock` through the
+  agent's `/v1/command`, because the world endpoint is T-M2-02.
+- [ ] The slot contents match the agent's `openWindow` view. Not done: the agent's `openWindow` endpoint does not exist
+  yet (T-M2-02). The test compares against the contents the setup commands created, and the container's tail against
+  window 0. Add the agent comparison when T-M2-02 merges.
 
 **Verify.**
 `./gradlew :drivers:mcpl:integrationTest`

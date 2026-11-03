@@ -2,9 +2,14 @@ package dev.proofstone.driver.mcpl;
 
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.await.AwaitTimeoutException;
+import dev.proofstone.core.driver.BlockPos;
 import dev.proofstone.core.driver.ChatMessage;
 import dev.proofstone.core.driver.ClientDriverException;
 import dev.proofstone.core.driver.ClientSession;
+import dev.proofstone.core.driver.Face;
+import dev.proofstone.core.driver.SlotStack;
+import dev.proofstone.core.driver.WindowSession;
+import dev.proofstone.core.driver.WindowView;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -12,6 +17,7 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -21,13 +27,28 @@ import org.geysermc.mcprotocollib.network.event.session.DisconnectedEvent;
 import org.geysermc.mcprotocollib.network.event.session.SessionAdapter;
 import org.geysermc.mcprotocollib.network.event.session.SessionListener;
 import org.geysermc.mcprotocollib.network.packet.Packet;
+import org.cloudburstmc.math.vector.Vector3i;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.object.Direction;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PositionElement;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerType;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundDisconnectPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundDisguisedChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerClosePacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetContentPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetSlotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundOpenScreenPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundPlayerLoadedPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClosePacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.ServerboundAcceptTeleportationPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerRotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundUseItemOnPacket;
 
 /**
  * One joined player. It keeps a buffer of received chat so a reply that beats {@link #awaitMessage} is not lost,
@@ -42,6 +63,14 @@ final class McplSession implements ClientSession {
     private final String username;
     private final List<ChatMessage> chat = Collections.synchronizedList(new ArrayList<>());
     private final List<String> transcript = Collections.synchronizedList(new ArrayList<>());
+    private static final double EYE_HEIGHT = 1.62;
+    private static final Duration POSITION_WAIT = Duration.ofSeconds(10);
+
+    /** The player inventory, window id 0. It lives apart from the open windows (client-driver spec §2). */
+    private final WindowModel playerInventory = new WindowModel(0, "minecraft:inventory", "Inventory");
+    private final List<WindowModel> opened = Collections.synchronizedList(new ArrayList<>());
+    private final AtomicInteger sequence = new AtomicInteger();
+    private volatile double[] position;
     private volatile State state = State.JOINING;
     private volatile String disconnectReason;
 
@@ -85,6 +114,26 @@ final class McplSession implements ClientSession {
         } else if (packet instanceof ClientboundDisconnectPacket kick) {
             disconnectReason = flatten(kick.getReason());
             summary += " " + disconnectReason;
+        } else if (packet instanceof ClientboundPlayerPositionPacket move) {
+            applyPosition(move);
+        } else if (packet instanceof ClientboundOpenScreenPacket open) {
+            WindowModel window = new WindowModel(open.getContainerId(), namespaced(open.getType()),
+                    flatten(open.getTitle()));
+            opened.add(window);
+            summary += " id=" + window.id() + " " + window.type();
+        } else if (packet instanceof ClientboundContainerSetContentPacket content) {
+            summary += applyContent(content);
+        } else if (packet instanceof ClientboundContainerSetSlotPacket slot) {
+            summary += applySlot(slot);
+        } else if (packet instanceof ClientboundContainerClosePacket close) {
+            summary += " id=" + close.getContainerId();
+            synchronized (opened) {
+                for (WindowModel window : opened) {
+                    if (window.id() == close.getContainerId()) {
+                        window.markClosed();
+                    }
+                }
+            }
         } else if (packet instanceof ClientboundSystemChatPacket system) {
             // Overlay is the action bar, which is not chat.
             if (!system.isOverlay()) {
@@ -98,6 +147,204 @@ final class McplSession implements ClientSession {
             summary += " " + buffer("<" + flatten(player.getName()) + "> " + body, false);
         }
         record("<- " + summary);
+    }
+
+    /** The last server-synced position {x, y, z}, or null before the first sync. */
+    double[] position() {
+        return position;
+    }
+
+    private void applyPosition(ClientboundPlayerPositionPacket move) {
+        double[] now = position == null ? new double[3] : position.clone();
+        var relatives = move.getRelatives();
+        now[0] = (relatives.contains(PositionElement.X) ? now[0] : 0) + move.getPosition().getX();
+        now[1] = (relatives.contains(PositionElement.Y) ? now[1] : 0) + move.getPosition().getY();
+        now[2] = (relatives.contains(PositionElement.Z) ? now[2] : 0) + move.getPosition().getZ();
+        boolean first = position == null;
+        position = now;
+        // MCProtocolLib does not answer a teleport. Until the server gets this acknowledgement it ignores the
+        // player's packets, including block use. Rotation is taken as absolute because the join and tp packets are.
+        network.send(new ServerboundAcceptTeleportationPacket(move.getId(), now[0], now[1], now[2],
+                move.getYRot(), move.getXRot()));
+        if (first) {
+            // The vanilla client says so once its first position arrived and the terrain is up.
+            network.send(ServerboundPlayerLoadedPacket.INSTANCE);
+        }
+    }
+
+    private String applyContent(ClientboundContainerSetContentPacket content) {
+        WindowModel target = target(content.getContainerId());
+        if (target == null) {
+            return " id=" + content.getContainerId() + " (no such window, ignored)";
+        }
+        target.setContent(content.getStateId(), content.getItems(), content.getCarriedItem());
+        return " id=" + target.id() + " stateId=" + content.getStateId() + " slots=" + content.getItems().length;
+    }
+
+    private String applySlot(ClientboundContainerSetSlotPacket slot) {
+        // Container -1 is the cursor, outside any window.
+        if (slot.getContainerId() == -1) {
+            playerInventory.setCursor(slot.getItem());
+            return " cursor";
+        }
+        WindowModel target = target(slot.getContainerId());
+        if (target == null || !target.setSlot(slot.getStateId(), slot.getSlot(), slot.getItem())) {
+            return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " (not applied: unknown window or slot)";
+        }
+        return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " stateId=" + slot.getStateId();
+    }
+
+    /** The model a container packet addresses: the player inventory for id 0, else the newest open window. */
+    private WindowModel target(int containerId) {
+        if (containerId == 0) {
+            return playerInventory;
+        }
+        synchronized (opened) {
+            for (int i = opened.size() - 1; i >= 0; i--) {
+                WindowModel window = opened.get(i);
+                if (window.id() == containerId && !window.isClosed()) {
+                    return window;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Vanilla menu type keys. The switch has no default, so a new constant fails the build instead of a guess. */
+    static String namespaced(ContainerType type) {
+        return "minecraft:" + switch (type) {
+            case GENERIC_9X1 -> "generic_9x1";
+            case GENERIC_9X2 -> "generic_9x2";
+            case GENERIC_9X3 -> "generic_9x3";
+            case GENERIC_9X4 -> "generic_9x4";
+            case GENERIC_9X5 -> "generic_9x5";
+            case GENERIC_9X6 -> "generic_9x6";
+            case GENERIC_3X3 -> "generic_3x3";
+            case CRAFTER_3x3 -> "crafter_3x3";
+            case ANVIL -> "anvil";
+            case BEACON -> "beacon";
+            case BLAST_FURNACE -> "blast_furnace";
+            case BREWING_STAND -> "brewing_stand";
+            case CRAFTING -> "crafting";
+            case ENCHANTMENT -> "enchantment";
+            case FURNACE -> "furnace";
+            case GRINDSTONE -> "grindstone";
+            case HOPPER -> "hopper";
+            case LECTERN -> "lectern";
+            case LOOM -> "loom";
+            case MERCHANT -> "merchant";
+            case SHULKER_BOX -> "shulker_box";
+            case SMITHING -> "smithing";
+            case SMOKER -> "smoker";
+            case CARTOGRAPHY -> "cartography_table";
+            case STONECUTTER -> "stonecutter";
+        };
+    }
+
+    @Override
+    public void useBlock(BlockPos pos, Face face) {
+        requireOpen("cannot use a block");
+        double[] at = Await.until("synced position of " + username, () -> position, p -> p != null, POSITION_WAIT);
+        double[] hit = faceCentre(face);
+        double dx = pos.x() + hit[0] - at[0];
+        double dy = pos.y() + hit[1] - (at[1] + EYE_HEIGHT);
+        double dz = pos.z() + hit[2] - at[2];
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+        network.send(new ServerboundMovePlayerRotPacket(true, false, yaw, pitch));
+        network.send(new ServerboundUseItemOnPacket(Vector3i.from(pos.x(), pos.y(), pos.z()),
+                Direction.valueOf(face.name()), Hand.MAIN_HAND, (float) hit[0], (float) hit[1], (float) hit[2],
+                false, false, sequence.incrementAndGet()));
+    }
+
+    /** The click point as an offset inside the block: the centre of the face. */
+    private static double[] faceCentre(Face face) {
+        return switch (face) {
+            case DOWN -> new double[] {0.5, 0.0, 0.5};
+            case UP -> new double[] {0.5, 1.0, 0.5};
+            case NORTH -> new double[] {0.5, 0.5, 0.0};
+            case SOUTH -> new double[] {0.5, 0.5, 1.0};
+            case WEST -> new double[] {0.0, 0.5, 0.5};
+            case EAST -> new double[] {1.0, 0.5, 0.5};
+        };
+    }
+
+    @Override
+    public WindowSession awaitWindow(Duration timeout) {
+        WindowModel found;
+        try {
+            // A disconnect is a value, not an exception, because Await treats a throwing probe as "not yet".
+            found = Await.until("a window opened for " + username, this::claimWindow,
+                    w -> w != null || state == State.DISCONNECTED, timeout);
+        } catch (AwaitTimeoutException e) {
+            throw new ClientDriverException("no window opened within " + timeout + "; transcript tail: " + tail(), e);
+        }
+        if (found == null) {
+            throw new ClientDriverException("disconnected while waiting for a window: " + disconnectReason);
+        }
+        return new Window(found);
+    }
+
+    private WindowModel claimWindow() {
+        synchronized (opened) {
+            for (WindowModel window : opened) {
+                if (window.claim()) {
+                    return window;
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public WindowView inventory() {
+        return playerInventory;
+    }
+
+    /** A live view of one window model. */
+    private final class Window implements WindowSession {
+        private final WindowModel model;
+
+        Window(WindowModel model) {
+            this.model = model;
+        }
+
+        @Override
+        public String title() {
+            return model.title();
+        }
+
+        @Override
+        public void close() {
+            requireOpen("cannot close a window");
+            network.send(new ServerboundContainerClosePacket(model.id()));
+            model.markClosed();
+        }
+
+        @Override
+        public String type() {
+            return model.type();
+        }
+
+        @Override
+        public int id() {
+            return model.id();
+        }
+
+        @Override
+        public int stateId() {
+            return model.stateId();
+        }
+
+        @Override
+        public List<SlotStack> slots() {
+            return model.slots();
+        }
+
+        @Override
+        public SlotStack cursor() {
+            return model.cursor();
+        }
     }
 
     private String buffer(String text, boolean system) {
