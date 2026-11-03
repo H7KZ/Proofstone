@@ -1,5 +1,6 @@
 package dev.proofstone.agent.bukkit;
 
+import dev.proofstone.agent.platform.MinecraftVersion;
 import dev.proofstone.agent.platform.PlatformDetector;
 import dev.proofstone.agent.protocol.Health;
 import dev.proofstone.agent.scheduler.MainThreadScheduler;
@@ -28,7 +29,7 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     getDescription().getVersion(),
                     PROTOCOL,
                     PlatformDetector.detect(this::classPresent),
-                    minecraftVersion(),
+                    MinecraftVersion.parse(Bukkit.getBukkitVersion()),
                     Arrays.asList("command", "players"));
             server = new AgentServer(config, health, new BukkitGame(new MainThreadScheduler(this)));
             server.start();
@@ -52,14 +53,5 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
         } catch (ClassNotFoundException e) {
             return false;
         }
-    }
-
-    /** {@code 1.8.8-R0.1-SNAPSHOT} becomes {@code 1.8.8}. An empty result is an error, never a guess. */
-    private static String minecraftVersion() {
-        String version = Bukkit.getBukkitVersion().split("-")[0];
-        if (version.isEmpty()) {
-            throw new IllegalStateException("cannot read the Minecraft version from Bukkit");
-        }
-        return version;
     }
 }

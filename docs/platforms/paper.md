@@ -38,3 +38,5 @@
   publishes no port. A published port is debug mode only.
 - itzg copies `/plugins` into `/data/plugins` at start, so `copyFileToContainer` into `/plugins` before start
   is enough. It stores the downloaded server jar as `/data/paper-*.jar`, which `PaperHost` hashes against the pin.
+- **Bukkit version string on 26.x** is `26.3.build.238-R0.1-SNAPSHOT`: the Paper build sits in the first segment.
+  The agent strips `.build.N` (`MinecraftVersion.parse`), or it reports `26.3.build.238` and core refuses the cell.
