@@ -1,0 +1,1 @@
+{"status":200,"body":{"ok":true,"data":{"events":[{"class":"org.bukkit.event.player.PlayerJoinEvent","tick":"<integer>","thread":"<string>","fields":{"getPlayer":{"name":"Alex"},"getJoinMessage":"<string>"}}],"next":"<integer>"}}}

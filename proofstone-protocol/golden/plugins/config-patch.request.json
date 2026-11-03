@@ -1,0 +1,1 @@
+{"method":"PATCH","path":"/v1/plugins/proofstone-fixture/config","body":{"path":"greeting","value":"hello"}}

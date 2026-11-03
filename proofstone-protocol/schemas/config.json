@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/config.json",
+  "title": "Plugin config (GET and PATCH /v1/plugins/{id}/config, POST /v1/plugins/{id}/config/restore)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. The config path is dotted (config.yml keys). GET takes ?path= and replies $defs/read. PATCH takes $defs/patch and replies $defs/empty. Restore has no body and replies $defs/empty. The agent snapshots on the first PATCH (ADR-0002).",
+  "$defs": {
+    "path": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$" },
+    "value": {
+      "description": "A YAML-compatible value: string, number, boolean, null, list or map."
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "value"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "value": { "$ref": "#/$defs/value" }
+      }
+    },
+    "read": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "value"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "value": { "$ref": "#/$defs/value" }
+      }
+    },
+    "empty": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 0
+    }
+  }
+}

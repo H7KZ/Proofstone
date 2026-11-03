@@ -22,11 +22,13 @@ public final class GoldenMatcher {
     private static final Pattern UUID = Pattern.compile(
             "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
     /** Sample value for each placeholder, used to schema-validate a golden file. */
+    /** JSON text of each sample, so a number placeholder is replaced by a bare number, not a string. */
     private static final Map<String, String> SAMPLES = Map.of(
-            "<uuid>", "069a79f4-44e9-4726-a5be-fca90e38aaf5",
-            "<time>", "2026-11-03T12:00:00Z",
-            "<requestId>", "req-0001",
-            "<string>", "sample");
+            "<uuid>", "\"069a79f4-44e9-4726-a5be-fca90e38aaf5\"",
+            "<time>", "\"2026-11-03T12:00:00Z\"",
+            "<requestId>", "\"req-0001\"",
+            "<string>", "\"sample\"",
+            "<integer>", "0");
 
     private GoldenMatcher() {
     }
@@ -42,7 +44,7 @@ public final class GoldenMatcher {
     public static String concrete(String json) {
         String out = json;
         for (Map.Entry<String, String> sample : SAMPLES.entrySet()) {
-            out = out.replace("\"" + sample.getKey() + "\"", "\"" + sample.getValue() + "\"");
+            out = out.replace("\"" + sample.getKey() + "\"", sample.getValue());
         }
         return out;
     }
@@ -104,6 +106,9 @@ public final class GoldenMatcher {
     }
 
     private static boolean fits(String placeholder, JsonNode actual) {
+        if ("<integer>".equals(placeholder)) {
+            return actual.isIntegralNumber() && actual.asLong() >= 0;
+        }
         if (!actual.isTextual()) {
             return false;
         }

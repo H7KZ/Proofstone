@@ -1,5 +1,6 @@
 package dev.proofstone.protocol;
 
+import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,24 +27,48 @@ class GoldenContractTest {
     private record Schemas(String request, String data) {
     }
 
-    private static final Map<String, Schemas> SCHEMAS = Map.of(
-            "health/ok", new Schemas(null, "health.json"),
-            "health/unauthorised", new Schemas(null, null),
-            "players/not-found", new Schemas(null, null),
-            "players/empty-inventory", new Schemas(null, "player-state.json"),
-            "players/give-enchanted-sword", new Schemas("item.json", null),
-            "players/read-after-give", new Schemas(null, "player-state.json"),
-            "command/reply", new Schemas("command.json", "command.json#/$defs/reply"));
+    private static final Map<String, Schemas> SCHEMAS = Map.ofEntries(
+            entry("health/ok", new Schemas(null, "health.json")),
+            entry("health/unauthorised", new Schemas(null, null)),
+            entry("players/not-found", new Schemas(null, null)),
+            entry("players/empty-inventory", new Schemas(null, "player-state.json")),
+            entry("players/give-enchanted-sword", new Schemas("item.json", null)),
+            entry("players/read-after-give", new Schemas(null, "player-state.json")),
+            entry("players/open-anvil", new Schemas(null, "player-state.json")),
+            entry("command/reply", new Schemas("command.json", "command.json#/$defs/reply")),
+            entry("world/block-get", new Schemas(null, "block.json")),
+            entry("world/block-put", new Schemas("block.json#/$defs/write", "block.json")),
+            entry("plugins/config-patch", new Schemas("config.json#/$defs/patch", "config.json#/$defs/empty")),
+            entry("plugins/config-read", new Schemas(null, "config.json#/$defs/read")),
+            entry("plugins/config-restore", new Schemas(null, "config.json#/$defs/empty")),
+            entry("plugins/config-read-after-restore", new Schemas(null, "config.json#/$defs/read")),
+            entry("ticks/read", new Schemas(null, "ticks.json")),
+            entry("ticks/await", new Schemas("ticks.json#/$defs/await", "ticks.json")),
+            entry("events/subscribe", new Schemas("event.json#/$defs/subscribe", "event.json#/$defs/subscribeReply")),
+            entry("events/poll", new Schemas(null, "event.json#/$defs/page")),
+            entry("log/read", new Schemas(null, "log-record.json#/$defs/page")));
 
     /** The card's cases. The list is fixed so that a deleted golden file fails the build. */
     private static final List<String> CASES = List.of(
             "command/reply",
+            "events/poll",
+            "events/subscribe",
             "health/ok",
             "health/unauthorised",
+            "log/read",
             "players/empty-inventory",
             "players/give-enchanted-sword",
             "players/not-found",
-            "players/read-after-give");
+            "players/open-anvil",
+            "players/read-after-give",
+            "plugins/config-patch",
+            "plugins/config-read",
+            "plugins/config-read-after-restore",
+            "plugins/config-restore",
+            "ticks/await",
+            "ticks/read",
+            "world/block-get",
+            "world/block-put");
 
     static List<String> cases() {
         return CASES;

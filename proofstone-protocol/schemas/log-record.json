@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/log-record.json",
+  "title": "Log record (GET /v1/log)",
+  "description": "Spec: docs/specs/agent-protocol.md §3. The root is one record. JUL levels map to these names (SEVERE to ERROR, WARNING to WARN, FINE and below to DEBUG or TRACE). thrown is the stack trace text, or null. $defs/page is the reply of GET /v1/log: records since the cursor, and the next cursor.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["time", "level", "logger", "message", "thrown"],
+  "properties": {
+    "time": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$" },
+    "level": { "enum": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"] },
+    "logger": { "type": "string" },
+    "message": { "type": "string" },
+    "thrown": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["records", "next"],
+      "properties": {
+        "records": { "type": "array", "items": { "$ref": "#" } },
+        "next": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

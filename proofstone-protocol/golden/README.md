@@ -28,6 +28,7 @@ actual value. It does not ignore it. Any other value in angle brackets is an err
 | `"<time>"` | an ISO-8601 instant with `Z` (`time` fields) |
 | `"<requestId>"` | a non-blank string (`X-Proofstone-Request-Id`) |
 | `"<string>"` | any string. Used for `raw` and for free text such as `message` |
+| `"<integer>"` | a non-negative JSON integer. Used for volatile counters: ticks, log and event cursors, event `tick` |
 
 `raw` is server-native output. Never write a version-specific value there; it is always `"<string>"`.
 
@@ -53,6 +54,30 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `players/give-enchanted-sword` | give with enchant level 255. Paper 26.3 stores at most 255 and reads larger levels back as 255 (docs/platforms/paper.md); the agent never clamps, so the server's value is the truth |
 | `players/read-after-give` | the same item read back, enchant intact |
 | `command/reply` | console command output |
+| `world/block-get` | `GET /v1/world/block` reply: namespaced type and state object (v1.1) |
+| `world/block-put` | `PUT /v1/world/block`: request body `block.json#/$defs/write`, reply is the block (v1.1) |
+| `plugins/config-patch` | `PATCH /v1/plugins/{id}/config` sets a path, reply `{}` (v1.1) |
+| `plugins/config-read` | `GET /v1/plugins/{id}/config?path=` reads the patched value (v1.1) |
+| `plugins/config-restore` | `POST /v1/plugins/{id}/config/restore` restores the snapshot, reply `{}` (v1.1) |
+| `plugins/config-read-after-restore` | the same path reads its original value `hi` after restore (v1.1) |
+| `ticks/read` | `GET /v1/ticks`: global counter, `<integer>` because it varies (v1.1) |
+| `ticks/await` | `POST /v1/ticks/await` with `{n: 1}` replies with the counter (v1.1) |
+| `events/subscribe` | `POST /v1/events/subscribe` for `PlayerJoinEvent` replies `{probeId}` (v1.1) |
+| `events/poll` | `GET /v1/events/probe-1?since=0`: one captured event with getters serialised (v1.1) |
+| `log/read` | `GET /v1/log?since=0&minLevel=WARN`: one record with a stack trace (v1.1) |
+| `players/open-anvil` | `players/read-after-give` with an open anvil window: `openWindow` in `player-state.json` (v1.1) |
+
+**Pending cases (T-M2-01).** The rows from `world/block-get` to `players/open-anvil` are in
+`GoldenContractTest` (this module) only. They are **not** in the agent's replay lists yet: not in
+`AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list. T-M2-02 and T-M2-03 add each
+one to those lists when the endpoint is served. Two cases need a setup the replay must provide:
+
+- `events/poll` names the probe `probe-1`. The M2-02 replay must subscribe to `PlayerJoinEvent` first and
+  make the agent's probe id `probe-1`, or change this case's path to the id it uses.
+- `players/open-anvil` needs the test to open an anvil before the read. Replay it after `players/read-after-give`.
+
+The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01). The agent's `PROTOCOL` constant
+matches it.
 
 ## Adding a case
 
