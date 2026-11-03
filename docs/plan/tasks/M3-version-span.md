@@ -42,6 +42,13 @@ These cards are refined at T-M2-99. Keep the format.
 
 **Goal.** Replace the assumed Java rules with observed ones.
 
+**Known limit from M1.** `versions.yml` carries one `host.digest` per platform, but the `itzg/minecraft-server` digest
+differs per Java tag, so today only the rows that use the pinned tag (Java 25: the 26.x rows) can run; `PaperHost`
+fails loudly for the others. This card (or a new first card in M3) must change the host pin to one digest per Java
+tag in the spec, the schema (`proofstone-protocol/schemas/versions.schema.json`), the validator, `VersionsCatalog`
+and `PaperHost`. Treat it as a spec change: update `docs/specs/versions-yml.md` and write an ADR if it changes
+ADR-0008. Also pin `sha256` and `build` for every row you want to run.
+
 **Do.**
 - Boot every Paper row with its rule-assigned Java tag, using the C01 health check only, and record any
   failures.

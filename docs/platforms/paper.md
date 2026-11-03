@@ -70,3 +70,13 @@
   the container, so tests can join one client per test.
 - **A plain player cannot run vanilla `/list`** (`Unknown command`): vanilla commands need op. `/version` and
   `/plugins` work for everyone. Use the agent (console) for setup commands.
+
+## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
+Measured from the JUnit XML suite times of one serial run, image already pulled:
+- One suite that boots a cell, joins one client and tears down: about 31 to 32 s (`:conformance:smoke` 2 tests,
+  `McplDriverIT`, `VersionCommandE2E`).
+- The server log reports `Done (12.060s)!` for the world load in the first real boot; the rest is container start,
+  the agent copy and the readiness poll.
+- `PaperHostIT` (4 tests, three of which boot a server) takes about 91 s.
+- A cold first run adds the image pull and the Paper jar download. CI `smoke` took about 3.5 min including Gradle
+  setup.

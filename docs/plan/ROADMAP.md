@@ -10,7 +10,7 @@ conformance, golden files and the verdict engine exist.
 | M | Name | Exit criterion | Cards | Haiku / Sonnet / Opus | Estimate (focused dev-weeks, AI-assisted) |
 |---|---|---|---|---|---|
 | **M0** | Foundation (done, reviewed in T-M0-99) | `./gradlew check` green in CI. `docsCheck` and lint rules enforce the AGENTS.md hard rules. The `versions.yml` schema validates. | 8 | 7 / 1 / 0 | 1 |
-| **M1** | Walking skeleton (Paper, newest) | On Paper (newest), the server boots from `versions.yml` with the Bukkit agent. The `mcpl` client joins, runs `/version`, and the JUnit test receives the message. Agent `/v1/health` and `/v1/players/{n}` are verified by golden files. | 12 | 8 / 4 / 0 | 2.5 |
+| **M1** | Walking skeleton (Paper, newest; done, reviewed in T-M1-99) | On Paper (newest), the server boots from `versions.yml` with the Bukkit agent. The `mcpl` client joins, runs `/version`, and the JUnit test receives the message. Agent `/v1/health` and `/v1/players/{n}` are verified by golden files. | 12 | 8 / 4 / 0 | 2.5 |
 | **M2** | Windows and the dual oracle | The Disenchantment anvil scenario passes natively on the newest Paper version with a dual-oracle assertion and an event probe. Conformance C01–C06 pass. The test API is frozen (v0). | 11 | 5 / 6 / 0 | 2 |
 | **M3** | Version span | ViaProxy bridging works. Every Paper row from 1.8.8 to the newest passes C01–C08. `version-watch` opens PRs automatically. | 9 | 6 / 3 / 0 | 2 |
 | **M4** | Self-verification | Control run, differential run (mineflayer-ref), flake detector and repro bundles all work. Verdicts `VACUOUS`, `DISAGREE` and `FLAKY` are demonstrated on purpose-built bad tests. | 9 | 4 / 4 / 1 | 2 |
@@ -54,3 +54,30 @@ M5 can run in parallel with M4 once M3 is done.
   `Await` class name required by `archTest`, the core loader's new dependencies, the `smoke`
   placeholder and CI header to replace, and the Spigot API 1.8.8 pinned by its frozen timestamped build
   (a SNAPSHOT would fail `lintVersions`).
+
+## M1 review (T-M1-99)
+- **Exit criterion met**, with real runs on Paper 26.3 (one suite at a time, EULA accepted in the command
+  environment): `:conformance:smoke` 2/2, `:examples:smoke:test` 2/2, `:platforms:bukkit:agent:integrationTest`
+  8/8 (the golden replay), `:proofstone-core:integrationTest` 4/4, `:drivers:mcpl:integrationTest` 1/1, all with 0 skipped.
+  `./gradlew check docsCheck` is green (0 docsCheck errors). In words: a JUnit test boots the server from
+  `versions.yml`, installs the Bukkit agent, joins with the `mcpl` client, runs `/version` and sees the Paper reply;
+  `/v1/health` and `/v1/players/{n}` match their golden files on the real server.
+- **CI**: `gates`, `smoke` and `renovate-validate` run on every PR and are required checks on `main`. The `smoke`
+  job accepts the Minecraft EULA by the maintainer's instruction and fails (never skips) without it.
+- **Bugs only a real server found** (each fixed and merged): the agent reported `26.3.build.238` as the Minecraft
+  version; the agent's proxy `CommandSender` could not run vanilla commands; the golden enchant level 32767 is stored
+  as 255 by Paper; `reset` put the player on a block corner. Lesson, now in the M2 cards: every endpoint card needs a
+  real-server test, not only fakes.
+- **Open limits** (not decided here):
+  - `versions.yml` has one host digest per platform but itzg digests are per Java tag, so only the Paper 26.x rows
+    can run. The fix is a spec change; it is written into card T-M3-02.
+  - Only the Paper 26.3 row is fully pinned (`build`, `sha256`). The `folia` host digest and the other rows are `TODO`.
+  - The `Docker missing` skip path of the JUnit extension and a real `kick` are not covered by a test.
+  - The `docsCheck` glossary warnings are advisory and count every `.claude` worktree if present locally; they do
+    not appear in CI.
+- **Re-estimate**: M1 was estimated at 2.5 focused weeks. All 12 cards plus 5 follow-up fixes merged in about one
+  day of agent time, with a human only accepting the EULA and restarting Docker. The cost was not the coding but
+  verification: the real-server runs found four bugs that unit tests did not. M2 and later estimates stay as they
+  are, because M2 adds the harder driver work (windows, clicks, item parsing) and each card needs a real-server test.
+- **M2 cards refined** with the real package, class and task names and the M1 lessons (see the "What M1 produced"
+  section at the top of `tasks/M2-windows-dual-oracle.md`).
