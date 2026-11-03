@@ -1,0 +1,2 @@
+// latest and SNAPSHOT in a comment are not pins
+implementation("org.example:lib:1.2.3")
