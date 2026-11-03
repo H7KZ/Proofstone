@@ -36,6 +36,10 @@ class PaperHostIT {
         agentJar = Path.of(System.getProperty("proofstone.agentJar"));
     }
 
+    private static String rule() {
+        return GameRules.randomTickSpeed(cell.mc());
+    }
+
     private static void requireEula() {
         assumeTrue(Eula.accepted(), "Minecraft EULA not accepted: set " + Eula.VARIABLE + "=true");
     }
@@ -43,14 +47,32 @@ class PaperHostIT {
     @Test
     void bootsTheNewestPaperRowAndReportsTheAgentCapabilities() {
         requireEula();
-        // SEAM: the agent has no /v1/command yet (T-M1-04), so game rules are applied there once it lands.
-        PaperHostOptions options = PaperHostOptions.of(agentJar, true).withApplyGameRules(false);
+        // Default options apply the game rules through /v1/command, so this also proves vanilla commands work.
+        PaperHostOptions options = PaperHostOptions.of(agentJar, true);
 
         try (PaperHost host = PaperHost.start(cell, options)) {
             assertThat(host.health().platform()).isEqualTo("paper");
             assertThat(host.health().mcVersion()).isEqualTo(cell.mc());
             assertThat(host.health().capabilities()).isNotNull();
             System.out.println("agent capabilities: " + host.health().capabilities());
+            assertThat(host.command("gamerule " + rule())).contains("0");
+        }
+    }
+
+    @Test
+    void vanillaCommandRunsThroughTheAgentAndTheEffectShows() {
+        requireEula();
+        PaperHostOptions options = PaperHostOptions.of(agentJar, true).withApplyGameRules(false);
+
+        try (PaperHost host = PaperHost.start(cell, options)) {
+            String set = host.command("gamerule " + rule() + " 0");
+            assertThat(set).contains(rule()).contains("0");
+            assertThat(host.command("gamerule " + rule())).contains(rule()).contains("0");
+            // The effect is a real state change: a second value reads back.
+            host.command("gamerule " + rule() + " 7");
+            assertThat(host.command("gamerule " + rule())).contains("7");
+            // Plugin commands keep working through the same path. (`version` answers from another thread, so not it.)
+            assertThat(host.command("plugins")).contains("ProofstoneAgent");
         }
     }
 

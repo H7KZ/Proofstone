@@ -48,6 +48,13 @@
   key (`/joined/`). `/version` output is plain text and matches `/Paper/`.
 - **Offline mode sends no signed-chat session**, so `chat()` sends an unsigned `ServerboundChatPacket`. A stopped
   server ends the session with `disconnect.endOfStream`, which the driver reports as the reason.
-- **The agent cannot run vanilla `kick`**: `/v1/command` fails with `Cannot make ProofstoneAgent a vanilla command
-  listener`. The capture sender needs a fix on the agent side (not done here). Also, `PaperHost.command` sent
-  `"timeoutMs": null`, which the agent rejects; it now omits null fields.
+- **Vanilla commands reject custom senders.** Dispatching `gamerule`, `kick`, `give` or `say` through a
+  `Proxy` `CommandSender` fails with `Cannot make ProofstoneAgent a vanilla command listener`: Paper only turns
+  Console, Player, block, minecart, rcon and proxied senders into a command source. The agent dispatches as
+  `Bukkit.getConsoleSender()` and reads the output from a log4j appender (by reflection, calling thread only,
+  `LogCapture`), best effort. Output logged from another thread is missed, for example `version`, which replies
+  "Checking version, please wait..." and the result later.
+- **Game rules are snake_case from 26.1.** `randomTickSpeed` is `random_tick_speed`, `doDaylightCycle` is
+  `advance_time`, `doWeatherCycle` is `advance_weather`, `doMobSpawning` is `spawn_mobs`. The old names fail with
+  `Incorrect argument for command`. `PaperHost` picks the set by Minecraft major version (`GameRules`).
+- `PaperHost.command` used to send `"timeoutMs": null`, which the agent rejects; it now omits null fields.

@@ -13,8 +13,7 @@ import java.util.List;
  * @param eulaAccepted whether the user accepted the Minecraft EULA ({@link Eula#accepted()})
  * @param bootTimeout how long to wait for {@code Done (} in the log
  * @param agentTimeout how long to wait for agent health once the server is done
- * @param applyGameRules run the game-rule setup through the agent command endpoint. SEAM: the agent serves
- *     only {@code /v1/health} until T-M1-04 lands, so callers turn this off until then.
+ * @param applyGameRules run the game-rule setup through the agent command endpoint (on by default).
  * @param debugPorts publish the agent port to the host. Off by default (T-M1-07).
  */
 public record PaperHostOptions(

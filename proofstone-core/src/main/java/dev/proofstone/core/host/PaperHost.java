@@ -43,11 +43,6 @@ public final class PaperHost implements AutoCloseable {
     private static final String AGENT_URL = "http://127.0.0.1:" + AGENT_PORT;
     private static final int TAIL_LINES = 60;
     private static final String SEED = "1234567";
-    private static final List<String> GAME_RULES = List.of(
-            "gamerule randomTickSpeed 0",
-            "gamerule doDaylightCycle false",
-            "gamerule doWeatherCycle false",
-            "gamerule doMobSpawning false");
     // Absent optional fields are omitted: the agent rejects an explicit "timeoutMs": null (found in T-M1-08).
     private static final ObjectMapper JSON = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
     private static final Pattern JAVA_MAJOR = Pattern.compile("version \"(\\d+)(?:\\.(\\d+))?");
@@ -94,7 +89,7 @@ public final class PaperHost implements AutoCloseable {
             verifyServer();
             verifyPlugins();
             if (options.applyGameRules()) {
-                GAME_RULES.forEach(this::command);
+                GameRules.commands(cell.mc()).forEach(this::command);
             }
         } catch (RuntimeException e) {
             String tail = logTail();
