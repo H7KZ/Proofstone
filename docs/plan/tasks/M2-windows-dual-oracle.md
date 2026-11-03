@@ -4,6 +4,48 @@
 the result with a dual-oracle assertion and reads the cost from an event probe (`PostDisenchantEvent`
 `xpCost`). Conformance C01–C06 pass. The test API v0 is frozen.
 
+## What M1 produced (read before picking a card)
+
+Real names and paths. Cards below use them.
+
+- **Agent** (`platforms/bukkit/agent`, Java 8 bytecode, `proofstone.java-agent-legacy`). The HTTP routing is in
+  `dev.proofstone.agent.server.AgentServer.dispatch`. Game access goes through the `dev.proofstone.agent.game.Game`
+  interface, with `BukkitGame` (real) and `FakeGame` (test). New endpoints add a `Game` method, a `BukkitGame`
+  implementation, a `FakeGame` implementation and a golden case. The plugin reports `protocol` `1.0` and its
+  `capabilities` list (`command`, `players`) in `ProofstoneAgentPlugin`; add capability names for every new group.
+- **Golden files**: `proofstone-protocol/golden/<endpoint>/`, replayed by the unit-level `GoldenContractTest` (in the
+  agent and in protocol) and, on a real server, by `dev.proofstone.agent.contract.AgentContractIT` (`CASES` list, in
+  order). A new case goes in the README table, in both lists, and in the schema table.
+- **Real-server tests**: the `proofstone.integration-test` convention (`build-logic`) gives each module an
+  `integrationTest` task. It is not part of `check`. Run with `PROOFSTONE_ACCEPT_EULA=true` in the environment.
+- **Host**: `dev.proofstone.core.host.PaperHost`, `PaperHostOptions`, `GameRules`. `latest` resolves through
+  `dev.proofstone.core.cell.CellPlanner`. Only the Paper 26.3 row is pinned (see ROADMAP, "Open limits").
+- **Driver**: SPI in `dev.proofstone.core.driver` (`ClientDriver`, `ClientSession`, `ConnectSpec`, `ChatMessage`);
+  implementation `dev.proofstone.driver.mcpl.McplDriver` and `McplSession`. MCProtocolLib 26.3 needs **Java 21+**, so
+  every module that runs the driver sets a Java 21 toolchain (`drivers:mcpl`, `examples:smoke`, `conformance`).
+- **API and extension**: `dev.proofstone.api` (`@Proofstone`, `@Matrix`, `@CellTest`, `Cell`, `Agent`, `Client`), and
+  `dev.proofstone.core.junit.ProofstoneExtension` (registered by a service file). Examples:
+  `examples/smoke`. Conformance: `conformance` (`ConformanceSmokeTest`, task `:conformance:smoke`).
+- **Waits** always use `dev.proofstone.core.await.Await` (`until`, `untilBoth`). `archTest` exempts only that class
+  from the `Thread.sleep` ban and bans classes named `*Retry*`.
+
+Lessons that change how M2 cards should be done:
+
+- **Server limits are the truth, not the golden file.** Paper 26.3 stores enchant levels up to 255, so
+  `give-enchanted-sword` uses 255. The agent never clamps. When a real run disagrees with a golden file, find out
+  which is wrong, then fix it in its own commit with the reason (as T-M1-05 did).
+- **Vanilla commands**: the agent runs commands as the console and captures output from the log. Output logged on
+  another thread is missed (so `version` has no captured output). Do not rely on `/v1/command` output; read state
+  through the endpoints.
+- **Game rule names** are snake_case from 26.1 (`random_tick_speed`).
+- **Bukkit version string on 26.x** carries the Paper build (`26.3.build.238-R0.1-SNAPSHOT`);
+  `MinecraftVersion.parse` strips it.
+- **Flat worlds spawn underground** on 26.3 (about `y -60`). Tests that need ground set the world spawn and place a
+  block, as `AgentContractIT` does.
+- **Run Gradle integration tasks one at a time.** Several Testcontainers suites in parallel overload Docker Desktop
+  on the maintainer's machine and fail with "Could not find a valid Docker environment".
+- A real run of a new endpoint is what finds bugs. Each endpoint card must include a real-server test, not only fakes.
+
 ### T-M2-01 · Protocol schemas: window, world block, event, log, config, ticks
 - tier: haiku
 - depends: T-M1-99
@@ -22,7 +64,8 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
   - `log-record.json`;
   - config patch and restore;
   - ticks.
-- Bump the protocol minor version to `1.1`.
+- Bump the protocol minor version to `1.1`: change `PROTOCOL` in `ProofstoneAgentPlugin` and the `health` golden
+  case together, and update `proofstone-protocol/golden/README.md`.
 
 **Don't.**
 - Make breaking changes to existing schemas.
@@ -55,6 +98,8 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
 - Log capture: attach a handler to the root JUL logger (and the Log4j2 root when present, via
   reflection), and keep a ring buffer of 5000 records with stack traces.
 - Tick counter: a repeating task (1 tick) plus `/v1/ticks/await`.
+- Follow the M1 layout: a `Game` method, a `BukkitGame` implementation, a `FakeGame` implementation and routes in
+  `AgentServer.dispatch`. Add the new capability names to the health reply.
 
 **Don't.**
 - Let a listener change an event or call any setter.

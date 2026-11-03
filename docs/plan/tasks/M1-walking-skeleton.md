@@ -35,10 +35,10 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Add endpoints that are not in the spec.
 
 **Acceptance.**
-- [ ] Every schema validates its examples in `proofstone-protocol/golden/` (T-M1-02 adds them; use inline
+- [x] Every schema validates its examples in `proofstone-protocol/golden/` (T-M1-02 adds them; use inline
   examples until then).
-- [ ] Generated types round-trip each example through serialise and parse with equal JSON output.
-- [ ] `./gradlew check` stays green and the module README's **Public surface** section is updated.
+- [x] Generated types round-trip each example through serialise and parse with equal JSON output.
+- [x] `./gradlew check` stays green and the module README's **Public surface** section is updated.
 
 **Verify.**
 `./gradlew :proofstone-protocol:test`
@@ -70,7 +70,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Encode version-specific raw strings in golden files. The `raw` field is matched as "present, a string".
 
 **Acceptance.**
-- [ ] `GoldenMatcher` has unit tests, including mismatch messages that show a JSON path.
+- [x] `GoldenMatcher` has unit tests, including mismatch messages that show a JSON path.
 
 **Verify.**
 `./gradlew :proofstone-protocol:test`
@@ -116,10 +116,10 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Use any API newer than 1.8.8 without reflection and a capability guard.
 
 **Acceptance.**
-- [ ] `javap -v` shows major version 52 for all agent classes, checked by the `verifyBytecode` task (to be
+- [x] `javap -v` shows major version 52 for all agent classes, checked by the `verifyBytecode` task (to be
   written in this card and wired into the module's `check`).
-- [ ] `./gradlew check` stays green (`archTest` runs on the new module).
-- [ ] Unit tests cover the auth filter and the health JSON against the golden files.
+- [x] `./gradlew check` stays green (`archTest` runs on the new module).
+- [x] Unit tests cover the auth filter and the health JSON against the golden files.
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:test :platforms:bukkit:agent:verifyBytecode`
@@ -214,7 +214,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Implement the `all` keyword, selectors or capabilities (that is M3 or M5).
 
 **Acceptance.**
-- [ ] Unit tests cover: exact version, `latest`, unknown version, Java rule edges (1.20.4 → java17,
+- [x] Unit tests cover: exact version, `latest`, unknown version, Java rule edges (1.20.4 → java17,
   1.20.5 → java21, 26.1 → java25).
 
 **Verify.**
@@ -260,10 +260,10 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Expose ports to the host except in debug mode.
 
 **Acceptance.**
-- [ ] Boots the newest Paper row and reports the agent's capabilities.
-- [ ] `./gradlew check` stays green; the Docker-only `integrationTest` is not part of it.
-- [ ] A missing artefact glob fails before the container starts, with the glob in the message.
-- [ ] A server that loads without the agent (simulated by a bad jar) fails readiness with a clear message
+- [x] Boots the newest Paper row and reports the agent's capabilities.
+- [x] `./gradlew check` stays green; the Docker-only `integrationTest` is not part of it.
+- [x] A missing artefact glob fails before the container starts, with the glob in the message.
+- [x] A server that loads without the agent (simulated by a bad jar) fails readiness with a clear message
   that includes the log tail.
 
 **Verify.**
@@ -301,9 +301,11 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Implement windows (that is M2), or predict client-side state.
 
 **Acceptance.**
-- [ ] Joins the newest Paper row and receives the join message.
-- [ ] `command("version")` followed by `awaitMessage(/Paper/)` passes.
-- [ ] A disconnect or kick fails with a reason, never a hang. The connect timeout is enforced.
+- [x] Joins the newest Paper row and receives the join message.
+- [x] `command("version")` followed by `awaitMessage(/Paper/)` passes.
+- [x] A disconnect or kick fails with a reason, never a hang. The connect timeout is enforced.
+  Evidence: a server stop gives a disconnect reason in `McplDriverIT`; timeout and refused connection are unit
+  tests. A real `kick` is not tested.
 
 **Verify.**
 `./gradlew :drivers:mcpl:integrationTest`
@@ -332,7 +334,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Add retry semantics around assertions.
 
 **Acceptance.**
-- [ ] Unit tests use a fake clock, and the failure message format is pinned by a snapshot test.
+- [x] Unit tests use a fake clock, and the failure message format is pinned by a snapshot test.
 
 **Verify.**
 `./gradlew :proofstone-core:test`
@@ -363,8 +365,8 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Add the dual oracle, isolation modes or verdicts (those are M2 and M4).
 
 **Acceptance.**
-- [ ] Example test `examples/smoke/VersionCommandE2E` passes on the newest Paper row.
-- [ ] Two test methods in one class share one server and get different client names.
+- [x] Example test `examples/smoke/VersionCommandE2E` passes on the newest Paper row.
+- [x] Two test methods in one class share one server and get different client names.
 
 **Verify.**
 `./gradlew :examples:smoke:test`
@@ -393,7 +395,8 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Add more scenarios (those are M2).
 
 **Acceptance.**
-- [ ] The CI `smoke` job is green and required.
+- [x] The CI `smoke` job is green and required.
+  Evidence: green on PR #21; `main` branch protection requires `gates`, `smoke` and `renovate-validate`.
 
 **Verify.**
 `./gradlew :conformance:smoke`
@@ -416,8 +419,8 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Start M2.
 
 **Acceptance.**
-- [ ] The exit criterion is demonstrated with gate output.
-- [ ] The M2 cards are updated, and `docsCheck` is green.
+- [x] The exit criterion is demonstrated with gate output (see ROADMAP.md, "M1 review").
+- [x] The M2 cards are updated, and `docsCheck` is green.
 
 **Verify.**
 `./gradlew check docsCheck :conformance:smoke`
