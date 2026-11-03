@@ -20,9 +20,13 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
     private static final String PROTOCOL = "1.1";
 
     private AgentServer server;
+    private LogBuffer logs;
+    private TickCounter ticks;
 
     @Override
     public void onEnable() {
+        ticks = TickCounter.start(this);
+        logs = LogBuffer.attach();
         try {
             AgentConfig config = AgentConfig.fromEnvironment(System.getenv());
             Health health = new Health(
@@ -30,8 +34,10 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     PROTOCOL,
                     PlatformDetector.detect(this::classPresent),
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    Arrays.asList("command", "players", "config", "reload"));
-            server = new AgentServer(config, health, new BukkitGame(new MainThreadScheduler(this)));
+                    Arrays.asList("command", "players", "config", "reload", "world", "events", "log", "ticks"));
+            EventProbes probes = new EventProbes(this, ticks);
+            server = new AgentServer(config, health,
+                    new BukkitGame(new MainThreadScheduler(this), probes, logs, ticks));
             server.start();
             getLogger().info("Proofstone agent listening on port " + server.port());
         } catch (IllegalStateException | IOException e) {
@@ -44,6 +50,10 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
         if (server != null) {
             server.stop();
         }
+        if (logs != null) {
+            logs.detach();
+        }
+        Bukkit.getScheduler().cancelTasks(this);
     }
 
     private boolean classPresent(String name) {

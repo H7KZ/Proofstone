@@ -104,7 +104,8 @@ class AgentServerTest {
         AgentHttp.Response response = http.send("GET", "/v1/health", BEARER, null);
 
         assertThat(response.status).isEqualTo(200);
-        assertThat(MAPPER.readTree(response.body).at("/data/capabilities").size()).isEqualTo(4);
+        // command, players (M1), config, reload (T-M2-03) and world, events, log, ticks (T-M2-02).
+        assertThat(MAPPER.readTree(response.body).at("/data/capabilities").size()).isEqualTo(8);
     }
 
     @Test

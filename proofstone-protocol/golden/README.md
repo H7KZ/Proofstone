@@ -69,22 +69,24 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `log/read` | `GET /v1/log?since=0&minLevel=WARN`: one record with a stack trace (v1.1) |
 | `players/open-anvil` | `players/read-after-give` with an open anvil window: `openWindow` in `player-state.json` (v1.1) |
 
-**Pending cases.** The rows from `world/block-get` to `ticks/await`, and `players/open-anvil`, are in
-`GoldenContractTest` (this module) only. They are **not** in the agent's replay lists yet: not in
-`AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list. T-M2-02 adds each one to those
-lists when its endpoint is served. The config and reload cases were served by T-M2-03 and are in the lists. Two
-cases need a setup the replay must provide:
+**Replay order and setup (T-M2-02).** Cases that need setup:
 
-- `events/poll` names the probe `probe-1`. The M2-02 replay must subscribe to `PlayerJoinEvent` first and
-  make the agent's probe id `probe-1`, or change this case's path to the id it uses.
-- `players/open-anvil` needs the test to open an anvil before the read. Replay it after `players/read-after-give`.
+- `events/subscribe` must replay before the first `players/Alex` case, because that case joins Alex. `events/poll`
+  then reads the join: the probe is `probe-1`, the first probe a fresh agent creates.
+- `players/open-anvil` needs the test to open an anvil before the read. It is still pending (openWindow, not in
+  T-M2-02), and replays after `players/read-after-give`.
 
-The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01). The agent's `PROTOCOL` constant
-matches it. T-M2-03 added the `config` and `reload` capabilities to it. `reload.json` is additive, so the
-protocol stays at `1.1`.
+**Pending cases.** Only `players/open-anvil` is in `GoldenContractTest` (this module) only: it is not in the agent's
+replay lists yet (not in `AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list). The openWindow
+card adds it when the endpoint is served. Every other case is served and replayed.
+
+The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01). The agent's `PROTOCOL` constant matches it. T-M2-03
+added the `config` and `reload` capabilities to it and T-M2-02 added `world`, `events`, `log` and `ticks`. `reload.json`
+is additive, so the protocol stays at `1.1`.
 
 The config cases use the conformance fixture plugin (`platforms/bukkit/fixture`, plugin `proofstone-fixture`,
-`greeting: hi`). The contract test copies its jar into the container.
+`greeting: hi`). The contract test copies its jar into the container. On enable the fixture logs one WARNING with an
+exception, which is the record `log/read` expects.
 
 ## Adding a case
 
