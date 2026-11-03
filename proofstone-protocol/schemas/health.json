@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/health.json",
+  "title": "Health (GET /v1/health)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. Core refuses a different major protocol or an agent minor below its minimum (§4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["agentVersion", "protocol", "platform", "mcVersion", "capabilities"],
+  "properties": {
+    "agentVersion": { "type": "string", "minLength": 1 },
+    "protocol": { "type": "string", "pattern": "^1\\.[0-9]+$" },
+    "platform": { "type": "string", "minLength": 1 },
+    "mcVersion": { "type": "string", "minLength": 1 },
+    "capabilities": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

@@ -86,6 +86,9 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 **Goal.** A plugin jar that loads on every Bukkit-family server and answers `/v1/health`.
 
 **Do.**
+- **Carried over from T-M1-01:** the Java 8 plain-class protocol types were deferred (T-M1-01 shipped Java 17
+  records only). Add them first, as a separate commit, with the same round-trip tests, so the agent shares the
+  schemas but not the Java 17 types.
 - Create the module: add `platforms:bukkit:agent` to `settings.gradle.kts`, with a `build.gradle.kts` and a
   README (Purpose, Boundaries, Public surface, How to test). Apply the existing convention plugin
   `proofstone.java-agent-legacy` (Java 8 release, Shadow, builds on `proofstone.java-host`). The shaded
