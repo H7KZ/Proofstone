@@ -1,5 +1,6 @@
 plugins {
     id("proofstone.java-host")
+    id("proofstone.integration-test")
 }
 
 dependencies {
@@ -9,9 +10,20 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.json.schema.validator)
+    implementation(libs.testcontainers)
 }
 
 tasks.test {
     // The seed versions.yml and its schema sit at the repo root (ADR-0008). Tests read them from here.
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
+}
+
+// The Docker tests boot the real agent jar. It is built, never committed (AGENTS.md §3).
+val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
+
+tasks.named<Test>("integrationTest") {
+    // Path-based, so this project does not need the agent project configured first.
+    dependsOn(":platforms:bukkit:agent:shadowJar")
+    systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
+    systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
 }
