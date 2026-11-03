@@ -64,6 +64,10 @@ final class GoldenShape {
             case "<time>":
                 assertThat(isInstant(actual)).as(path + " is an ISO-8601 instant with Z: " + actual).isTrue();
                 break;
+            case "<integer>":
+                assertThat(actual.isIntegralNumber() && actual.asLong() >= 0)
+                        .as(path + " is a non-negative integer: " + actual).isTrue();
+                break;
             case "<requestId>":
             case "<string>":
                 assertThat(actual.isTextual()).as(path + " is a string").isTrue();

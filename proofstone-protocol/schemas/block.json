@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/block.json",
+  "title": "Block (GET and PUT /v1/world/block)",
+  "description": "Spec: docs/specs/agent-protocol.md §2–§3. The position travels in the query string (world, x, y, z) on both GET and PUT. The reply of either is this object. PUT's request body is $defs/write. Block types are namespaced; state keys are BlockData property names.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["world", "x", "y", "z", "type", "state"],
+  "$defs": {
+    "namespacedKey": { "type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$" },
+    "state": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z_]+$" },
+      "additionalProperties": { "type": "string" }
+    },
+    "write": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "$ref": "#/$defs/namespacedKey" },
+        "state": { "$ref": "#/$defs/state" }
+      }
+    }
+  },
+  "properties": {
+    "world": { "type": "string", "minLength": 1 },
+    "x": { "type": "integer" },
+    "y": { "type": "integer" },
+    "z": { "type": "integer" },
+    "type": { "$ref": "#/$defs/namespacedKey" },
+    "state": { "$ref": "#/$defs/state" }
+  }
+}

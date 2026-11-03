@@ -71,7 +71,7 @@ Lessons that change how M2 cards should be done:
 - Make breaking changes to existing schemas.
 
 **Acceptance.**
-- [ ] The new golden cases validate against the schemas, and the round-trip tests pass.
+- [x] The new golden cases validate against the schemas, and the round-trip tests pass. (Evidence: `:proofstone-protocol:test` 92 tests, 0 failures; T-M2-01 PR.)
 
 **Verify.**
 `./gradlew :proofstone-protocol:test`

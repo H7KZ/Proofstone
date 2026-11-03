@@ -7,7 +7,7 @@ package dev.proofstone.protocol;
 final class ProtocolExamples {
 
     static final String HEALTH = """
-        {"agentVersion":"0.1.0","protocol":"1.0","platform":"paper","mcVersion":"1.21.11","capabilities":["command","players"]}""";
+        {"agentVersion":"0.1.0","protocol":"1.1","platform":"paper","mcVersion":"1.21.11","capabilities":["command","players"]}""";
 
     static final String ERROR = """
         {"code":"UNKNOWN_KEY","message":"unknown material","detail":{"key":"minecraft:foo"}}""";
@@ -26,10 +26,29 @@ final class ProtocolExamples {
         {"raw":"This server is running Paper"}""";
 
     static final String ENVELOPE_OK = """
-        {"ok":true,"data":{"agentVersion":"0.1.0","protocol":"1.0","platform":"paper","mcVersion":"1.21.11","capabilities":[]}}""";
+        {"ok":true,"data":{"agentVersion":"0.1.0","protocol":"1.1","platform":"paper","mcVersion":"1.21.11","capabilities":[]}}""";
 
     static final String ENVELOPE_ERROR = """
         {"ok":false,"error":{"code":"TIMEOUT","message":"timed out"}}""";
+
+    static final String BLOCK = """
+        {"world":"world","x":0,"y":63,"z":0,"type":"minecraft:stone","state":{}}""";
+
+    static final String BLOCK_WRITE = """
+        {"type":"minecraft:anvil","state":{"facing":"west"}}""";
+
+    static final String CONFIG_ENTRY = """
+        {"path":"greeting","value":"hello"}""";
+
+    static final String TICKS = """
+        {"global":1234,"regions":{"r1":1234}}""";
+
+    /** Event with a player, an item and a {$type, value} field (event.json). Schema-checked only: see ProbeEvent. */
+    static final String EVENT = """
+        {"class":"org.bukkit.event.player.PlayerJoinEvent","tick":1200,"thread":"Server thread","fields":{"getPlayer":{"name":"Alex"},"getJoinMessage":"joined","getItem":{"type":"minecraft:diamond_sword","amount":1},"getTime":{"$type":"java.time.Instant","value":"2026-11-03T12:00:00Z"}}}""";
+
+    static final String LOG_PAGE = """
+        {"records":[{"time":"2026-11-03T12:00:00Z","level":"WARN","logger":"org.bukkit","message":"boom","thrown":"java.lang.IllegalStateException: boom"}],"next":7}""";
 
     private ProtocolExamples() {
     }

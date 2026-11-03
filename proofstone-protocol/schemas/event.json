@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/event.json",
+  "title": "Captured event (GET /v1/events/{probeId})",
+  "description": "Spec: docs/specs/agent-protocol.md §3. The root is one captured event. Field values are zero-arg public getters: JSON primitives, item.json for ItemStack, {name} for Player, or {$type, value} for anything else (toString). Probes are read-only (ADR-0002). The class key is the JSON name of the Java class to observe.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["class", "tick", "thread", "fields"],
+  "properties": {
+    "class": { "$ref": "#/$defs/className" },
+    "tick": { "type": "integer", "minimum": 0 },
+    "thread": { "type": "string", "minLength": 1 },
+    "fields": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-zA-Z_][A-Za-z0-9_]*$" },
+      "additionalProperties": { "$ref": "#/$defs/fieldValue" }
+    }
+  },
+  "$defs": {
+    "className": {
+      "type": "string",
+      "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)+$"
+    },
+    "playerRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": { "name": { "type": "string", "minLength": 1 } }
+    },
+    "typed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$type", "value"],
+      "properties": {
+        "$type": { "type": "string", "minLength": 1 },
+        "value": { "type": "string" }
+      }
+    },
+    "fieldValue": {
+      "anyOf": [
+        { "type": ["string", "number", "boolean", "null"] },
+        { "$ref": "item.json" },
+        { "$ref": "#/$defs/playerRef" },
+        { "$ref": "#/$defs/typed" }
+      ]
+    },
+    "subscribe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class"],
+      "properties": { "class": { "$ref": "#/$defs/className" } }
+    },
+    "subscribeReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probeId"],
+      "properties": { "probeId": { "type": "string", "minLength": 1 } }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["events", "next"],
+      "properties": {
+        "events": { "type": "array", "items": { "$ref": "#" } },
+        "next": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
