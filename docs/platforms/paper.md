@@ -26,3 +26,11 @@
   straight away.
 - Disenchantment-style plugins put the result on the cursor themselves (`setItemOnCursor`). The driver
   must handle a cursor that is not empty after a result click.
+- **The itzg digest is per Java tag.** `java17`, `java21` and `java25` have different digests, but `versions.yml`
+  holds one digest per host. It is pinned to `java25` (Paper 26.x), so older rows would run on the wrong Java.
+  `PaperHost` checks the container's Java major against the cell and fails loudly. Fixing this needs a
+  per-tag digest in the spec (ADR challenge, not done here).
+- The image has `curl` and `sha256sum`, so `PaperHost` reaches the agent with `docker exec curl` and
+  publishes no port. A published port is debug mode only.
+- itzg copies `/plugins` into `/data/plugins` at start, so `copyFileToContainer` into `/plugins` before start
+  is enough. It stores the downloaded server jar as `/data/paper-*.jar`, which `PaperHost` hashes against the pin.
