@@ -88,6 +88,8 @@
   36 (chest 27+36, anvil and grindstone 3+36), while window 0 has 46 (crafting, armour, inventory, offhand).
 - **Menu types** come as a registry int; MCProtocolLib exposes the `ContainerType` enum, which the driver maps to
   `minecraft:` keys (cartography is `minecraft:cartography_table`).
+- **The server sends enchantment ids but not item ids.** `minecraft:enchantment` is a data-driven registry, sent in the configuration phase (`ClientboundRegistryDataPacket`); an id is the entry's position, so the mcpl driver records it. Item types are a built-in registry that no packet carries. `drivers/mcpl/src/main/resources/.../items-26.3.txt` is the server's own report, one key per line in id order. Regenerate it for a new pin: start the pinned itzg image, then in the container run `java -DbundlerMainClass=net.minecraft.data.Main -jar /data/cache/mojang_<mc>.jar --reports --output /tmp/gen` and sort `reports/registries.json` `minecraft:item` entries by `protocol_id` (T-M2-06).
+- **Stack data components are a patch.** A removed component arrives as null, an absent one is not there; both read as "not set". Paper's custom name and lore come as `{text:"", extra:["Blade"]}`, so flatten children, not only the root. The agent's `raw` for an item lists lore, damage and `stored_enchantments`, which its typed fields do not yet (T-M2-06).
 
 - **`setblock` answers "That position is not loaded" right after boot** when the target chunk is not loaded. The reply
   is still a normal command reply, not an error, so `PaperHost.command` does not throw. The contract test loads chunk
