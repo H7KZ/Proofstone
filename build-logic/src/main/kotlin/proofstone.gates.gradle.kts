@@ -10,7 +10,8 @@ plugins {
 }
 
 tasks.named("check") {
-    dependsOn(subprojects.map { it.tasks.named("check") })
+    // Skip grouping projects such as `:platforms` and `:platforms:bukkit`, which have no build file or check task.
+    dependsOn(subprojects.filter { it.file("build.gradle.kts").exists() }.map { it.tasks.named("check") })
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 
