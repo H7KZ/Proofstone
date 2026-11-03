@@ -1,4 +1,4 @@
-# AGENTS.md: rules for AI agents (and humans) working on Testificate
+# AGENTS.md: rules for AI agents (and humans) working on Proofstone
 
 This file is the single source of instructions for coding agents. `CLAUDE.md` imports it.
 Read it fully before every task. If a rule here conflicts with a task card, **this file wins**. Raise the
@@ -36,7 +36,7 @@ A framework for real-server end-to-end tests of Minecraft plugins, mods and add-
 - **Pin everything.** Image digests, Paper build numbers, library versions and Java tags all come from
   `versions.yml` or the Gradle version catalog. Never use `latest`, ranges or `+` versions in runtime
   paths.
-- **Don't edit the wire protocol casually.** `testificate-protocol` schemas change only through a card
+- **Don't edit the wire protocol casually.** `proofstone-protocol` schemas change only through a card
   that says so. Bump the protocol version and update the golden files.
 - **Agents (the in-server plugins and mods) observe and never interfere.** They set up before *act*,
   read after *act*, and listen at MONITOR priority without changing anything.
@@ -74,7 +74,7 @@ explicitly. Never claim it passed.
   `build-logic/`.
 - Each module has a `README.md` with these sections: **Purpose**, **Boundaries** (what it must not do),
   **Public surface**, **How to test**.
-- Public API types live only in `testificate-api`. Everything else is internal.
+- Public API types live only in `proofstone-api`. Everything else is internal.
 - Comments explain *why*, not *what*. Link the ADR when a line exists because of one.
 
 ## 7. Where things are

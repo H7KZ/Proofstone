@@ -1,17 +1,17 @@
 # Spec: agent wire protocol v1
 
-Status: draft. The schemas live in `testificate-protocol/schemas/*.json`. They are the source of truth,
+Status: draft. The schemas live in `proofstone-protocol/schemas/*.json`. They are the source of truth,
 and this page explains them.
 
 ## 1. Transport
-- HTTP/1.1 over the Docker network. The agent listens on `0.0.0.0:${TESTIFICATE_AGENT_PORT:-25580}`
+- HTTP/1.1 over the Docker network. The agent listens on `0.0.0.0:${PROOFSTONE_AGENT_PORT:-25580}`
   inside the container.
-- Every request requires the header `Authorization: Bearer ${TESTIFICATE_AGENT_TOKEN}`, a random value
+- Every request requires the header `Authorization: Bearer ${PROOFSTONE_AGENT_TOKEN}`, a random value
   generated per cell. A missing or wrong token returns 401.
 - All bodies are `application/json; charset=utf-8`.
 - Responses use the envelope `{ "ok": true, "data": … }` or
   `{ "ok": false, "error": { "code", "message", "detail" } }`.
-- Every request carries `X-Testificate-Request-Id`. The agent logs it, so transcripts can be correlated.
+- Every request carries `X-Proofstone-Request-Id`. The agent logs it, so transcripts can be correlated.
 - Timeouts are enforced server-side. The request body may set `timeoutMs`, which defaults to 10 000. When
   it runs out, the agent returns `{code:"TIMEOUT"}`, never a partial result.
 - Threading: the agent runs each operation on the correct thread or region and replies only once it has
@@ -60,7 +60,7 @@ and this page explains them.
   Removing anything or changing a meaning requires `/v2`.
 - `GET /v1/health` reports `protocol: "1.<minor>"`. Core refuses to run if the major differs, or if the
   agent minor is below core's minimum.
-- **Golden files:** `testificate-protocol/golden/<endpoint>/*.json` hold request and response pairs.
+- **Golden files:** `proofstone-protocol/golden/<endpoint>/*.json` hold request and response pairs.
   Every agent's contract test replays them.
 
 ## 5. Security

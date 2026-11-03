@@ -55,12 +55,12 @@ These cards are refined at T-M2-99. Keep the format.
 - [ ] Every Paper row boots. The table is updated and marked "observed".
 
 **Verify.**
-`./gradlew :conformance:run -Dtestificate.cells=paper@all --tests C01`
+`./gradlew :conformance:run -Dproofstone.cells=paper@all --tests C01`
 
 ### T-M3-03 · ViaProxy bridged topology
 - tier: sonnet
 - depends: T-M2-99
-- modules: testificate-core, images/viaproxy
+- modules: proofstone-core, images/viaproxy
 - adrs: 0004, 0005
 - specs: specs/client-driver.md §5
 - test-first: no
@@ -82,12 +82,12 @@ These cards are refined at T-M2-99. Keep the format.
 - [ ] C01–C06 pass, bridged, on 1.8.8, 1.12.2, 1.16.5, 1.18.2 and 1.20.4.
 
 **Verify.**
-`./gradlew :conformance:run -Dtestificate.cells=paper@1.8.8,paper@1.12.2,paper@1.16.5,paper@1.18.2,paper@1.20.4`
+`./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8,paper@1.12.2,paper@1.16.5,paper@1.18.2,paper@1.20.4`
 
 ### T-M3-04 · Planner: `all`, selectors, status filtering
 - tier: haiku
 - depends: T-M2-99
-- modules: testificate-core
+- modules: proofstone-core
 - adrs: 0008
 - specs: specs/test-api.md §1, versioning.md §4
 - test-first: yes
@@ -96,11 +96,11 @@ These cards are refined at T-M2-99. Keep the format.
 
 **Do.**
 - Support `versions = {"all"}`.
-- Support `-Dtestificate.cells` and `TESTIFICATE_CELLS` selectors, with the syntax `platform@version`,
+- Support `-Dproofstone.cells` and `PROOFSTONE_CELLS` selectors, with the syntax `platform@version`,
   `platform@latest` and `platform@all`.
 - Add a status filter. PRs run `required` plus selected `experimental` rows. Nightly runs everything that
   isn't retired.
-- Read `testificate.yml` version families from the user project.
+- Read `proofstone.yml` version families from the user project.
 
 **Don't.**
 - Allow unknown selectors. They are errors.
@@ -109,7 +109,7 @@ These cards are refined at T-M2-99. Keep the format.
 - [ ] Unit tests cover every selector form and its error messages.
 
 **Verify.**
-`./gradlew :testificate-core:test`
+`./gradlew :proofstone-core:test`
 
 ### T-M3-05 · Conformance C07 (grindstone) and C08 (shift-click crafting result)
 - tier: haiku
@@ -157,7 +157,7 @@ These cards are refined at T-M2-99. Keep the format.
 - [ ] The golden contract tests pass on 1.8.8, 1.12.2 and the newest row.
 
 **Verify.**
-`./gradlew :platforms:bukkit:agent:integrationTest -Dtestificate.cells=paper@1.8.8,paper@1.12.2,paper@latest`
+`./gradlew :platforms:bukkit:agent:integrationTest -Dproofstone.cells=paper@1.8.8,paper@1.12.2,paper@latest`
 
 ### T-M3-07 · CI matrix generated from versions.yml
 - tier: haiku
@@ -227,4 +227,4 @@ These cards are refined at T-M2-99. Keep the format.
 - [ ] The exit criterion is shown green across the Paper span.
 
 **Verify.**
-`./gradlew :conformance:run -Dtestificate.cells=paper@all`
+`./gradlew :conformance:run -Dproofstone.cells=paper@all`

@@ -10,7 +10,7 @@ M5 can run in parallel with M4 once M3 is done.
 ### T-M5-01 · Capability model and `@Requires`
 - tier: haiku
 - depends: T-M3-99
-- modules: testificate-api, testificate-core
+- modules: proofstone-api, proofstone-core
 - adrs: 0001
 - specs: specs/test-api.md §1, glossary.md (Capability)
 - test-first: yes
@@ -29,7 +29,7 @@ M5 can run in parallel with M4 once M3 is done.
 - [ ] Unit and integration tests show the skip reason in reports.
 
 **Verify.**
-`./gradlew :testificate-core:test`
+`./gradlew :proofstone-core:test`
 
 ### T-M5-02 · Folia scheduler abstraction in the agent
 - tier: sonnet
@@ -58,7 +58,7 @@ M5 can run in parallel with M4 once M3 is done.
 - [ ] No thread-check errors appear in the logs.
 
 **Verify.**
-`./gradlew :platforms:bukkit:agent:integrationTest -Dtestificate.cells=folia@latest`
+`./gradlew :platforms:bukkit:agent:integrationTest -Dproofstone.cells=folia@latest`
 
 ### T-M5-03 · Folia pack and conformance extras
 - tier: haiku
@@ -82,7 +82,7 @@ M5 can run in parallel with M4 once M3 is done.
 - [ ] C01–C08, C-F01 and C-F02 pass on every Folia row.
 
 **Verify.**
-`./gradlew :conformance:run -Dtestificate.cells=folia@all`
+`./gradlew :conformance:run -Dproofstone.cells=folia@all`
 
 ### T-M5-04 · Purpur pack
 - tier: haiku
@@ -106,7 +106,7 @@ M5 can run in parallel with M4 once M3 is done.
 - [ ] C01–C08 pass on the newest Purpur row and one older Purpur row.
 
 **Verify.**
-`./gradlew :conformance:run -Dtestificate.cells=purpur@latest`
+`./gradlew :conformance:run -Dproofstone.cells=purpur@latest`
 
 ### T-M5-05 · Spigot pack (BuildTools image, checksum cache)
 - tier: sonnet
@@ -130,12 +130,12 @@ M5 can run in parallel with M4 once M3 is done.
 - [ ] C01–C08 pass on Spigot 1.8.8, 1.21.11 and the newest version.
 
 **Verify.**
-`./gradlew :conformance:run -Dtestificate.cells=spigot@1.21.11`
+`./gradlew :conformance:run -Dproofstone.cells=spigot@1.21.11`
 
 ### T-M5-06 · Bedrock-prefix simulation
 - tier: haiku
 - depends: T-M5-01
-- modules: testificate-api, platforms/bukkit
+- modules: proofstone-api, platforms/bukkit
 - adrs: 0002
 - specs: platforms.md (Bedrock)
 - test-first: no
@@ -203,4 +203,4 @@ M5 can run in parallel with M4 once M3 is done.
 - [ ] The exit criterion is demonstrated.
 
 **Verify.**
-`./gradlew :conformance:run -Dtestificate.cells=folia@all,purpur@latest,spigot@1.21.11`
+`./gradlew :conformance:run -Dproofstone.cells=folia@all,purpur@latest,spigot@1.21.11`

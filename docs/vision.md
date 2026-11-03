@@ -42,7 +42,7 @@ platform and version they support.
    the same verdict.
 4. **Extensible by data and packs.** New versions are rows in `versions.yml`, and new platforms are
    packs that implement an SPI and pass conformance.
-5. **Boring, stable public API.** It follows semver, plugin authors touch only `testificate-api`, and
+5. **Boring, stable public API.** It follows semver, plugin authors touch only `proofstone-api`, and
    internals may churn freely.
 6. **AI-maintainable.** Small modules, explicit contracts, golden files, task cards and ADRs.
 7. **Fast enough.** We optimise for speed only after 1–6 hold: caching, parallel cells, and PR subsets
@@ -56,7 +56,7 @@ platform and version they support.
   it later (see [platforms.md](platforms.md)).
 - **Testing against online-mode authentication.** Tests run in offline mode, and proxy forwarding is
   covered by proxy packs.
-- **Replacing unit tests.** Testificate is the top of the pyramid. Keep MockBukkit and plain unit tests for
+- **Replacing unit tests.** Proofstone is the top of the pyramid. Keep MockBukkit and plain unit tests for
   logic.
 
 ## Success criteria for v1.0
@@ -64,6 +64,6 @@ platform and version they support.
 - Disenchantment's full e2e suite runs green on Paper and Folia across every version it supports. It
   catches a deliberately injected NMS-mapping bug and an anvil-duplication bug (mutation check).
 - A brand-new Paper release enters the matrix through an automated PR, with no human code changes.
-- An external author adds Testificate to an existing Maven *and* an existing Gradle plugin project in
+- An external author adds Proofstone to an existing Maven *and* an existing Gradle plugin project in
   under 15 minutes, following only the docs.
 - At least one non-Bukkit platform pack (Velocity or Fabric) passes conformance.

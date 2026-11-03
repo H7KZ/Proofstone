@@ -33,7 +33,7 @@
 - New Minecraft releases are a pinned dependency bump.
 - Translation risk is mitigated by native newest cells, differential runs and conformance (R1 in the
   [risk register](../robustness.md)).
-- The GPL ViaProxy runs as a separate container and isn't linked, so it doesn't affect Testificate's
+- The GPL ViaProxy runs as a separate container and isn't linked, so it doesn't affect Proofstone's
   licence.
 - Our driver is Java, so the core and the driver share one runtime, which keeps debugging simple.
 

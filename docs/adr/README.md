@@ -17,6 +17,6 @@ that were rejected. **Accepted ADRs are not re-decided inside a task.** To chall
 | [0009](0009-gradle-monorepo.md) | Gradle monorepo; artefacts usable from Maven and Gradle | Accepted |
 | [0010](0010-ai-first-maintenance-model-tiering.md) | AI-first maintenance with model tiering | Accepted |
 | [0011](0011-licensing.md) | Licensing | **Proposed** (owner decides) |
-| [0012](0012-name.md) | Project name: Testificate | Accepted |
+| [0012](0012-name.md) | Project name: Proofstone | Accepted |
 
 Template: [0000-template.md](0000-template.md).

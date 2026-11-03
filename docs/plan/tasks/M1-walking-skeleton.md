@@ -12,7 +12,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 ### T-M1-01 · Protocol v1 schemas: envelope, health, item, player-state, command
 - tier: haiku
 - depends: T-M0-04
-- modules: testificate-protocol
+- modules: proofstone-protocol
 - adrs: 0002
 - specs: specs/agent-protocol.md §1–§3
 - test-first: yes
@@ -36,12 +36,12 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - [ ] Generated types round-trip each example through serialise and parse with equal JSON output.
 
 **Verify.**
-`./gradlew :testificate-protocol:test`
+`./gradlew :proofstone-protocol:test`
 
 ### T-M1-02 · Golden files for health, players, give, command
 - tier: haiku
 - depends: T-M1-01
-- modules: testificate-protocol
+- modules: proofstone-protocol
 - adrs: 0002
 - specs: specs/agent-protocol.md §4
 - test-first: yes
@@ -57,7 +57,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
   - giving an enchanted sword, then reading it back;
   - a command reply.
 - Specify the placeholder rules for volatile fields (`uuid`, `time`, `requestId`) in `golden/README.md`.
-- Add a `GoldenMatcher` test utility in `testificate-protocol` (`testFixtures`) that compares responses
+- Add a `GoldenMatcher` test utility in `proofstone-protocol` (`testFixtures`) that compares responses
   while ignoring the placeholders.
 
 **Don't.**
@@ -67,7 +67,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - [ ] `GoldenMatcher` has unit tests, including mismatch messages that show a JSON path.
 
 **Verify.**
-`./gradlew :testificate-protocol:test`
+`./gradlew :proofstone-protocol:test`
 
 ### T-M1-03 · Bukkit agent skeleton: HTTP server, auth, `/v1/health`
 - tier: haiku
@@ -87,7 +87,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
   to start the HTTP server.
 - Detect the platform (Paper, Folia, Spigot or Purpur) via `Class.forName` probes. Report capabilities
   conservatively: only those actually detected.
-- `plugin.yml`: `name: TestificateAgent`, `api-version` omitted (legacy-compatible),
+- `plugin.yml`: `name: ProofstoneAgent`, `api-version` omitted (legacy-compatible),
   `folia-supported: true`, `load: STARTUP`.
 - Add a `Scheduler` abstraction interface with a `MainThreadScheduler` implementation. Folia comes in M5.
 
@@ -166,7 +166,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 ### T-M1-06 · Core: versions.yml loader, cell model, minimal planner
 - tier: haiku
 - depends: T-M0-04
-- modules: testificate-core
+- modules: proofstone-core
 - adrs: 0008
 - specs: specs/versions-yml.md, architecture.md §2.2
 - test-first: yes
@@ -187,12 +187,12 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
   1.20.5 → java21, 26.1 → java25).
 
 **Verify.**
-`./gradlew :testificate-core:test`
+`./gradlew :proofstone-core:test`
 
 ### T-M1-07 · Core: PaperHost container (Testcontainers), copy-in, readiness
 - tier: sonnet
 - depends: T-M1-06, T-M1-03
-- modules: testificate-core
+- modules: proofstone-core
 - adrs: 0005, 0006
 - specs: architecture.md §3
 - test-first: no
@@ -227,7 +227,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
   that includes the log tail.
 
 **Verify.**
-`./gradlew :testificate-core:integrationTest --tests '*PaperHostIT*'`
+`./gradlew :proofstone-core:integrationTest --tests '*PaperHostIT*'`
 
 ### T-M1-08 · mcpl driver: offline login, configuration, keep-alive, chat, command
 - tier: sonnet
@@ -249,7 +249,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - Implement `chat`, `command` (`ServerboundChatCommandPacket`) and `awaitMessage` over a buffered queue
   of system and player chat. Expose plain text from components.
 - Implement `ClientDriver` and `ClientSession` from the SPI (place the SPI interfaces in
-  `testificate-core`'s `driver` package).
+  `proofstone-core`'s `driver` package).
 - Write a transcript (timestamped packet names and summaries) for repro bundles.
 
 **Don't.**
@@ -266,7 +266,7 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 ### T-M1-09 · Core: Await utility
 - tier: haiku
 - depends: T-M0-03
-- modules: testificate-core
+- modules: proofstone-core
 - adrs: 0007
 - specs: specs/test-api.md §5
 - test-first: yes
@@ -288,17 +288,17 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 - [ ] Unit tests use a fake clock, and the failure message format is pinned by a snapshot test.
 
 **Verify.**
-`./gradlew :testificate-core:test`
+`./gradlew :proofstone-core:test`
 
 ### T-M1-10 · API: minimal JUnit 5 extension and parameter resolvers
 - tier: sonnet
 - depends: T-M1-06, T-M1-07, T-M1-08, T-M1-09
-- modules: testificate-api, testificate-core
+- modules: proofstone-api, proofstone-core
 - adrs: 0001
 - specs: specs/test-api.md §1–§2
 - test-first: no
 
-**Goal.** Make `@Testificate`, `@Matrix` and `@CellTest` work for one platform.
+**Goal.** Make `@Proofstone`, `@Matrix` and `@CellTest` work for one platform.
 
 **Do.**
 - `@CellTest` is a `TestTemplate` with one invocation context per cell. The display name is

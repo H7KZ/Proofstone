@@ -14,7 +14,7 @@
   - convention plugins in `build-logic/`;
   - configuration cache on.
 - Artefacts are published to Maven Central, so Maven users consume them normally.
-- A thin `testificate-maven-plugin` (optional) and a `testificate-gradle-plugin` provide integrations:
+- A thin `proofstone-maven-plugin` (optional) and a `proofstone-gradle-plugin` provide integrations:
   - the jar under test;
   - an e2e source set or failsafe profile;
   - report wiring.

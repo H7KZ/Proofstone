@@ -28,7 +28,7 @@ docs, conformance scenarios and community-pack scaffolding are all Haiku work.
 |---|---|---|
 | `docs/`, `examples/`, `versions.yml` rows, conformance scenarios | haiku | gates only; a human or haiku review is optional |
 | `platforms/*` agents (non-core endpoints) | haiku | sonnet review |
-| `testificate-core`, `testificate-protocol`, `drivers/*`, `testificate-api` | any | **sonnet review is mandatory**; opus for API breaks |
+| `proofstone-core`, `proofstone-protocol`, `drivers/*`, `proofstone-api` | any | **sonnet review is mandatory**; opus for API breaks |
 | ADRs | — | maintainer + opus |
 
 ## Escalation (automatic)

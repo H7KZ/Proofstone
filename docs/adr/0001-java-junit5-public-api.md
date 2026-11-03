@@ -10,7 +10,7 @@
   language.
 
 ## Decision
-- The only public API is `testificate-api`: a JUnit 5 extension (`@TestTemplate`-based cell matrix)
+- The only public API is `proofstone-api`: a JUnit 5 extension (`@TestTemplate`-based cell matrix)
   plus a fluent Java DSL, written so it is also pleasant from Kotlin.
 - It ships to Maven Central with Java 17 bytecode. Using it needs only a test dependency and Docker.
 

@@ -6,7 +6,7 @@ The `versions.yml` schema validates.
 ### T-M0-01 · Create the Gradle monorepo skeleton
 - tier: haiku
 - depends: —
-- modules: settings.gradle.kts, build-logic, gradle/libs.versions.toml, testificate-api, testificate-core, testificate-protocol
+- modules: settings.gradle.kts, build-logic, gradle/libs.versions.toml, proofstone-api, proofstone-core, proofstone-protocol
 - adrs: 0009, 0006
 - specs: architecture.md §4
 - test-first: no
@@ -19,10 +19,10 @@ the modules M1 needs.
 - Create the version catalog with pinned JUnit 5, Testcontainers 2.x, Jackson, AssertJ, ArchUnit and
   MCProtocolLib `26.3-2` (repository `https://repo.opencollab.dev/main/`).
 - Add the convention plugins:
-  - `testificate.java-host`: Java 17 toolchain, `-Werror`, JUnit platform;
-  - `testificate.java-agent-legacy`: `--release 8`, shading with relocation into
-    `dev.testificate.shaded.*`.
-- Create the empty modules `testificate-api`, `testificate-core` and `testificate-protocol`. Each gets a
+  - `proofstone.java-host`: Java 17 toolchain, `-Werror`, JUnit platform;
+  - `proofstone.java-agent-legacy`: `--release 8`, shading with relocation into
+    `dev.proofstone.shaded.*`.
+- Create the empty modules `proofstone-api`, `proofstone-core` and `proofstone-protocol`. Each gets a
   `README.md` from the module template (T-M0-06 may land later; use the four headings from AGENTS.md §6).
 
 **Don't.**
@@ -71,7 +71,7 @@ the modules M1 needs.
 ### T-M0-03 · Enforce the hard rules with lint
 - tier: haiku
 - depends: T-M0-01
-- modules: build-logic, testificate-core (test)
+- modules: build-logic, proofstone-core (test)
 - adrs: 0005, 0006, 0007
 - specs: AGENTS.md §3
 - test-first: yes
@@ -80,7 +80,7 @@ the modules M1 needs.
 
 **Do.**
 - Add ArchUnit rules, applied to every host module:
-  - forbid calls to `Thread.sleep` and `TimeUnit.*.sleep` outside the class `dev.testificate.core.await.Await`;
+  - forbid calls to `Thread.sleep` and `TimeUnit.*.sleep` outside the class `dev.proofstone.core.await.Await`;
   - forbid Testcontainers `withFileSystemBind` and `withClasspathResourceMapping` in `BindMode` usage;
   - forbid `org.junit.jupiter.api.RepeatedTest` and any retry extension in test sources outside
     `conformance/flake`.
@@ -102,7 +102,7 @@ the modules M1 needs.
 ### T-M0-04 · Add the `versions.yml` schema and validator
 - tier: haiku
 - depends: T-M0-01
-- modules: testificate-protocol, build-logic
+- modules: proofstone-protocol, build-logic
 - adrs: 0008
 - specs: specs/versions-yml.md
 - test-first: yes
@@ -110,7 +110,7 @@ the modules M1 needs.
 **Goal.** Validate `versions.yml` against a JSON Schema and the semantic rules in every build.
 
 **Do.**
-- Write `testificate-protocol/schemas/versions.schema.json`, matching the spec exactly.
+- Write `proofstone-protocol/schemas/versions.schema.json`, matching the spec exactly.
 - Add the `validateVersions` task. It checks the schema, then the semantic rules:
   - `mc` values are unique per platform;
   - `required` rows contain no `TODO` values;
@@ -125,7 +125,7 @@ the modules M1 needs.
 - [ ] All four negative fixtures fail with readable messages.
 
 **Verify.**
-`./gradlew validateVersions :testificate-protocol:test`
+`./gradlew validateVersions :proofstone-protocol:test`
 
 ### T-M0-05 · Implement `docsCheck`
 - tier: haiku
@@ -202,7 +202,7 @@ Manual: open a draft PR and check that the template renders.
   - set a schedule.
 
 **Don't.**
-- Enable automerge for anything in `drivers/` or `testificate-core`.
+- Enable automerge for anything in `drivers/` or `proofstone-core`.
 
 **Acceptance.**
 - [ ] Renovate's config validator passes (`npx renovate-config-validator`, run via the pinned Node

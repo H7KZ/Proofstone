@@ -1,16 +1,16 @@
-# Spec: public test API (`testificate-api`) v0
+# Spec: public test API (`proofstone-api`) v0
 
 Status: draft. It is frozen at the end of M2. After that, changes need a card marked `api-change`.
 
 ## 1. Annotations
 
 ```java
-@Testificate(
+@Proofstone(
     plugins   = {"target/MyPlugin-*.jar"},     // globs relative to project dir; exactly one match each, else error
     mods      = {},                            // for mod packs
     datapacks = {},
-    acceptEula = true,                         // REQUIRED true, or env TESTIFICATE_ACCEPT_EULA=true; else tests are skipped with reason
-    config    = "src/e2e/resources/testificate.yml"   // optional per-project settings (version families, expectations)
+    acceptEula = true,                         // REQUIRED true, or env PROOFSTONE_ACCEPT_EULA=true; else tests are skipped with reason
+    config    = "src/e2e/resources/proofstone.yml"   // optional per-project settings (version families, expectations)
 )
 @Matrix(platform = PAPER, versions = {"1.18.2", "1.21.11", "latest"})   // repeatable
 @Matrix(platform = FOLIA, versions = {"latest"})
@@ -23,7 +23,7 @@ void scenario(Cell cell, Agent agent, Client client) { ... }
 ```
 
 - `versions` accepts exact versions, `latest` (the newest `required` row) and `all` (every row in range).
-- `-Dtestificate.cells=paper@1.21.11,folia@latest` narrows the run at runtime.
+- `-Dproofstone.cells=paper@1.21.11,folia@latest` narrows the run at runtime.
 - An unknown version is an error, not a skip.
 
 ## 2. Injected parameters

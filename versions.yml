@@ -1,4 +1,4 @@
-# Source of truth for the Testificate version matrix. Spec: docs/specs/versions-yml.md
+# Source of truth for the Proofstone version matrix. Spec: docs/specs/versions-yml.md
 # SEED DATA: rows below are the cells exercised by the 2026-11-03 prototype. Pins marked "TODO" are filled by
 # the version-watch workflow (card T-M3-01). Do not hand-edit pins once automation exists.
 schema: 1

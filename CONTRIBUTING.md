@@ -1,6 +1,6 @@
 # Contributing
 
-Testificate is planned to be maintained mostly by AI coding agents, with humans steering.
+Proofstone is planned to be maintained mostly by AI coding agents, with humans steering.
 
 - **Everyone, human or agent, follows [AGENTS.md](AGENTS.md).**
 - **Work comes from task cards.** See [docs/plan/](docs/plan/) and [docs/ai/workflow.md](docs/ai/workflow.md).

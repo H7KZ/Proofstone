@@ -1,7 +1,7 @@
 # Spec: `versions.yml`
 
 Decision: [ADR-0008](../adr/0008-versions-yml-single-source-of-truth.md). A JSON Schema for validation,
-`testificate-protocol/schemas/versions.schema.json`, is created in T-M0-04.
+`proofstone-protocol/schemas/versions.schema.json`, is created in T-M0-04.
 
 ```yaml
 schema: 1                                  # file format version

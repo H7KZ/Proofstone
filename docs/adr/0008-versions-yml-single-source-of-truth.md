@@ -15,7 +15,7 @@
 - Core, CI matrices, docs tables and the GitHub Action all read this file. Nothing else hard-codes
   versions.
 - The file is schema-validated in `check`. Spec: [versions-yml.md](../specs/versions-yml.md).
-- The released `testificate-core` jar embeds a copy. Users may pass an override file for unreleased
+- The released `proofstone-core` jar embeds a copy. Users may pass an override file for unreleased
   versions.
 
 ## Consequences

@@ -50,10 +50,10 @@ change becomes a card against the pack, with the gotcha recorded in `docs/platfo
 ## 4. Choosing cells
 
 - **PR default:** for each pack, the newest native version, plus one per "version family" that the user
-  project declares in its own `testificate.yml`. For example, Disenchantment declares one version per NMS
+  project declares in its own `proofstone.yml`. For example, Disenchantment declares one version per NMS
   module.
 - **Nightly:** every `required` and `experimental` row in range.
-- **Local:** `-Dtestificate.cells=paper@1.21.11,folia@latest`.
+- **Local:** `-Dproofstone.cells=paper@1.21.11,folia@latest`.
 
 ## 5. Dependency bumps (Renovate)
 

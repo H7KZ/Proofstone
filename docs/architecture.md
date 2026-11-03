@@ -14,13 +14,13 @@ Each layer may depend only on the layers below it. Plugin authors touch **only L
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ L1  testificate-api        JUnit 5 extension + DSL. Semver. The only public API. │
+│ L1  proofstone-api        JUnit 5 extension + DSL. Semver. The only public API. │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ L2  testificate-core       Cell planning, topology lifecycle, oracles, await,    │
+│ L2  proofstone-core       Cell planning, topology lifecycle, oracles, await,    │
 │                            verdicts (pass/fail/invalid/vacuous), repro bundles   │
 ├───────────────┬──────────────────────────────┬───────────────────────────────┤
 │ L3a Platform  │ L3b Client driver SPI        │ L3c Wire protocol               │
-│ pack SPI      │ (mcpl, mineflayer-ref,       │ (testificate-protocol: JSON     │
+│ pack SPI      │ (mcpl, mineflayer-ref,       │ (proofstone-protocol: JSON     │
 │ (paper, folia,│  bedrock, …)                 │  schemas + generated types,     │
 │ velocity, …)  │                              │  versioned /v1)                 │
 ├───────────────┴──────────────────────────────┴───────────────────────────────┤
@@ -33,9 +33,9 @@ Each layer may depend only on the layers below it. Plugin authors touch **only L
 
 ## 2. Components
 
-### 2.1 `testificate-api` (L1)
+### 2.1 `proofstone-api` (L1)
 - **Annotations:**
-  - `@Testificate(plugins, mods, datapacks, acceptEula, config)`
+  - `@Proofstone(plugins, mods, datapacks, acceptEula, config)`
   - `@Matrix(platform, versions, java, drivers)` (repeatable)
   - `@CellTest` (a `@TestTemplate`)
   - `@Requires(Capability...)`
@@ -56,10 +56,10 @@ Each layer may depend only on the layers below it. Plugin authors touch **only L
   observed value from **both** oracles.
 - Full spec: [specs/test-api.md](specs/test-api.md).
 
-### 2.2 `testificate-core` (L2)
+### 2.2 `proofstone-core` (L2)
 - **Cell planner:** expands `@Matrix` with `versions.yml` into cells. It filters by capabilities and by
   status (`required`/`experimental`), and by CLI or environment selectors such as
-  `-Dtestificate.cells=paper@1.21.11`.
+  `-Dproofstone.cells=paper@1.21.11`.
 - **Lifecycle** (see §3).
 - **Verdict engine.** It produces one of:
   - `PASS`;
@@ -68,8 +68,8 @@ Each layer may depend only on the layers below it. Plugin authors touch **only L
   - `VACUOUS` (passed in the control run);
   - `FLAKY` (the verdict changed across repeats);
   - `DISAGREE` (the drivers disagreed in a differential run).
-- **Repro bundles** are written to `build/testificate/<cell>/<test>/`.
-- **Reports:** JUnit XML plus `testificate-report.json`, which is machine-readable for agents and CI.
+- **Repro bundles** are written to `build/proofstone/<cell>/<test>/`.
+- **Reports:** JUnit XML plus `proofstone-report.json`, which is machine-readable for agents and CI.
 
 ### 2.3 Platform packs (L3a)
 A pack is a directory, `platforms/<id>/`, containing:
@@ -107,7 +107,7 @@ Agent families share the **wire protocol**, so core code doesn't care which plat
 ### 2.5 Wire protocol (L3c)
 - HTTP/1.1 with JSON over loopback inside the Docker network, versioned under `/v1`. A per-cell bearer
   token is injected through an environment variable.
-- **Schema-first:** JSON Schema files in `testificate-protocol/schemas/` produce Java types for the core
+- **Schema-first:** JSON Schema files in `proofstone-protocol/schemas/` produce Java types for the core
   and the Java agents. Non-Java agents, such as a Bedrock script pack, generate TypeScript types from the
   same schemas.
 - **Golden files:** every endpoint has example request and response fixtures. Each agent must reproduce
@@ -146,13 +146,13 @@ Isolation:
 ## 4. Planned repository layout
 
 ```
-testificate/
+proofstone/
   versions.yml
   gradle/libs.versions.toml
   build-logic/                     convention plugins (java-host, java-agent-legacy, …)
-  testificate-api/                 L1
-  testificate-core/                L2
-  testificate-protocol/            L3c schemas + generated types + golden files
+  proofstone-api/                 L1
+  proofstone-core/                L2
+  proofstone-protocol/            L3c schemas + generated types + golden files
   drivers/
     mcpl/                          primary Java driver
     mineflayer-ref/                Node sidecar + Dockerfile (reference driver)

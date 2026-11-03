@@ -7,7 +7,7 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
 ### T-M2-01 · Protocol schemas: window, world block, event, log, config, ticks
 - tier: haiku
 - depends: T-M1-99
-- modules: testificate-protocol
+- modules: proofstone-protocol
 - adrs: 0002
 - specs: specs/agent-protocol.md §2–§3
 - test-first: yes
@@ -31,7 +31,7 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
 - [ ] The new golden cases validate against the schemas, and the round-trip tests pass.
 
 **Verify.**
-`./gradlew :testificate-protocol:test`
+`./gradlew :proofstone-protocol:test`
 
 ### T-M2-02 · Bukkit agent: world, events, log capture, ticks
 - tier: haiku
@@ -80,7 +80,7 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
 - On the first PATCH, snapshot `plugins/<Plugin>/config.yml` (the file bytes) and the in-memory
   `getConfig()`.
 - PATCH sets the path through `getConfig().set(path, value)`, then calls `saveConfig()`.
-- `reload` either calls a declared hook (`testificate-reload-command` in the request, for example
+- `reload` either calls a declared hook (`proofstone-reload-command` in the request, for example
   `disenchantment reload`), or runs `disablePlugin` followed by `enablePlugin`.
 - `restore` writes the snapshot back and reloads.
 
@@ -190,7 +190,7 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
 ### T-M2-07 · API: Window, Click, Item, ItemView and DualAssert
 - tier: sonnet
 - depends: T-M2-05, T-M2-06, T-M2-02
-- modules: testificate-api
+- modules: proofstone-api
 - adrs: 0001, 0003
 - specs: specs/test-api.md §3–§6
 - test-first: no
@@ -212,12 +212,12 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
   that is created in this card.
 
 **Verify.**
-`./gradlew :testificate-api:check`
+`./gradlew :proofstone-api:check`
 
 ### T-M2-08 · Core: per-test lifecycle (reset, restore, fresh client, error log)
 - tier: sonnet
 - depends: T-M2-03, T-M2-07
-- modules: testificate-core, testificate-api
+- modules: proofstone-core, proofstone-api
 - adrs: 0007
 - specs: architecture.md §3
 - test-first: no
@@ -302,7 +302,7 @@ the result with a dual-oracle assertion and reads the cost from an event probe (
 ### T-M2-99 · Milestone review M2 and API v0 freeze
 - tier: sonnet
 - depends: T-M2-01, T-M2-02, T-M2-03, T-M2-04, T-M2-05, T-M2-06, T-M2-07, T-M2-08, T-M2-09, T-M2-10
-- modules: docs/plan, testificate-api
+- modules: docs/plan, proofstone-api
 - adrs: 0001, 0010
 - specs: specs/test-api.md
 - test-first: no

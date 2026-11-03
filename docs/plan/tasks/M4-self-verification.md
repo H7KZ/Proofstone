@@ -6,7 +6,7 @@
 ### T-M4-01 · Verdict engine and machine-readable report
 - tier: sonnet
 - depends: T-M3-99
-- modules: testificate-core, testificate-api
+- modules: proofstone-core, proofstone-api
 - adrs: 0003, 0007
 - specs: specs/test-api.md §7, specs/self-tests.md
 - test-first: yes
@@ -19,7 +19,7 @@
   - `SKIPPED(reason)`.
 - Mark every plugin test on a cell `INVALID` when that cell's conformance fails. Run conformance once per
   cell per run and cache the result.
-- Write `build/testificate/testificate-report.json`, plus JUnit XML that maps the extra verdicts onto
+- Write `build/proofstone/proofstone-report.json`, plus JUnit XML that maps the extra verdicts onto
   failures with clear messages.
 
 **Don't.**
@@ -29,12 +29,12 @@
 - [ ] Every verdict has a unit test, and a snapshot test covers the report schema.
 
 **Verify.**
-`./gradlew :testificate-core:test`
+`./gradlew :proofstone-core:test`
 
 ### T-M4-02 · Repro bundles
 - tier: haiku
 - depends: T-M4-01
-- modules: testificate-core
+- modules: proofstone-core
 - adrs: 0006
 - specs: glossary.md (Repro bundle)
 - test-first: no
@@ -42,7 +42,7 @@
 **Goal.** Every failure leaves enough behind to reproduce it.
 
 **Do.**
-- On any result other than `PASS`, write `build/testificate/<cell>/<test>/` containing:
+- On any result other than `PASS`, write `build/proofstone/<cell>/<test>/` containing:
   - `server.log`;
   - `agent-transcript.jsonl`;
   - `driver-transcript.jsonl`;
@@ -58,13 +58,13 @@
 - [ ] A secret-scan test proves the token is absent.
 
 **Verify.**
-`./gradlew :examples:smoke:test -Dtestificate.forceFail=true` (the test is expected to fail), then check
+`./gradlew :examples:smoke:test -Dproofstone.forceFail=true` (the test is expected to fail), then check
 the bundle.
 
 ### T-M4-03 · Control-run mode
 - tier: haiku
 - depends: T-M4-01
-- modules: testificate-core
+- modules: proofstone-core
 - adrs: 0003
 - specs: specs/self-tests.md §2
 - test-first: no
@@ -72,7 +72,7 @@ the bundle.
 **Goal.** Detect tests that would pass even without the plugin.
 
 **Do.**
-- With `-Dtestificate.controlRun=true`, skip installing the `plugins` artefacts.
+- With `-Dproofstone.controlRun=true`, skip installing the `plugins` artefacts.
 - A test that passes in this mode gets the verdict `VACUOUS`.
 - Support `@ControlRun(EXPECTED_PASS, reason)`.
 
@@ -83,12 +83,12 @@ the bundle.
 - [ ] A purpose-built vacuous test is reported as `VACUOUS`.
 
 **Verify.**
-`./gradlew :examples:bad-tests:test -Dtestificate.controlRun=true`
+`./gradlew :examples:bad-tests:test -Dproofstone.controlRun=true`
 
 ### T-M4-04 · Flake detector
 - tier: haiku
 - depends: T-M4-01
-- modules: testificate-core
+- modules: proofstone-core
 - adrs: 0007
 - specs: specs/self-tests.md §4
 - test-first: no
@@ -96,7 +96,7 @@ the bundle.
 **Goal.** Catch tests that give different verdicts across repeated runs.
 
 **Do.**
-- With `-Dtestificate.repeat=N` (N ≥ 3), run each test N times and report `FLAKY` if the verdicts differ.
+- With `-Dproofstone.repeat=N` (N ≥ 3), run each test N times and report `FLAKY` if the verdicts differ.
 
 **Don't.**
 - Use repetition anywhere else as a retry.
@@ -105,7 +105,7 @@ the bundle.
 - [ ] A purpose-built random-outcome test is reported as `FLAKY` with N=5.
 
 **Verify.**
-`./gradlew :examples:bad-tests:test -Dtestificate.repeat=5`
+`./gradlew :examples:bad-tests:test -Dproofstone.repeat=5`
 
 ### T-M4-05 · mineflayer-ref image and JSON-RPC server
 - tier: sonnet
@@ -136,7 +136,7 @@ the bundle.
 ### T-M4-06 · Differential runner and comparator
 - tier: sonnet
 - depends: T-M4-05, T-M4-01
-- modules: testificate-core, drivers/mineflayer-ref
+- modules: proofstone-core, drivers/mineflayer-ref
 - adrs: 0003
 - specs: specs/self-tests.md §3
 - test-first: yes
@@ -144,7 +144,7 @@ the bundle.
 **Goal.** Run the same test through two drivers and compare what each client saw.
 
 **Do.**
-- With `-Dtestificate.differential=true`, run each test with both drivers on cells where the reference
+- With `-Dproofstone.differential=true`, run each test with both drivers on cells where the reference
   driver is native.
 - Record every client-oracle observation at each assertion point, and compare them in order.
 - Report a mismatch as `DISAGREE`, with both transcripts attached.
@@ -156,7 +156,7 @@ the bundle.
 - [ ] A purpose-built driver-fault injection is reported as `DISAGREE`.
 
 **Verify.**
-`./gradlew :examples:bad-tests:test -Dtestificate.differential=true`
+`./gradlew :examples:bad-tests:test -Dproofstone.differential=true`
 
 ### T-M4-07 · Purpose-built bad tests
 - tier: haiku

@@ -13,12 +13,12 @@
 - Adoption by plugin authors works best with a permissive licence.
 
 ## Proposal
-- **Apache-2.0** for all Testificate code: it is permissive and includes an explicit patent grant.
+- **Apache-2.0** for all Proofstone code: it is permissive and includes an explicit patent grant.
   **MIT** is an equally valid choice.
 - No server, client or proxy binaries are redistributed. Everything is downloaded at runtime from the
   official source, pinned by checksum.
 - The Minecraft EULA is accepted only through explicit user opt-in (`acceptEula = true` or
-  `TESTIFICATE_ACCEPT_EULA=true`).
+  `PROOFSTONE_ACCEPT_EULA=true`).
 
 ## Open
 - Apache-2.0 or MIT?

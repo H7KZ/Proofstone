@@ -1,4 +1,4 @@
-# Testificate
+# Proofstone
 
 **Real-server end-to-end testing for Minecraft plugins, mods and add-ons.**
 Real servers, real clients, and every result checked twice.
@@ -9,7 +9,7 @@ Real servers, real clients, and every result checked twice.
 ## Why
 
 Unit-level tools like MockBukkit can't see NMS code, real inventories, packets or what a client actually
-sees. Testificate starts a **real server** (Paper, Folia, Spigot, Purpur, Velocity, Fabric, NeoForge and
+sees. Proofstone starts a **real server** (Paper, Folia, Spigot, Purpur, Velocity, Fabric, NeoForge and
 Bedrock later) with your jar, connects a **real protocol client** as a player, and checks the outcome
 through **two independent oracles**:
 
@@ -19,7 +19,7 @@ through **two independent oracles**:
 It runs across every server version you support, from one test written once:
 
 ```java
-@Testificate(plugins = "build/libs/MyPlugin-*.jar", acceptEula = true)
+@Proofstone(plugins = "build/libs/MyPlugin-*.jar", acceptEula = true)
 @Matrix(platform = PAPER, versions = {"1.8.8", "1.18.2", "1.21.11", "latest"})
 class AnvilE2E {
     @CellTest
@@ -45,9 +45,10 @@ class AnvilE2E {
 
 ## Name
 
-*Testificate* is the name Minecraft's villagers carried during early development, and the code still uses
-it internally. They were the game's own test subjects. The name says "test", it is recognisable to the
-community, and it avoids the "Minecraft" trademark. ([ADR-0012](docs/adr/0012-name.md))
+*Proofstone* combines **proof**, meaning verified and bulletproof, with **-stone**, Minecraft's naming
+pattern for special blocks: redstone, glowstone, lodestone. It also echoes the *touchstone*, the stone
+once used to test whether gold was pure. The name puts robustness first, and it avoids the "Minecraft"
+trademark. ([ADR-0012](docs/adr/0012-name.md))
 
 ## Where to read next
 

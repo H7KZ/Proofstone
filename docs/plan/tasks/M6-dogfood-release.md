@@ -1,7 +1,7 @@
 # M6: Dogfood and 0.1 release
 
 **Exit criterion.** All of the following must be true:
-- Disenchantment's full suite runs on Testificate in Disenchantment's CI.
+- Disenchantment's full suite runs on Proofstone in Disenchantment's CI.
 - The Maven and Gradle example projects work.
 - Artefacts are published to Maven Central and GHCR.
 - The GitHub Action is published.
@@ -63,7 +63,7 @@ The CI run link.
 - specs: versioning.md §4
 - test-first: no
 
-**Goal.** A reusable GitHub Action that runs Testificate in a consumer's CI.
+**Goal.** A reusable GitHub Action that runs Proofstone in a consumer's CI.
 
 **Do.**
 - Write a composite action. Its inputs are `scope` (pr or nightly), `cells` and `build-tool`.
@@ -104,7 +104,7 @@ The CI run links for both example projects.
 **Verify.**
 `./gradlew :examples:gradle-paper-plugin:e2eTest`, `mvn -f examples/maven-paper-plugin verify -Pe2e`
 
-### T-M6-05 · Disenchantment suite on Testificate (in the Disenchantment repo)
+### T-M6-05 · Disenchantment suite on Proofstone (in the Disenchantment repo)
 - tier: haiku
 - depends: T-M6-03
 - modules: H7KZ/Disenchantment: e2e module (separate PR in that repo)
@@ -112,7 +112,7 @@ The CI run links for both example projects.
 - specs: research/2026-11-03-e2e-survey.md §6
 - test-first: no
 
-**Goal.** Disenchantment's full e2e suite running on Testificate.
+**Goal.** Disenchantment's full e2e suite running on Proofstone.
 
 **Do.**
 - Write these scenarios:
