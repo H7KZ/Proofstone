@@ -7,7 +7,7 @@ The primary client driver (ADR-0004): a Java client on MCProtocolLib that speaks
 ## Boundaries
 
 - Newest protocol only. Older servers are reached through a ViaProxy container that core starts (ADR-0004), never by shading more MCProtocolLib versions.
-- Server-authoritative: it never predicts client state. Windows and inventory are M2.
+- Server-authoritative: it never predicts client state. Windows and the player inventory are mirrored from `ContainerSetContent`/`ContainerSetSlot` only.
 - Touches only the packets in client-driver spec §3. The library's default listeners handle login, configuration (registries, known packs, finish) and keep-alive.
 - Waits only through `Await`; no sleeps (AGENTS.md §3).
 - This is the one host-side module on Java 21, because MCProtocolLib 26.3 is published for Java 21 or newer. Its dependents must run on 21+.
@@ -15,6 +15,7 @@ The primary client driver (ADR-0004): a Java client on MCProtocolLib that speaks
 ## Public surface
 
 - `dev.proofstone.driver.mcpl.McplDriver`: `ClientDriver` with id `mcpl`; `connect(ConnectSpec)` returns a `ClientSession` in the play state, or throws `ClientDriverException` with the reason (kick, refusal, connect timeout).
+- Sessions offer `useBlock(BlockPos, Face)` (look packet, then use-item-on with main hand and a sequence number), `awaitWindow(Duration)` returning a `WindowSession` (type as a namespaced id such as `minecraft:generic_9x3`, id, `stateId`, all synced slots as `SlotStack` registry id plus amount, cursor), and `inventory()` for window 0. Clicking and item components arrive in T-M2-05 and T-M2-06.
 - Sessions offer `chat`, `command`, `awaitMessage(Pattern, Duration)` over a buffer of system and player chat as plain text, and `transcript()` of timestamped packet names.
 
 ## How to test

@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 /**
  * One joined player (client-driver spec §1). Everything it exposes is what the server sent; it never predicts.
  *
- * <p>SEAM: block use, windows, inventory, experience and position are added by the M2 cards.
+ * <p>SEAM: experience and clicking join in the later M2 cards.
  */
 public interface ClientSession extends AutoCloseable {
 
@@ -24,6 +24,24 @@ public interface ClientSession extends AutoCloseable {
      * @throws ClientDriverException on timeout or when the server disconnected, with the reason
      */
     ChatMessage awaitMessage(Pattern pattern, Duration timeout);
+
+    /**
+     * Looks at the block and right-clicks it with the main hand (a look packet, then use-item-on with a sequence
+     * number). The block must be within reach of the server-synced position.
+     *
+     * @throws ClientDriverException when the session is closed or no position has been synced yet
+     */
+    void useBlock(BlockPos pos, Face face);
+
+    /**
+     * Waits for the next window the server opened that this call has not returned, with its contents synced.
+     *
+     * @throws ClientDriverException on timeout or when the server disconnected, with the reason
+     */
+    WindowSession awaitWindow(Duration timeout);
+
+    /** The player inventory (window id 0) as last synced by the server; no slots until the first sync. */
+    WindowView inventory();
 
     /** Timestamped packet names and summaries, for repro bundles. */
     List<String> transcript();
