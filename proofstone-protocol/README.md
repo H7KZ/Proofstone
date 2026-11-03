@@ -27,6 +27,17 @@ Records in `dev.proofstone.protocol`, one per schema object:
 - `Item(type, amount, enchants, storedEnchants, name, lore, damage, repairCost, pdc, raw)`: optional fields are `null` when absent
 - `PlayerState(name, uuid, level, exp, gamemode, health, location, inventory, cursor, openWindow)`, with `Location` and `OpenWindow`
 - `Command(command, timeoutMs)`, `CommandReply(raw)`
+- Protocol 1.1 (T-M2-01): `Block(world, x, y, z, type, state)`, `BlockWrite(type, state)` (block.json);
+  `ConfigEntry(path, value)` (config.json); `Ticks(global, regions)` (ticks.json);
+  `EventSubscribe(className)`, `EventPage(events, next)`, `ProbeEvent(className, tick, thread, fields)` (event.json);
+  `LogRecord(time, level, logger, message, thrown)`, `LogPage(records, next)` (log-record.json).
+
+Decision (T-M2-01): the Java field `className` maps to JSON key `class`, which Java reserves. The round-trip test
+skips `EventSubscribe` and `ProbeEvent`, so those two are checked by schema and golden tests only. The agent
+serialiser must write the `class` key.
+
+Decision (T-M2-01): no Java 8 twins for the new types. The agent does not use them until T-M2-02 and T-M2-03,
+and those cards add only what they use.
 
 Test fixtures in `dev.proofstone.protocol.testing` (`java-test-fixtures`, not on the main classpath):
 
@@ -34,7 +45,7 @@ Test fixtures in `dev.proofstone.protocol.testing` (`java-test-fixtures`, not on
   understands the placeholders in `golden/README.md`. `GoldenMatcher.concrete(json)` replaces them with samples
   so a golden file can be schema-validated.
 
-Not yet: the Java 8 plain-class set for the Bukkit agent (the card's "second type set"). It is deferred to a follow-up card, because it duplicates these types for `--release 8`.
+Not yet: the Java 8 plain-class set for the Bukkit agent (the card's "second type set"). It is deferred until an agent card uses the new types, because it duplicates these types for `--release 8`.
 
 ## How to test
 

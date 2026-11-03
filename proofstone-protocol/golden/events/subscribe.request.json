@@ -1,0 +1,1 @@
+{"method":"POST","path":"/v1/events/subscribe","body":{"class":"org.bukkit.event.player.PlayerJoinEvent"}}

@@ -26,7 +26,12 @@ class ProtocolRoundTripTest {
                 Arguments.of(ProtocolExamples.COMMAND, new TypeReference<Command>() {}),
                 Arguments.of(ProtocolExamples.COMMAND_REPLY, new TypeReference<CommandReply>() {}),
                 Arguments.of(ProtocolExamples.ENVELOPE_OK, new TypeReference<Envelope<Health>>() {}),
-                Arguments.of(ProtocolExamples.ENVELOPE_ERROR, new TypeReference<Envelope<Health>>() {}));
+                Arguments.of(ProtocolExamples.ENVELOPE_ERROR, new TypeReference<Envelope<Health>>() {}),
+                Arguments.of(ProtocolExamples.BLOCK, new TypeReference<Block>() {}),
+                Arguments.of(ProtocolExamples.BLOCK_WRITE, new TypeReference<BlockWrite>() {}),
+                Arguments.of(ProtocolExamples.CONFIG_ENTRY, new TypeReference<ConfigEntry>() {}),
+                Arguments.of(ProtocolExamples.TICKS, new TypeReference<Ticks>() {}),
+                Arguments.of(ProtocolExamples.LOG_PAGE, new TypeReference<LogPage>() {}));
     }
 
     @ParameterizedTest
@@ -34,7 +39,8 @@ class ProtocolRoundTripTest {
     void parseThenSerialiseGivesEqualJson(String json, TypeReference<?> type) throws Exception {
         Object parsed = MAPPER.readValue(json, type);
 
-        JsonNode reserialised = MAPPER.valueToTree(parsed);
+        // Compare the wire text, re-parsed: a long field serialises as LongNode, the parsed input as IntNode.
+        JsonNode reserialised = MAPPER.readTree(MAPPER.writeValueAsString(parsed));
 
         assertThat(reserialised).isEqualTo(MAPPER.readTree(json));
     }

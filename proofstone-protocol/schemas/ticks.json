@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/ticks.json",
+  "title": "Tick counter (GET /v1/ticks, POST /v1/ticks/await)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. On Folia, regions carries one counter per region; elsewhere it is absent. POST /v1/ticks/await takes $defs/await and replies with this object once n more global ticks have passed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["global"],
+  "properties": {
+    "global": { "type": "integer", "minimum": 0 },
+    "regions": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    }
+  },
+  "$defs": {
+    "await": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

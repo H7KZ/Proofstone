@@ -70,6 +70,25 @@ class AgentContractIT {
             "players/give-enchanted-sword",
             "players/read-after-give");
 
+    /**
+     * Golden cases for M2 endpoints the agent does not serve yet (protocol 1.1, T-M2-01). T-M2-02 and T-M2-03 move
+     * each case from here into {@link #CASES} when they serve it. The list is explicit so a new case is never
+     * silently ignored: {@link #everyGoldenCaseIsReplayed()} still fails for any case in neither list.
+     */
+    static final List<String> PENDING = List.of(
+            "world/block-get",
+            "world/block-put",
+            "events/subscribe",
+            "events/poll",
+            "log/read",
+            "ticks/read",
+            "ticks/await",
+            "plugins/config-patch",
+            "plugins/config-read",
+            "plugins/config-restore",
+            "plugins/config-read-after-restore",
+            "players/open-anvil");
+
     private final HttpClient http = HttpClient.newHttpClient();
     private PaperHost host;
     private ClientSession alex;
@@ -110,7 +129,9 @@ class AgentContractIT {
                             .replaceFirst("\\.request\\.json$", ""))
                     .collect(Collectors.toSet());
         }
-        assertThat(onDisk).containsExactlyInAnyOrderElementsOf(CASES);
+        Set<String> known = new java.util.HashSet<>(CASES);
+        known.addAll(PENDING);
+        assertThat(onDisk).containsExactlyInAnyOrderElementsOf(known);
     }
 
     @TestFactory

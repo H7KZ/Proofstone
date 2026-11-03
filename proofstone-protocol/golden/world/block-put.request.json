@@ -1,0 +1,1 @@
+{"method":"PUT","path":"/v1/world/block?world=world&x=2&y=64&z=0","body":{"type":"minecraft:anvil","state":{"facing":"west"}}}

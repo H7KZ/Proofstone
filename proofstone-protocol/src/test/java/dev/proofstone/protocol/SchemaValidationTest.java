@@ -20,7 +20,14 @@ class SchemaValidationTest {
                 Arguments.of("envelope.json", ProtocolExamples.ENVELOPE_OK),
                 Arguments.of("envelope.json", ProtocolExamples.ENVELOPE_ERROR),
                 Arguments.of("item.json", "{\"type\":\"minecraft:stone\",\"amount\":64}"),
-                Arguments.of("player-state.json", ProtocolExamples.PLAYER_STATE.replace("\"cursor\":{\"type\":\"minecraft:stone\",\"amount\":64},", "\"cursor\":null,"))
+                Arguments.of("player-state.json", ProtocolExamples.PLAYER_STATE.replace("\"cursor\":{\"type\":\"minecraft:stone\",\"amount\":64},", "\"cursor\":null,")),
+                Arguments.of("block.json", ProtocolExamples.BLOCK),
+                Arguments.of("block.json#/$defs/write", ProtocolExamples.BLOCK_WRITE),
+                Arguments.of("config.json#/$defs/patch", ProtocolExamples.CONFIG_ENTRY),
+                Arguments.of("config.json#/$defs/read", ProtocolExamples.CONFIG_ENTRY),
+                Arguments.of("ticks.json", ProtocolExamples.TICKS),
+                Arguments.of("event.json", ProtocolExamples.EVENT),
+                Arguments.of("log-record.json#/$defs/page", ProtocolExamples.LOG_PAGE)
         );
     }
 
@@ -33,7 +40,7 @@ class SchemaValidationTest {
     static Stream<Arguments> invalidDocuments() {
         return Stream.of(
                 Arguments.of("health.json", "{\"agentVersion\":\"0.1.0\",\"platform\":\"paper\",\"mcVersion\":\"1.21.11\",\"capabilities\":[]}"),
-                Arguments.of("health.json", ProtocolExamples.HEALTH.replace("\"1.0\"", "\"2.0\"")),
+                Arguments.of("health.json", ProtocolExamples.HEALTH.replace("\"1.1\"", "\"2.0\"")),
                 Arguments.of("health.json", ProtocolExamples.HEALTH.replace("}", ",\"extra\":1}")),
                 Arguments.of("error.json", ProtocolExamples.ERROR.replace("UNKNOWN_KEY", "unknown_key")),
                 Arguments.of("item.json", ProtocolExamples.ITEM.replace("\"amount\":1", "\"amount\":0")),
@@ -47,7 +54,16 @@ class SchemaValidationTest {
                 Arguments.of("command.json#/$defs/reply", "{}"),
                 Arguments.of("envelope.json", "{\"ok\":true,\"error\":{\"code\":\"TIMEOUT\",\"message\":\"x\"}}"),
                 Arguments.of("envelope.json", "{\"ok\":false,\"data\":{},\"error\":{\"code\":\"TIMEOUT\",\"message\":\"x\"}}"),
-                Arguments.of("envelope.json", "{\"ok\":false}")
+                Arguments.of("envelope.json", "{\"ok\":false}"),
+                Arguments.of("block.json", ProtocolExamples.BLOCK.replace("minecraft:stone", "stone")),
+                Arguments.of("block.json", ProtocolExamples.BLOCK.replace("\"x\":0", "\"x\":0.5")),
+                Arguments.of("block.json#/$defs/write", ProtocolExamples.BLOCK_WRITE.replace("\"facing\":\"west\"", "\"Facing\":\"west\"")),
+                Arguments.of("config.json#/$defs/patch", "{\"path\":\"greeting\"}"),
+                Arguments.of("config.json#/$defs/patch", "{\"path\":\"bad path\",\"value\":1}"),
+                Arguments.of("ticks.json", "{\"global\":-1}"),
+                Arguments.of("event.json", ProtocolExamples.EVENT.replace("\"Alex\"", "[\"Alex\"]")),
+                Arguments.of("event.json", ProtocolExamples.EVENT.replace("\"tick\":1200", "\"tick\":\"1200\"")),
+                Arguments.of("log-record.json#/$defs/page", ProtocolExamples.LOG_PAGE.replace("\"WARN\"", "\"SEVERE\""))
         );
     }
 
