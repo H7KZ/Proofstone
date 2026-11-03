@@ -23,4 +23,5 @@ include(
     "proofstone-core",
     "proofstone-protocol",
     "conformance",
+    "platforms:bukkit:agent",
 )
