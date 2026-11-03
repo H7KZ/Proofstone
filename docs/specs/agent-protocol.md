@@ -41,6 +41,16 @@ and this page explains them.
 | `GET /v1/log?since=&minLevel=` | captured log records with stack traces | root JUL/Log4j handler |
 | `GET /v1/snapshot` | full-state dump for repro bundles | — |
 
+Error codes used so far (the code is an `UPPER_SNAKE` token; adding codes is allowed within v1):
+
+| Code | HTTP | When |
+|---|---|---|
+| `UNAUTHORIZED` | 401 | missing or wrong token; the reply is the same for every endpoint |
+| `PLAYER_NOT_FOUND` | 404 | the player is not online; `detail` is `{name}` |
+| `UNKNOWN_KEY` | 400 | unknown material or enchantment on `give`; no partial item is created |
+
+A successful `give`, `reset` or `PATCH` with nothing to return replies `{"ok": true, "data": {}}`.
+
 ## 3. Core schemas
 
 - **`item.json`:** see the [test API §6](test-api.md). A `raw` field (string) is always present on reads.

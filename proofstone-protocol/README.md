@@ -7,6 +7,8 @@ Wire-protocol schemas, generated types and golden files (layer L3c). Also holds 
 Protocol v1 (T-M1-01) is the JSON Schema set in `schemas/`: `envelope`, `error`, `health`, `item`, `player-state`
 and `command`. Spec: [docs/specs/agent-protocol.md](../docs/specs/agent-protocol.md) §1–§3.
 
+Golden request and response pairs for v1 are in `golden/` (T-M1-02). Their format is in [golden/README.md](golden/README.md).
+
 ## Boundaries
 
 - Schemas change only through a card that says so. Bump the protocol version and update the golden files together (AGENTS.md §3).
@@ -26,10 +28,16 @@ Records in `dev.proofstone.protocol`, one per schema object:
 - `PlayerState(name, uuid, level, exp, gamemode, health, location, inventory, cursor, openWindow)`, with `Location` and `OpenWindow`
 - `Command(command, timeoutMs)`, `CommandReply(raw)`
 
+Test fixtures in `dev.proofstone.protocol.testing` (`java-test-fixtures`, not on the main classpath):
+
+- `GoldenMatcher.mismatches(expected, actual)` returns one message per difference, each with a JSON path. It
+  understands the placeholders in `golden/README.md`. `GoldenMatcher.concrete(json)` replaces them with samples
+  so a golden file can be schema-validated.
+
 Not yet: the Java 8 plain-class set for the Bukkit agent (the card's "second type set"). It is deferred to a follow-up card, because it duplicates these types for `--release 8`.
 
 ## How to test
 
 `./gradlew :proofstone-protocol:test`
 
-Examples are inline in `ProtocolExamples` until T-M1-02 adds `golden/`.
+Schema and round-trip tests use the inline examples in `ProtocolExamples`. `GoldenContractTest` replays `golden/`.
