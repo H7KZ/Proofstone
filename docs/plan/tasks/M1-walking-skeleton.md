@@ -155,7 +155,8 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
 
 **Acceptance.**
 - [ ] Every golden case from T-M1-02 passes in the contract test (T-M1-05).
-- [ ] An unknown material or enchantment returns error `UNKNOWN_KEY`, not a partial item.
+- [x] An unknown material or enchantment returns error `UNKNOWN_KEY`, not a partial item. (Evidence: `ItemBuilderTest`
+  and `AgentServerTest.anUnknownKeyIsAnErrorAndLeavesNoItemBehind`; real-server check is T-M1-05.)
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:test`, then the contract test after T-M1-05.

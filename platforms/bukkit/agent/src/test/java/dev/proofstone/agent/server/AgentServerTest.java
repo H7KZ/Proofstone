@@ -115,4 +115,37 @@ class AgentServerTest {
         assertThat(MAPPER.readTree(response.body).at("/error/code").asText()).isEqualTo("UNAUTHORIZED");
         assertThat(MAPPER.readTree(response.body).at("/ok").asBoolean()).isFalse();
     }
+
+    @Test
+    void giveResetAndPatchReachTheGameWithTheirTimeout() throws IOException {
+        AgentHttp.Response give = http.send("POST", "/v1/players/Alex/give", BEARER,
+                "{\"type\":\"minecraft:diamond_sword\",\"amount\":1,\"timeoutMs\":3000}");
+
+        assertThat(give.status).isEqualTo(200);
+        assertThat(MAPPER.readTree(give.body).at("/data").size()).isZero();
+        assertThat(game.lastTimeoutMs).isEqualTo(3000);
+        assertThat(http.send("POST", "/v1/players/Alex/reset", BEARER, null).status).isEqualTo(200);
+        assertThat(game.lastReset).isEqualTo("Alex");
+        assertThat(http.send("PATCH", "/v1/players/Alex", BEARER, "{\"level\":5}").status).isEqualTo(200);
+        assertThat(game.lastPatch).containsEntry("level", 5);
+    }
+
+    @Test
+    void anUnknownKeyIsAnErrorAndLeavesNoItemBehind() throws IOException {
+        AgentHttp.Response give = http.send("POST", "/v1/players/Alex/give", BEARER,
+                "{\"type\":\"minecraft:not_a_thing\",\"amount\":1}");
+
+        assertThat(give.status).isEqualTo(400);
+        assertThat(MAPPER.readTree(give.body).at("/error/code").asText()).isEqualTo("UNKNOWN_KEY");
+        AgentHttp.Response read = http.send("GET", "/v1/players/Alex", BEARER, null);
+        assertThat(MAPPER.readTree(read.body).at("/data/inventory").size()).isZero();
+    }
+
+    @Test
+    void writeEndpointsRejectTheWrongMethodAndUnknownActions() throws IOException {
+        assertThat(http.send("GET", "/v1/players/Alex/give", BEARER, null).status).isEqualTo(405);
+        assertThat(http.send("GET", "/v1/players/Alex/reset", BEARER, null).status).isEqualTo(405);
+        assertThat(http.send("POST", "/v1/players/Alex", BEARER, "{}").status).isEqualTo(405);
+        assertThat(http.send("POST", "/v1/players/Alex/nothing", BEARER, "{}").status).isEqualTo(404);
+    }
 }

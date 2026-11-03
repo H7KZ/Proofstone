@@ -8,11 +8,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Canned game state shaped like the golden cases; records what the server asked for. */
+/**
+ * Canned game state shaped like the golden cases; records what the server asked for. It keeps one given item
+ * in slot 0, so a give followed by a read matches players/read-after-give. It knows one material and rejects
+ * every other type with UNKNOWN_KEY before it stores anything, like the real game.
+ */
 final class FakeGame implements Game {
+
+    private static final String KNOWN_TYPE = "minecraft:diamond_sword";
 
     String lastCommand;
     long lastTimeoutMs = -1;
+    Map<String, Object> lastPatch;
+    String lastReset;
+    private Map<String, Object> item;
 
     @Override
     public String command(String command, long timeoutMs) {
@@ -30,10 +39,7 @@ final class FakeGame implements Game {
     @Override
     public Map<String, Object> player(String name, long timeoutMs) {
         lastTimeoutMs = timeoutMs;
-        if (!"Alex".equals(name)) {
-            throw new AgentException(404, "PLAYER_NOT_FOUND", "no player named " + name,
-                    Collections.singletonMap("name", name));
-        }
+        requireAlex(name);
         Map<String, Object> location = new LinkedHashMap<>();
         location.put("world", "world");
         location.put("x", 0.5);
@@ -41,6 +47,13 @@ final class FakeGame implements Game {
         location.put("z", 0.5);
         location.put("yaw", 0.0);
         location.put("pitch", 0.0);
+
+        Map<String, Object> inventory = new LinkedHashMap<>();
+        if (item != null) {
+            Map<String, Object> shown = new LinkedHashMap<>(item);
+            shown.put("raw", "fake");
+            inventory.put("0", shown);
+        }
 
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("name", "Alex");
@@ -50,10 +63,43 @@ final class FakeGame implements Game {
         state.put("gamemode", "survival");
         state.put("health", 20.0);
         state.put("location", location);
-        state.put("inventory", Collections.emptyMap());
+        state.put("inventory", inventory);
         state.put("cursor", null);
         state.put("openWindow", null);
         return state;
+    }
+
+    @Override
+    public void give(String name, Map<String, Object> newItem, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        requireAlex(name);
+        if (!KNOWN_TYPE.equals(newItem.get("type"))) {
+            throw new AgentException(400, "UNKNOWN_KEY", "unknown key " + newItem.get("type"),
+                    Collections.singletonMap("key", newItem.get("type")));
+        }
+        item = new LinkedHashMap<>(newItem);
+    }
+
+    @Override
+    public void reset(String name, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        lastReset = name;
+        requireAlex(name);
+        item = null;
+    }
+
+    @Override
+    public void patch(String name, Map<String, Object> changes, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        lastPatch = new LinkedHashMap<>(changes);
+        requireAlex(name);
+    }
+
+    private static void requireAlex(String name) {
+        if (!"Alex".equals(name)) {
+            throw new AgentException(404, "PLAYER_NOT_FOUND", "no player named " + name,
+                    Collections.singletonMap("name", name));
+        }
     }
 
     static List<String> capabilities() {

@@ -2,6 +2,7 @@ package dev.proofstone.agent.server;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.Filter;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.Collections;
+import java.util.Map;
 
 /**
  * HTTP server for the agent (spec §1–§2). It handles routing, auth, bodies and envelopes. Game state comes
@@ -35,6 +37,8 @@ public final class AgentServer {
 
     private static final String PLAYERS = "/v1/players";
     private static final String PLAYERS_PREFIX = PLAYERS + "/";
+    private static final TypeReference<Map<String, Object>> OBJECT = new TypeReference<Map<String, Object>>() {
+    };
 
     private final HttpServer server;
     private final Health health;
@@ -88,11 +92,45 @@ public final class AgentServer {
             requireMethod(method, "GET");
             return Collections.singletonMap("players", game.players(DEFAULT_TIMEOUT_MS));
         }
-        if (path.startsWith(PLAYERS_PREFIX) && path.indexOf('/', PLAYERS_PREFIX.length()) < 0) {
-            requireMethod(method, "GET");
-            return game.player(path.substring(PLAYERS_PREFIX.length()), DEFAULT_TIMEOUT_MS);
+        if (path.startsWith(PLAYERS_PREFIX)) {
+            return player(exchange, method, path.substring(PLAYERS_PREFIX.length()));
         }
         throw new AgentException(404, "NOT_FOUND", "no endpoint at " + path, null);
+    }
+
+    /** {@code {name}} (read, PATCH) and its actions, {@code give} and {@code reset}. */
+    private Object player(HttpExchange exchange, String method, String rest) throws IOException {
+        int slash = rest.indexOf('/');
+        String name = slash < 0 ? rest : rest.substring(0, slash);
+        String action = slash < 0 ? "" : rest.substring(slash + 1);
+        switch (action) {
+            case "":
+                if ("PATCH".equals(method)) {
+                    JsonNode body = jsonBody(exchange);
+                    game.patch(name, fields(body), timeoutMs(body));
+                    return Collections.emptyMap();
+                }
+                requireMethod(method, "GET");
+                return game.player(name, DEFAULT_TIMEOUT_MS);
+            case "give":
+                requireMethod(method, "POST");
+                JsonNode item = jsonBody(exchange);
+                game.give(name, fields(item), timeoutMs(item));
+                return Collections.emptyMap();
+            case "reset":
+                requireMethod(method, "POST");
+                game.reset(name, DEFAULT_TIMEOUT_MS);
+                return Collections.emptyMap();
+            default:
+                throw new AgentException(404, "NOT_FOUND", "no endpoint at " + PLAYERS_PREFIX + rest, null);
+        }
+    }
+
+    /** The body's fields without the transport's {@code timeoutMs} (spec §1), which is not a game field. */
+    private static Map<String, Object> fields(JsonNode body) {
+        Map<String, Object> fields = MAPPER.convertValue(body, OBJECT);
+        fields.remove("timeoutMs");
+        return fields;
     }
 
     private static void requireMethod(String actual, String expected) {

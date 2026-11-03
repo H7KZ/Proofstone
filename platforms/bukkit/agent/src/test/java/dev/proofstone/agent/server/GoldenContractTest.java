@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -54,6 +55,17 @@ class GoldenContractTest {
     @ParameterizedTest
     @MethodSource("cases")
     void replaysTheGoldenCase(String name) throws IOException {
+        replay(name);
+    }
+
+    /** The write cases only make sense in order: the give puts the sword in, the read sees it. */
+    @Test
+    void giveThenReadMatchesTheGoldenCases() throws IOException {
+        replay("players/give-enchanted-sword");
+        replay("players/read-after-give");
+    }
+
+    private void replay(String name) throws IOException {
         JsonNode request = read(name + ".request.json");
         JsonNode expected = read(name + ".response.json");
         String authorization = request.has("auth") && !request.get("auth").asBoolean()
