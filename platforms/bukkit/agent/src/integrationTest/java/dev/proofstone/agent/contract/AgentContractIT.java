@@ -68,7 +68,13 @@ class AgentContractIT {
             "players/not-found",
             "players/empty-inventory",
             "players/give-enchanted-sword",
-            "players/read-after-give");
+            "players/read-after-give",
+            "plugins/config-patch",
+            "plugins/config-read",
+            "plugins/config-restore",
+            "plugins/config-read-after-restore",
+            "plugins/reload",
+            "plugins/reload-hook");
 
     /**
      * Golden cases for M2 endpoints the agent does not serve yet (protocol 1.1, T-M2-01). T-M2-02 and T-M2-03 move
@@ -83,10 +89,6 @@ class AgentContractIT {
             "log/read",
             "ticks/read",
             "ticks/await",
-            "plugins/config-patch",
-            "plugins/config-read",
-            "plugins/config-restore",
-            "plugins/config-read-after-restore",
             "players/open-anvil");
 
     private final HttpClient http = HttpClient.newHttpClient();
@@ -99,7 +101,10 @@ class AgentContractIT {
         VersionsCatalog catalog = VersionsCatalog.load(ROOT.resolve("versions.yml"),
                 ROOT.resolve("proofstone-protocol/schemas/versions.schema.json"));
         Cell cell = new CellPlanner(catalog).plan("paper", List.of("latest")).get(0);
+        // The fixture plugin (platforms/bukkit/fixture) carries the config.yml the config cases read and patch.
+        Path fixture = Path.of(System.getProperty("proofstone.fixtureJar"));
         PaperHostOptions options = PaperHostOptions.of(Path.of(System.getProperty("proofstone.agentJar")), true)
+                .withArtefacts(fixture.getParent(), List.of(fixture.getFileName().toString()))
                 .withDebugPorts(true);
         host = PaperHost.start(cell, options);
         // golden/README.md: the reset lands Alex on (0.5, 64.0, 0.5). The spawn is block (0, 63, 0), and a stone block
