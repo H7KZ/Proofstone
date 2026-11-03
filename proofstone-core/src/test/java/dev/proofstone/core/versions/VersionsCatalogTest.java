@@ -55,13 +55,13 @@ class VersionsCatalogTest {
     }
 
     @Test
-    void loadsSeedFileWhoseExperimentalRowsStillHaveTodoPins() throws IOException {
+    void loadsSeedFileWhoseUnpinnedRowsStillHaveTodoPins() throws IOException {
         Path seed = VersionsFixture.REPO_ROOT.resolve("versions.yml");
 
         VersionsCatalog catalog = VersionsCatalog.load(seed, VersionsFixture.schema());
 
         assertThat(catalog.platformIds()).contains("paper");
-        assertThat(catalog.platform("paper").host().digest()).isNull();
+        assertThat(catalog.platform("folia").host().digest()).isNull();
     }
 
     @Test

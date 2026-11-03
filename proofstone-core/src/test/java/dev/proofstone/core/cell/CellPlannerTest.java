@@ -111,10 +111,10 @@ class CellPlannerTest {
         Path seed = VersionsFixture.REPO_ROOT.resolve("versions.yml");
         CellPlanner planner = new CellPlanner(VersionsCatalog.load(seed, VersionsFixture.schema()));
 
-        assertThatThrownBy(() -> planner.plan("paper", List.of("latest")))
+        assertThatThrownBy(() -> planner.plan("paper", List.of("1.21.11")))
                 .isInstanceOf(VersionsException.class)
                 .hasMessageContaining("TODO")
-                .hasMessageContaining("digest");
+                .hasMessageContaining("sha256");
     }
 
     @Test
