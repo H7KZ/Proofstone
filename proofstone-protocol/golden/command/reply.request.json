@@ -1,0 +1,1 @@
+{"method":"POST","path":"/v1/command","body":{"command":"version","timeoutMs":5000}}

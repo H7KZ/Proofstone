@@ -1,0 +1,1 @@
+{"status":200,"body":{"ok":true,"data":{"name":"Alex","uuid":"<uuid>","level":0,"exp":0.0,"gamemode":"survival","health":20.0,"location":{"world":"world","x":0.5,"y":64.0,"z":0.5,"yaw":0.0,"pitch":0.0},"inventory":{},"cursor":null,"openWindow":null}}}
