@@ -16,6 +16,7 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
 
 - Annotations: `@Proofstone`, `@Matrix` (repeatable, with `Platform`), `@CellTest` (a JUnit `TestTemplate`).
 - Injected parameters: `Cell`, `Agent` (`command`, `capabilities`) and `Client` (`name`, `command`, `awaitMessage`).
+  `conformance` (T-M1-11) uses only these; a system-message flag or the agent protocol version is not on them yet.
 
 The extension that runs them is `proofstone-core`'s `dev.proofstone.core.junit.ProofstoneExtension`, registered by
 JUnit auto-detection (`junit.jupiter.extensions.autodetection.enabled=true`).

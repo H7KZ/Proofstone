@@ -1,4 +1,6 @@
-# Gate workflow: AGENTS.md §4. Docker jobs (`:conformance:smoke`) arrive with T-M1-11.
+# Gate workflow: AGENTS.md §4. `gates` and `renovate-validate` need no Docker. `smoke` runs `:conformance:smoke`
+# (C01, C02 on the newest Paper row, T-M1-11) on a Docker runner. Without the Minecraft EULA it fails, never skips.
+# The repo owner accepts the Minecraft EULA (https://aka.ms/MinecraftEULA) for the `smoke` job below, and said so in chat on 2026-11-03.
 name: ci
 
 on:
@@ -22,6 +24,21 @@ jobs:
           cache: gradle
       - name: check and docsCheck
         run: ./gradlew check docsCheck
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: conformance smoke (C01, C02)
+        env:
+          PROOFSTONE_ACCEPT_EULA: "true"
+        run: ./gradlew :conformance:smoke
 
   renovate-validate:
     runs-on: ubuntu-latest
