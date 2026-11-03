@@ -1,5 +1,6 @@
 // Gate tasks from AGENTS.md §4. Applied once, to the root project.
 // `check` runs each module's `check` (which runs archTest), the lintVersions scan and the build-logic tests.
+import dev.proofstone.build.docs.DocsCheck
 import dev.proofstone.build.lint.VersionLint
 import dev.proofstone.build.versions.VersionsValidator
 import org.gradle.api.GradleException
@@ -30,12 +31,17 @@ tasks.named("check") {
     dependsOn("lintVersions")
 }
 
-// Placeholder until T-M0-05 implements the real checks (links, card format, depends IDs).
 tasks.register("docsCheck") {
     group = "verification"
-    description = "Markdown links, card format and glossary terms. Placeholder until T-M0-05."
+    description = "Markdown links, task-card format, depends IDs and glossary terms (T-M0-05)."
+    val root = rootDir
     doLast {
-        logger.lifecycle("docsCheck: placeholder, real checks land in T-M0-05")
+        val report = DocsCheck.run(root.toPath())
+        report.warnings().forEach { logger.warn("docsCheck warning: $it") }
+        if (!report.passed()) {
+            throw GradleException("docsCheck failed:\n" + report.errors().joinToString("\n"))
+        }
+        logger.lifecycle("docsCheck: 0 errors, ${report.warnings().size} warning(s)")
     }
 }
 
