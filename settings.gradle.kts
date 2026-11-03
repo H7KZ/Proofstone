@@ -22,4 +22,5 @@ include(
     "proofstone-api",
     "proofstone-core",
     "proofstone-protocol",
+    "conformance",
 )
