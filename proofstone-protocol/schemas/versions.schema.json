@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/versions.schema.json",
+  "title": "Proofstone version matrix (versions.yml)",
+  "description": "Spec: docs/specs/versions-yml.md. Decision: ADR-0008. Semantic rules live in build-logic (validateVersions).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "java-rules", "drivers", "platforms"],
+  "properties": {
+    "schema": { "const": 1 },
+    "java-rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["range", "image"],
+        "properties": {
+          "range": { "type": "string", "minLength": 1 },
+          "image": { "$ref": "#/$defs/javaImage" }
+        }
+      }
+    },
+    "drivers": {
+      "type": "object",
+      "additionalProperties": { "type": "object", "minProperties": 1 }
+    },
+    "platforms": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/platform" }
+    }
+  },
+  "$defs": {
+    "javaImage": { "type": "string", "pattern": "^java[0-9]+$" },
+    "status": { "enum": ["required", "experimental", "retired"] },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "rows"],
+      "properties": {
+        "host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["image", "digest"],
+          "properties": {
+            "image": { "type": "string", "minLength": 1 },
+            "digest": { "type": "string", "minLength": 1 }
+          }
+        },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mc", "build", "sha256", "status"],
+      "properties": {
+        "mc": { "type": "string", "minLength": 1 },
+        "build": { "anyOf": [{ "type": "integer", "minimum": 1 }, { "const": "TODO" }] },
+        "sha256": { "type": "string", "minLength": 1 },
+        "java": { "$ref": "#/$defs/javaImage" },
+        "protocol": { "type": "integer" },
+        "status": { "$ref": "#/$defs/status" },
+        "native-drivers": { "type": "array", "items": { "type": "string" } },
+        "observed": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

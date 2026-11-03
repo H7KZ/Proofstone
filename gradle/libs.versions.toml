@@ -9,6 +9,7 @@ assertj = "3.27.7"
 archunit = "1.5.1"
 mcprotocollib = "26.3-2"
 shadow = "9.6.1"
+json-schema-validator = "1.5.9"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -19,6 +20,7 @@ jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jac
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
 jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 mcprotocollib-protocol = { module = "org.geysermc.mcprotocollib:protocol", version.ref = "mcprotocollib" }
 

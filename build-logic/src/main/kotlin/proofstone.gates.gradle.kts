@@ -1,6 +1,7 @@
 // Gate tasks from AGENTS.md §4. Applied once, to the root project.
 // `check` runs each module's `check` (which runs archTest), the lintVersions scan and the build-logic tests.
 import dev.proofstone.build.lint.VersionLint
+import dev.proofstone.build.versions.VersionsValidator
 import org.gradle.api.GradleException
 
 plugins {
@@ -36,4 +37,24 @@ tasks.register("docsCheck") {
     doLast {
         logger.lifecycle("docsCheck: placeholder, real checks land in T-M0-05")
     }
+}
+
+// Schema and semantic checks for the version matrix (ADR-0008). Root paths resolve against the repo root.
+tasks.register("validateVersions") {
+    group = "verification"
+    description = "Validates versions.yml against its JSON Schema and the semantic rules (ADR-0008)."
+    val root = rootDir
+    doLast {
+        val errors = VersionsValidator.validate(
+            root.toPath().resolve("versions.yml"),
+            root.toPath().resolve("proofstone-protocol/schemas/versions.schema.json"),
+        )
+        if (errors.isNotEmpty()) {
+            throw GradleException("validateVersions failed:\n" + errors.joinToString("\n"))
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("validateVersions")
 }

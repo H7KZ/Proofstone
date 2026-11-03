@@ -4,8 +4,12 @@ plugins {
 
 dependencies {
     implementation(libs.shadow.gradle.plugin)
-    // Hard-rule checks run inside the build, so ArchUnit is a build-logic dependency only.
+    // Hard-rule checks and versions.yml validation run inside the build, so these are build-logic dependencies only.
     implementation(libs.archunit.junit5)
+    implementation(platform(libs.jackson.bom))
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.dataformat.yaml)
+    implementation(libs.json.schema.validator)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
