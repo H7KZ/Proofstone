@@ -229,9 +229,11 @@ Lessons that change how M2 cards should be done:
 - Parse NBT-era items. Not needed (ADR-0004).
 
 **Acceptance.**
-- [ ] Unit tests use captured component fixtures: a sword with two enchants and an enchanted book with
-  stored enchants.
-- [ ] C03 (give round trip) passes with both oracles equal.
+- [x] Unit tests use captured component fixtures: a sword with two enchants and an enchanted book with
+  stored enchants. (`ItemParserTest`, 11 tests, constructed components for each kind; the real captured case is
+  `McplItemsIT`, which parses the server's own sync.)
+- [ ] C03 (give round trip) passes with both oracles equal. (C03 itself is written in T-M2-09. The same check ran
+  on a real Paper 26.3 in `McplItemsIT`: client and agent equal on type, amount, name and enchants.)
 
 **Verify.**
 `./gradlew :drivers:mcpl:test :conformance:run --tests C03`

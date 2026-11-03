@@ -25,3 +25,9 @@ java {
         languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
+
+// The item integration test (T-M2-06) reads the agent's JSON reply. Same pinned Jackson as proofstone-core, tests only.
+dependencies {
+    "integrationTestImplementation"(platform(libs.jackson.bom))
+    "integrationTestImplementation"(libs.jackson.databind)
+}

@@ -15,7 +15,8 @@ The primary client driver (ADR-0004): a Java client on MCProtocolLib that speaks
 ## Public surface
 
 - `dev.proofstone.driver.mcpl.McplDriver`: `ClientDriver` with id `mcpl`; `connect(ConnectSpec)` returns a `ClientSession` in the play state, or throws `ClientDriverException` with the reason (kick, refusal, connect timeout).
-- Sessions offer `useBlock(BlockPos, Face)` (look packet, then use-item-on with main hand and a sequence number), `awaitWindow(Duration)` returning a `WindowSession` (type as a namespaced id such as `minecraft:generic_9x3`, id, `stateId`, all synced slots as `SlotStack` registry id plus amount, cursor), and `inventory()` for window 0. Clicking and item components arrive in T-M2-05 and T-M2-06.
+- Sessions offer `useBlock(BlockPos, Face)` (look packet, then use-item-on with main hand and a sequence number), `awaitWindow(Duration)` returning a `WindowSession` (type as a namespaced id such as `minecraft:generic_9x3`, id, `stateId`, all synced slots as `SlotStack` registry id plus amount, cursor), and `inventory()` for window 0. Clicking arrives in T-M2-05.
+- Windows from a session (and `inventory()`) also implement `ItemViews`: `itemViews()` and `cursorView()` parse the slots on demand into `ItemView` (type, amount, enchants, stored enchants, plain-text custom name, lore, damage, repair cost, custom data). Enchantment ids are named from the registry the server sends in the configuration phase; item ids from the bundled `items-<protocol>.txt` (the server's own registry report, regenerated per protocol pin, see `docs/platforms/paper.md`). An id that cannot be named is an error. `ItemView` moves to `proofstone-api` in T-M2-07.
 - Sessions offer `chat`, `command`, `awaitMessage(Pattern, Duration)` over a buffer of system and player chat as plain text, and `transcript()` of timestamped packet names.
 
 ## How to test

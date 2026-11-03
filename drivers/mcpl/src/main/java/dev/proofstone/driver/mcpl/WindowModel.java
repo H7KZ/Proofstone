@@ -10,7 +10,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
  * One window's state, written only by server packets on the network thread and read by test threads. Separate
  * instances model the player inventory (id 0) and the open window, so one cannot overwrite the other.
  */
-class WindowModel implements WindowView {
+class WindowModel implements WindowView, ItemViews {
 
     private final int id;
     private final String type;
@@ -21,11 +21,21 @@ class WindowModel implements WindowView {
     private boolean synced;
     private boolean consumed;
     private boolean closed;
+    // The raw stacks, kept so item components are parsed on demand (T-M2-06) rather than on the network thread.
+    private List<ItemStack> rawSlots = List.of();
+    private ItemStack rawCursor;
+    private final ItemParser parser;
 
     WindowModel(int id, String type, String title) {
+        this(id, type, title, null);
+    }
+
+    /** @param registries names the ids in item stacks; {@code null} makes {@link #itemViews()} fail loudly */
+    WindowModel(int id, String type, String title, ItemRegistries registries) {
         this.id = id;
         this.type = type;
         this.title = title;
+        this.parser = registries == null ? null : new ItemParser(registries);
     }
 
     static SlotStack convert(ItemStack item) {
@@ -39,6 +49,8 @@ class WindowModel implements WindowView {
             next.add(convert(item));
         }
         slots = next;
+        rawSlots = new ArrayList<>(java.util.Arrays.asList(items));
+        rawCursor = carried;
         stateId = newStateId;
         cursor = convert(carried);
         synced = true;
@@ -50,12 +62,36 @@ class WindowModel implements WindowView {
             return false;
         }
         slots.set(slot, convert(item));
+        rawSlots.set(slot, item);
         stateId = newStateId;
         return true;
     }
 
     synchronized void setCursor(ItemStack item) {
         cursor = convert(item);
+        rawCursor = item;
+    }
+
+    @Override
+    public synchronized List<ItemView> itemViews() {
+        ItemParser itemParser = requireParser();
+        List<ItemView> out = new ArrayList<>(rawSlots.size());
+        for (ItemStack raw : rawSlots) {
+            out.add(itemParser.parse(raw));
+        }
+        return List.copyOf(out);
+    }
+
+    @Override
+    public synchronized ItemView cursorView() {
+        return requireParser().parse(rawCursor);
+    }
+
+    private ItemParser requireParser() {
+        if (parser == null) {
+            throw new IllegalStateException("window " + id + " has no registries, so items cannot be parsed");
+        }
+        return parser;
     }
 
     synchronized void markClosed() {
