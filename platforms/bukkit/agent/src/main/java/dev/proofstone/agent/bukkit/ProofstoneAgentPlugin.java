@@ -30,7 +30,7 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     PROTOCOL,
                     PlatformDetector.detect(this::classPresent),
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    Arrays.asList("command", "players"));
+                    Arrays.asList("command", "players", "config", "reload"));
             server = new AgentServer(config, health, new BukkitGame(new MainThreadScheduler(this)));
             server.start();
             getLogger().info("Proofstone agent listening on port " + server.port());

@@ -31,4 +31,22 @@ public interface Game {
 
     /** Applies the present fields of a {@code PATCH} body (spec §2) all at once, or none of them. */
     void patch(String name, Map<String, Object> changes, long timeoutMs);
+
+    /**
+     * The value at a dotted config path of a plugin (spec §2). Throws {@code PLUGIN_NOT_FOUND} for an unknown
+     * plugin and {@code CONFIG_PATH_NOT_FOUND} for a path with no value.
+     */
+    Object pluginConfig(String plugin, String path, long timeoutMs);
+
+    /**
+     * Sets a dotted config path and saves the plugin's {@code config.yml}. The first patch since the last restore
+     * snapshots the file first (ADR-0002).
+     */
+    void patchPluginConfig(String plugin, String path, Object value, long timeoutMs);
+
+    /** Writes the snapshot back and reloads the plugin. Does nothing when nothing was patched. */
+    void restorePluginConfig(String plugin, long timeoutMs);
+
+    /** Reloads one plugin: runs {@code hookCommand} as the console when given, else disables and enables it. */
+    void reloadPlugin(String plugin, String hookCommand, long timeoutMs);
 }

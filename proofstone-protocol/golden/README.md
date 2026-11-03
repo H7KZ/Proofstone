@@ -60,6 +60,8 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `plugins/config-read` | `GET /v1/plugins/{id}/config?path=` reads the patched value (v1.1) |
 | `plugins/config-restore` | `POST /v1/plugins/{id}/config/restore` restores the snapshot, reply `{}` (v1.1) |
 | `plugins/config-read-after-restore` | the same path reads its original value `hi` after restore (v1.1) |
+| `plugins/reload` | `POST /v1/plugins/{id}/reload` with no body: the plugin is disabled and enabled, reply `{}` (v1.1, T-M2-03) |
+| `plugins/reload-hook` | the same route with `proofstone-reload-command` (`reload.json`): the named console command is the hook, reply `{}` (v1.1, T-M2-03) |
 | `ticks/read` | `GET /v1/ticks`: global counter, `<integer>` because it varies (v1.1) |
 | `ticks/await` | `POST /v1/ticks/await` with `{n: 1}` replies with the counter (v1.1) |
 | `events/subscribe` | `POST /v1/events/subscribe` for `PlayerJoinEvent` replies `{probeId}` (v1.1) |
@@ -67,17 +69,22 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `log/read` | `GET /v1/log?since=0&minLevel=WARN`: one record with a stack trace (v1.1) |
 | `players/open-anvil` | `players/read-after-give` with an open anvil window: `openWindow` in `player-state.json` (v1.1) |
 
-**Pending cases (T-M2-01).** The rows from `world/block-get` to `players/open-anvil` are in
+**Pending cases.** The rows from `world/block-get` to `ticks/await`, and `players/open-anvil`, are in
 `GoldenContractTest` (this module) only. They are **not** in the agent's replay lists yet: not in
-`AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list. T-M2-02 and T-M2-03 add each
-one to those lists when the endpoint is served. Two cases need a setup the replay must provide:
+`AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list. T-M2-02 adds each one to those
+lists when its endpoint is served. The config and reload cases were served by T-M2-03 and are in the lists. Two
+cases need a setup the replay must provide:
 
 - `events/poll` names the probe `probe-1`. The M2-02 replay must subscribe to `PlayerJoinEvent` first and
   make the agent's probe id `probe-1`, or change this case's path to the id it uses.
 - `players/open-anvil` needs the test to open an anvil before the read. Replay it after `players/read-after-give`.
 
 The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01). The agent's `PROTOCOL` constant
-matches it.
+matches it. T-M2-03 added the `config` and `reload` capabilities to it. `reload.json` is additive, so the
+protocol stays at `1.1`.
+
+The config cases use the conformance fixture plugin (`platforms/bukkit/fixture`, plugin `proofstone-fixture`,
+`greeting: hi`). The contract test copies its jar into the container.
 
 ## Adding a case
 
