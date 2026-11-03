@@ -58,6 +58,25 @@ class WindowModel implements WindowView {
         cursor = convert(item);
     }
 
+    /**
+     * Takes the player's 36 slots from a closing container into slots 9..44 of this (window 0) model. While a
+     * container is open the server syncs inventory changes to it, not to window 0, and it does not resend them on
+     * close; the vanilla client avoids the staleness by sharing one inventory between menus. The items are what the
+     * server sent, so this is not a prediction. Returns false when this model is not synced or the tail is short.
+     */
+    synchronized boolean adoptPlayerSlots(List<SlotStack> containerSlots) {
+        int first = containerSlots.size() - PLAYER_SLOTS;
+        if (slots == null || first < 0 || slots.size() < 9 + PLAYER_SLOTS) {
+            return false;
+        }
+        for (int i = 0; i < PLAYER_SLOTS; i++) {
+            slots.set(9 + i, containerSlots.get(first + i));
+        }
+        return true;
+    }
+
+    private static final int PLAYER_SLOTS = 36;
+
     synchronized void markClosed() {
         closed = true;
     }
