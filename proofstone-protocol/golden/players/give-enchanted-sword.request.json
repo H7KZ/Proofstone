@@ -1,1 +1,1 @@
-{"method":"POST","path":"/v1/players/Alex/give","body":{"type":"minecraft:diamond_sword","amount":1,"name":"Blade","enchants":{"minecraft:sharpness":32767}}}
+{"method":"POST","path":"/v1/players/Alex/give","body":{"type":"minecraft:diamond_sword","amount":1,"name":"Blade","enchants":{"minecraft:sharpness":255}}}

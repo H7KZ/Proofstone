@@ -40,7 +40,7 @@ a `POST /v1/players/Alex/reset`:
 2. `players/give-enchanted-sword`
 3. `players/read-after-give`
 
-The fixture spawn is `world` at `(0.5, 64.0, 0.5)`. The harness's test world must match it (T-M1-05).
+The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred. The harness sets the world spawn to `(0, 63, 0)` and puts a stone block there, so the reset lands the player on it; the contract test does this in setup (T-M1-05).
 
 ## Cases
 
@@ -50,12 +50,13 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`. The harness's test world mus
 | `health/unauthorised` | 401 without a token |
 | `players/not-found` | 404 `PLAYER_NOT_FOUND` for an unknown player |
 | `players/empty-inventory` | reset state: empty inventory, no cursor, no open window |
-| `players/give-enchanted-sword` | give with an enchant level of 32767, which is never clamped |
+| `players/give-enchanted-sword` | give with enchant level 255. Paper 26.3 stores at most 255 and reads larger levels back as 255 (docs/platforms/paper.md); the agent never clamps, so the server's value is the truth |
 | `players/read-after-give` | the same item read back, enchant intact |
 | `command/reply` | console command output |
 
 ## Adding a case
 
 1. Add both files under the endpoint folder.
-2. Add the case to the list in `GoldenContractTest`, and to its schema table.
+2. Add the case to the list in `GoldenContractTest`, to `CASES` in the agent's `AgentContractIT` (T-M1-05, in order),
+   and to its schema table.
 3. Keep the new case valid against `schemas/`. Bump the protocol version if the schema changes (AGENTS.md §3).

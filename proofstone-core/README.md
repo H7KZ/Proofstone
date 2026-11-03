@@ -24,7 +24,9 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
 - `dev.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).
 - `dev.proofstone.core.await.AwaitTimeoutException`: thrown on timeout, carries description, elapsed time and last observations.
 - `dev.proofstone.core.host.PaperHost`: `start(cell, options)` boots one pinned Paper container, copies the agent and artefacts into `/plugins`, awaits `Done (` plus agent health, and returns it ready. `command(String)` runs a setup command through the agent; `health()`, `logs()` and `close()`.
-- `PaperHost.gameHost()` and `gamePort()`: where a client driver joins.
+- `PaperHost.gameHost()` and `gamePort()`: where a client driver joins. `agentToken()`: the bearer token for the agent
+  (harness code only, never logged). `PaperHostOptions.withDebugPorts(true)` publishes the agent port for host-side tests
+  (T-M1-05).
 - `dev.proofstone.core.host.PaperHostOptions`, `Eula`, `LogBuffer`, `PaperHostException`: options, the EULA gate (`PROOFSTONE_ACCEPT_EULA=true`), the log buffer for repro bundles, and the failure type (message includes the log tail).
 
 Java tags come from `java-rules` (first match wins). A row's `java:` field overrides them. A version that matches no rule is an error.

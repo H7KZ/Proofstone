@@ -291,6 +291,11 @@ public final class PaperHost implements AutoCloseable {
         return container.getMappedPort(GAME_PORT);
     }
 
+    /** The bearer token the agent accepts. Harness code sends it; it is random per server and never logged. */
+    public String agentToken() {
+        return token;
+    }
+
     /** The published agent port, or fails when debug mode is off. */
     public int debugAgentPort() {
         if (!options.debugPorts()) {

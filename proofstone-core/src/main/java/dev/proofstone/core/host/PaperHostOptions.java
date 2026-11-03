@@ -41,6 +41,11 @@ public record PaperHostOptions(
                 agentTimeout, apply, debugPorts);
     }
 
+    public PaperHostOptions withDebugPorts(boolean debug) {
+        return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout, agentTimeout,
+                applyGameRules, debug);
+    }
+
     public PaperHostOptions withAgentTimeout(Duration timeout) {
         return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout, timeout,
                 applyGameRules, debugPorts);

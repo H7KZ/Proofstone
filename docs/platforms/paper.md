@@ -57,6 +57,13 @@
 - **Game rules are snake_case from 26.1.** `randomTickSpeed` is `random_tick_speed`, `doDaylightCycle` is
   `advance_time`, `doWeatherCycle` is `advance_weather`, `doMobSpawning` is `spawn_mobs`. The old names fail with
   `Incorrect argument for command`. `PaperHost` picks the set by Minecraft major version (`GameRules`).
+- **Enchant levels are capped at 255 by the server.** `addUnsafeEnchantment` with 255, 256, 1000 or 32767 all read
+  back as 255 on Paper 26.3, in every stack. The agent passes levels through, so the server's value is the truth.
+  The golden give case uses 255 for this reason (T-M1-05).
+- **Bukkit spawn locations are block corners.** `getSpawnLocation()` returns whole coordinates, so a teleport to it
+  stands the player on a corner. `reset` centres on the block (x and z + 0.5), which gives the golden `(0.5, 64.0, 0.5)`.
+- **Flat worlds spawn underground.** The default flat spawn on 26.3 is about `y -60`. The contract test sets the spawn to
+  `(0, 63, 0)` with `setworldspawn`, and puts a stone block there, so the reset position is solid ground (T-M1-05).
 - `PaperHost.command` used to send `"timeoutMs": null`, which the agent rejects; it now omits null fields.
 - **Second join from one address fails with `Connection throttled!`.** Paper refuses a reconnect within 4 s
   (`connection-throttle` in `bukkit.yml`). `PaperHost` copies a `bukkit.yml` with `connection-throttle: -1` into

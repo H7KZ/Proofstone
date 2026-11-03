@@ -86,7 +86,7 @@ class GoldenContractTest {
 
         PlayerState state = JSON.treeToValue(response.at("/body/data"), PlayerState.class);
 
-        assertThat(state.inventory().get("0").enchants()).containsEntry("minecraft:sharpness", 32767);
+        assertThat(state.inventory().get("0").enchants()).containsEntry("minecraft:sharpness", 255);
     }
 
     private static String read(String caseId, String part) throws IOException {
