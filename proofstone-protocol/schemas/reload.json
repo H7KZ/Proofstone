@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/reload.json",
+  "title": "Plugin reload request (POST /v1/plugins/{id}/reload)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. The body is optional. Without it the agent disables and enables the plugin. With proofstone-reload-command the agent runs that console command as the plugin's declared reload hook instead. The reply is config.json#/$defs/empty. Added in protocol 1.1 (T-M2-03), additive: no existing schema changes.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "proofstone-reload-command": { "type": "string", "minLength": 1 }
+  }
+}

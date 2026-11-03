@@ -1,1 +1,1 @@
-{"status":200,"body":{"ok":true,"data":{"agentVersion":"<string>","protocol":"1.1","platform":"paper","mcVersion":"<string>","capabilities":["command","players"]}}}
+{"status":200,"body":{"ok":true,"data":{"agentVersion":"<string>","protocol":"1.1","platform":"paper","mcVersion":"<string>","capabilities":["command","players","config","reload"]}}}

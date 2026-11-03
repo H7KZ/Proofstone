@@ -25,6 +25,8 @@ class SchemaValidationTest {
                 Arguments.of("block.json#/$defs/write", ProtocolExamples.BLOCK_WRITE),
                 Arguments.of("config.json#/$defs/patch", ProtocolExamples.CONFIG_ENTRY),
                 Arguments.of("config.json#/$defs/read", ProtocolExamples.CONFIG_ENTRY),
+                Arguments.of("reload.json", "{\"proofstone-reload-command\":\"fixture-reload\"}"),
+                Arguments.of("reload.json", "{}"),
                 Arguments.of("ticks.json", ProtocolExamples.TICKS),
                 Arguments.of("event.json", ProtocolExamples.EVENT),
                 Arguments.of("log-record.json#/$defs/page", ProtocolExamples.LOG_PAGE)
@@ -60,6 +62,8 @@ class SchemaValidationTest {
                 Arguments.of("block.json#/$defs/write", ProtocolExamples.BLOCK_WRITE.replace("\"facing\":\"west\"", "\"Facing\":\"west\"")),
                 Arguments.of("config.json#/$defs/patch", "{\"path\":\"greeting\"}"),
                 Arguments.of("config.json#/$defs/patch", "{\"path\":\"bad path\",\"value\":1}"),
+                Arguments.of("reload.json", "{\"proofstone-reload-command\":\"\"}"),
+                Arguments.of("reload.json", "{\"command\":\"fixture-reload\"}"),
                 Arguments.of("ticks.json", "{\"global\":-1}"),
                 Arguments.of("event.json", ProtocolExamples.EVENT.replace("\"Alex\"", "[\"Alex\"]")),
                 Arguments.of("event.json", ProtocolExamples.EVENT.replace("\"tick\":1200", "\"tick\":\"1200\"")),
