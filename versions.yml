@@ -1,0 +1,29 @@
+# Source of truth for the Testificate version matrix. Spec: docs/specs/versions-yml.md
+# SEED DATA: rows below are the cells exercised by the 2026-11-03 prototype. Pins marked "TODO" are filled by
+# the version-watch workflow (card T-M3-01). Do not hand-edit pins once automation exists.
+schema: 1
+
+java-rules:            # first match wins; verify in T-M3-02
+  - { range: "<=1.16.5",          image: java8 }
+  - { range: "1.17.x",            image: java16 }
+  - { range: ">=1.18 <1.20.5",    image: java17 }
+  - { range: ">=1.20.5 <26",      image: java21 }
+  - { range: ">=26",              image: java25 }
+
+drivers:
+  mcpl:            { library: "org.geysermc.mcprotocollib:protocol", version: "26.3-2", protocol: "26.3" }
+  mineflayer-ref:  { library: "mineflayer", version: "4.39.0", max-native: "26.1" }
+  viaproxy:        { image: "ghcr.io/viaversion/viaproxy", digest: TODO }
+
+platforms:
+  paper:
+    host: { image: "itzg/minecraft-server", digest: TODO }
+    rows:
+      - { mc: "1.18.2",  build: 388, sha256: TODO, status: experimental, observed: "prototype 8/8" }
+      - { mc: "1.21.11", build: 132, sha256: TODO, status: experimental, observed: "prototype 8/8" }
+      - { mc: "26.1.2",  build: 74,  sha256: TODO, status: experimental, observed: "prototype 8/8 (mineflayer 26.1)" }
+      - { mc: "26.3",    build: TODO, sha256: TODO, status: experimental, observed: "prototype 8/8 via ViaBackwards" }
+  folia:
+    host: { image: "itzg/minecraft-server", digest: TODO }
+    rows:
+      - { mc: "1.21.11", build: 14, sha256: TODO, status: experimental, observed: "client oracle OK, RCON oracle unusable" }

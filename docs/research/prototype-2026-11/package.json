@@ -1,0 +1,10 @@
+{
+  "name": "disenchantment-e2e-prototype",
+  "private": true,
+  "description": "Throwaway prototype: Paper in Docker + mineflayer bot + RCON. Not wired into Maven.",
+  "scripts": { "e2e": "node e2e.js" },
+  "dependencies": {
+    "mineflayer": "4.39.0",
+    "rcon-client": "4.2.5"
+  }
+}

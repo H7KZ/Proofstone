@@ -1,0 +1,48 @@
+name: Task card
+description: One unit of work for an AI agent or human (see docs/ai/workflow.md)
+title: "T-Mx-NN · <short imperative title>"
+labels: ["card"]
+body:
+  - type: dropdown
+    id: tier
+    attributes:
+      label: tier
+      options: [haiku, sonnet, opus]
+    validations: { required: true }
+  - type: input
+    id: depends
+    attributes: { label: depends, placeholder: "T-M1-01, T-M1-02 or —" }
+    validations: { required: true }
+  - type: input
+    id: modules
+    attributes: { label: modules, placeholder: "platforms/bukkit/agent" }
+    validations: { required: true }
+  - type: input
+    id: adrs
+    attributes: { label: adrs, placeholder: "0002, 0007" }
+  - type: input
+    id: specs
+    attributes: { label: specs, placeholder: "specs/agent-protocol.md §2" }
+  - type: dropdown
+    id: testfirst
+    attributes: { label: test-first, options: ["yes", "no"] }
+  - type: textarea
+    id: goal
+    attributes: { label: Goal }
+    validations: { required: true }
+  - type: textarea
+    id: do
+    attributes: { label: Do }
+    validations: { required: true }
+  - type: textarea
+    id: dont
+    attributes: { label: "Don't" }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes: { label: Acceptance, description: "Checkbox list of verifiable statements" }
+    validations: { required: true }
+  - type: textarea
+    id: verify
+    attributes: { label: Verify, description: "Exact commands" }
+    validations: { required: true }

@@ -1,0 +1,9 @@
+.gradle/
+build/
+.idea/
+*.iml
+out/
+node_modules/
+.DS_Store
+docs/research/prototype-2026-11/plugins/
+docs/research/prototype-2026-11/server-*.log

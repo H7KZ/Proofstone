@@ -1,0 +1,28 @@
+# Paper
+
+## Host
+- Image `itzg/minecraft-server:<javaTag>` with `TYPE=PAPER`, `VERSION=<mc>` and `PAPER_BUILD=<pinned>`.
+- Java tags as observed: `java17` for 1.18.2, `java21` for 1.21.11, `java25` for 26.1.2 and 26.3.
+  Versions up to 1.16.5 need `java8`; verify on card T-M3-02.
+- The Paper download API is `https://fill.papermc.io/v3/projects/paper`.
+- Ready when the log shows `Done (` **and** the agent's `/v1/health` returns OK.
+
+## Agent notes
+- Bukkit API only. Paper-specific extras are detected at runtime.
+- Item syntax in commands changed at 1.20.5, from NBT `{Enchantments:[…]}` to components
+  `[enchantments={…}]`. The agent builds items through the Bukkit API, so tests never see that change.
+
+## Capabilities
+`NMS`, `DATAPACKS`, `BUKKIT_EVENTS`, `CONSOLE`.
+
+## Gotchas
+- **RCON truncates long SNBT** with `...`. On 26.1, `data get entity <p> Inventory` was cut before the
+  enchant list. Never use RCON as an oracle. (Prototype, 2026-11-03.)
+- A flat world with no generator settings logs `No key layers in MapLike[{}]` at ERROR on 1.21.11 and
+  later. This is vanilla noise and goes on the allowlist.
+- After `closeWindow`, the client inventory was intermittently stale for more than 500 ms on 1.18.2.
+  Always await the expected state.
+- The anvil result slot fills about one tick after both inputs are placed. Await slot 2; never read it
+  straight away.
+- Disenchantment-style plugins put the result on the cursor themselves (`setItemOnCursor`). The driver
+  must handle a cursor that is not empty after a result click.
