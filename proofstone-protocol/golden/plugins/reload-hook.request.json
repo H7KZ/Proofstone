@@ -1,0 +1,1 @@
+{"method":"POST","path":"/v1/plugins/proofstone-fixture/reload","body":{"proofstone-reload-command":"fixture-reload"}}
