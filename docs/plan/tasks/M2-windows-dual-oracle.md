@@ -134,8 +134,9 @@ Lessons that change how M2 cards should be done:
 - Use `/reload` (the whole-server reload).
 
 **Acceptance.**
-- [ ] A patch → read → restore → read round trip on the conformance fixture plugin returns the original
-  value.
+- [x] A patch → read → restore → read round trip on the conformance fixture plugin returns the original
+  value. (Evidence: `:platforms:bukkit:agent:integrationTest`, `AgentContractIT` 14 tests, 0 failures, 0 skipped;
+  `plugins/config-patch` → `config-read` (hello) → `config-restore` → `config-read-after-restore` (hi), real Paper 26.3.)
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:integrationTest`

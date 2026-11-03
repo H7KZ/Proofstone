@@ -34,7 +34,7 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     PROTOCOL,
                     PlatformDetector.detect(this::classPresent),
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    Arrays.asList("command", "players", "world", "events", "log", "ticks"));
+                    Arrays.asList("command", "players", "config", "reload", "world", "events", "log", "ticks"));
             EventProbes probes = new EventProbes(this, ticks);
             server = new AgentServer(config, health,
                     new BukkitGame(new MainThreadScheduler(this), probes, logs, ticks));

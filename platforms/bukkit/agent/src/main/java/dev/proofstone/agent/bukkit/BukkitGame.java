@@ -41,6 +41,7 @@ public final class BukkitGame implements Game {
     private final EventProbes probes;
     private final LogBuffer logs;
     private final TickCounter ticks;
+    private final PluginConfigs configs = new PluginConfigs();
 
     public BukkitGame(Scheduler scheduler, EventProbes probes, LogBuffer logs, TickCounter ticks) {
         this.scheduler = scheduler;
@@ -207,6 +208,35 @@ public final class BukkitGame implements Game {
             if (op != null) {
                 player.setOp(op);
             }
+            return null;
+        }, timeoutMs);
+    }
+
+    @Override
+    public Object pluginConfig(String plugin, String path, long timeoutMs) {
+        return MainThread.call(scheduler, () -> configs.read(plugin, path), timeoutMs);
+    }
+
+    @Override
+    public void patchPluginConfig(String plugin, String path, Object value, long timeoutMs) {
+        MainThread.call(scheduler, () -> {
+            configs.patch(plugin, path, value);
+            return null;
+        }, timeoutMs);
+    }
+
+    @Override
+    public void restorePluginConfig(String plugin, long timeoutMs) {
+        MainThread.call(scheduler, () -> {
+            configs.restore(plugin);
+            return null;
+        }, timeoutMs);
+    }
+
+    @Override
+    public void reloadPlugin(String plugin, String hookCommand, long timeoutMs) {
+        MainThread.call(scheduler, () -> {
+            configs.reload(plugin, hookCommand);
             return null;
         }, timeoutMs);
     }

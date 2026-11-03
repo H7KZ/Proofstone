@@ -59,11 +59,16 @@ listOf("integrationTestCompileClasspath", "integrationTestRuntimeClasspath").for
 // The contract test boots the real agent jar, built by shadowJar and never committed (AGENTS.md §3).
 val agentJar = layout.buildDirectory.file("libs/agent-all.jar")
 
+// The conformance fixture plugin (T-M2-03) is built from platforms/bukkit/fixture, never committed.
+val fixtureJar = rootProject.layout.projectDirectory.file("platforms/bukkit/fixture/build/libs/proofstone-fixture.jar")
+
 tasks.named<Test>("integrationTest") {
     javaLauncher.set(toolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
     dependsOn(tasks.named("shadowJar"))
+    dependsOn(":platforms:bukkit:fixture:jar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.get().asFile.absolutePath)
+    systemProperty("proofstone.fixtureJar", fixtureJar.asFile.absolutePath)
 }
 
 // AGENTS.md §3: bundled libraries are relocated so they never clash with the server's own copies.

@@ -32,6 +32,14 @@ setup writes: give, reset and PATCH.
     open window;
   - `PATCH /players/{name}` with any of `level`, `exp` (0–1), `gamemode`, `location` (`world`, `x`, `y`, `z`, and
     optional `yaw`, `pitch`), `op`, reply `{}`. All fields are checked before any is applied.
+  - `GET /plugins/{id}/config?path=a.b`, reply `{path, value}`. Unknown plugin: `PLUGIN_NOT_FOUND`; no value at the
+    path: `CONFIG_PATH_NOT_FOUND`;
+  - `PATCH /plugins/{id}/config` with `{path, value}`, reply `{}`. The first patch since the last restore snapshots
+    `config.yml` (its bytes), then sets the value and saves;
+  - `POST /plugins/{id}/config/restore`, reply `{}`. Writes the snapshot back and reloads the plugin. Nothing
+    patched: a no-op;
+  - `POST /plugins/{id}/reload`, optional body `{proofstone-reload-command}`, reply `{}`. Runs the named console
+    command as the plugin's hook, or disables and enables the plugin. Never `/reload`.
 - Error codes: `UNAUTHORIZED` 401, `PLAYER_NOT_FOUND` 404, `INVALID_REQUEST` 400, `UNKNOWN_KEY` 400,
   `TIMEOUT` 504, `NOT_FOUND` 404, `METHOD_NOT_ALLOWED` 405, `INVENTORY_FULL` 409, `INTERNAL` 500. The last five
   are additions within v1, not yet in the spec table.
@@ -51,7 +59,8 @@ setup writes: give, reset and PATCH.
 - `./gradlew :platforms:bukkit:agent:test`: auth, config, platform probes, the envelope over real HTTP,
   protocol round trips, `MainThread` timeouts, and the golden cases in `proofstone-protocol/golden`
   (`health/*`, `command/reply`, `players/not-found`, `players/empty-inventory`, and `players/give-enchanted-sword`
-  then `players/read-after-give` in order), replayed by `GoldenContractTest` through `GoldenShape`, a Java 8 twin
+  then `players/read-after-give` in order; `plugins/config-patch`, `config-read`, `config-restore`,
+  `config-read-after-restore` in order; `plugins/reload` and `reload-hook`), replayed by `GoldenContractTest` through `GoldenShape`, a Java 8 twin
   of `GoldenMatcher`. `ItemBuilderTest` checks key resolution and `UNKNOWN_KEY` with the Bukkit registries alone.
   `BukkitGame` on a live server (reset, PATCH, enchantment levels) needs a real server, so it is covered by the
   T-M1-05 contract test, not here. Test-only dependencies: `spigot-api` (no transitives), Guava 17.0 and

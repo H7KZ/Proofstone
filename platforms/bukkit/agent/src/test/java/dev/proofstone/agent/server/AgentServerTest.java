@@ -104,8 +104,8 @@ class AgentServerTest {
         AgentHttp.Response response = http.send("GET", "/v1/health", BEARER, null);
 
         assertThat(response.status).isEqualTo(200);
-        // command, players (M1) and world, events, log, ticks (M2, T-M2-02).
-        assertThat(MAPPER.readTree(response.body).at("/data/capabilities").size()).isEqualTo(6);
+        // command, players (M1), config, reload (T-M2-03) and world, events, log, ticks (T-M2-02).
+        assertThat(MAPPER.readTree(response.body).at("/data/capabilities").size()).isEqualTo(8);
     }
 
     @Test
@@ -148,5 +148,33 @@ class AgentServerTest {
         assertThat(http.send("GET", "/v1/players/Alex/reset", BEARER, null).status).isEqualTo(405);
         assertThat(http.send("POST", "/v1/players/Alex", BEARER, "{}").status).isEqualTo(405);
         assertThat(http.send("POST", "/v1/players/Alex/nothing", BEARER, "{}").status).isEqualTo(404);
+    }
+
+    @Test
+    void configPatchNeedsPathAndValueAndNoOtherField() throws IOException {
+        assertThat(http.send("PATCH", "/v1/plugins/proofstone-fixture/config", BEARER,
+                "{\"path\":\"greeting\"}").status).isEqualTo(400);
+        AgentHttp.Response typo = http.send("PATCH", "/v1/plugins/proofstone-fixture/config", BEARER,
+                "{\"path\":\"greeting\",\"value\":\"x\",\"vaule\":1}");
+        assertThat(typo.status).isEqualTo(400);
+        assertThat(MAPPER.readTree(typo.body).at("/error/code").asText()).isEqualTo("INVALID_REQUEST");
+    }
+
+    @Test
+    void configReadNeedsAPathQueryAndAKnownPlugin() throws IOException {
+        assertThat(http.send("GET", "/v1/plugins/proofstone-fixture/config", BEARER, null).status).isEqualTo(400);
+        AgentHttp.Response unknown = http.send("GET", "/v1/plugins/nobody/config?path=greeting", BEARER, null);
+        assertThat(unknown.status).isEqualTo(404);
+        assertThat(MAPPER.readTree(unknown.body).at("/error/code").asText()).isEqualTo("PLUGIN_NOT_FOUND");
+    }
+
+    @Test
+    void reloadRejectsAnUnknownBodyFieldAndTheWrongMethod() throws IOException {
+        assertThat(http.send("GET", "/v1/plugins/proofstone-fixture/reload", BEARER, null).status).isEqualTo(405);
+        assertThat(http.send("POST", "/v1/plugins/proofstone-fixture/reload", BEARER,
+                "{\"reloadCommand\":\"x\"}").status).isEqualTo(400);
+        assertThat(http.send("POST", "/v1/plugins/proofstone-fixture/reload", BEARER,
+                "{\"proofstone-reload-command\":\"\"}").status).isEqualTo(400);
+        assertThat(http.send("POST", "/v1/plugins/proofstone-fixture/unknown", BEARER, "{}").status).isEqualTo(404);
     }
 }

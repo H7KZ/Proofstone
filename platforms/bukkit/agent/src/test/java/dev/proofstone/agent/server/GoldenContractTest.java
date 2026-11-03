@@ -50,7 +50,18 @@ class GoldenContractTest {
                 "health/unauthorised",
                 "command/reply",
                 "players/not-found",
-                "players/empty-inventory");
+                "players/empty-inventory",
+                "plugins/reload",
+                "plugins/reload-hook");
+    }
+
+    /** The config cases only make sense in order: the patch sets the value, the read sees it, the restore undoes it. */
+    @Test
+    void configPatchRestoreMatchesTheGoldenCases() throws IOException {
+        replay("plugins/config-patch");
+        replay("plugins/config-read");
+        replay("plugins/config-restore");
+        replay("plugins/config-read-after-restore");
     }
 
     @ParameterizedTest

@@ -60,6 +60,8 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `plugins/config-read` | `GET /v1/plugins/{id}/config?path=` reads the patched value (v1.1) |
 | `plugins/config-restore` | `POST /v1/plugins/{id}/config/restore` restores the snapshot, reply `{}` (v1.1) |
 | `plugins/config-read-after-restore` | the same path reads its original value `hi` after restore (v1.1) |
+| `plugins/reload` | `POST /v1/plugins/{id}/reload` with no body: the plugin is disabled and enabled, reply `{}` (v1.1, T-M2-03) |
+| `plugins/reload-hook` | the same route with `proofstone-reload-command` (`reload.json`): the named console command is the hook, reply `{}` (v1.1, T-M2-03) |
 | `ticks/read` | `GET /v1/ticks`: global counter, `<integer>` because it varies (v1.1) |
 | `ticks/await` | `POST /v1/ticks/await` with `{n: 1}` replies with the counter (v1.1) |
 | `events/subscribe` | `POST /v1/events/subscribe` for `PlayerJoinEvent` replies `{probeId}` (v1.1) |
@@ -74,12 +76,17 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 - `players/open-anvil` needs the test to open an anvil before the read. It is still pending (openWindow, not in
   T-M2-02), and replays after `players/read-after-give`.
 
-**Pending cases.** The `plugins/config-*` cases (T-M2-03) and `players/open-anvil` are in `GoldenContractTest` (this
-module) only. They are **not** in the agent's replay lists yet: not in `AgentContractIT.CASES`, and not in the agent's
-`GoldenContractTest` case list. T-M2-03 and the openWindow card add each one when the endpoint is served.
+**Pending cases.** Only `players/open-anvil` is in `GoldenContractTest` (this module) only: it is not in the agent's
+replay lists yet (not in `AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list). The openWindow
+card adds it when the endpoint is served. Every other case is served and replayed.
 
-The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01), and its capabilities now include the M2 groups
-`world`, `events`, `log` and `ticks` (T-M2-02). The agent's `PROTOCOL` constant matches it.
+The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01). The agent's `PROTOCOL` constant matches it. T-M2-03
+added the `config` and `reload` capabilities to it and T-M2-02 added `world`, `events`, `log` and `ticks`. `reload.json`
+is additive, so the protocol stays at `1.1`.
+
+The config cases use the conformance fixture plugin (`platforms/bukkit/fixture`, plugin `proofstone-fixture`,
+`greeting: hi`). The contract test copies its jar into the container. On enable the fixture logs one WARNING with an
+exception, which is the record `log/read` expects.
 
 ## Adding a case
 

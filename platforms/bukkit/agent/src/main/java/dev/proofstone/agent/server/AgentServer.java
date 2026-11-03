@@ -37,6 +37,7 @@ public final class AgentServer {
 
     private static final String PLAYERS = "/v1/players";
     private static final String PLAYERS_PREFIX = PLAYERS + "/";
+    private static final String PLUGINS_PREFIX = "/v1/plugins/";
     private static final TypeReference<Map<String, Object>> OBJECT = new TypeReference<Map<String, Object>>() {
     };
 
@@ -99,6 +100,9 @@ public final class AgentServer {
         }
         if (ObservationRoutes.handles(path)) {
             return observation.dispatch(exchange, method, path);
+        }
+        if (path.startsWith(PLUGINS_PREFIX)) {
+            return PluginRoutes.dispatch(game, exchange, method, path.substring(PLUGINS_PREFIX.length()));
         }
         throw new AgentException(404, "NOT_FOUND", "no endpoint at " + path, null);
     }

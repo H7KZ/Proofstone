@@ -62,7 +62,9 @@ class AgentContractIT {
 
     /**
      * Every golden case this agent serves, in the order golden/README.md replays them. The players cases depend on
-     * their order, and events/subscribe must come before the first Alex join so that events/poll sees it.
+     * their order, and events/subscribe must come before the first Alex join so that events/poll sees it. log/read
+     * expects exactly one WARN, which the fixture plugin logs on enable, so it must replay before the reload cases
+     * enable the fixture again.
      */
     static final List<String> CASES = List.of(
             "health/ok",
@@ -76,23 +78,23 @@ class AgentContractIT {
             "events/poll",
             "world/block-get",
             "world/block-put",
-            "ticks/read",
-            "ticks/await");
-
-    /**
-     * Golden cases for M2 endpoints the agent does not serve yet (protocol 1.1). T-M2-03 moves the config cases from
-     * here into {@link #CASES}. players/open-anvil needs openWindow in PlayerState, which T-M2-02 does not cover.
-     * log/read expects one WARN with a stack trace since boot, and no harness step produces that deterministically
-     * (a real run logs only INFO, see the PR). The list is explicit so a new case is never silently ignored:
-     * {@link #everyGoldenCaseIsReplayed()} still fails for any case in neither list.
-     */
-    static final List<String> PENDING = List.of(
+            "log/read",
             "plugins/config-patch",
             "plugins/config-read",
             "plugins/config-restore",
             "plugins/config-read-after-restore",
-            "players/open-anvil",
-            "log/read");
+            "plugins/reload",
+            "plugins/reload-hook",
+            "ticks/read",
+            "ticks/await");
+
+    /**
+     * Golden cases for endpoints the agent does not serve yet. The openWindow card moves players/open-anvil into
+     * {@link #CASES}. The list is explicit so a new case is never silently ignored:
+     * {@link #everyGoldenCaseIsReplayed()} still fails for any case in neither list.
+     */
+    static final List<String> PENDING = List.of(
+            "players/open-anvil");
 
     private final HttpClient http = HttpClient.newHttpClient();
     private PaperHost host;
@@ -104,7 +106,10 @@ class AgentContractIT {
         VersionsCatalog catalog = VersionsCatalog.load(ROOT.resolve("versions.yml"),
                 ROOT.resolve("proofstone-protocol/schemas/versions.schema.json"));
         Cell cell = new CellPlanner(catalog).plan("paper", List.of("latest")).get(0);
+        // The fixture plugin (platforms/bukkit/fixture) carries the config.yml the config cases read and patch.
+        Path fixture = Path.of(System.getProperty("proofstone.fixtureJar"));
         PaperHostOptions options = PaperHostOptions.of(Path.of(System.getProperty("proofstone.agentJar")), true)
+                .withArtefacts(fixture.getParent(), List.of(fixture.getFileName().toString()))
                 .withDebugPorts(true);
         host = PaperHost.start(cell, options);
         // golden/README.md: the reset lands Alex on (0.5, 64.0, 0.5). The spawn is block (0, 63, 0), and a stone block
