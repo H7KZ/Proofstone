@@ -19,4 +19,16 @@ public interface Game {
 
     /** {@code PlayerState} (spec §3). Throws {@code PLAYER_NOT_FOUND} when the player is not online. */
     Map<String, Object> player(String name, long timeoutMs);
+
+    /**
+     * Adds an {@code Item} (spec §3, test API §6) to the player's first empty storage slot. Throws
+     * {@code UNKNOWN_KEY} before anything changes when a material or enchantment is unknown.
+     */
+    void give(String name, Map<String, Object> item, long timeoutMs);
+
+    /** Resets the player to the fixture state (spec §2). Idempotent. */
+    void reset(String name, long timeoutMs);
+
+    /** Applies the present fields of a {@code PATCH} body (spec §2) all at once, or none of them. */
+    void patch(String name, Map<String, Object> changes, long timeoutMs);
 }

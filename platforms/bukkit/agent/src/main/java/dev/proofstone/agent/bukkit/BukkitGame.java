@@ -1,23 +1,26 @@
 package dev.proofstone.agent.bukkit;
 
+import dev.proofstone.agent.game.Fields;
 import dev.proofstone.agent.game.Game;
 import dev.proofstone.agent.protocol.AgentException;
 import dev.proofstone.agent.scheduler.MainThread;
 import dev.proofstone.agent.scheduler.Scheduler;
 import java.lang.reflect.Array;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -29,14 +32,15 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 
 /**
- * Reads game state through the Bukkit 1.8.8 API. Every call runs on the main thread (via {@link MainThread}).
- * Observes only (ADR-0002).
+ * Reads and changes game state through the Bukkit 1.8.8 API. Every call runs on the main thread (via
+ * {@link MainThread}). The write endpoints (give, reset, PATCH) are harness setup, not the act path (ADR-0002).
  */
 public final class BukkitGame implements Game {
 
     private static final String SENDER_NAME = "ProofstoneAgent";
     private static final int ARMOUR_FIRST_SLOT = 36;
-    private static final Map<String, String> ENCHANTMENTS = enchantments();
+    private static final int ARMOUR_SLOTS = 4;
+    private static final List<String> PATCH_FIELDS = Arrays.asList("level", "exp", "gamemode", "location", "op");
 
     private final Scheduler scheduler;
 
@@ -66,14 +70,93 @@ public final class BukkitGame implements Game {
 
     @Override
     public Map<String, Object> player(String name, long timeoutMs) {
-        return MainThread.call(scheduler, () -> {
-            Player player = Bukkit.getPlayerExact(name);
-            if (player == null) {
-                throw new AgentException(404, "PLAYER_NOT_FOUND", "no player named " + name,
+        return MainThread.call(scheduler, () -> state(requirePlayer(name)), timeoutMs);
+    }
+
+    /** Adds the item to the first empty storage slot. The item is built first, so a bad key changes nothing. */
+    @Override
+    public void give(String name, Map<String, Object> item, long timeoutMs) {
+        MainThread.call(scheduler, () -> {
+            Player player = requirePlayer(name);
+            ItemStack stack = ItemBuilder.build(item);
+            PlayerInventory inventory = player.getInventory();
+            int slot = inventory.firstEmpty();
+            if (slot < 0) {
+                throw new AgentException(409, "INVENTORY_FULL", "no empty slot for the item",
                         Collections.singletonMap("name", name));
             }
-            return state(player);
+            inventory.setItem(slot, stack);
+            return null;
         }, timeoutMs);
+    }
+
+    /**
+     * Closes any open window first (the cursor goes back into the inventory), then clears everything the
+     * fixture state must not carry over.
+     */
+    @Override
+    public void reset(String name, long timeoutMs) {
+        MainThread.call(scheduler, () -> {
+            Player player = requirePlayer(name);
+            player.closeInventory();
+            PlayerInventory inventory = player.getInventory();
+            inventory.clear();
+            inventory.setArmorContents(new ItemStack[ARMOUR_SLOTS]);
+            clearOffhand(inventory);
+            player.getOpenInventory().setCursor(null);
+            player.setLevel(0);
+            player.setExp(0f);
+            player.setGameMode(GameMode.SURVIVAL);
+            player.setHealth(player.getMaxHealth());
+            player.teleport(spawn());
+            return null;
+        }, timeoutMs);
+    }
+
+    /** Validates every present field before applying any of them, so a bad field changes nothing. */
+    @Override
+    public void patch(String name, Map<String, Object> changes, long timeoutMs) {
+        MainThread.call(scheduler, () -> {
+            Player player = requirePlayer(name);
+            Fields.onlyFields(changes, PATCH_FIELDS, "patch");
+            Integer level = Fields.integer(changes, "level");
+            if (level != null && level < 0) {
+                throw Fields.invalid("\"level\" must not be negative");
+            }
+            Double exp = Fields.number(changes, "exp");
+            if (exp != null && (exp < 0 || exp > 1)) {
+                throw Fields.invalid("\"exp\" must be between 0 and 1");
+            }
+            GameMode gamemode = gameMode(Fields.optionalText(changes, "gamemode"));
+            Location location = location(player, Fields.optionalObject(changes, "location"));
+            Boolean op = Fields.bool(changes, "op");
+
+            if (level != null) {
+                player.setLevel(level);
+            }
+            if (exp != null) {
+                player.setExp(exp.floatValue());
+            }
+            if (gamemode != null) {
+                player.setGameMode(gamemode);
+            }
+            if (location != null) {
+                player.teleport(location);
+            }
+            if (op != null) {
+                player.setOp(op);
+            }
+            return null;
+        }, timeoutMs);
+    }
+
+    private static Player requirePlayer(String name) {
+        Player player = Bukkit.getPlayerExact(name);
+        if (player == null) {
+            throw new AgentException(404, "PLAYER_NOT_FOUND", "no player named " + name,
+                    Collections.singletonMap("name", name));
+        }
+        return player;
     }
 
     /**
@@ -130,6 +213,59 @@ public final class BukkitGame implements Game {
             return (Collection<? extends Player>) result;
         }
         return Arrays.asList((Player[]) result);
+    }
+
+    /**
+     * Before 1.9 there is no offhand slot, so the method is absent and there is nothing to clear. Reflection
+     * finds it on the newer servers (docs/platforms/paper.md).
+     */
+    private static void clearOffhand(PlayerInventory inventory) {
+        try {
+            PlayerInventory.class.getMethod("setItemInOffHand", ItemStack.class).invoke(inventory, (Object) null);
+        } catch (NoSuchMethodException e) {
+            // Pre-1.9: no offhand.
+        } catch (ReflectiveOperationException e) {
+            throw new AgentException(500, "INTERNAL", "cannot clear the offhand: " + e, null);
+        }
+    }
+
+    /** The main world's spawn, one block up (spec section 2, reset). Bukkit lists the main world first. */
+    private static Location spawn() {
+        return Bukkit.getWorlds().get(0).getSpawnLocation().add(0, 1, 0);
+    }
+
+    /** Null when the body has no game mode. An unknown name is INVALID_REQUEST, never a guess. */
+    private static GameMode gameMode(String name) {
+        if (name == null) {
+            return null;
+        }
+        for (GameMode mode : GameMode.values()) {
+            if (mode.name().equalsIgnoreCase(name)) {
+                return mode;
+            }
+        }
+        throw Fields.invalid("\"gamemode\" must be survival, creative, adventure or spectator");
+    }
+
+    /** Null when the body has no location. Yaw and pitch default to the player's current values. */
+    private static Location location(Player player, Map<String, Object> at) {
+        if (at == null) {
+            return null;
+        }
+        String worldName = Fields.text(at, "world");
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            throw Fields.invalid("no world named " + worldName);
+        }
+        Location current = player.getLocation();
+        Double yaw = Fields.number(at, "yaw");
+        Double pitch = Fields.number(at, "pitch");
+        return new Location(world,
+                Fields.requiredNumber(at, "x"),
+                Fields.requiredNumber(at, "y"),
+                Fields.requiredNumber(at, "z"),
+                yaw == null ? current.getYaw() : yaw.floatValue(),
+                pitch == null ? current.getPitch() : pitch.floatValue());
     }
 
     /** {@code PlayerState} (spec §3). Raw inventory slots: 0–35 storage, 36–39 armour (boots to helmet). */
@@ -214,49 +350,17 @@ public final class BukkitGame implements Game {
         return out;
     }
 
-    /** Levels pass through unchanged (spec §6 of the test API: never clamped). */
+    /** Levels pass through unchanged (test API section 6: never clamped). */
     private static Map<String, Object> enchants(Map<Enchantment, Integer> levels) {
         Map<String, Object> out = new LinkedHashMap<>();
         for (Map.Entry<Enchantment, Integer> level : levels.entrySet()) {
             String legacy = level.getKey().getName();
-            String key = ENCHANTMENTS.get(legacy);
+            String key = Keys.enchantmentKey(legacy);
             if (key == null) {
-                throw new AgentException(400, "UNKNOWN_KEY", "unknown enchantment " + legacy,
-                        Collections.singletonMap("key", legacy));
+                throw Keys.unknownKey(legacy);
             }
             out.put("minecraft:" + key, level.getValue());
         }
         return out;
-    }
-
-    /** Bukkit enchantment names to Minecraft keys, for the 1.8 set. Newer enchantments fail loudly until added. */
-    private static Map<String, String> enchantments() {
-        Map<String, String> table = new HashMap<>();
-        table.put("PROTECTION_ENVIRONMENTAL", "protection");
-        table.put("PROTECTION_FIRE", "fire_protection");
-        table.put("PROTECTION_FALL", "feather_falling");
-        table.put("PROTECTION_EXPLOSIONS", "blast_protection");
-        table.put("PROTECTION_PROJECTILE", "projectile_protection");
-        table.put("OXYGEN", "respiration");
-        table.put("WATER_WORKER", "aqua_affinity");
-        table.put("THORNS", "thorns");
-        table.put("DEPTH_STRIDER", "depth_strider");
-        table.put("DAMAGE_ALL", "sharpness");
-        table.put("DAMAGE_UNDEAD", "smite");
-        table.put("DAMAGE_ARTHROPODS", "bane_of_arthropods");
-        table.put("KNOCKBACK", "knockback");
-        table.put("FIRE_ASPECT", "fire_aspect");
-        table.put("LOOT_BONUS_MOBS", "looting");
-        table.put("DIG_SPEED", "efficiency");
-        table.put("SILK_TOUCH", "silk_touch");
-        table.put("DURABILITY", "unbreaking");
-        table.put("LOOT_BONUS_BLOCKS", "fortune");
-        table.put("ARROW_DAMAGE", "power");
-        table.put("ARROW_KNOCKBACK", "punch");
-        table.put("ARROW_FIRE", "flame");
-        table.put("ARROW_INFINITE", "infinity");
-        table.put("LUCK", "luck_of_the_sea");
-        table.put("LURE", "lure");
-        return table;
     }
 }

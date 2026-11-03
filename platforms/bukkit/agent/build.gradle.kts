@@ -14,6 +14,13 @@ dependencies {
     implementation(platform(libs.jackson.bom))
     implementation(libs.jackson.databind)
 
+    // Key lookups in ItemBuilderTest use the Bukkit static registries, which need no running server.
+    testImplementation(libs.spigot.api) {
+        isTransitive = false
+    }
+    testImplementation(libs.guava)
+    testImplementation(libs.commons.lang)
+
     testImplementation(platform(libs.jackson.bom))
     testImplementation(libs.jackson.databind)
 }
