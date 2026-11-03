@@ -31,4 +31,31 @@ public interface Game {
 
     /** Applies the present fields of a {@code PATCH} body (spec §2) all at once, or none of them. */
     void patch(String name, Map<String, Object> changes, long timeoutMs);
+
+    /** {@code Block} (block.json) at a position. Throws {@code INVALID_REQUEST} for an unknown world. */
+    Map<String, Object> block(String world, int x, int y, int z, long timeoutMs);
+
+    /**
+     * Sets the block to {@code write} ({@code block.json#/$defs/write}) and returns it as read back. An unknown
+     * type or state is {@code UNKNOWN_KEY} before anything changes.
+     */
+    Map<String, Object> setBlock(String world, int x, int y, int z, Map<String, Object> write, long timeoutMs);
+
+    /** Subscribes a read-only MONITOR probe to the event class and returns its {@code probeId}. */
+    String subscribe(String className, long timeoutMs);
+
+    /** Captured events of the probe at or after {@code since}, as {@code {events, next}} (event.json). */
+    Map<String, Object> events(String probeId, long since, long timeoutMs);
+
+    /** Removes the probe and its listener. Throws {@code PROBE_NOT_FOUND} for an unknown id. */
+    void unsubscribe(String probeId, long timeoutMs);
+
+    /** Captured log records since the cursor at or above {@code minLevel}, as {@code {records, next}}. */
+    Map<String, Object> log(long since, String minLevel, long timeoutMs);
+
+    /** The global tick counter, as {@code {global}} (ticks.json). */
+    Map<String, Object> ticks(long timeoutMs);
+
+    /** Waits until {@code n} more global ticks have passed, then returns {@code {global}}. Throws TIMEOUT. */
+    Map<String, Object> awaitTicks(long n, long timeoutMs);
 }

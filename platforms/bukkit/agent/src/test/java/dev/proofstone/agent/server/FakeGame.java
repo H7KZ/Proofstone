@@ -2,8 +2,10 @@ package dev.proofstone.agent.server;
 
 import dev.proofstone.agent.game.Game;
 import dev.proofstone.agent.protocol.AgentException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,11 +19,22 @@ final class FakeGame implements Game {
 
     private static final String KNOWN_TYPE = "minecraft:diamond_sword";
 
+    FakeGame() {
+        Map<String, Object> stone = new LinkedHashMap<>();
+        stone.put("type", "minecraft:stone");
+        stone.put("state", Collections.emptyMap());
+        blocks.put(key("world", 0, 63, 0), stone);
+    }
+
     String lastCommand;
     long lastTimeoutMs = -1;
     Map<String, Object> lastPatch;
     String lastReset;
     private Map<String, Object> item;
+    /** Blocks by {@code world x,y,z}; the fixture stone at (0, 63, 0) matches golden/world/block-get. */
+    private final Map<String, Map<String, Object>> blocks = new HashMap<>();
+    private String probeClass;
+    private long globalTicks;
 
     @Override
     public String command(String command, long timeoutMs) {
@@ -102,7 +115,113 @@ final class FakeGame implements Game {
         }
     }
 
+    @Override
+    public Map<String, Object> block(String world, int x, int y, int z, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        Map<String, Object> block = blocks.get(key(world, x, y, z));
+        if (block == null) {
+            block = new LinkedHashMap<>();
+            block.put("type", "minecraft:air");
+            block.put("state", Collections.emptyMap());
+        }
+        return withPosition(world, x, y, z, block);
+    }
+
+    @Override
+    public Map<String, Object> setBlock(String world, int x, int y, int z, Map<String, Object> write,
+            long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        if (!"minecraft:anvil".equals(write.get("type")) && !"minecraft:stone".equals(write.get("type"))) {
+            throw new AgentException(400, "UNKNOWN_KEY", "unknown key " + write.get("type"),
+                    Collections.singletonMap("key", write.get("type")));
+        }
+        blocks.put(key(world, x, y, z), new LinkedHashMap<>(write));
+        return block(world, x, y, z, timeoutMs);
+    }
+
+    @Override
+    public String subscribe(String className, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        probeClass = className;
+        return "probe-1";
+    }
+
+    /** One canned PlayerJoinEvent once a probe exists (golden/events/poll). */
+    @Override
+    public Map<String, Object> events(String probeId, long since, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        if (probeClass == null || !"probe-1".equals(probeId)) {
+            throw new AgentException(404, "PROBE_NOT_FOUND", "no probe named " + probeId,
+                    Collections.singletonMap("probeId", probeId));
+        }
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("getPlayer", Collections.singletonMap("name", "Alex"));
+        fields.put("getJoinMessage", "Alex joined the game");
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("class", probeClass);
+        event.put("tick", 0);
+        event.put("thread", "Server thread");
+        event.put("fields", fields);
+        Map<String, Object> page = new LinkedHashMap<>();
+        page.put("events", new ArrayList<Object>(Collections.singletonList(event)));
+        page.put("next", 1);
+        return page;
+    }
+
+    @Override
+    public void unsubscribe(String probeId, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        if (probeClass == null || !"probe-1".equals(probeId)) {
+            throw new AgentException(404, "PROBE_NOT_FOUND", "no probe named " + probeId,
+                    Collections.singletonMap("probeId", probeId));
+        }
+        probeClass = null;
+    }
+
+    /** One canned WARN with a stack trace (golden/log/read). */
+    @Override
+    public Map<String, Object> log(long since, String minLevel, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("time", "2026-11-03T12:00:00Z");
+        record.put("level", "WARN");
+        record.put("logger", "Proofstone");
+        record.put("message", "canned");
+        record.put("thrown", "java.lang.IllegalStateException: canned\n\tat Fake.log(FakeGame.java)");
+        Map<String, Object> page = new LinkedHashMap<>();
+        page.put("records", new ArrayList<Object>(Collections.singletonList(record)));
+        page.put("next", 1);
+        return page;
+    }
+
+    @Override
+    public Map<String, Object> ticks(long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        return Collections.<String, Object>singletonMap("global", globalTicks);
+    }
+
+    @Override
+    public Map<String, Object> awaitTicks(long n, long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        globalTicks += n;
+        return Collections.<String, Object>singletonMap("global", globalTicks);
+    }
+
+    private static String key(String world, int x, int y, int z) {
+        return world + " " + x + "," + y + "," + z;
+    }
+
+    private static Map<String, Object> withPosition(String world, int x, int y, int z, Map<String, Object> block) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("world", world);
+        out.put("x", x);
+        out.put("y", y);
+        out.put("z", z);
+        out.putAll(block);
+        return out;
+    }
+
     static List<String> capabilities() {
-        return Arrays.asList("command", "players");
+        return Arrays.asList("command", "players", "world", "events", "log", "ticks");
     }
 }

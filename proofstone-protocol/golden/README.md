@@ -67,17 +67,19 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `log/read` | `GET /v1/log?since=0&minLevel=WARN`: one record with a stack trace (v1.1) |
 | `players/open-anvil` | `players/read-after-give` with an open anvil window: `openWindow` in `player-state.json` (v1.1) |
 
-**Pending cases (T-M2-01).** The rows from `world/block-get` to `players/open-anvil` are in
-`GoldenContractTest` (this module) only. They are **not** in the agent's replay lists yet: not in
-`AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list. T-M2-02 and T-M2-03 add each
-one to those lists when the endpoint is served. Two cases need a setup the replay must provide:
+**Replay order and setup (T-M2-02).** Cases that need setup:
 
-- `events/poll` names the probe `probe-1`. The M2-02 replay must subscribe to `PlayerJoinEvent` first and
-  make the agent's probe id `probe-1`, or change this case's path to the id it uses.
-- `players/open-anvil` needs the test to open an anvil before the read. Replay it after `players/read-after-give`.
+- `events/subscribe` must replay before the first `players/Alex` case, because that case joins Alex. `events/poll`
+  then reads the join: the probe is `probe-1`, the first probe a fresh agent creates.
+- `players/open-anvil` needs the test to open an anvil before the read. It is still pending (openWindow, not in
+  T-M2-02), and replays after `players/read-after-give`.
 
-The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01). The agent's `PROTOCOL` constant
-matches it.
+**Pending cases.** The `plugins/config-*` cases (T-M2-03) and `players/open-anvil` are in `GoldenContractTest` (this
+module) only. They are **not** in the agent's replay lists yet: not in `AgentContractIT.CASES`, and not in the agent's
+`GoldenContractTest` case list. T-M2-03 and the openWindow card add each one when the endpoint is served.
+
+The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01), and its capabilities now include the M2 groups
+`world`, `events`, `log` and `ticks` (T-M2-02). The agent's `PROTOCOL` constant matches it.
 
 ## Adding a case
 

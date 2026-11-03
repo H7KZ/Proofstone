@@ -106,7 +106,8 @@ Lessons that change how M2 cards should be done:
 
 **Acceptance.**
 - [ ] Golden contract tests pass on the newest Paper row.
-- [ ] A probe on `PlayerJoinEvent` captures the client's join with `getPlayer().name`.
+- [x] A probe on `PlayerJoinEvent` captures the client's join with `getPlayer().name`. (Evidence: `AgentContractIT`
+  `events/poll` passes on Paper 26.3; Alex's join is captured with `getPlayer` `{name: Alex}`.)
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:integrationTest`

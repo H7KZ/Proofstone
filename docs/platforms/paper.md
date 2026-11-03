@@ -84,6 +84,12 @@
 - **Menu types** come as a registry int; MCProtocolLib exposes the `ContainerType` enum, which the driver maps to
   `minecraft:` keys (cartography is `minecraft:cartography_table`).
 
+- **`setblock` answers "That position is not loaded" right after boot** when the target chunk is not loaded. The reply
+  is still a normal command reply, not an error, so `PaperHost.command` does not throw. The contract test loads chunk
+  `0 0` with `forceload add 0 0` before it places blocks, and checks the block read back (T-M2-02).
+- **The agent's log buffer sees JUL records only.** A real run after boot logs INFO records (`ProofstoneAgent`, `spark`)
+  and no WARN. Server messages that go through Log4j directly are not captured yet (T-M2-02).
+
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:
 - One suite that boots a cell, joins one client and tears down: about 31 to 32 s (`:conformance:smoke` 2 tests,
