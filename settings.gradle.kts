@@ -27,4 +27,5 @@ include(
     "conformance",
     "drivers:mcpl",
     "platforms:bukkit:agent",
+    "examples:smoke",
 )

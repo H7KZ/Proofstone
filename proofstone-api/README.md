@@ -12,7 +12,13 @@ Public API types for test authors (layer L1, ADR-0001). The only module whose ty
 
 ## Public surface
 
-None yet. Empty in M0; the test API arrives with its card (see [docs/specs/test-api.md](../docs/specs/test-api.md)).
+The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, in `dev.proofstone.api`:
+
+- Annotations: `@Proofstone`, `@Matrix` (repeatable, with `Platform`), `@CellTest` (a JUnit `TestTemplate`).
+- Injected parameters: `Cell`, `Agent` (`command`, `capabilities`) and `Client` (`name`, `command`, `awaitMessage`).
+
+The extension that runs them is `proofstone-core`'s `dev.proofstone.core.junit.ProofstoneExtension`, registered by
+JUnit auto-detection (`junit.jupiter.extensions.autodetection.enabled=true`).
 
 ## How to test
 

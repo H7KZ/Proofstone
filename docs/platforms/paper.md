@@ -58,3 +58,8 @@
   `advance_time`, `doWeatherCycle` is `advance_weather`, `doMobSpawning` is `spawn_mobs`. The old names fail with
   `Incorrect argument for command`. `PaperHost` picks the set by Minecraft major version (`GameRules`).
 - `PaperHost.command` used to send `"timeoutMs": null`, which the agent rejects; it now omits null fields.
+- **Second join from one address fails with `Connection throttled!`.** Paper refuses a reconnect within 4 s
+  (`connection-throttle` in `bukkit.yml`). `PaperHost` copies a `bukkit.yml` with `connection-throttle: -1` into
+  the container, so tests can join one client per test.
+- **A plain player cannot run vanilla `/list`** (`Unknown command`): vanilla commands need op. `/version` and
+  `/plugins` work for everyone. Use the agent (console) for setup commands.
