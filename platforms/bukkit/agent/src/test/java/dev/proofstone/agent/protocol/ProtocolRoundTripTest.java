@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ProtocolRoundTripTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            .setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
 
     static Stream<Arguments> examples() {
         return Stream.of(

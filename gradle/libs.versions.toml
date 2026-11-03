@@ -10,6 +10,9 @@ archunit = "1.5.1"
 mcprotocollib = "26.3-2"
 shadow = "9.6.1"
 json-schema-validator = "1.5.9"
+# Bukkit agent (T-M1-03). 1.8.8 is published only as a snapshot; this timestamped build is frozen and
+# sha256 bc50bbc4d8226d75d0d75460828567b4580841d5987cae5c1d89b321f8ffc071 (spigot-api jar).
+spigot = "1.8.8-R0.1-20160221.082514-43"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -23,6 +26,7 @@ assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 mcprotocollib-protocol = { module = "org.geysermc.mcprotocollib:protocol", version.ref = "mcprotocollib" }
+spigot-api = { module = "org.spigotmc:spigot-api", version.ref = "spigot" }
 
 # Build-logic only. Not on any runtime classpath.
 shadow-gradle-plugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadow" }

@@ -13,6 +13,8 @@ dependencyResolutionManagement {
         mavenCentral()
         // MCProtocolLib is published only here (ADR-0004).
         maven("https://repo.opencollab.dev/main/")
+        // Spigot API 1.8.8 is published only as a snapshot here (T-M1-03). The version is a frozen timestamped build.
+        maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
     }
 }
 

@@ -1,0 +1,5 @@
+name: ProofstoneAgent
+version: 0.1.0
+main: dev.proofstone.agent.bukkit.ProofstoneAgentPlugin
+folia-supported: true
+load: STARTUP
