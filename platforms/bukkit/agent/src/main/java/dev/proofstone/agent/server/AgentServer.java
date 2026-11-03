@@ -75,7 +75,7 @@ public final class AgentServer {
                 chain.doFilter(exchange);
                 return;
             }
-            write(exchange, 401, error("UNAUTHORISED", "missing or wrong bearer token"));
+            write(exchange, 401, error("UNAUTHORIZED", "missing or wrong bearer token"));
         }
 
         @Override

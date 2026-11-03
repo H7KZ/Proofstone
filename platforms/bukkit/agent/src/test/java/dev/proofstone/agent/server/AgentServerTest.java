@@ -51,6 +51,15 @@ class AgentServerTest {
         assertThat(get("/v1/health", "Bearer nope").status).isEqualTo(401);
     }
 
+    @Test
+    void unauthorisedBodyUsesTheSpecErrorCode() throws IOException {
+        Response response = get("/v1/health", null);
+
+        // Code per agent-protocol.md §2 and golden/health/unauthorised (American spelling).
+        assertThat(MAPPER.readTree(response.body).at("/error/code").asText()).isEqualTo("UNAUTHORIZED");
+        assertThat(MAPPER.readTree(response.body).at("/ok").asBoolean()).isFalse();
+    }
+
     private Response get(String path, String authorization) throws IOException {
         URL url = new URL("http://127.0.0.1:" + server.port() + path);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
