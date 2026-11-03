@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests"
+  ],
+  "timezone": "Etc/UTC",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "automerge": false,
+  "packageRules": [
+    {
+      "description": "JUnit, Testcontainers and Jackson move together.",
+      "matchPackageNames": ["/^org\\.junit/", "/^org\\.testcontainers/", "/^com\\.fasterxml\\.jackson/"],
+      "groupName": "junit, testcontainers and jackson"
+    },
+    {
+      "description": "MCProtocolLib is the primary driver: its own PR, reviewed at sonnet tier (ADR-0010).",
+      "matchPackageNames": ["org.geysermc.mcprotocollib:protocol"],
+      "labels": ["driver-bump"],
+      "automerge": false
+    },
+    {
+      "description": "Never automerge a driver or proofstone-core (AGENTS.md §3).",
+      "matchFileNames": ["drivers/**", "proofstone-core/**"],
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Driver pins in versions.yml (ADR-0008).",
+      "managerFilePatterns": ["/^versions\\.yml$/"],
+      "matchStrings": [
+        "mcpl:\\s*\\{ library: \"(?<depName>[^\"]+)\",\\s*version: \"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "maven",
+      "registryUrlTemplate": "https://repo.opencollab.dev/main/"
+    },
+    {
+      "customType": "regex",
+      "description": "Pinned image digests in versions.yml (ADR-0008). TODO digests are skipped.",
+      "managerFilePatterns": ["/^versions\\.yml$/"],
+      "matchStrings": [
+        "image: \"(?<depName>[^\"]+)\",\\s*digest: \"(?<currentDigest>sha256:[a-f0-9]{64})\""
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}
