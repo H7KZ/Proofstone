@@ -52,5 +52,5 @@ M5 can run in parallel with M4 once M3 is done.
 - **M1 card fixes** (T-M1-01 to T-M1-11): real paths for schemas and golden files, module creation steps
   and README duty, the `integrationTest` convention owner (T-M1-07; T-M1-08 now depends on it), the
   `Await` class name required by `archTest`, the core loader's new dependencies, the `smoke`
-  placeholder and CI header to replace, and an open issue on the SNAPSHOT-only Spigot API 1.8.8 against
-  `lintVersions`.
+  placeholder and CI header to replace, and the Spigot API 1.8.8 pinned by its frozen timestamped build
+  (a SNAPSHOT would fail `lintVersions`).

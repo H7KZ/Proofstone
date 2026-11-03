@@ -94,10 +94,12 @@ In addition, agent `/v1/health` and `/v1/players/{n}` must match their golden fi
   Spigot repository to `dependencyResolutionManagement` in `settings.gradle.kts`, because
   `FAIL_ON_PROJECT_REPOS` forbids repositories in module builds. The coordinate and version go in
   `gradle/libs.versions.toml`.
-- **Open issue:** `spigot-api` 1.8.8 is published only as `1.8.8-R0.1-SNAPSHOT`, and `lintVersions` (T-M0-03)
-  has no allowlist and rejects `SNAPSHOT`. Do not weaken the lint rule silently. Either obtain the jar
-  from a pinned, checksummed source, or extend `VersionLint` with one named exception in a separate
-  commit and record why in the PR. If neither is clear, stop and ask.
+- **Pin the Spigot API by its timestamped build.** `spigot-api` 1.8.8 is published only as a SNAPSHOT, and
+  `lintVersions` (T-M0-03) rejects `SNAPSHOT`. The snapshots repo (`hub.spigotmc.org/nexus/content/repositories/snapshots`)
+  holds one frozen build, `1.8.8-R0.1-20160221.082514-43`. Use that exact version in the catalog: it is
+  immutable and contains no `SNAPSHOT`. Record the jar's SHA-256 in the PR, and add Gradle dependency
+  verification if it works with the build. Do not add a `VersionLint` exception. If the repo no longer
+  serves that build, stop and ask (the fallback is a mirrored, checksummed jar).
 - Use `com.sun.net.httpserver.HttpServer`. JSON comes from the shaded, relocated library chosen in T-M1-01.
 - Read the token and port from environment variables. Without a token, the agent logs SEVERE and refuses
   to start the HTTP server.
