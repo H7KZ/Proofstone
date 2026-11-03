@@ -70,6 +70,19 @@
   the container, so tests can join one client per test.
 - **A plain player cannot run vanilla `/list`** (`Unknown command`): vanilla commands need op. `/version` and
   `/plugins` work for everyone. Use the agent (console) for setup commands.
+- **MCProtocolLib does not answer a teleport.** The server ignores a client's packets, block use included, until it
+  gets `ServerboundAcceptTeleportationPacket` for the last `ClientboundPlayerPositionPacket` (26.3 carries the position
+  and rotation in it too). The mcpl driver sends it, and `ServerboundPlayerLoadedPacket` once after the first position
+  (T-M2-04). Without it `useBlock` silently does nothing.
+- **Chunks load only around players.** `setblock` before anyone joined fails with `That position is not loaded` and
+  the test would continue on an empty world. Join first, build the world, then `tp` the player.
+- **Offline join position is not the world spawn.** The first join landed at about `(9.5, -60, 1.5)` even after
+  `setworldspawn`. Teleport the player explicitly.
+- **Anvils fall and floor grindstones break** when placed over air; put a block below (T-M2-04).
+- **Window slot counts**: a container window's `ContainerSetContent` lists the container's own slots then the player's
+  36 (chest 27+36, anvil and grindstone 3+36), while window 0 has 46 (crafting, armour, inventory, offhand).
+- **Menu types** come as a registry int; MCProtocolLib exposes the `ContainerType` enum, which the driver maps to
+  `minecraft:` keys (cartography is `minecraft:cartography_table`).
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:
