@@ -12,7 +12,8 @@ Host-side engine (layer L2): cell lifecycle, waits, oracles and verdicts. Depend
 
 ## Public surface
 
-None yet. Empty in M0.
+- `dev.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).
+- `dev.proofstone.core.await.AwaitTimeoutException`: thrown on timeout, carries description, elapsed time and last observations.
 
 ## How to test
 
