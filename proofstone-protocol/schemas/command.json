@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/command.json",
+  "title": "Console command (POST /v1/command)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. Setup only; the reply is best-effort output, never an oracle (ADR-0002). The request body is the top-level object; the reply is $defs/reply.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command"],
+  "properties": {
+    "command": { "type": "string", "minLength": 1 },
+    "timeoutMs": { "type": "integer", "minimum": 1 }
+  },
+  "$defs": {
+    "reply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw"],
+      "properties": { "raw": { "type": "string" } }
+    }
+  }
+}

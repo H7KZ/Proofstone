@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/envelope.json",
+  "title": "Response envelope",
+  "description": "Spec: docs/specs/agent-protocol.md §1. Success carries data; failure carries error. Never both.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "data": {},
+    "error": { "$ref": "error.json" }
+  },
+  "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+  "then": { "required": ["data"], "not": { "required": ["error"] } },
+  "else": { "required": ["error"], "not": { "required": ["data"] } }
+}

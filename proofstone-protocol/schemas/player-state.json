@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/player-state.json",
+  "title": "PlayerState (GET /v1/players/{name})",
+  "description": "Spec: docs/specs/agent-protocol.md §3. Inventory keys are the Bukkit raw player-inventory slot indexes, documented per pack.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "uuid", "level", "exp", "gamemode", "health", "location"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+    "level": { "type": "integer", "minimum": 0 },
+    "exp": { "type": "number", "minimum": 0 },
+    "gamemode": { "enum": ["survival", "creative", "adventure", "spectator"] },
+    "health": { "type": "number", "minimum": 0 },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["world", "x", "y", "z", "yaw", "pitch"],
+      "properties": {
+        "world": { "type": "string", "minLength": 1 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" },
+        "yaw": { "type": "number" },
+        "pitch": { "type": "number" }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[0-9]+$" },
+      "additionalProperties": { "$ref": "item.json" }
+    },
+    "cursor": { "oneOf": [{ "$ref": "item.json" }, { "type": "null" }] },
+    "openWindow": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "title", "slots"],
+          "properties": {
+            "type": { "type": "string", "minLength": 1 },
+            "title": { "type": "string" },
+            "slots": { "type": "array", "items": { "oneOf": [{ "$ref": "item.json" }, { "type": "null" }] } }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/item.json",
+  "title": "Item (wire protocol v1)",
+  "description": "Spec: docs/specs/agent-protocol.md §3; test API item spec: docs/specs/test-api.md §6. Levels are never clamped.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "amount"],
+  "$defs": {
+    "namespacedKey": { "type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$" },
+    "enchantments": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/namespacedKey" },
+      "additionalProperties": { "type": "integer" }
+    }
+  },
+  "properties": {
+    "type": { "$ref": "#/$defs/namespacedKey" },
+    "amount": { "type": "integer", "minimum": 1 },
+    "enchants": { "$ref": "#/$defs/enchantments" },
+    "storedEnchants": { "$ref": "#/$defs/enchantments" },
+    "name": { "type": ["string", "null"] },
+    "lore": { "type": "array", "items": { "type": "string" } },
+    "damage": { "type": "integer", "minimum": 0 },
+    "repairCost": { "type": "integer", "minimum": 0 },
+    "pdc": { "type": "object" },
+    "raw": { "type": "string", "description": "Server-native serialisation, read-only. Always present on reads; optional on give." }
+  }
+}
