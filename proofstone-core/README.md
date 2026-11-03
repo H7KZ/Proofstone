@@ -23,6 +23,9 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
 
 Java tags come from `java-rules` (first match wins). A row's `java:` field overrides them. A version that matches no rule is an error.
 
+- `dev.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).
+- `dev.proofstone.core.await.AwaitTimeoutException`: thrown on timeout, carries description, elapsed time and last observations.
+
 ## How to test
 
 `./gradlew :proofstone-core:test`
