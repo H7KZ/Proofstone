@@ -7,3 +7,5 @@ node_modules/
 .DS_Store
 docs/research/prototype-2026-11/plugins/
 docs/research/prototype-2026-11/server-*.log
+# Java sources in build-logic packages named "build" are source, not Gradle output.
+!**/src/**/build/
