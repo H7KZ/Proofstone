@@ -5,6 +5,9 @@ plugins {
 
 dependencies {
     implementation(project(":proofstone-api"))
+    // The JUnit extension (T-M1-10); its annotations live in proofstone-api.
+    implementation(platform(libs.junit.bom))
+    implementation(libs.junit.jupiter.api)
     implementation(project(":proofstone-protocol"))
     implementation(platform(libs.jackson.bom))
     implementation(libs.jackson.databind)

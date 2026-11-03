@@ -25,6 +25,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -42,6 +43,7 @@ public final class PaperHost implements AutoCloseable {
     private static final int GAME_PORT = 25565;
     private static final String AGENT_URL = "http://127.0.0.1:" + AGENT_PORT;
     private static final int TAIL_LINES = 60;
+    private static final String BUKKIT_YML = "settings:\n  connection-throttle: -1\n";
     private static final String SEED = "1234567";
     // Absent optional fields are omitted: the agent rejects an explicit "timeoutMs": null (found in T-M1-08).
     private static final ObjectMapper JSON = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -120,6 +122,9 @@ public final class PaperHost implements AutoCloseable {
         // The image syncs /plugins into /data/plugins at startup. Copy in, never bind-mount (ADR-0005).
         copyPlugin(options.agentJar());
         artefacts.forEach(this::copyPlugin);
+        // Tests join several clients from one address within seconds; Paper's default 4 s connection throttle
+        // would refuse the second ("Connection throttled!"). Copied in, like every input (T-M1-10).
+        container.withCopyToContainer(Transferable.of(BUKKIT_YML), "/data/bukkit.yml");
         // Players join over the game port, so it is the one port always published (T-M1-08).
         container.addExposedPort(GAME_PORT);
         if (options.debugPorts()) {
