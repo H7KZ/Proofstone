@@ -194,11 +194,12 @@ final class McplSession implements ClientSession {
         if (target == null) {
             return " id=" + content.getContainerId() + " (no such window, ignored)";
         }
-        target.setContent(content.getStateId(), content.getItems(), content.getCarriedItem());
         if (target != playerInventory) {
-            // The cursor belongs to the player, not to a window.
+            // The cursor belongs to the player, not to a window. It is set before setContent bumps the stateId a
+            // click waits on, so a test thread that sees the new stateId never reads the previous cursor.
             playerInventory.setCursor(content.getCarriedItem());
         }
+        target.setContent(content.getStateId(), content.getItems(), content.getCarriedItem());
         return " id=" + target.id() + " stateId=" + content.getStateId() + " slots=" + content.getItems().length;
     }
 
