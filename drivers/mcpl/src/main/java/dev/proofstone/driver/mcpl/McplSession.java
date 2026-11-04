@@ -232,7 +232,7 @@ final class McplSession implements ClientSession {
     /** Marks a window closed and hands its player slots back to window 0 (see {@link WindowModel#adoptPlayerSlots}). */
     private void retire(WindowModel window) {
         if (!window.isClosed()) {
-            playerInventory.adoptPlayerSlots(window.slots());
+            playerInventory.adoptPlayerSlots(window.slots(), window.rawSlots());
             // Closing a menu makes the server return or drop the carried stack and it sends no cursor packet for
             // that, so the cursor is empty from here on (the vanilla client clears it the same way).
             playerInventory.setCursor(null);
@@ -447,7 +447,9 @@ final class McplSession implements ClientSession {
 
         @Override
         public ItemView cursorView() {
-            return model.cursorView();
+            // The cursor is the player's, so it comes from the player model: a cursor packet never reaches the
+            // container's own model.
+            return playerInventory.cursorView();
         }
     }
 

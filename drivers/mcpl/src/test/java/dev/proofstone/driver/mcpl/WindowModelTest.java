@@ -68,11 +68,13 @@ class WindowModelTest {
         WindowModel chest = new WindowModel(2, "minecraft:generic_9x1", "Chest");
         chest.setContent(1, chestSlots, null);
 
-        assertThat(inventory.adoptPlayerSlots(chest.slots())).isTrue();
+        assertThat(inventory.adoptPlayerSlots(chest.slots(), chest.rawSlots())).isTrue();
         assertThat(inventory.slots().get(9 + 5)).isEqualTo(new SlotStack(7, 2));
+        // The ItemView reads come from the raw stacks, so adoption must update them too (the T-M2-09 fix).
+        assertThat(inventory.rawSlots().get(9 + 5)).isEqualTo(chestSlots[3 + 5]);
         assertThat(inventory.slots()).hasSize(46);
-        assertThat(new WindowModel(0, "minecraft:inventory", "Inventory").adoptPlayerSlots(chest.slots()))
-                .as("unsynced window 0 is not invented").isFalse();
+        assertThat(new WindowModel(0, "minecraft:inventory", "Inventory").adoptPlayerSlots(chest.slots(),
+                chest.rawSlots())).as("unsynced window 0 is not invented").isFalse();
     }
 
     @Test
