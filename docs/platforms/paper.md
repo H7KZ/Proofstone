@@ -117,6 +117,14 @@
 - **While a container is open the server syncs inventory changes to it, not to window 0.** The driver copies the
   container's player slots back on close; read `Client.inventory()` after closing a window (T-M2-07).
 
+- **An anvil rename costs one level on 26.3** when the item has no earlier work (C05). The client types the name with
+  `ServerboundRenameItemPacket`; the result slot updates with no click sync, so await slot 2. Taking the result needs the
+  level, so set it first. Combining a sword with a book (C06) costs more and depends on the enchantment, so the scenario
+  takes the cost from the server and checks both oracles agree on it.
+- **Closing a container is what hands the player's slots back.** Until then the client's window 0 is stale for the
+  inventory moves made in the container. The driver copies the container's player slots back on close, and the
+  `ItemView` read must take those raw stacks too (T-M2-09 fix). Cursor reads come from the player, not the container.
+
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:
 - One suite that boots a cell, joins one client and tears down: about 31 to 32 s (`:conformance:smoke` 2 tests,
