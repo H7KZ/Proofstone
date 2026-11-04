@@ -131,4 +131,8 @@ The API is not frozen here; T-M2-99 reconciles this spec with the code and freez
 - `DualAssert` waits through `dev.proofstone.api.spi.OracleWaiter` (a service from `proofstone-core`) because the API
   module cannot depend on `Await`. A failure is `DisagreeException` when exactly one oracle matched, `AssertionError`
   starting `FAIL` when neither did, and `AssertionError` starting `ORACLE MISSING` when an oracle never answered.
-
+- T-M2-08: `@Isolation(Isolation.Mode.PER_CLASS|PER_TEST)` is in the API; `Agent.plugin(name)` gives a `PluginHandle`
+  with `config(path)` and `patchConfig(path, value)`. Before each test whose method declares a `Client`, a fresh
+  client joins and the player is reset; after each test the log since the pre-test cursor is checked (WARN and
+  worse, minus the allowlist), patched configs are restored and the client disconnects. `assertNoErrorsLogged`,
+  the world fixture region reset and the leak detector are not done yet.

@@ -4,3 +4,5 @@ main: dev.proofstone.fixture.FixturePlugin
 commands:
   fixture-reload:
     description: Reload hook named by the agent's reload endpoint (T-M2-03). Does nothing.
+  fixture-error:
+    description: Logs one SEVERE record with a stack trace, for tests that provoke a server error (T-M2-08).

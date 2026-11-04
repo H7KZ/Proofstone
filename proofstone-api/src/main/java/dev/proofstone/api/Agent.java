@@ -16,6 +16,9 @@ public interface Agent {
     /** The handle for an online player by name. */
     PlayerHandle player(String name);
 
+    /** The config handle of an installed plugin. Patches are undone after each test. */
+    PluginHandle plugin(String name);
+
     /** The capabilities the agent reported at readiness. */
     List<String> capabilities();
 }

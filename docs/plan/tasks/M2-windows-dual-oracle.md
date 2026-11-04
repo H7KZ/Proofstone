@@ -299,7 +299,7 @@ Lessons that change how M2 cards should be done:
 - Swallow lifecycle exceptions.
 
 **Acceptance.**
-- [ ] A test that modifies config doesn't affect the next test, proved by an example pair.
+- [x] A test that modifies config doesn't affect the next test, proved by an example pair (`LifecycleE2E`: test one patches `greeting` and dirties player; test two sees `hi`, empty inventory, level 0; real Paper 26.3 run, 0 skipped).
 
 **Verify.**
 `./gradlew :examples:smoke:test`

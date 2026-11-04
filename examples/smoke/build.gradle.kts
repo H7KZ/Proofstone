@@ -10,6 +10,8 @@ dependencies {
     testRuntimeOnly(project(":proofstone-core"))
     // The mcpl client driver, found through ServiceLoader. It needs Java 21+, hence the toolchain below.
     testRuntimeOnly(project(":drivers:mcpl"))
+    // Runs the nested error-log scenario and inspects its failure (ErrorLogFailsTheTestE2E).
+    testImplementation(libs.junit.platform.launcher)
 }
 
 // MCProtocolLib is Java 21+ only, and the driver runs in the test JVM (ADR-0004).
@@ -26,7 +28,19 @@ tasks.named("check") {
 
 val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
 
+// The fixture plugin (platforms/bukkit/fixture) is the plugin under test for the lifecycle examples. It is built,
+// never committed, and copied under this project because plugin globs are relative to the project directory.
+val fixturePlugins = layout.buildDirectory.dir("fixture-plugins")
+val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
+    dependsOn(":platforms:bukkit:fixture:jar")
+    from(rootProject.layout.projectDirectory.file("platforms/bukkit/fixture/build/libs/proofstone-fixture.jar"))
+    into(fixturePlugins)
+}
+
 tasks.test {
+    dependsOn(copyFixturePlugin)
+    // The nested scenarios fail on purpose. Only ErrorLogFailsTheTestE2E runs them, through the JUnit launcher.
+    exclude("**/nested/**")
     // The agent jar is built, never committed (AGENTS.md §3).
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)

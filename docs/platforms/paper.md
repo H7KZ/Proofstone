@@ -124,3 +124,9 @@ Measured from the JUnit XML suite times of one serial run, image already pulled:
 - `PaperHostIT` (4 tests, three of which boot a server) takes about 91 s.
 - A cold first run adds the image pull and the Paper jar download. CI `smoke` took about 3.5 min including Gradle
   setup.
+- **The per-test log check reads WARN and worse, from the agent's JUL handler only (T-M2-08).** Log4j-native lines
+  never reach it, so a Paper-internal ERROR may go unseen. The fixture plugin logs one WARN at enable, before any
+  test's log cursor is taken, so it never fails a test. A test that reloads the fixture logs it again and must
+  expect that. The allowlist (`ErrorLogGuard.ALLOWLIST`) holds only the `No key layers` noise.
+- **The client inventory from the driver lists empty slots as `air x0` items**, so "empty" means all items
+  `isEmpty()`, not an empty list. The agent's `inventory` omits empty slots.

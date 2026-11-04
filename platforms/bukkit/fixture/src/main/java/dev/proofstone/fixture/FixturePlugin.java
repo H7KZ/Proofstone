@@ -18,5 +18,12 @@ public final class FixturePlugin extends JavaPlugin {
                 new IllegalStateException("fixture log record"));
         // The hook a reload request names. It does nothing: the reply shows the command was found and ran.
         getCommand("fixture-reload").setExecutor((sender, command, label, args) -> true);
+        // Logs one SEVERE record with a stack trace on demand, so a test can provoke a server error (T-M2-08).
+        // Its arguments become the message, which lets the test find its own record.
+        getCommand("fixture-error").setExecutor((sender, command, label, args) -> {
+            getLogger().log(Level.SEVERE, "fixture provoked error: " + String.join(" ", args),
+                    new IllegalStateException("fixture error"));
+            return true;
+        });
     }
 }
