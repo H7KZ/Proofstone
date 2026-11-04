@@ -105,7 +105,8 @@ Lessons that change how M2 cards should be done:
 - Let a listener change an event or call any setter.
 
 **Acceptance.**
-- [ ] Golden contract tests pass on the newest Paper row.
+- [x] Golden contract tests pass on the newest Paper row. (Evidence, T-M2-99: `:platforms:bukkit:agent:integrationTest`
+  on Paper 26.3, `AgentContractIT` tests="21" skipped="0" failures="0".)
 - [x] A probe on `PlayerJoinEvent` captures the client's join with `getPlayer().name`. (Evidence: `AgentContractIT`
   `events/poll` passes on Paper 26.3; Alex's join is captured with `getPlayer` `{name: Alex}`.)
 
@@ -204,8 +205,9 @@ Lessons that change how M2 cards should be done:
 - [x] The chest move scenario (C04) passes in a loop 20 times without flaking. `McplClicksIT` moves a stack 20
   times inside one run (each step asserts the server-synced cursor and slots) and passed in 3 of 3 full runs on
   Paper 26.3. The C04 conformance scenario itself does not exist yet; this is the driver-level loop.
-- [ ] After a result click that puts an item on the cursor (plugin `setItemOnCursor`), `cursor()` shows
-  that item. Not done: no fixture plugin sets the cursor yet. Verified instead that `cursor()` follows the vanilla
+- [x] After a result click that puts an item on the cursor (plugin `setItemOnCursor`), `cursor()` shows
+  that item. (Evidence, T-M2-99: `AnvilDisenchantE2E` asserts `anvil.cursor().is("enchanted_book")` after the result click,
+  and passes on Paper 26.3, skipped=0 failures=0.) At T-M2-05 this was: no fixture plugin sets the cursor yet. Verified instead that `cursor()` follows the vanilla
   cursor after pick-up, split and place clicks, and that it empties on close. Do the plugin case with C-scenarios.
 
 **Verify.**
@@ -378,9 +380,12 @@ Lessons that change how M2 cards should be done:
 - Change behaviour in this card.
 
 **Acceptance.**
-- [ ] The exit criterion is demonstrated.
-- [ ] The spec and the implementation match.
-- [ ] The API baseline is committed.
+- [x] The exit criterion is demonstrated. (Evidence: ROADMAP, "M2 review (T-M2-99)"; every suite run once in a row on
+  Paper 26.3 with `skipped="0" failures="0"` in the XML.)
+- [x] The spec and the implementation match. (`docs/specs/test-api.md` section 8 now lists what is frozen, what is
+  experimental, the deviations from the sketches and the post-v0 backlog; no code changed.)
+- [x] The API baseline is committed. (`proofstone-api/api-baseline.txt`, guarded by `ApiSurfaceTest`; declared the v0
+  contract in the spec and the module README.)
 
 **Verify.**
 `./gradlew check :conformance:run :examples:disenchantment-anvil:test`

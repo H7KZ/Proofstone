@@ -1,6 +1,8 @@
 # Spec: public test API (`proofstone-api`) v0
 
-Status: draft. It is frozen at the end of M2. After that, changes need a card marked `api-change`.
+Status: **v0 frozen at T-M2-99** (end of M2). The frozen contract is `proofstone-api/api-baseline.txt`, guarded by
+`ApiSurfaceTest`; section 8 lists what is frozen, what is experimental, and where the sketches in sections 3 to 5 go
+beyond v0. After the freeze, a change to the baseline needs a card marked `api-change` and a reviewed baseline diff.
 
 ## 1. Annotations
 
@@ -114,31 +116,62 @@ The results are `PASS`, `FAIL`, `INVALID`, `VACUOUS`, `FLAKY`, `DISAGREE` and `S
 `PASS` and `SKIPPED` with an allowed reason count as green. The `SKIPPED` reasons are: capability
 missing, Docker unavailable, EULA not accepted, or the cell was not selected.
 
-## 8. v0 implementation notes (T-M2-07, not frozen)
+## 8. The v0 contract (frozen at T-M2-99)
 
-The API is not frozen here; T-M2-99 reconciles this spec with the code and freezes it. Differences found so far:
+**Rule.** The sketches in sections 1 to 6 describe the target API. The v0 contract is exactly what
+`proofstone-api/api-baseline.txt` lists (every public member of `dev.proofstone.api`). `ApiSurfaceTest` fails on any
+difference, so adding, removing or changing a member needs a card marked `api-change`, a regenerated baseline
+(`./gradlew :proofstone-api:test -Dproofstone.updateApiBaseline=true`) and a reviewed diff. There is no separate version
+constant: the baseline file plus this status line are the v0 marker. A card that breaks v0 must say so and bump to v1.
 
+### 8.1 Frozen in v0
+- Annotations `@Proofstone`, `@Matrix` (with `Matrices`), `@CellTest`, `@Isolation` and `Platform`.
+- Injected `Cell` (`platform`, `version`, `javaTag`, `bridged`), `Agent` and `Client`.
+- `PlayerHandle` (`name`, `reset`, `level`, `give`, `state`, `awaitState`), `PluginHandle` (`name`, `config`,
+  `patchConfig`), `Events` and `EventProbe`.
+- `Window` (`type`, `title`, `slots`, `slot`, `awaitSlot`, `cursor`, `click`, `moveFromInventory`,
+  `dropCursorIntoFirstEmptySlot`, `rename`, `close`), `Click`, `Item` (build), `ItemView` (read), `BlockPos`, `Position`.
+- `DualAssert` (`item`, `level`) and `DisagreeException`.
+
+### 8.2 Experimental: in the baseline, but allowed to change in a v0.x step
+Every item here is marked in the Javadoc or this list, and a change still needs a reviewed baseline diff.
+- `dev.proofstone.api.spi.OracleWaiter` and its records: a service provider interface for `proofstone-core`, not for
+  test authors.
+- `DualAssert.serverOnlyReasons()` and `ServerOnly.reason()`: a stop-gap until reports exist (M4).
+- Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`,
+  `openWindow`). Test authors read them and never construct them. Accessors that exist today are frozen.
+- `CapturedEvent.getInt` (accepts `xpCost` and `getXpCost`) and `fields()`: the value types are whatever the agent's
+  JSON serialisation gives. Typed accessors may be added; the existing ones stay.
+- `Window.close()` returns after sending the close. It does not yet await the server close or the inventory resync,
+  as the sketch in section 4 says. Waiting longer is a compatible change.
+
+### 8.3 Deviations from the sketches (the baseline wins)
 - `Click`: `NUMBER_1` to `NUMBER_9` and `Click.number(n)` replace `NUMBER_KEY(n)`, because an enum has no parameters.
+- `Agent.command(String)` returns the raw output as a `String`, not a `CommandResult`. Never assert on it.
+- `Cell` has no `capabilities()` or `driver()`; `Agent.capabilities()` is the capability list.
 - `Item` has no `repairCost` or `pdc` setter, and `ItemView.repairCost()` reads 0 from the agent, because the agent's
   `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only).
-- `PlayerHandle` has `reset`, `level`, `give`, `state`, `awaitState`. No `gamemode`, no `PlayerState.location` and no
-  `openWindow` yet. `Agent.world()`, `events()`, `plugin()`, `awaitTicks`, `assertNoErrorsLogged`, `logLines` and
-  `Clients`, `Topology` are not on the public API yet.
-- T-M2-10: `Agent.events()` exists: `Events.subscribe(className)` gives an `EventProbe` (`awaitOne()`, `events()`,
-  `close()`). A `CapturedEvent` has `className`, `tick`, `thread`, `fields` (getter name to value) and
-  `getInt("xpCost")`, which also accepts `getXpCost`; an unknown getter is an error, never a default.
-- `Client` has `openBlock` (top face), `inventory`, `position`, `awaitPosition` and `experienceLevel()`. The spec
-  sketch called the last one `experience()`; it is named `experienceLevel()` because it returns the level only, not
-  the points or the progress bar (T-M2-09). It throws until the server's first experience sync. `DualAssert.level`
-  reads it on the client side. `Window.rename(String)` types an anvil's rename box and throws for any other window.
-- `Window.close()` returns after sending the close. It does not await the server close or the inventory resync.
+- `Client.experienceLevel()` replaces `experience()` (it returns the level only) and throws until the server's first
+  experience sync. `Client` has `openBlock` (top face), `inventory`, `position`, `awaitPosition`.
+- `Events.subscribe(className)` gives an `EventProbe` (`awaitOne`, `events`, `close`). A `CapturedEvent` has
+  `className`, `tick`, `thread`, `fields` and `getInt`; an unknown getter is an error, never a default.
 - `DualAssert.item` offers `inInventory`, `amount`, `enchants`, `storedEnchants`, `name` and `serverOnly(reason).pdc`.
-  `serverOnly` records its reason in `DualAssert.serverOnlyReasons()` until a report exists.
-- `DualAssert` waits through `dev.proofstone.api.spi.OracleWaiter` (a service from `proofstone-core`) because the API
-  module cannot depend on `Await`. A failure is `DisagreeException` when exactly one oracle matched, `AssertionError`
-  starting `FAIL` when neither did, and `AssertionError` starting `ORACLE MISSING` when an oracle never answered.
-- T-M2-08: `@Isolation(Isolation.Mode.PER_CLASS|PER_TEST)` is in the API; `Agent.plugin(name)` gives a `PluginHandle`
-  with `config(path)` and `patchConfig(path, value)`. Before each test whose method declares a `Client`, a fresh
-  client joins and the player is reset; after each test the log since the pre-test cursor is checked (WARN and
-  worse, from JUL and the Log4j2 root, minus the allowlist), patched configs are restored and the client disconnects. `assertNoErrorsLogged`,
-  the world fixture region reset and the leak detector are not done yet.
+  A failure is `DisagreeException` when exactly one oracle matched, `AssertionError` starting `FAIL` when neither did,
+  and `AssertionError` starting `ORACLE MISSING` when an oracle never answered. Waits go through `OracleWaiter`.
+- `@Isolation(PER_CLASS|PER_TEST)` exists. Before each test whose method declares a `Client`, a fresh client joins and
+  the player is reset; after it the log since the pre-test cursor is checked (WARN and worse, minus the allowlist),
+  patched configs are restored and the client disconnects.
+
+### 8.4 Not in v0 (post-v0 backlog)
+These appear in the sketches and are **not** part of the contract. Each needs an `api-change` card.
+- `Agent.world()` (`setBlock`, `block`): blocks are placed with `command` today, and the agent has the endpoints.
+- `Agent.plugin(..).reload()`, `Agent.awaitTicks`, `Agent.logLines` and the explicit `Agent.assertNoErrorsLogged()`
+  (the per-test log check runs automatically; the explicit call is not exposed).
+- `PlayerHandle.gamemode`, `PlayerState.location`, `PlayerState.openWindow` and a server view of an open window (the
+  agent has no `openWindow` endpoint, so the chest contents have no server oracle).
+- Experience points and the progress bar (`PlayerHandle.exp`, `Client.experience`).
+- `Item.repairCost`, `Item.pdc`, and a real `ItemView.repairCost`.
+- `Clients` (multi-player) and `Topology` (proxies).
+- Test hygiene: the world fixture region reset and the leak detector (T-M2-08 left them out).
+- `Cell.capabilities()`, `Cell.driver()`, `@Requires` and `Capability`.
+- Verdict reporting (`serverOnlyReasons` is its stand-in).
