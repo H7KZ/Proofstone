@@ -78,9 +78,12 @@
   the container, so tests can join one client per test.
 - **`saveConfig()` rewrites `config.yml`.** Bukkit drops comments and key order on a patch, so the agent snapshots
   the original bytes on the first patch and restore writes those bytes back. It does not re-save. (T-M2-03)
-- **Restore must reload the config before the plugin.** `disablePlugin` and `enablePlugin` re-run `onEnable`, but
-  `getConfig()` keeps the old in-memory values until `reloadConfig()`. The agent calls it first. (T-M2-03, verified on
-  Paper 26.3 by `AgentContractIT` config cases.)
+- **Restore reloads the config, not the plugin.** `getConfig()` keeps the old in-memory values until `reloadConfig()`,
+  so restore writes the snapshot bytes and calls it. It no longer calls `disablePlugin`/`enablePlugin`: Paper closes a
+  disabled plugin's classloader, and a real plugin that loads classes lazily then fails to enable again (Disenchantment
+  6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in `setupConfig`). The
+  fixture plugin only survived because it loads every class on first enable. A plugin that caches config in `onEnable`
+  needs a reload hook. (T-M2-03, changed in T-M2-10.)
 - **A plain player cannot run vanilla `/list`** (`Unknown command`): vanilla commands need op. `/version` and
   `/plugins` work for everyone. Use the agent (console) for setup commands.
 - **MCProtocolLib does not answer a teleport.** The server ignores a client's packets, block use included, until it
