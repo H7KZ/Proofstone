@@ -127,6 +127,13 @@
 - **Closing a container is what hands the player's slots back.** Until then the client's window 0 is stale for the
   inventory moves made in the container. The driver copies the container's player slots back on close, and the
   `ItemView` read must take those raw stacks too (T-M2-09 fix). Cursor reads come from the player, not the container.
+- **Disenchantment 6.5.12 loads and works on Paper 26.3 unchanged** (its newest NMS module is `1.21.R5`; no extra
+  config needed). The anvil result is the plugin's own: the enchanted book is offered in slot 2, taking it leaves the
+  stripped sword in input slot 0 and puts the book on the cursor, and the plugin fires one `PostDisenchantEvent`
+  (`getXpCost`, 13 levels with the default config). A probe reaches the event because the agent loads the class through
+  each plugin's classloader (T-M2-10).
+- **`client.inventory()` is stale while a container window is open.** Check the player's inventory on the client oracle
+  after closing the window; the agent oracle is current at any time (T-M2-10).
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:

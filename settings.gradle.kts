@@ -29,4 +29,5 @@ include(
     "platforms:bukkit:agent",
     "platforms:bukkit:fixture",
     "examples:smoke",
+    "examples:disenchantment-anvil",
 )

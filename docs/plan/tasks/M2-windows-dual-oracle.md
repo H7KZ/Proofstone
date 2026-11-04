@@ -353,7 +353,9 @@ Lessons that change how M2 cards should be done:
 - Add the other scenarios (those go in the M6 dogfood card).
 
 **Acceptance.**
-- [ ] It passes 10 times in a row on the newest Paper row.
+- [x] It passes 10 times in a row on the newest Paper row. (Evidence: 10 consecutive
+  `:examples:disenchantment-anvil:test` runs on paper@26.3 with Disenchantment 6.5.12, each `tests="1" skipped="0"
+  failures="0"` in the XML.)
 
 **Verify.**
 `./gradlew :examples:disenchantment-anvil:test`
