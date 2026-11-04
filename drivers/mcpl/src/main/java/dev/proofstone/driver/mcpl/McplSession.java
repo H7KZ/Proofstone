@@ -44,6 +44,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarActio
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ShiftClickItemAction;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundDisconnectPacket;
 import org.geysermc.mcprotocollib.protocol.data.game.item.HashedStack;
+import org.geysermc.mcprotocollib.protocol.packet.configuration.clientbound.ClientboundRegistryDataPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundDisguisedChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
@@ -81,7 +82,8 @@ final class McplSession implements ClientSession {
     private static final Duration CLICK_WAIT = Duration.ofSeconds(10);
 
     /** The player inventory, window id 0. It lives apart from the open windows (client-driver spec §2). */
-    private final WindowModel playerInventory = new WindowModel(0, "minecraft:inventory", "Inventory");
+    private final ItemRegistries registries = ItemRegistries.forProtocol(McplDriver.PROTOCOL_VERSION);
+    private final WindowModel playerInventory = new WindowModel(0, "minecraft:inventory", "Inventory", registries);
     private final List<WindowModel> opened = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger sequence = new AtomicInteger();
     private volatile double[] position;
@@ -130,9 +132,11 @@ final class McplSession implements ClientSession {
             summary += " " + disconnectReason;
         } else if (packet instanceof ClientboundPlayerPositionPacket move) {
             applyPosition(move);
+        } else if (packet instanceof ClientboundRegistryDataPacket registry) {
+            registries.record(registry);
         } else if (packet instanceof ClientboundOpenScreenPacket open) {
             WindowModel window = new WindowModel(open.getContainerId(), namespaced(open.getType()),
-                    flatten(open.getTitle()));
+                    flatten(open.getTitle()), registries);
             opened.add(window);
             summary += " id=" + window.id() + " " + window.type();
         } else if (packet instanceof ClientboundContainerSetContentPacket content) {
@@ -335,7 +339,7 @@ final class McplSession implements ClientSession {
     }
 
     /** A live view of one window model. */
-    private final class Window implements WindowSession {
+    private final class Window implements WindowSession, ItemViews {
         private final WindowModel model;
 
         Window(WindowModel model) {
@@ -404,6 +408,16 @@ final class McplSession implements ClientSession {
         @Override
         public SlotStack cursor() {
             return playerInventory.cursor();
+        }
+
+        @Override
+        public List<ItemView> itemViews() {
+            return model.itemViews();
+        }
+
+        @Override
+        public ItemView cursorView() {
+            return model.cursorView();
         }
     }
 

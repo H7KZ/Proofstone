@@ -38,10 +38,66 @@ public final class BukkitGame implements Game {
     private static final List<String> PATCH_FIELDS = Arrays.asList("level", "exp", "gamemode", "location", "op");
 
     private final Scheduler scheduler;
+    private final EventProbes probes;
+    private final LogBuffer logs;
+    private final TickCounter ticks;
     private final PluginConfigs configs = new PluginConfigs();
 
-    public BukkitGame(Scheduler scheduler) {
+    public BukkitGame(Scheduler scheduler, EventProbes probes, LogBuffer logs, TickCounter ticks) {
         this.scheduler = scheduler;
+        this.probes = probes;
+        this.logs = logs;
+        this.ticks = ticks;
+    }
+
+    @Override
+    public Map<String, Object> block(String world, int x, int y, int z, long timeoutMs) {
+        return MainThread.call(scheduler, () -> WorldAccess.block(world, x, y, z), timeoutMs);
+    }
+
+    @Override
+    public Map<String, Object> setBlock(String world, int x, int y, int z, Map<String, Object> write,
+            long timeoutMs) {
+        return MainThread.call(scheduler, () -> WorldAccess.setBlock(world, x, y, z, write), timeoutMs);
+    }
+
+    @Override
+    public String subscribe(String className, long timeoutMs) {
+        return MainThread.call(scheduler, () -> probes.subscribe(className), timeoutMs);
+    }
+
+    /** Reads the probe's buffer directly: it is synchronised, so the main thread is not needed. */
+    @Override
+    public Map<String, Object> events(String probeId, long since, long timeoutMs) {
+        return probes.events(probeId, since);
+    }
+
+    @Override
+    public void unsubscribe(String probeId, long timeoutMs) {
+        MainThread.call(scheduler, () -> {
+            probes.unsubscribe(probeId);
+            return null;
+        }, timeoutMs);
+    }
+
+    @Override
+    public Map<String, Object> log(long since, String minLevel, long timeoutMs) {
+        return logs.read(since, minLevel);
+    }
+
+    @Override
+    public Map<String, Object> ticks(long timeoutMs) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("global", ticks.current());
+        return out;
+    }
+
+    /** Waits on the calling thread, not the server thread, so the tick task can keep running. */
+    @Override
+    public Map<String, Object> awaitTicks(long n, long timeoutMs) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("global", ticks.await(n, timeoutMs));
+        return out;
     }
 
     @Override
@@ -328,7 +384,7 @@ public final class BukkitGame implements Game {
         return window;
     }
 
-    private static Map<String, Object> stackOrNull(ItemStack stack) {
+    static Map<String, Object> stackOrNull(ItemStack stack) {
         return stack == null || stack.getType() == Material.AIR ? null : item(stack);
     }
 

@@ -60,35 +60,40 @@ class AgentContractIT {
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration JOIN_TIMEOUT = Duration.ofSeconds(60);
 
-    /** Every golden case, in the order golden/README.md replays them. The players cases depend on their order. */
+    /**
+     * Every golden case this agent serves, in the order golden/README.md replays them. The players cases depend on
+     * their order, and events/subscribe must come before the first Alex join so that events/poll sees it. log/read
+     * expects exactly one WARN, which the fixture plugin logs on enable, so it must replay before the reload cases
+     * enable the fixture again.
+     */
     static final List<String> CASES = List.of(
             "health/ok",
             "health/unauthorised",
             "command/reply",
+            "events/subscribe",
             "players/not-found",
             "players/empty-inventory",
             "players/give-enchanted-sword",
             "players/read-after-give",
+            "events/poll",
+            "world/block-get",
+            "world/block-put",
+            "log/read",
             "plugins/config-patch",
             "plugins/config-read",
             "plugins/config-restore",
             "plugins/config-read-after-restore",
             "plugins/reload",
-            "plugins/reload-hook");
+            "plugins/reload-hook",
+            "ticks/read",
+            "ticks/await");
 
     /**
-     * Golden cases for M2 endpoints the agent does not serve yet (protocol 1.1, T-M2-01). T-M2-02 and T-M2-03 move
-     * each case from here into {@link #CASES} when they serve it. The list is explicit so a new case is never
-     * silently ignored: {@link #everyGoldenCaseIsReplayed()} still fails for any case in neither list.
+     * Golden cases for endpoints the agent does not serve yet. The openWindow card moves players/open-anvil into
+     * {@link #CASES}. The list is explicit so a new case is never silently ignored:
+     * {@link #everyGoldenCaseIsReplayed()} still fails for any case in neither list.
      */
     static final List<String> PENDING = List.of(
-            "world/block-get",
-            "world/block-put",
-            "events/subscribe",
-            "events/poll",
-            "log/read",
-            "ticks/read",
-            "ticks/await",
             "players/open-anvil");
 
     private final HttpClient http = HttpClient.newHttpClient();
@@ -109,6 +114,9 @@ class AgentContractIT {
         host = PaperHost.start(cell, options);
         // golden/README.md: the reset lands Alex on (0.5, 64.0, 0.5). The spawn is block (0, 63, 0), and a stone block
         // under it holds the player at y 64, so he does not fall between the reset and the read.
+        // Right after boot the spawn chunk is not loaded, and setblock answers "That position is not loaded" (the
+        // reply is not an error, so it must be checked by the block read below). forceload keeps chunk 0,0 loaded.
+        host.command("forceload add 0 0");
         host.command("setblock 0 63 0 minecraft:stone");
         host.command("setworldspawn 0 63 0");
     }

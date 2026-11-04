@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.proofstone.agent.protocol.Health;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +75,15 @@ class GoldenContractTest {
     void giveThenReadMatchesTheGoldenCases() throws IOException {
         replay("players/give-enchanted-sword");
         replay("players/read-after-give");
+    }
+
+    /** The observation cases in replay order: the probe must be subscribed before its poll (golden/README.md). */
+    @Test
+    void observationCasesMatchTheGoldenFiles() throws IOException {
+        for (String name : Arrays.asList("world/block-get", "world/block-put", "events/subscribe", "events/poll",
+                "log/read", "ticks/read", "ticks/await")) {
+            replay(name);
+        }
     }
 
     private void replay(String name) throws IOException {
