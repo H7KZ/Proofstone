@@ -118,7 +118,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             try {
                 HostPlugin.restore(state.host, plugin);
             } catch (RuntimeException e) {
-                failure = combine(failure, new IllegalStateException("cannot restore the config of " + plugin, e));
+                failure = combine(failure, new IllegalStateException("cannot restore the config of " + plugin
+                        + "; server log tail:\n" + state.host.logTail(), e));
             }
         }
         try {

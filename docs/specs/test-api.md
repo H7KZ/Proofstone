@@ -124,6 +124,9 @@ The API is not frozen here; T-M2-99 reconciles this spec with the code and freez
 - `PlayerHandle` has `reset`, `level`, `give`, `state`, `awaitState`. No `gamemode`, no `PlayerState.location` and no
   `openWindow` yet. `Agent.world()`, `events()`, `plugin()`, `awaitTicks`, `assertNoErrorsLogged`, `logLines` and
   `Clients`, `Topology` are not on the public API yet.
+- T-M2-10: `Agent.events()` exists: `Events.subscribe(className)` gives an `EventProbe` (`awaitOne()`, `events()`,
+  `close()`). A `CapturedEvent` has `className`, `tick`, `thread`, `fields` (getter name to value) and
+  `getInt("xpCost")`, which also accepts `getXpCost`; an unknown getter is an error, never a default.
 - `Client` has `openBlock` (top face), `inventory`, `position`, `awaitPosition` and `experienceLevel()`. The spec
   sketch called the last one `experience()`; it is named `experienceLevel()` because it returns the level only, not
   the points or the progress bar (T-M2-09). It throws until the server's first experience sync. `DualAssert.level`

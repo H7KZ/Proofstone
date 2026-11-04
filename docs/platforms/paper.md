@@ -78,9 +78,12 @@
   the container, so tests can join one client per test.
 - **`saveConfig()` rewrites `config.yml`.** Bukkit drops comments and key order on a patch, so the agent snapshots
   the original bytes on the first patch and restore writes those bytes back. It does not re-save. (T-M2-03)
-- **Restore must reload the config before the plugin.** `disablePlugin` and `enablePlugin` re-run `onEnable`, but
-  `getConfig()` keeps the old in-memory values until `reloadConfig()`. The agent calls it first. (T-M2-03, verified on
-  Paper 26.3 by `AgentContractIT` config cases.)
+- **Restore reloads the config, not the plugin.** `getConfig()` keeps the old in-memory values until `reloadConfig()`,
+  so restore writes the snapshot bytes and calls it. It no longer calls `disablePlugin`/`enablePlugin`: Paper closes a
+  disabled plugin's classloader, and a real plugin that loads classes lazily then fails to enable again (Disenchantment
+  6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in `setupConfig`). The
+  fixture plugin only survived because it loads every class on first enable. A plugin that caches config in `onEnable`
+  needs a reload hook. (T-M2-03, changed in T-M2-10.)
 - **A plain player cannot run vanilla `/list`** (`Unknown command`): vanilla commands need op. `/version` and
   `/plugins` work for everyone. Use the agent (console) for setup commands.
 - **MCProtocolLib does not answer a teleport.** The server ignores a client's packets, block use included, until it
@@ -124,6 +127,13 @@
 - **Closing a container is what hands the player's slots back.** Until then the client's window 0 is stale for the
   inventory moves made in the container. The driver copies the container's player slots back on close, and the
   `ItemView` read must take those raw stacks too (T-M2-09 fix). Cursor reads come from the player, not the container.
+- **Disenchantment 6.5.12 loads and works on Paper 26.3 unchanged** (its newest NMS module is `1.21.R5`; no extra
+  config needed). The anvil result is the plugin's own: the enchanted book is offered in slot 2, taking it leaves the
+  stripped sword in input slot 0 and puts the book on the cursor, and the plugin fires one `PostDisenchantEvent`
+  (`getXpCost`, 13 levels with the default config). A probe reaches the event because the agent loads the class through
+  each plugin's classloader (T-M2-10).
+- **`client.inventory()` is stale while a container window is open.** Check the player's inventory on the client oracle
+  after closing the window; the agent oracle is current at any time (T-M2-10).
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:

@@ -57,7 +57,12 @@ final class PluginConfigs {
         plugin.saveConfig();
     }
 
-    /** Writes the snapshot back, reloads the config and the plugin, and forgets the snapshot. No-op without one. */
+    /**
+     * Writes the snapshot back, reloads the config and forgets the snapshot. No-op without one. It does not disable
+     * and enable the plugin: Paper closes a disabled plugin's classloader, so a real plugin that loads classes lazily
+     * (Disenchantment, T-M2-10) fails to enable again. A patch never reloads the plugin either, so the two stay
+     * symmetric. A plugin that caches config in {@code onEnable} needs a reload hook (spec §2, reload).
+     */
     void restore(String pluginId) {
         Plugin plugin = requirePlugin(pluginId);
         Snapshot snapshot = snapshots.get(plugin.getName());
@@ -67,7 +72,6 @@ final class PluginConfigs {
         writeSnapshot(plugin, snapshot);
         snapshots.remove(plugin.getName());
         plugin.reloadConfig();
-        disableAndEnable(plugin);
     }
 
     /** Runs the declared hook when one is given (an unknown command is an error), else disables and enables. */

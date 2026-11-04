@@ -19,6 +19,9 @@ public interface Agent {
     /** The config handle of an installed plugin. Patches are undone after each test. */
     PluginHandle plugin(String name);
 
+    /** Read-only listeners on server events, such as a plugin's own API events. */
+    Events events();
+
     /** The capabilities the agent reported at readiness. */
     List<String> capabilities();
 }
