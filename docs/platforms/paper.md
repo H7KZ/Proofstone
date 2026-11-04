@@ -144,6 +144,13 @@ Measured from the JUnit XML suite times of one serial run, image already pulled:
 - `PaperHostIT` (4 tests, three of which boot a server) takes about 91 s.
 - A cold first run adds the image pull and the Paper jar download. CI `smoke` took about 3.5 min including Gradle
   setup.
+- **M2 review run (T-M2-99), one suite at a time, same machine, image already pulled.** Suite times from the XML:
+  every suite that boots one cell and joins one client takes 29.4 to 34.2 s (C03 32.1, C04 30.5, C05 30.1, C06 30.6,
+  `ConformanceSmokeTest` 29.5, `AnvilDisenchantE2E` 34.2, `AgentContractIT` 21 tests on one boot 32.1,
+  `McplDriverIT` 29.4, `McplWindowsIT` 29.7, `McplItemsIT` 29.6, `McplClicksIT` 33.7). Two suites take 55 to 57 s
+  (`DualOracleE2E` 4 tests 55.2, `PerTestIsolationE2E` 57.3), which fits two boots. So the boot, join and teardown cost is about 29 s and a
+  scenario adds 1 to 5 s on top. `PaperHostIT` (4 tests, three boots) took 92.5 s. The summed suite time of the 7 Gradle
+  runs (18 test classes) is about 670 s.
 - **The per-test log check reads WARN and worse, from JUL and Log4j (T-M2-08).** The fixture plugin logs one WARN at
   enable, before any test's log cursor is taken, so it never fails a test. A test that reloads the fixture logs it
   again and must expect that. The allowlist (`ErrorLogGuard.ALLOWLIST`) holds the `No key layers` noise and

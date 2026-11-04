@@ -21,10 +21,14 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
   `ItemView` (read), `BlockPos`, `Position`.
 - Dual oracle (T-M2-07): `DualAssert` and `DisagreeException`. `dev.proofstone.api.spi.OracleWaiter` is how it waits;
   `proofstone-core` provides it, so this module still has no wait of its own and no dependency on another module.
-- The binary-compatibility baseline is `api-baseline.txt`: `ApiSurfaceTest` dumps every public member and fails on
-  any difference. Regenerate on purpose with `./gradlew :proofstone-api:test -Dproofstone.updateApiBaseline=true`
-  and review the diff. Freeze candidates and deviations from the spec are listed in
-  [docs/specs/test-api.md](../docs/specs/test-api.md) section 8.
+- **API v0 is frozen (T-M2-99).** `api-baseline.txt` is the v0 contract: `ApiSurfaceTest` dumps every public member and
+  fails on any difference. There is no version constant; the baseline and the status line of the spec are the marker.
+  Change it only with a card marked `api-change`: regenerate with
+  `./gradlew :proofstone-api:test -Dproofstone.updateApiBaseline=true` and review the diff.
+- **Experimental inside v0**: `dev.proofstone.api.spi.*`, `DualAssert.serverOnlyReasons()`, the record constructors of
+  `PlayerState`, `CapturedEvent` and `ItemView`, and the close semantics of `Window.close()`. Not in v0 at all:
+  `Agent.world()`, `awaitTicks`, `logLines`, `gamemode`, `openWindow`, `Clients`, `Topology`, the fixture reset and the
+  leak detector. Details are in [docs/specs/test-api.md](../docs/specs/test-api.md) section 8.
 
 The extension that runs them is `proofstone-core`'s `dev.proofstone.core.junit.ProofstoneExtension`, registered by
 JUnit auto-detection (`junit.jupiter.extensions.autodetection.enabled=true`).
