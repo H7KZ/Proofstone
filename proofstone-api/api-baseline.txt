@@ -1,4 +1,5 @@
 public abstract interface dev.proofstone.api.Agent
+  method public abstract dev.proofstone.api.Events dev.proofstone.api.Agent.events()
   method public abstract dev.proofstone.api.PlayerHandle dev.proofstone.api.Agent.player(java.lang.String)
   method public abstract dev.proofstone.api.PluginHandle dev.proofstone.api.Agent.plugin(java.lang.String)
   method public abstract java.lang.String dev.proofstone.api.Agent.command(java.lang.String)
@@ -12,6 +13,17 @@ public final dev.proofstone.api.BlockPos extends java.lang.Record
   method public int dev.proofstone.api.BlockPos.x()
   method public int dev.proofstone.api.BlockPos.y()
   method public int dev.proofstone.api.BlockPos.z()
+public final dev.proofstone.api.CapturedEvent extends java.lang.Record
+  constructor public dev.proofstone.api.CapturedEvent(java.lang.String,long,java.lang.String,java.util.Map<java.lang.String, java.lang.Object>)
+  method public final boolean dev.proofstone.api.CapturedEvent.equals(java.lang.Object)
+  method public final int dev.proofstone.api.CapturedEvent.hashCode()
+  method public final java.lang.String dev.proofstone.api.CapturedEvent.toString()
+  method public int dev.proofstone.api.CapturedEvent.getInt(java.lang.String)
+  method public java.lang.Object dev.proofstone.api.CapturedEvent.field(java.lang.String)
+  method public java.lang.String dev.proofstone.api.CapturedEvent.className()
+  method public java.lang.String dev.proofstone.api.CapturedEvent.thread()
+  method public java.util.Map<java.lang.String, java.lang.Object> dev.proofstone.api.CapturedEvent.fields()
+  method public long dev.proofstone.api.CapturedEvent.tick()
 public abstract interface dev.proofstone.api.Cell
   method public abstract boolean dev.proofstone.api.Cell.bridged()
   method public abstract java.lang.String dev.proofstone.api.Cell.javaTag()
@@ -70,6 +82,12 @@ public final dev.proofstone.api.DualAssert$ItemAssert$ServerOnly
   method public java.lang.String dev.proofstone.api.DualAssert$ItemAssert$ServerOnly.reason()
 public final dev.proofstone.api.DualAssert$LevelAssert
   method public dev.proofstone.api.DualAssert$LevelAssert dev.proofstone.api.DualAssert$LevelAssert.isEqualTo(int)
+public abstract interface dev.proofstone.api.EventProbe implements java.lang.AutoCloseable
+  method public abstract dev.proofstone.api.CapturedEvent dev.proofstone.api.EventProbe.awaitOne()
+  method public abstract java.util.List<dev.proofstone.api.CapturedEvent> dev.proofstone.api.EventProbe.events()
+  method public abstract void dev.proofstone.api.EventProbe.close()
+public abstract interface dev.proofstone.api.Events
+  method public abstract dev.proofstone.api.EventProbe dev.proofstone.api.Events.subscribe(java.lang.String)
 public abstract interface dev.proofstone.api.Isolation implements java.lang.annotation.Annotation
   method public abstract dev.proofstone.api.Isolation$Mode dev.proofstone.api.Isolation.value()
 public final dev.proofstone.api.Isolation$Mode extends java.lang.Enum<dev.proofstone.api.Isolation$Mode>

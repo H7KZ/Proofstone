@@ -1,6 +1,7 @@
 package dev.proofstone.core.junit;
 
 import dev.proofstone.api.Agent;
+import dev.proofstone.api.Events;
 import dev.proofstone.api.PlayerHandle;
 import dev.proofstone.api.PluginHandle;
 import dev.proofstone.core.host.PaperHost;
@@ -27,6 +28,11 @@ record HostAgent(PaperHost host, Set<String> patched) implements Agent {
     @Override
     public PluginHandle plugin(String name) {
         return new HostPlugin(host, name, patched);
+    }
+
+    @Override
+    public Events events() {
+        return new HostEvents(host);
     }
 
     @Override
