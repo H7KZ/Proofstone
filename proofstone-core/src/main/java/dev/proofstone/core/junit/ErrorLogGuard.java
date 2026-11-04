@@ -18,7 +18,11 @@ final class ErrorLogGuard {
 
     /** Vanilla noise, each with the reason it is allowed (docs/platforms/paper.md, Gotchas). */
     static final Map<Pattern, String> ALLOWLIST = Map.of(
-            Pattern.compile("No key layers in MapLike"), "flat world without generator settings, 1.21.11+");
+            Pattern.compile("No key layers in MapLike"), "flat world without generator settings, 1.21.11+",
+            // Only the harness's own clients, named by CellInvocation.joinClient ("T" and 8 hex digits). The reset
+            // teleport races the client's first movement packets, and the Log4j capture (T-M2-08) shows the server's
+            // anti-cheat WARN for it. Any other player, or a plugin's own message, still fails the test.
+            Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move");
 
     /** A cursor value past any record, so reading from it returns no records and the current end. */
     private static final long END = Long.MAX_VALUE;

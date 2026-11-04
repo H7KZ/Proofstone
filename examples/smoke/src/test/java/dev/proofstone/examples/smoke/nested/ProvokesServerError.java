@@ -11,9 +11,10 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.TestMethodOrder;
 
 /**
- * A scenario that must FAIL: its first test logs a server error and asserts nothing about it. It is not run by
- * Gradle (the build excludes this package); {@code ErrorLogFailsTheTestE2E} runs it through the JUnit launcher and
- * checks that the first test fails with the log record and the second, clean one passes.
+ * A scenario that must FAIL: its first two tests log a server error (through JUL and through Log4j) and assert
+ * nothing about it. It is not run by Gradle (the build excludes this package); {@code ErrorLogFailsTheTestE2E} runs
+ * it through the JUnit launcher and checks that each of them fails with its log record and the third, clean one
+ * passes.
  */
 @Proofstone(plugins = "build/fixture-plugins/proofstone-fixture.jar")
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
@@ -30,6 +31,12 @@ public class ProvokesServerError {
 
     @CellTest
     @Order(2)
+    void logsAnErrorThroughLog4jAndChecksNothingItself(Agent agent, Client client) {
+        agent.command("fixture-log4j-error " + MARKER);
+    }
+
+    @CellTest
+    @Order(3)
     void nextTestIsCleanBecauseTheLogCursorMovedOn(Agent agent, Client client) {
         agent.command("scoreboard objectives add nested2 dummy");
     }

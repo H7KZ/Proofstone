@@ -57,6 +57,9 @@ class LifecycleE2E {
         assertThat(NAMES).hasSize(2);
         assertThat(agent.command("scoreboard objectives list")).contains("lifecycleOne");
 
+        // The reset teleports to the spawn block centre; a fresh join lands elsewhere, so this fails without the reset.
+        assertThat(client.awaitPosition("reset spot (0.5, 0.5)", p -> Math.abs(p.x() - 0.5) < 0.01
+                && Math.abs(p.z() - 0.5) < 0.01)).isNotNull();
         assertThat(player.state().inventory()).as("inventory of the first test must be gone").isEmpty();
         assertThat(player.state().level()).as("level of the first test must be gone").isZero();
         assertThat(client.inventory()).as("client sees an empty inventory").allMatch(ItemView::isEmpty);

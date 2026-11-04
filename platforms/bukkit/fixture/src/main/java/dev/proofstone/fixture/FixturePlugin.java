@@ -25,5 +25,18 @@ public final class FixturePlugin extends JavaPlugin {
                     new IllegalStateException("fixture error"));
             return true;
         });
+        // The same, but straight through Log4j2, the way the server's own code logs. Reflection keeps the fixture
+        // compiled against the Bukkit API only.
+        getCommand("fixture-log4j-error").setExecutor((sender, command, label, args) -> {
+            try {
+                Class<?> manager = Class.forName("org.apache.logging.log4j.LogManager");
+                Object logger = manager.getMethod("getLogger", String.class).invoke(null, "ProofstoneFixtureLog4j");
+                logger.getClass().getMethod("error", String.class, Throwable.class).invoke(logger,
+                        "fixture log4j error: " + String.join(" ", args), new IllegalStateException("fixture error"));
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("Log4j2 is not available to the fixture", e);
+            }
+            return true;
+        });
     }
 }

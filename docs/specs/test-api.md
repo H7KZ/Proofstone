@@ -134,5 +134,5 @@ The API is not frozen here; T-M2-99 reconciles this spec with the code and freez
 - T-M2-08: `@Isolation(Isolation.Mode.PER_CLASS|PER_TEST)` is in the API; `Agent.plugin(name)` gives a `PluginHandle`
   with `config(path)` and `patchConfig(path, value)`. Before each test whose method declares a `Client`, a fresh
   client joins and the player is reset; after each test the log since the pre-test cursor is checked (WARN and
-  worse, minus the allowlist), patched configs are restored and the client disconnects. `assertNoErrorsLogged`,
+  worse, from JUL and the Log4j2 root, minus the allowlist), patched configs are restored and the client disconnects. `assertNoErrorsLogged`,
   the world fixture region reset and the leak detector are not done yet.

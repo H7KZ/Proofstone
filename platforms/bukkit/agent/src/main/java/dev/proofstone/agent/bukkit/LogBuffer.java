@@ -17,9 +17,11 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 /**
- * Keeps the last {@value #CAPACITY} records the root JUL logger sees, with stack traces (spec §2, log-record.json).
- * Plugins log through JUL, and Paper bridges its own output into the same root, so this one handler sees both.
- * Log4j-native lines are not seen; the server's own messages go to the console, not to this buffer.
+ * Keeps the last {@value #CAPACITY} records the root JUL logger and the Log4j2 root logger see, with stack traces
+ * (spec §2, log-record.json). Plugins log through JUL; the server's own messages go through Log4j directly. Paper
+ * forwards every JUL record to Log4j as well, so a record can arrive twice on one thread, once from each side. The
+ * second copy is dropped, matched on level, logger and message against the last record the other side delivered on
+ * that thread. Without Log4j2 on the server only JUL is read.
  */
 final class LogBuffer {
 
@@ -29,6 +31,11 @@ final class LogBuffer {
 
     private final Deque<Entry> entries = new ArrayDeque<>();
     private final Handler handler = new Capture();
+    private final String tapName = "ProofstoneLog-" + java.util.UUID.randomUUID();
+    /** Last record each side delivered on this thread, to drop the forwarded copy from the other side. */
+    private final ThreadLocal<String> lastJul = new ThreadLocal<>();
+    private final ThreadLocal<String> lastLog4j = new ThreadLocal<>();
+    private volatile Log4jTap tap;
     /** Sequence number of the next record. The buffer holds the records with sequence [total - size, total). */
     private long total;
 
@@ -36,11 +43,20 @@ final class LogBuffer {
     static LogBuffer attach() {
         LogBuffer buffer = new LogBuffer();
         Logger.getLogger("").addHandler(buffer.handler);
+        try {
+            buffer.tap = Log4jTap.install(buffer.tapName, buffer::addLog4j);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            buffer.tap = null; // no Log4j2 core on this server: JUL only
+        }
         return buffer;
     }
 
     void detach() {
         Logger.getLogger("").removeHandler(handler);
+        Log4jTap installed = tap;
+        if (installed != null) {
+            installed.remove();
+        }
     }
 
     /** Records at or after the cursor, at or above {@code minLevel} (spec §2). Throws on an unknown level. */
@@ -63,14 +79,55 @@ final class LogBuffer {
         return page;
     }
 
-    private synchronized void add(LogRecord record) {
+    private void addJul(LogRecord record) {
         String level = name(record.getLevel());
+        String logger = record.getLoggerName() == null ? "" : record.getLoggerName();
+        String message = formatted(record);
+        String key = key(level, logger, message);
+        if (key.equals(lastLog4j.get())) {
+            lastLog4j.remove(); // Log4j delivered this record first; Paper's JUL forwarder is why JUL sees it again
+            return;
+        }
+        lastJul.set(key);
+        add(record.getMillis(), level, logger, message, thrown(record.getThrown()));
+    }
+
+    private void addLog4j(Object event) {
+        Log4jTap source = tap;
+        if (source == null) {
+            return;
+        }
+        try {
+            String message = source.text(event);
+            if (message == null) {
+                message = "";
+            }
+            // An unknown level is kept as WARN, so it is never silently below a reader's floor.
+            String level = ORDER.contains(source.level(event)) ? source.level(event) : "WARN";
+            String logger = source.logger(event);
+            String key = key(level, logger, message);
+            if (key.equals(lastJul.get())) {
+                lastJul.remove();
+                return;
+            }
+            lastLog4j.set(key);
+            add(source.millis(event), level, logger, message, thrown(source.thrown(event)));
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot read a Log4j event", e);
+        }
+    }
+
+    private static String key(String level, String logger, String message) {
+        return level + '\n' + logger + '\n' + message;
+    }
+
+    private synchronized void add(long millis, String level, String logger, String message, String thrown) {
         Map<String, Object> json = new LinkedHashMap<>();
-        json.put("time", Instant.ofEpochMilli(record.getMillis()).toString());
+        json.put("time", Instant.ofEpochMilli(millis).toString());
         json.put("level", level);
-        json.put("logger", record.getLoggerName() == null ? "" : record.getLoggerName());
-        json.put("message", formatted(record));
-        json.put("thrown", thrown(record.getThrown()));
+        json.put("logger", logger);
+        json.put("message", message);
+        json.put("thrown", thrown);
         entries.addLast(new Entry(level, json));
         total++;
         if (entries.size() > CAPACITY) {
@@ -127,7 +184,7 @@ final class LogBuffer {
 
         @Override
         public void publish(LogRecord record) {
-            add(record);
+            addJul(record);
         }
 
         @Override

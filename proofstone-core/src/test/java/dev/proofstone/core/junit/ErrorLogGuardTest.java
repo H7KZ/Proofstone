@@ -23,6 +23,14 @@ class ErrorLogGuardTest {
     }
 
     @Test
+    void theHarnessClientsMoveWarningIsAllowedButAnotherPlayersIsNot() {
+        assertThat(ErrorLogGuard.describe(List.of(
+                record("WARN", "T9513c1c1 moved too quickly! 0.5,-60.0,-3.5", null)))).isNull();
+        assertThat(ErrorLogGuard.describe(List.of(
+                record("WARN", "Steve moved too quickly! 0.5,-60.0,-3.5", null)))).contains("Steve moved too quickly");
+    }
+
+    @Test
     void anUnknownRecordFailsAndTheMessageCarriesItWithItsStackTrace() {
         String text = ErrorLogGuard.describe(List.of(
                 record("ERROR", "No key layers in MapLike[{}]", null),

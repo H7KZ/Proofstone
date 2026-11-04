@@ -1,7 +1,5 @@
 package dev.proofstone.agent.bukkit;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -24,7 +22,8 @@ final class LogCapture implements AutoCloseable {
     private final List<String> lines = new ArrayList<>();
     private final String thread = Thread.currentThread().getName();
     private final String name = "ProofstoneCapture-" + UUID.randomUUID();
-    private Object rootLogger;
+    /** Set right after the appender is installed; events from other threads can arrive before that. */
+    private volatile Log4jTap tap;
 
     /** Starts capturing. Never throws: a server without the expected log4j just yields no output. */
     static LogCapture start() {
@@ -32,61 +31,28 @@ final class LogCapture implements AutoCloseable {
         try {
             capture.attach();
         } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
-            capture.rootLogger = null;
+            capture.tap = null;
         }
         return capture;
     }
 
     private void attach() throws ReflectiveOperationException {
-        Class<?> appender = Class.forName("org.apache.logging.log4j.core.Appender");
-        Class<?> event = Class.forName("org.apache.logging.log4j.core.LogEvent");
-        Class<?> state = Class.forName("org.apache.logging.log4j.core.LifeCycle$State");
-        Method threadName = event.getMethod("getThreadName");
-        Method message = event.getMethod("getMessage");
-        Method formatted = message.getReturnType().getMethod("getFormattedMessage");
-
-        Object proxy = Proxy.newProxyInstance(appender.getClassLoader(), new Class<?>[] {appender},
-                (self, method, args) -> {
-                    switch (method.getName()) {
-                        case "append":
-                            record(threadName, message, formatted, args[0]);
-                            return null;
-                        case "getName":
-                        case "toString":
-                            return name;
-                        case "isStarted":
-                        case "ignoreExceptions":
-                            return true;
-                        case "getState":
-                            return Enum.valueOf(state.asSubclass(Enum.class), "STARTED");
-                        case "hashCode":
-                            return System.identityHashCode(self);
-                        case "equals":
-                            return self == args[0];
-                        default:
-                            return method.getReturnType() == boolean.class ? Boolean.FALSE : null;
-                    }
-                });
-
-        Class<?> manager = Class.forName("org.apache.logging.log4j.LogManager");
-        Object context = manager.getMethod("getContext", boolean.class).invoke(null, false);
-        Object config = context.getClass().getMethod("getConfiguration").invoke(context);
-        Object root = config.getClass().getMethod("getRootLogger").invoke(config);
-        Class<?> filter = Class.forName("org.apache.logging.log4j.core.Filter");
-        Class<?> level = Class.forName("org.apache.logging.log4j.Level");
-        root.getClass().getMethod("addAppender", appender, level, filter).invoke(root, proxy, null, null);
-        rootLogger = root;
+        tap = Log4jTap.install(name, this::record);
     }
 
-    private void record(Method threadName, Method message, Method formatted, Object logEvent) {
+    private void record(Object logEvent) {
+        Log4jTap source = tap;
+        if (source == null) {
+            return;
+        }
         try {
-            if (!thread.equals(threadName.invoke(logEvent))) {
+            if (!thread.equals(source.thread(logEvent))) {
                 return;
             }
-            Object text = formatted.invoke(message.invoke(logEvent));
+            String text = source.text(logEvent);
             if (text != null) {
                 synchronized (lines) {
-                    lines.add(ANSI.matcher(text.toString()).replaceAll(""));
+                    lines.add(ANSI.matcher(text).replaceAll(""));
                 }
             }
         } catch (ReflectiveOperationException e) {
@@ -103,13 +69,8 @@ final class LogCapture implements AutoCloseable {
 
     @Override
     public void close() {
-        if (rootLogger == null) {
-            return;
-        }
-        try {
-            rootLogger.getClass().getMethod("removeAppender", String.class).invoke(rootLogger, name);
-        } catch (ReflectiveOperationException | RuntimeException e) {
-            // Best-effort; the appender only ever records matching-thread events into a discarded list.
+        if (tap != null) {
+            tap.remove();
         }
     }
 }
