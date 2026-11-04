@@ -63,8 +63,8 @@ class AgentContractIT {
     /**
      * Every golden case this agent serves, in the order golden/README.md replays them. The players cases depend on
      * their order, and events/subscribe must come before the first Alex join so that events/poll sees it. log/read
-     * expects exactly one WARN, which the fixture plugin logs on enable, so it must replay before the reload cases
-     * enable the fixture again.
+     * expects exactly one fixture WARN (see {@link #onlyFixtureRecords}), which the fixture plugin logs on enable, so
+     * it must replay before the reload cases enable the fixture again.
      */
     static final List<String> CASES = List.of(
             "health/ok",
@@ -164,9 +164,28 @@ class AgentContractIT {
 
         assertThat(actual.status()).as(name + " status; body was " + actual.body())
                 .isEqualTo(expected.get("status").asInt());
-        assertThat(GoldenMatcher.mismatches(expected.get("body").toString(), actual.body()))
-                .as(name + " differs from its golden response")
+        String actualBody = name.equals("log/read") ? onlyFixtureRecords(actual.body()) : actual.body();
+        assertThat(GoldenMatcher.mismatches(expected.get("body").toString(), actualBody))
+                .as(name + " differs from its golden response; body was " + actual.body())
                 .isEmpty();
+    }
+
+    /**
+     * The golden log case holds the fixture plugin's one WARN. The agent also reads Log4j (T-M2-08), so the real
+     * server's own boot warnings (offline mode, and whatever a joined player provokes) are in the reply too and
+     * vary by version. The reply is narrowed to the fixture's logger before it is matched, which still checks the
+     * record shape and that the fixture's record arrived exactly once.
+     */
+    private static String onlyFixtureRecords(String body) throws IOException {
+        JsonNode reply = JSON.readTree(body);
+        com.fasterxml.jackson.databind.node.ArrayNode kept = JSON.createArrayNode();
+        for (JsonNode record : reply.path("data").path("records")) {
+            if ("proofstone-fixture".equals(record.path("logger").asText())) {
+                kept.add(record);
+            }
+        }
+        ((com.fasterxml.jackson.databind.node.ObjectNode) reply.get("data")).set("records", kept);
+        return JSON.writeValueAsString(reply);
     }
 
     /** Joins Alex with the mcpl driver once, waits until the agent sees him, then resets him (golden/README.md). */
