@@ -51,12 +51,14 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.Clientbound
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetExperiencePacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerClosePacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetContentPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetSlotPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundOpenScreenPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundSetCursorItemPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundRenameItemPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundPlayerLoadedPacket;
@@ -88,6 +90,8 @@ final class McplSession implements ClientSession {
     private final List<WindowModel> opened = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger sequence = new AtomicInteger();
     private volatile double[] position;
+    /** The last experience sync's level; null until the server sends one (the client oracle must not guess). */
+    private volatile Integer experienceLevel;
     private volatile State state = State.JOINING;
     private volatile String disconnectReason;
 
@@ -156,6 +160,9 @@ final class McplSession implements ClientSession {
         } else if (packet instanceof ClientboundSetCursorItemPacket cursor) {
             playerInventory.setCursor(cursor.getContents());
             summary += " cursor";
+        } else if (packet instanceof ClientboundSetExperiencePacket experience) {
+            experienceLevel = experience.getLevel();
+            summary += " level=" + experience.getLevel();
         } else if (packet instanceof ClientboundSystemChatPacket system) {
             // Overlay is the action bar, which is not chat.
             if (!system.isOverlay()) {
@@ -340,6 +347,15 @@ final class McplSession implements ClientSession {
         return playerInventory;
     }
 
+    @Override
+    public int experienceLevel() {
+        Integer level = experienceLevel;
+        if (level == null) {
+            throw new ClientDriverException("no experience sync from the server yet for " + username);
+        }
+        return level;
+    }
+
     /** A live view of one window model. */
     private final class Window implements WindowSession {
         private final WindowModel model;
@@ -358,6 +374,18 @@ final class McplSession implements ClientSession {
             requireOpen("cannot close a window");
             network.send(new ServerboundContainerClosePacket(model.id()));
             retire(model);
+        }
+
+        @Override
+        public void rename(String name) {
+            requireOpen("cannot rename");
+            if (!"minecraft:anvil".equals(model.type())) {
+                throw new ClientDriverException("cannot rename in " + model.type() + ": only an anvil has a rename box");
+            }
+            if (model.isClosed()) {
+                throw new ClientDriverException("cannot rename: window " + model.id() + " is closed");
+            }
+            network.send(new ServerboundRenameItemPacket(name));
         }
 
         @Override

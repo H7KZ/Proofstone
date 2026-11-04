@@ -43,6 +43,7 @@ public abstract interface dev.proofstone.api.Client
   method public abstract dev.proofstone.api.Position dev.proofstone.api.Client.awaitPosition(java.lang.String,java.util.function.Predicate<dev.proofstone.api.Position>)
   method public abstract dev.proofstone.api.Position dev.proofstone.api.Client.position()
   method public abstract dev.proofstone.api.Window dev.proofstone.api.Client.openBlock(dev.proofstone.api.BlockPos)
+  method public abstract int dev.proofstone.api.Client.experienceLevel()
   method public abstract java.lang.String dev.proofstone.api.Client.awaitMessage(java.util.regex.Pattern)
   method public abstract java.lang.String dev.proofstone.api.Client.name()
   method public abstract java.util.List<dev.proofstone.api.ItemView> dev.proofstone.api.Client.inventory()
@@ -54,6 +55,7 @@ public final dev.proofstone.api.DisagreeException extends java.lang.AssertionErr
 public final dev.proofstone.api.DualAssert
   field public static final java.time.Duration DEFAULT_TIMEOUT
   method public static dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert.item(dev.proofstone.api.PlayerHandle,dev.proofstone.api.Client)
+  method public static dev.proofstone.api.DualAssert$LevelAssert dev.proofstone.api.DualAssert.level(dev.proofstone.api.PlayerHandle,dev.proofstone.api.Client)
   method public static java.util.List<java.lang.String> dev.proofstone.api.DualAssert.serverOnlyReasons()
 public final dev.proofstone.api.DualAssert$ItemAssert
   method public dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert$ItemAssert.amount(int)
@@ -66,6 +68,8 @@ public final dev.proofstone.api.DualAssert$ItemAssert
 public final dev.proofstone.api.DualAssert$ItemAssert$ServerOnly
   method public dev.proofstone.api.DualAssert$ItemAssert$ServerOnly dev.proofstone.api.DualAssert$ItemAssert$ServerOnly.pdc(java.lang.String,java.lang.Object)
   method public java.lang.String dev.proofstone.api.DualAssert$ItemAssert$ServerOnly.reason()
+public final dev.proofstone.api.DualAssert$LevelAssert
+  method public dev.proofstone.api.DualAssert$LevelAssert dev.proofstone.api.DualAssert$LevelAssert.isEqualTo(int)
 public abstract interface dev.proofstone.api.Isolation implements java.lang.annotation.Annotation
   method public abstract dev.proofstone.api.Isolation$Mode dev.proofstone.api.Isolation.value()
 public final dev.proofstone.api.Isolation$Mode extends java.lang.Enum<dev.proofstone.api.Isolation$Mode>
@@ -163,6 +167,7 @@ public abstract interface dev.proofstone.api.Window implements java.lang.AutoClo
   method public abstract void dev.proofstone.api.Window.close()
   method public abstract void dev.proofstone.api.Window.dropCursorIntoFirstEmptySlot()
   method public abstract void dev.proofstone.api.Window.moveFromInventory(java.util.function.Predicate<dev.proofstone.api.ItemView>,int)
+  method public abstract void dev.proofstone.api.Window.rename(java.lang.String)
 public abstract interface dev.proofstone.api.spi.OracleWaiter
   method public abstract <S,C> dev.proofstone.api.spi.OracleWaiter$Outcome<S, C> dev.proofstone.api.spi.OracleWaiter.untilBoth(java.lang.String,java.util.function.Supplier<S>,java.util.function.Supplier<C>,java.util.function.BiPredicate<S, C>,java.time.Duration)
 public final dev.proofstone.api.spi.OracleWaiter$Outcome extends java.lang.Record

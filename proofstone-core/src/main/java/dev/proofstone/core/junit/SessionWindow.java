@@ -79,6 +79,11 @@ final class SessionWindow implements Window {
     }
 
     @Override
+    public void rename(String name) {
+        window.rename(name);
+    }
+
+    @Override
     public void dropCursorIntoFirstEmptySlot() {
         if (cursor().isEmpty()) {
             throw new IllegalStateException("the cursor is empty in " + type());

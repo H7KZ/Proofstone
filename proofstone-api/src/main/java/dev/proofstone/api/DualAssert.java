@@ -40,6 +40,12 @@ public final class DualAssert {
                 waiter);
     }
 
+    /** Assertions about the experience level, checked on both oracles. */
+    public static LevelAssert level(PlayerHandle player, Client client) {
+        return new LevelAssert(Objects.requireNonNull(player, "player"), Objects.requireNonNull(client, "client"),
+                loadWaiter());
+    }
+
     /** Every reason given to {@code serverOnly} so far, for the report (ADR-0003). */
     public static List<String> serverOnlyReasons() {
         return List.copyOf(SERVER_ONLY_REASONS);
@@ -51,6 +57,45 @@ public final class DualAssert {
         }
         throw new IllegalStateException("no OracleWaiter on the classpath: proofstone-core provides it, add it to the "
                 + "test runtime");
+    }
+
+    /** Checks the experience level: the server's {@code level} and the client's must both equal the expected value. */
+    public static final class LevelAssert {
+        private final PlayerHandle player;
+        private final Client client;
+        private final OracleWaiter waiter;
+
+        private LevelAssert(PlayerHandle player, Client client, OracleWaiter waiter) {
+            this.player = player;
+            this.client = client;
+            this.waiter = waiter;
+        }
+
+        public LevelAssert isEqualTo(int expected) {
+            Outcome<Integer, Integer> outcome = waiter.untilBoth("experience level " + expected,
+                    () -> player.state().level(), client::experienceLevel,
+                    (server, clientLevel) -> Integer.valueOf(expected).equals(server)
+                            && Integer.valueOf(expected).equals(clientLevel),
+                    DEFAULT_TIMEOUT);
+            if (outcome.matched()) {
+                return this;
+            }
+            String server = outcome.server().present() ? String.valueOf(outcome.server().value())
+                    : "no answer (" + outcome.server().error() + ")";
+            String clientView = outcome.client().present() ? String.valueOf(outcome.client().value())
+                    : "no answer (" + outcome.client().error() + ")";
+            String body = "experience level: expected " + expected + " after " + outcome.elapsed().toMillis()
+                    + " ms\n  server oracle (agent):  " + server + "\n  client oracle (driver): " + clientView;
+            if (!outcome.server().present() || !outcome.client().present()) {
+                throw new AssertionError("ORACLE MISSING, not a pass: " + body);
+            }
+            boolean serverOk = Integer.valueOf(expected).equals(outcome.server().value());
+            boolean clientOk = Integer.valueOf(expected).equals(outcome.client().value());
+            if (serverOk != clientOk) {
+                throw new DisagreeException("DISAGREE: " + body, server, clientView);
+            }
+            throw new AssertionError("FAIL: " + body);
+        }
     }
 
     /** Checks on the first inventory item an {@code inInventory} predicate selects. */

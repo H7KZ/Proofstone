@@ -209,6 +209,11 @@ class DualAssertTest {
         }
 
         @Override
+        public int experienceLevel() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public List<ItemView> inventory() {
             return items;
         }

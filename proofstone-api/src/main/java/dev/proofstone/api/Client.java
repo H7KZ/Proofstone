@@ -40,4 +40,11 @@ public interface Client {
 
     /** The player inventory (window 0) as last synced: 46 slots, in the protocol's slot order. */
     List<ItemView> inventory();
+
+    /**
+     * The experience level the server last synced to this client.
+     *
+     * @throws RuntimeException when the server has not synced an experience level yet
+     */
+    int experienceLevel();
 }

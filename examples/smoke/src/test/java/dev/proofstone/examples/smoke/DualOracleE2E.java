@@ -154,6 +154,11 @@ class DualOracleE2E {
         }
 
         @Override
+        public int experienceLevel() {
+            return real.experienceLevel();
+        }
+
+        @Override
         public List<ItemView> inventory() {
             return real.inventory().stream().map(item -> item.enchants().containsKey(enchantment) ? ghost(item) : item)
                     .toList();

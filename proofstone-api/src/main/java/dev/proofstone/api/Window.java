@@ -45,6 +45,14 @@ public interface Window extends AutoCloseable {
     /** Puts the cursor item into the first empty slot of the window. */
     void dropCursorIntoFirstEmptySlot();
 
+    /**
+     * Types the name into an anvil's rename box, as the vanilla client does. The server answers through the result
+     * slot, so await that slot; the call returns once the name is sent.
+     *
+     * @throws IllegalStateException when the window is not an anvil
+     */
+    void rename(String name);
+
     /** Tells the server the client closed the window. The server does not acknowledge a client close. */
     @Override
     void close();

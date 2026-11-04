@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 /**
  * One joined player (client-driver spec §1). Everything it exposes is what the server sent; it never predicts.
  *
- * <p>SEAM: experience and clicking join in the later M2 cards.
+ * <p>Clicks and the experience level come from the server's syncs (the level is read by the client oracle).
  */
 public interface ClientSession extends AutoCloseable {
 
@@ -43,6 +43,13 @@ public interface ClientSession extends AutoCloseable {
 
     /** The player inventory (window id 0) as last synced by the server; no slots until the first sync. */
     WindowView inventory();
+
+    /**
+     * The experience level from the server's last experience sync.
+     *
+     * @throws ClientDriverException when the server has not synced an experience level yet
+     */
+    int experienceLevel();
 
     /** The last server-synced position {x, y, z}, or {@code null} before the first sync. */
     double[] position();

@@ -23,4 +23,12 @@ public interface WindowSession extends WindowView {
      * window 0: await the inventory state you expect instead of reading it straight away.
      */
     void close();
+
+    /**
+     * Types the anvil rename box (ServerboundRenameItemPacket). The server answers by updating the result slot, not
+     * with a click sync, so the caller awaits the slot it expects.
+     *
+     * @throws ClientDriverException when the window is not an anvil or is closed
+     */
+    void rename(String name);
 }
