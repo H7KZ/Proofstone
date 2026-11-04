@@ -1,15 +1,16 @@
-package dev.proofstone.driver.mcpl;
+package dev.proofstone.api;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
- * An item as the client sees it, parsed from the stack and its data components (T-M2-06). It is immutable and has no
- * driver types in it, so T-M2-07 can move it into {@code proofstone-api} as the public {@code ItemView}.
+ * An item as one oracle sees it (test-api spec section 6), immutable. The agent and the driver both produce it, so
+ * a dual-oracle assertion compares like with like. It carries no driver or agent types.
  *
- * <p>Keys are namespaced lowercase strings and levels are never clamped (test API spec section 6). {@code name} is
- * the {@code minecraft:custom_name} text flattened to plain text, or {@code null} when the item has none.
+ * <p>Keys are namespaced lowercase strings and levels are never clamped. {@code name} is the custom name as plain
+ * text, or {@code null} when the item has none. Two fields exist on one side only: {@link #pdc()} is read from the
+ * server (clients do not receive it), {@link #customData()} from the client; each is {@code null} on the other.
  */
 public final class ItemView {
 
@@ -26,10 +27,23 @@ public final class ItemView {
     private final int damage;
     private final int repairCost;
     private final Map<String, Object> customData;
+    private final Map<String, Object> pdc;
+    private final String raw;
 
-    /** @param customData the {@code minecraft:custom_data} compound, or {@code null} when the item has none */
+    /** A client-side view: {@code customData} is the {@code minecraft:custom_data} compound, or {@code null}. */
     public ItemView(String type, int amount, Map<String, Integer> enchants, Map<String, Integer> storedEnchants,
             String name, List<String> lore, int damage, int repairCost, Map<String, Object> customData) {
+        this(type, amount, enchants, storedEnchants, name, lore, damage, repairCost, customData, null, null);
+    }
+
+    /**
+     * @param customData the client's {@code minecraft:custom_data}, or {@code null}
+     * @param pdc the server's persistent data container values, or {@code null}
+     * @param raw the server's native serialisation for debugging, or {@code null}
+     */
+    public ItemView(String type, int amount, Map<String, Integer> enchants, Map<String, Integer> storedEnchants,
+            String name, List<String> lore, int damage, int repairCost, Map<String, Object> customData,
+            Map<String, Object> pdc, String raw) {
         this.type = Objects.requireNonNull(type, "type");
         this.amount = amount;
         this.enchants = Map.copyOf(enchants);
@@ -39,10 +53,17 @@ public final class ItemView {
         this.damage = damage;
         this.repairCost = repairCost;
         this.customData = customData == null ? null : Map.copyOf(customData);
+        this.pdc = pdc == null ? null : Map.copyOf(pdc);
+        this.raw = raw;
     }
 
     public String type() {
         return type;
+    }
+
+    /** True when the type is {@code id}, with or without the {@code minecraft:} prefix. */
+    public boolean is(String id) {
+        return type.equals(id.indexOf(':') < 0 ? "minecraft:" + id : id);
     }
 
     public int amount() {
@@ -70,21 +91,32 @@ public final class ItemView {
         return lore;
     }
 
-    /** Durability damage; 0 when the component is absent. */
+    /** Durability damage; 0 when absent. */
     public int damage() {
         return damage;
     }
 
-    /** Anvil repair cost; 0 when the component is absent. */
+    /** Anvil repair cost; 0 when absent. */
     public int repairCost() {
         return repairCost;
     }
 
-    /** The {@code minecraft:custom_data} compound, or {@code null} when absent. */
+    /** The client's {@code minecraft:custom_data} compound, or {@code null} when absent or from the server. */
     public Map<String, Object> customData() {
         return customData;
     }
 
+    /** The server's persistent data container values, or {@code null} when absent or from the client. */
+    public Map<String, Object> pdc() {
+        return pdc;
+    }
+
+    /** The server's native serialisation, for debugging only; {@code null} from the client. */
+    public String raw() {
+        return raw;
+    }
+
+    /** Equal when every observable field matches. {@code pdc}, {@code customData} and {@code raw} are one-sided. */
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -108,6 +140,6 @@ public final class ItemView {
     public String toString() {
         return "ItemView{" + type + " x" + amount + ", enchants=" + enchants + ", storedEnchants=" + storedEnchants
                 + ", name=" + name + ", lore=" + lore + ", damage=" + damage + ", repairCost=" + repairCost
-                + ", customData=" + customData + "}";
+                + ", customData=" + customData + ", pdc=" + pdc + "}";
     }
 }

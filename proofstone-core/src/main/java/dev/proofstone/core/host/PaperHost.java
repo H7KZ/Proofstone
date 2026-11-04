@@ -3,6 +3,7 @@ package dev.proofstone.core.host;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.await.AwaitTimeoutException;
@@ -227,6 +228,26 @@ public final class PaperHost implements AutoCloseable {
             return envelope.data().raw();
         } catch (JsonProcessingException e) {
             throw new PaperHostException("cannot encode command \"" + command + "\"", e);
+        }
+    }
+
+    /**
+     * Calls an agent endpoint and returns the reply's {@code data}. A reply that is not {@code ok}, or whose data
+     * is absent, is an error that names the call and the agent's message.
+     *
+     * @param body a JSON-serialisable object, or {@code null} for no body
+     */
+    public JsonNode request(String method, String path, Object body) {
+        String call = method + " " + path;
+        try {
+            String reply = agent(method, path, body == null ? null : JSON.writeValueAsString(body));
+            Envelope<JsonNode> envelope = parse(reply, new TypeReference<>() { });
+            if (!envelope.ok()) {
+                throw new PaperHostException("agent " + call + " failed: " + envelope.error());
+            }
+            return envelope.data() == null ? JSON.createObjectNode() : envelope.data();
+        } catch (JsonProcessingException e) {
+            throw new PaperHostException("cannot encode the body of " + call, e);
         }
     }
 

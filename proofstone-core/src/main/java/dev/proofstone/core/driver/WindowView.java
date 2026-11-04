@@ -6,7 +6,7 @@ import java.util.List;
  * A window model built only from server sync ({@code ContainerSetContent}, {@code ContainerSetSlot}); never from
  * a local prediction (client-driver spec §2). Each call returns the latest synced state.
  */
-public interface WindowView {
+public interface WindowView extends ItemViews {
 
     /** Namespaced menu type, such as {@code minecraft:generic_9x3}; {@code minecraft:inventory} for window 0. */
     String type();

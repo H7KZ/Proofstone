@@ -1,5 +1,6 @@
 package dev.proofstone.driver.mcpl;
 
+import dev.proofstone.api.ItemView;
 import dev.proofstone.core.driver.SlotStack;
 import dev.proofstone.core.driver.WindowView;
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
  * One window's state, written only by server packets on the network thread and read by test threads. Separate
  * instances model the player inventory (id 0) and the open window, so one cannot overwrite the other.
  */
-class WindowModel implements WindowView, ItemViews {
+class WindowModel implements WindowView {
 
     private final int id;
     private final String type;

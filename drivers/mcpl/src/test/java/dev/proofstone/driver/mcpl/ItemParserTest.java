@@ -1,5 +1,6 @@
 package dev.proofstone.driver.mcpl;
 
+import dev.proofstone.api.ItemView;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

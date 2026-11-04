@@ -2,7 +2,7 @@ package dev.proofstone.driver.mcpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.proofstone.core.driver.Click;
+import dev.proofstone.api.Click;
 import dev.proofstone.core.driver.SlotStack;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ClickItemAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.DropItemAction;

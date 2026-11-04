@@ -1,5 +1,6 @@
 package dev.proofstone.driver.mcpl;
 
+import dev.proofstone.api.ItemView;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -8,10 +9,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.cell.Cell;
 import dev.proofstone.core.cell.CellPlanner;
-import dev.proofstone.core.driver.BlockPos;
+import dev.proofstone.api.BlockPos;
 import dev.proofstone.core.driver.ClientSession;
 import dev.proofstone.core.driver.ConnectSpec;
 import dev.proofstone.core.driver.Face;
+import dev.proofstone.core.driver.ItemViews;
 import dev.proofstone.core.driver.WindowSession;
 import dev.proofstone.core.host.Eula;
 import dev.proofstone.core.host.PaperHost;

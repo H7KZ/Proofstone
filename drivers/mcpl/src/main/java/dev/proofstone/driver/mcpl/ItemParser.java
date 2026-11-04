@@ -1,5 +1,6 @@
 package dev.proofstone.driver.mcpl;
 
+import dev.proofstone.api.ItemView;
 import java.util.Map;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
 import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentTypes;

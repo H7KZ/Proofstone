@@ -8,6 +8,14 @@ public interface Agent {
     /** Runs a console command. Setup only: the reply is best effort, so never assert on it (ADR-0002). */
     String command(String command);
 
+    /** The handle for the player a client controls. */
+    default PlayerHandle player(Client client) {
+        return player(client.name());
+    }
+
+    /** The handle for an online player by name. */
+    PlayerHandle player(String name);
+
     /** The capabilities the agent reported at readiness. */
     List<String> capabilities();
 }

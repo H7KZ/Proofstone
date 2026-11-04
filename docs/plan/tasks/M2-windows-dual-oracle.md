@@ -264,8 +264,10 @@ Lessons that change how M2 cards should be done:
 - Expose internal core or driver types in the public signatures.
 
 **Acceptance.**
-- [ ] The API surface is checked by a binary-compatibility baseline (japicmp or a similar pinned tool)
-  that is created in this card.
+- [x] The API surface is checked by a binary-compatibility baseline (japicmp or a similar pinned tool)
+  that is created in this card. (Evidence: `ApiSurfaceTest` against `proofstone-api/api-baseline.txt`, a reflection dump
+  with no new dependency, because japicmp needs a published earlier jar and v0 has none; `:proofstone-api:check`
+  green. Real run: `:examples:smoke:test` `DualOracleE2E` 4 tests, 0 skipped, 0 failures; T-M2-07 PR.)
 
 **Verify.**
 `./gradlew :proofstone-api:check`
