@@ -237,8 +237,8 @@ Lessons that change how M2 cards should be done:
 - [x] Unit tests use captured component fixtures: a sword with two enchants and an enchanted book with
   stored enchants. (`ItemParserTest`, 11 tests, constructed components for each kind; the real captured case is
   `McplItemsIT`, which parses the server's own sync.)
-- [ ] C03 (give round trip) passes with both oracles equal. (C03 itself is written in T-M2-09. The same check ran
-  on a real Paper 26.3 in `McplItemsIT`: client and agent equal on type, amount, name and enchants.)
+- [x] C03 (give round trip) passes with both oracles equal. (Evidence: `:conformance:run --tests '*C03*'` on Paper 26.3,
+  T-M2-09, 10 of 10 runs; `McplItemsIT` also compares client and agent on type, amount, name and enchants.)
 
 **Verify.**
 `./gradlew :drivers:mcpl:test :conformance:run --tests C03`
@@ -322,7 +322,8 @@ Lessons that change how M2 cards should be done:
 - Use `serverOnly` in these scenarios.
 
 **Acceptance.**
-- [ ] All four pass 10 times in a row on the newest Paper row.
+- [x] All four pass 10 times in a row on the newest Paper row. (Evidence: 10 consecutive `:conformance:run --tests
+  '*C03*' --tests '*C04*' --tests '*C05*' --tests '*C06*'` runs, each 4 PASSED, 0 failed, 0 skipped in the XML.)
 
 **Verify.**
 `./gradlew :conformance:run`

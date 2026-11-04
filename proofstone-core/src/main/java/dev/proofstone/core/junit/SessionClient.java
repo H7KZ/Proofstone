@@ -65,6 +65,11 @@ final class SessionClient implements Client, AutoCloseable {
     }
 
     @Override
+    public int experienceLevel() {
+        return session.experienceLevel();
+    }
+
+    @Override
     public void close() {
         session.close();
     }

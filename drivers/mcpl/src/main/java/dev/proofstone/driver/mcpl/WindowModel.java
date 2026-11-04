@@ -101,15 +101,23 @@ class WindowModel implements WindowView {
      * close; the vanilla client avoids the staleness by sharing one inventory between menus. The items are what the
      * server sent, so this is not a prediction. Returns false when this model is not synced or the tail is short.
      */
-    synchronized boolean adoptPlayerSlots(List<SlotStack> containerSlots) {
+    synchronized boolean adoptPlayerSlots(List<SlotStack> containerSlots, List<ItemStack> containerRaw) {
         int first = containerSlots.size() - PLAYER_SLOTS;
-        if (slots == null || first < 0 || slots.size() < 9 + PLAYER_SLOTS) {
+        if (slots == null || first < 0 || slots.size() < 9 + PLAYER_SLOTS
+                || containerRaw.size() != containerSlots.size()) {
             return false;
         }
         for (int i = 0; i < PLAYER_SLOTS; i++) {
             slots.set(9 + i, containerSlots.get(first + i));
+            // The ItemView reads come from the raw stacks, so both lists must take the adopted slots.
+            rawSlots.set(9 + i, containerRaw.get(first + i));
         }
         return true;
+    }
+
+    /** The raw stacks as the server sent them, for another model to adopt. Null entries are empty slots. */
+    synchronized List<ItemStack> rawSlots() {
+        return java.util.Collections.unmodifiableList(new ArrayList<>(rawSlots));
     }
 
     private static final int PLAYER_SLOTS = 36;
