@@ -1,5 +1,6 @@
 package dev.proofstone.core.driver;
 
+import dev.proofstone.api.BlockPos;
 import java.time.Duration;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -42,6 +43,9 @@ public interface ClientSession extends AutoCloseable {
 
     /** The player inventory (window id 0) as last synced by the server; no slots until the first sync. */
     WindowView inventory();
+
+    /** The last server-synced position {x, y, z}, or {@code null} before the first sync. */
+    double[] position();
 
     /** Timestamped packet names and summaries, for repro bundles. */
     List<String> transcript();

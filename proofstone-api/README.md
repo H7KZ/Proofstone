@@ -15,8 +15,16 @@ Public API types for test authors (layer L1, ADR-0001). The only module whose ty
 The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, in `dev.proofstone.api`:
 
 - Annotations: `@Proofstone`, `@Matrix` (repeatable, with `Platform`), `@CellTest` (a JUnit `TestTemplate`).
-- Injected parameters: `Cell`, `Agent` (`command`, `capabilities`) and `Client` (`name`, `command`, `awaitMessage`).
-  `conformance` (T-M1-11) uses only these; a system-message flag or the agent protocol version is not on them yet.
+- Injected parameters: `Cell`, `Agent` (`command`, `capabilities`, `player`) and `Client` (`name`, `command`,
+  `awaitMessage`, `position`, `awaitPosition`, `openBlock`, `inventory`).
+- Setup and views (T-M2-07): `PlayerHandle` and `PlayerState` (server oracle), `Window`, `Click`, `Item` (build),
+  `ItemView` (read), `BlockPos`, `Position`.
+- Dual oracle (T-M2-07): `DualAssert` and `DisagreeException`. `dev.proofstone.api.spi.OracleWaiter` is how it waits;
+  `proofstone-core` provides it, so this module still has no wait of its own and no dependency on another module.
+- The binary-compatibility baseline is `api-baseline.txt`: `ApiSurfaceTest` dumps every public member and fails on
+  any difference. Regenerate on purpose with `./gradlew :proofstone-api:test -Dproofstone.updateApiBaseline=true`
+  and review the diff. Freeze candidates and deviations from the spec are listed in
+  [docs/specs/test-api.md](../docs/specs/test-api.md) section 8.
 
 The extension that runs them is `proofstone-core`'s `dev.proofstone.core.junit.ProofstoneExtension`, registered by
 JUnit auto-detection (`junit.jupiter.extensions.autodetection.enabled=true`).

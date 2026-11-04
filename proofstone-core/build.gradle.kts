@@ -4,7 +4,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":proofstone-api"))
+    // The driver SPI exposes api types (Click, BlockPos, ItemView), so drivers see them through core.
+    api(project(":proofstone-api"))
     // The JUnit extension (T-M1-10); its annotations live in proofstone-api.
     implementation(platform(libs.junit.bom))
     implementation(libs.junit.jupiter.api)

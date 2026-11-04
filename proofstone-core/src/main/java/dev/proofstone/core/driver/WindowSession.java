@@ -1,5 +1,7 @@
 package dev.proofstone.core.driver;
 
+import dev.proofstone.api.Click;
+
 /**
  * An open container window (client-driver spec §1).
  */

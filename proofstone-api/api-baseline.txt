@@ -1,0 +1,172 @@
+public abstract interface dev.proofstone.api.Agent
+  method public abstract dev.proofstone.api.PlayerHandle dev.proofstone.api.Agent.player(java.lang.String)
+  method public abstract java.lang.String dev.proofstone.api.Agent.command(java.lang.String)
+  method public abstract java.util.List<java.lang.String> dev.proofstone.api.Agent.capabilities()
+  method public default dev.proofstone.api.PlayerHandle dev.proofstone.api.Agent.player(dev.proofstone.api.Client)
+public final dev.proofstone.api.BlockPos extends java.lang.Record
+  constructor public dev.proofstone.api.BlockPos(int,int,int)
+  method public final boolean dev.proofstone.api.BlockPos.equals(java.lang.Object)
+  method public final int dev.proofstone.api.BlockPos.hashCode()
+  method public final java.lang.String dev.proofstone.api.BlockPos.toString()
+  method public int dev.proofstone.api.BlockPos.x()
+  method public int dev.proofstone.api.BlockPos.y()
+  method public int dev.proofstone.api.BlockPos.z()
+public abstract interface dev.proofstone.api.Cell
+  method public abstract boolean dev.proofstone.api.Cell.bridged()
+  method public abstract java.lang.String dev.proofstone.api.Cell.javaTag()
+  method public abstract java.lang.String dev.proofstone.api.Cell.platform()
+  method public abstract java.lang.String dev.proofstone.api.Cell.version()
+public abstract interface dev.proofstone.api.CellTest implements java.lang.annotation.Annotation
+public final dev.proofstone.api.Click extends java.lang.Enum<dev.proofstone.api.Click>
+  field public static final dev.proofstone.api.Click CTRL_DROP
+  field public static final dev.proofstone.api.Click DOUBLE
+  field public static final dev.proofstone.api.Click DROP
+  field public static final dev.proofstone.api.Click LEFT
+  field public static final dev.proofstone.api.Click NUMBER_1
+  field public static final dev.proofstone.api.Click NUMBER_2
+  field public static final dev.proofstone.api.Click NUMBER_3
+  field public static final dev.proofstone.api.Click NUMBER_4
+  field public static final dev.proofstone.api.Click NUMBER_5
+  field public static final dev.proofstone.api.Click NUMBER_6
+  field public static final dev.proofstone.api.Click NUMBER_7
+  field public static final dev.proofstone.api.Click NUMBER_8
+  field public static final dev.proofstone.api.Click NUMBER_9
+  field public static final dev.proofstone.api.Click RIGHT
+  field public static final dev.proofstone.api.Click SHIFT_LEFT
+  field public static final dev.proofstone.api.Click SHIFT_RIGHT
+  field public static final dev.proofstone.api.Click SWAP_OFFHAND
+  method public static dev.proofstone.api.Click dev.proofstone.api.Click.number(int)
+  method public static dev.proofstone.api.Click dev.proofstone.api.Click.valueOf(java.lang.String)
+  method public static dev.proofstone.api.Click[] dev.proofstone.api.Click.values()
+public abstract interface dev.proofstone.api.Client
+  method public abstract dev.proofstone.api.Position dev.proofstone.api.Client.awaitPosition(java.lang.String,java.util.function.Predicate<dev.proofstone.api.Position>)
+  method public abstract dev.proofstone.api.Position dev.proofstone.api.Client.position()
+  method public abstract dev.proofstone.api.Window dev.proofstone.api.Client.openBlock(dev.proofstone.api.BlockPos)
+  method public abstract java.lang.String dev.proofstone.api.Client.awaitMessage(java.util.regex.Pattern)
+  method public abstract java.lang.String dev.proofstone.api.Client.name()
+  method public abstract java.util.List<dev.proofstone.api.ItemView> dev.proofstone.api.Client.inventory()
+  method public abstract void dev.proofstone.api.Client.command(java.lang.String)
+public final dev.proofstone.api.DisagreeException extends java.lang.AssertionError
+  constructor public dev.proofstone.api.DisagreeException(java.lang.String,java.lang.String,java.lang.String)
+  method public java.lang.String dev.proofstone.api.DisagreeException.clientObserved()
+  method public java.lang.String dev.proofstone.api.DisagreeException.serverObserved()
+public final dev.proofstone.api.DualAssert
+  field public static final java.time.Duration DEFAULT_TIMEOUT
+  method public static dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert.item(dev.proofstone.api.PlayerHandle,dev.proofstone.api.Client)
+  method public static java.util.List<java.lang.String> dev.proofstone.api.DualAssert.serverOnlyReasons()
+public final dev.proofstone.api.DualAssert$ItemAssert
+  method public dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert$ItemAssert.amount(int)
+  method public dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert$ItemAssert.enchants(java.util.Map<java.lang.String, java.lang.Integer>)
+  method public dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert$ItemAssert.inInventory(java.lang.String,java.util.function.Predicate<dev.proofstone.api.ItemView>)
+  method public dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert$ItemAssert.inInventory(java.util.function.Predicate<dev.proofstone.api.ItemView>)
+  method public dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert$ItemAssert.name(java.lang.String)
+  method public dev.proofstone.api.DualAssert$ItemAssert dev.proofstone.api.DualAssert$ItemAssert.storedEnchants(java.util.Map<java.lang.String, java.lang.Integer>)
+  method public dev.proofstone.api.DualAssert$ItemAssert$ServerOnly dev.proofstone.api.DualAssert$ItemAssert.serverOnly(java.lang.String)
+public final dev.proofstone.api.DualAssert$ItemAssert$ServerOnly
+  method public dev.proofstone.api.DualAssert$ItemAssert$ServerOnly dev.proofstone.api.DualAssert$ItemAssert$ServerOnly.pdc(java.lang.String,java.lang.Object)
+  method public java.lang.String dev.proofstone.api.DualAssert$ItemAssert$ServerOnly.reason()
+public final dev.proofstone.api.Item
+  method public dev.proofstone.api.Item dev.proofstone.api.Item.amount(int)
+  method public dev.proofstone.api.Item dev.proofstone.api.Item.damage(int)
+  method public dev.proofstone.api.Item dev.proofstone.api.Item.enchant(java.lang.String,int)
+  method public dev.proofstone.api.Item dev.proofstone.api.Item.lore(java.lang.String...)
+  method public dev.proofstone.api.Item dev.proofstone.api.Item.name(java.lang.String)
+  method public dev.proofstone.api.Item dev.proofstone.api.Item.storedEnchant(java.lang.String,int)
+  method public int dev.proofstone.api.Item.amount()
+  method public int dev.proofstone.api.Item.damage()
+  method public java.lang.String dev.proofstone.api.Item.name()
+  method public java.lang.String dev.proofstone.api.Item.toString()
+  method public java.lang.String dev.proofstone.api.Item.type()
+  method public java.util.List<java.lang.String> dev.proofstone.api.Item.lore()
+  method public java.util.Map<java.lang.String, java.lang.Integer> dev.proofstone.api.Item.enchants()
+  method public java.util.Map<java.lang.String, java.lang.Integer> dev.proofstone.api.Item.storedEnchants()
+  method public static dev.proofstone.api.Item dev.proofstone.api.Item.of(java.lang.String)
+public final dev.proofstone.api.ItemView
+  constructor public dev.proofstone.api.ItemView(java.lang.String,int,java.util.Map<java.lang.String, java.lang.Integer>,java.util.Map<java.lang.String, java.lang.Integer>,java.lang.String,java.util.List<java.lang.String>,int,int,java.util.Map<java.lang.String, java.lang.Object>)
+  constructor public dev.proofstone.api.ItemView(java.lang.String,int,java.util.Map<java.lang.String, java.lang.Integer>,java.util.Map<java.lang.String, java.lang.Integer>,java.lang.String,java.util.List<java.lang.String>,int,int,java.util.Map<java.lang.String, java.lang.Object>,java.util.Map<java.lang.String, java.lang.Object>,java.lang.String)
+  field public static final dev.proofstone.api.ItemView EMPTY
+  method public boolean dev.proofstone.api.ItemView.equals(java.lang.Object)
+  method public boolean dev.proofstone.api.ItemView.is(java.lang.String)
+  method public boolean dev.proofstone.api.ItemView.isEmpty()
+  method public int dev.proofstone.api.ItemView.amount()
+  method public int dev.proofstone.api.ItemView.damage()
+  method public int dev.proofstone.api.ItemView.hashCode()
+  method public int dev.proofstone.api.ItemView.repairCost()
+  method public java.lang.String dev.proofstone.api.ItemView.name()
+  method public java.lang.String dev.proofstone.api.ItemView.raw()
+  method public java.lang.String dev.proofstone.api.ItemView.toString()
+  method public java.lang.String dev.proofstone.api.ItemView.type()
+  method public java.util.List<java.lang.String> dev.proofstone.api.ItemView.lore()
+  method public java.util.Map<java.lang.String, java.lang.Integer> dev.proofstone.api.ItemView.enchants()
+  method public java.util.Map<java.lang.String, java.lang.Integer> dev.proofstone.api.ItemView.storedEnchants()
+  method public java.util.Map<java.lang.String, java.lang.Object> dev.proofstone.api.ItemView.customData()
+  method public java.util.Map<java.lang.String, java.lang.Object> dev.proofstone.api.ItemView.pdc()
+public abstract interface dev.proofstone.api.Matrices implements java.lang.annotation.Annotation
+  method public abstract dev.proofstone.api.Matrix[] dev.proofstone.api.Matrices.value()
+public abstract interface dev.proofstone.api.Matrix implements java.lang.annotation.Annotation
+  method public abstract dev.proofstone.api.Platform dev.proofstone.api.Matrix.platform()
+  method public abstract java.lang.String[] dev.proofstone.api.Matrix.versions()
+public final dev.proofstone.api.Platform extends java.lang.Enum<dev.proofstone.api.Platform>
+  field public static final dev.proofstone.api.Platform PAPER
+  method public static dev.proofstone.api.Platform dev.proofstone.api.Platform.valueOf(java.lang.String)
+  method public static dev.proofstone.api.Platform[] dev.proofstone.api.Platform.values()
+public abstract interface dev.proofstone.api.PlayerHandle
+  method public abstract dev.proofstone.api.PlayerHandle dev.proofstone.api.PlayerHandle.give(dev.proofstone.api.Item)
+  method public abstract dev.proofstone.api.PlayerHandle dev.proofstone.api.PlayerHandle.level(int)
+  method public abstract dev.proofstone.api.PlayerHandle dev.proofstone.api.PlayerHandle.reset()
+  method public abstract dev.proofstone.api.PlayerState dev.proofstone.api.PlayerHandle.awaitState(java.lang.String,java.util.function.Predicate<dev.proofstone.api.PlayerState>)
+  method public abstract dev.proofstone.api.PlayerState dev.proofstone.api.PlayerHandle.state()
+  method public abstract java.lang.String dev.proofstone.api.PlayerHandle.name()
+public final dev.proofstone.api.PlayerState extends java.lang.Record
+  constructor public dev.proofstone.api.PlayerState(java.lang.String,int,double,java.lang.String,double,java.util.Map<java.lang.Integer, dev.proofstone.api.ItemView>,dev.proofstone.api.ItemView)
+  method public dev.proofstone.api.ItemView dev.proofstone.api.PlayerState.cursor()
+  method public double dev.proofstone.api.PlayerState.exp()
+  method public double dev.proofstone.api.PlayerState.health()
+  method public final boolean dev.proofstone.api.PlayerState.equals(java.lang.Object)
+  method public final int dev.proofstone.api.PlayerState.hashCode()
+  method public final java.lang.String dev.proofstone.api.PlayerState.toString()
+  method public int dev.proofstone.api.PlayerState.level()
+  method public java.lang.String dev.proofstone.api.PlayerState.gamemode()
+  method public java.lang.String dev.proofstone.api.PlayerState.name()
+  method public java.util.Map<java.lang.Integer, dev.proofstone.api.ItemView> dev.proofstone.api.PlayerState.inventory()
+public final dev.proofstone.api.Position extends java.lang.Record
+  constructor public dev.proofstone.api.Position(double,double,double)
+  method public double dev.proofstone.api.Position.x()
+  method public double dev.proofstone.api.Position.y()
+  method public double dev.proofstone.api.Position.z()
+  method public final boolean dev.proofstone.api.Position.equals(java.lang.Object)
+  method public final int dev.proofstone.api.Position.hashCode()
+  method public final java.lang.String dev.proofstone.api.Position.toString()
+public abstract interface dev.proofstone.api.Proofstone implements java.lang.annotation.Annotation
+  method public abstract boolean dev.proofstone.api.Proofstone.acceptEula()
+  method public abstract java.lang.String[] dev.proofstone.api.Proofstone.plugins()
+public abstract interface dev.proofstone.api.Window implements java.lang.AutoCloseable
+  method public abstract dev.proofstone.api.ItemView dev.proofstone.api.Window.awaitSlot(int,java.util.function.Predicate<dev.proofstone.api.ItemView>)
+  method public abstract dev.proofstone.api.ItemView dev.proofstone.api.Window.cursor()
+  method public abstract dev.proofstone.api.ItemView dev.proofstone.api.Window.slot(int)
+  method public abstract java.lang.String dev.proofstone.api.Window.title()
+  method public abstract java.lang.String dev.proofstone.api.Window.type()
+  method public abstract java.util.List<dev.proofstone.api.ItemView> dev.proofstone.api.Window.slots()
+  method public abstract void dev.proofstone.api.Window.click(int,dev.proofstone.api.Click)
+  method public abstract void dev.proofstone.api.Window.close()
+  method public abstract void dev.proofstone.api.Window.dropCursorIntoFirstEmptySlot()
+  method public abstract void dev.proofstone.api.Window.moveFromInventory(java.util.function.Predicate<dev.proofstone.api.ItemView>,int)
+public abstract interface dev.proofstone.api.spi.OracleWaiter
+  method public abstract <S,C> dev.proofstone.api.spi.OracleWaiter$Outcome<S, C> dev.proofstone.api.spi.OracleWaiter.untilBoth(java.lang.String,java.util.function.Supplier<S>,java.util.function.Supplier<C>,java.util.function.BiPredicate<S, C>,java.time.Duration)
+public final dev.proofstone.api.spi.OracleWaiter$Outcome extends java.lang.Record
+  constructor public dev.proofstone.api.spi.OracleWaiter$Outcome(boolean,java.time.Duration,dev.proofstone.api.spi.OracleWaiter$Side<S>,dev.proofstone.api.spi.OracleWaiter$Side<C>)
+  method public boolean dev.proofstone.api.spi.OracleWaiter$Outcome.matched()
+  method public dev.proofstone.api.spi.OracleWaiter$Side<C> dev.proofstone.api.spi.OracleWaiter$Outcome.client()
+  method public dev.proofstone.api.spi.OracleWaiter$Side<S> dev.proofstone.api.spi.OracleWaiter$Outcome.server()
+  method public final boolean dev.proofstone.api.spi.OracleWaiter$Outcome.equals(java.lang.Object)
+  method public final int dev.proofstone.api.spi.OracleWaiter$Outcome.hashCode()
+  method public final java.lang.String dev.proofstone.api.spi.OracleWaiter$Outcome.toString()
+  method public java.time.Duration dev.proofstone.api.spi.OracleWaiter$Outcome.elapsed()
+public final dev.proofstone.api.spi.OracleWaiter$Side extends java.lang.Record
+  constructor public dev.proofstone.api.spi.OracleWaiter$Side(boolean,T,java.lang.String)
+  method public T dev.proofstone.api.spi.OracleWaiter$Side.value()
+  method public boolean dev.proofstone.api.spi.OracleWaiter$Side.present()
+  method public final boolean dev.proofstone.api.spi.OracleWaiter$Side.equals(java.lang.Object)
+  method public final int dev.proofstone.api.spi.OracleWaiter$Side.hashCode()
+  method public final java.lang.String dev.proofstone.api.spi.OracleWaiter$Side.toString()
+  method public java.lang.String dev.proofstone.api.spi.OracleWaiter$Side.error()

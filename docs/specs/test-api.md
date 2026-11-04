@@ -112,3 +112,23 @@ Enchantment keys are always namespaced lowercase strings. **Levels are never cla
 The results are `PASS`, `FAIL`, `INVALID`, `VACUOUS`, `FLAKY`, `DISAGREE` and `SKIPPED(reason)`. Only
 `PASS` and `SKIPPED` with an allowed reason count as green. The `SKIPPED` reasons are: capability
 missing, Docker unavailable, EULA not accepted, or the cell was not selected.
+
+## 8. v0 implementation notes (T-M2-07, not frozen)
+
+The API is not frozen here; T-M2-99 reconciles this spec with the code and freezes it. Differences found so far:
+
+- `Click`: `NUMBER_1` to `NUMBER_9` and `Click.number(n)` replace `NUMBER_KEY(n)`, because an enum has no parameters.
+- `Item` has no `repairCost` or `pdc` setter, and `ItemView.repairCost()` reads 0 from the agent, because the agent's
+  `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only).
+- `PlayerHandle` has `reset`, `level`, `give`, `state`, `awaitState`. No `gamemode`, no `PlayerState.location` and no
+  `openWindow` yet. `Agent.world()`, `events()`, `plugin()`, `awaitTicks`, `assertNoErrorsLogged`, `logLines` and
+  `Clients`, `Topology` are not on the public API yet.
+- `Client` has `openBlock` (top face), `inventory`, `position` and `awaitPosition`; `experience()` is missing because
+  the driver does not read it yet, so `DualAssert.level` is not implemented.
+- `Window.close()` returns after sending the close. It does not await the server close or the inventory resync.
+- `DualAssert.item` offers `inInventory`, `amount`, `enchants`, `storedEnchants`, `name` and `serverOnly(reason).pdc`.
+  `serverOnly` records its reason in `DualAssert.serverOnlyReasons()` until a report exists.
+- `DualAssert` waits through `dev.proofstone.api.spi.OracleWaiter` (a service from `proofstone-core`) because the API
+  module cannot depend on `Await`. A failure is `DisagreeException` when exactly one oracle matched, `AssertionError`
+  starting `FAIL` when neither did, and `AssertionError` starting `ORACLE MISSING` when an oracle never answered.
+

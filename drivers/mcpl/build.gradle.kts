@@ -5,6 +5,8 @@ plugins {
 
 dependencies {
     implementation(project(":proofstone-core"))
+    // ItemView, Click and BlockPos are public API types and live only there (AGENTS.md §6); the driver depends on api, not the reverse.
+    implementation(project(":proofstone-api"))
     // The version is pinned in the catalog and mirrored in versions.yml (ADR-0004, ADR-0006).
     implementation(libs.mcprotocollib.protocol)
 }

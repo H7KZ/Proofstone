@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.cell.Cell;
 import dev.proofstone.core.cell.CellPlanner;
-import dev.proofstone.core.driver.BlockPos;
+import dev.proofstone.api.BlockPos;
 import dev.proofstone.core.driver.ClientSession;
 import dev.proofstone.core.driver.ConnectSpec;
 import dev.proofstone.core.driver.Face;

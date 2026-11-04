@@ -35,9 +35,24 @@ final class Keys {
     private Keys() {
     }
 
-    /** Bare key path for a legacy enchantment name, or null when the name is not in the table. */
-    static String enchantmentKey(String legacyName) {
-        return LEGACY_ENCHANTMENTS.get(legacyName);
+    /** Enchantment.getKey(), or null before 1.13. */
+    private static final Method GET_KEY = method(Enchantment.class, "getKey");
+
+    /**
+     * Bare key path of an enchantment, or null when it is not a vanilla one the agent can name. From 1.13 the key
+     * comes from the server (getName() there is a legacy name that is missing for newer enchantments such as
+     * mending, found by the dual oracle in T-M2-07); before that the legacy table is the only source.
+     */
+    static String enchantmentKey(Enchantment enchantment) {
+        if (GET_KEY == null) {
+            return LEGACY_ENCHANTMENTS.get(enchantment.getName());
+        }
+        try {
+            String key = String.valueOf(GET_KEY.invoke(enchantment));
+            return key.startsWith(NAMESPACE) ? key.substring(NAMESPACE.length()) : null;
+        } catch (ReflectiveOperationException e) {
+            throw new AgentException(500, "INTERNAL", "enchantment key lookup failed: " + e, null);
+        }
     }
 
     /** Resolves minecraft:path to an enchantment. Levels are not checked here. */

@@ -1,4 +1,4 @@
-package dev.proofstone.core.driver;
+package dev.proofstone.api;
 
 /**
  * A window click the driver can send (client-driver spec §2). The driver only sends the click; the result is

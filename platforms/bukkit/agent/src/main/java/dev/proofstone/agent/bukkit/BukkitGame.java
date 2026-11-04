@@ -25,6 +25,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 
 /**
@@ -396,6 +397,20 @@ public final class BukkitGame implements Game {
         if (meta != null && meta.hasDisplayName()) {
             out.put("name", meta.getDisplayName());
         }
+        // Lore, damage and stored enchants are left out when absent, like the other optional fields. The dual oracle
+        // found that an enchanted book read back with no stored enchants (T-M2-07).
+        if (meta != null && meta.hasLore()) {
+            out.put("lore", new ArrayList<String>(meta.getLore()));
+        }
+        if (stack.getDurability() > 0 && stack.getType().getMaxDurability() > 0) {
+            out.put("damage", (int) stack.getDurability());
+        }
+        if (meta instanceof EnchantmentStorageMeta) {
+            Map<String, Object> stored = enchants(((EnchantmentStorageMeta) meta).getStoredEnchants());
+            if (!stored.isEmpty()) {
+                out.put("storedEnchants", stored);
+            }
+        }
         out.put("enchants", enchants(stack.getEnchantments()));
         out.put("raw", String.valueOf(stack.serialize()));
         return out;
@@ -405,10 +420,9 @@ public final class BukkitGame implements Game {
     private static Map<String, Object> enchants(Map<Enchantment, Integer> levels) {
         Map<String, Object> out = new LinkedHashMap<>();
         for (Map.Entry<Enchantment, Integer> level : levels.entrySet()) {
-            String legacy = level.getKey().getName();
-            String key = Keys.enchantmentKey(legacy);
+            String key = Keys.enchantmentKey(level.getKey());
             if (key == null) {
-                throw Keys.unknownKey(legacy);
+                throw Keys.unknownKey(level.getKey().getName());
             }
             out.put("minecraft:" + key, level.getValue());
         }

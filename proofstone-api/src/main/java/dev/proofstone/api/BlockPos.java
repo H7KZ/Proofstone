@@ -1,4 +1,4 @@
-package dev.proofstone.core.driver;
+package dev.proofstone.api;
 
 /** A block position in whole coordinates. */
 public record BlockPos(int x, int y, int z) {

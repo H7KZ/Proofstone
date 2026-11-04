@@ -1,10 +1,11 @@
 package dev.proofstone.driver.mcpl;
 
+import dev.proofstone.api.ItemView;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.await.AwaitTimeoutException;
-import dev.proofstone.core.driver.BlockPos;
+import dev.proofstone.api.BlockPos;
 import dev.proofstone.core.driver.ChatMessage;
-import dev.proofstone.core.driver.Click;
+import dev.proofstone.api.Click;
 import dev.proofstone.core.driver.ClientDriverException;
 import dev.proofstone.core.driver.ClientSession;
 import dev.proofstone.core.driver.Face;
@@ -171,8 +172,9 @@ final class McplSession implements ClientSession {
     }
 
     /** The last server-synced position {x, y, z}, or null before the first sync. */
-    double[] position() {
-        return position;
+    @Override
+    public double[] position() {
+        return position == null ? null : position.clone();
     }
 
     private void applyPosition(ClientboundPlayerPositionPacket move) {
@@ -339,7 +341,7 @@ final class McplSession implements ClientSession {
     }
 
     /** A live view of one window model. */
-    private final class Window implements WindowSession, ItemViews {
+    private final class Window implements WindowSession {
         private final WindowModel model;
 
         Window(WindowModel model) {
