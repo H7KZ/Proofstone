@@ -1,6 +1,7 @@
 package dev.proofstone.core.junit;
 
 import dev.proofstone.api.CellTest;
+import dev.proofstone.api.Isolation;
 import dev.proofstone.api.Matrix;
 import dev.proofstone.api.Proofstone;
 import dev.proofstone.core.cell.Cell;
@@ -87,7 +88,9 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         for (Matrix matrix : matrices) {
             cells.addAll(planner.plan(matrix.platform().name().toLowerCase(Locale.ROOT), List.of(matrix.versions())));
         }
-        return cells.stream().map(cell -> new CellInvocation(cell, config));
+        Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
+                .orElse(Isolation.Mode.PER_CLASS);
+        return cells.stream().map(cell -> new CellInvocation(cell, config, isolation));
     }
 
     private static VersionsCatalog catalog() {

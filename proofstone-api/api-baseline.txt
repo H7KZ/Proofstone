@@ -1,5 +1,6 @@
 public abstract interface dev.proofstone.api.Agent
   method public abstract dev.proofstone.api.PlayerHandle dev.proofstone.api.Agent.player(java.lang.String)
+  method public abstract dev.proofstone.api.PluginHandle dev.proofstone.api.Agent.plugin(java.lang.String)
   method public abstract java.lang.String dev.proofstone.api.Agent.command(java.lang.String)
   method public abstract java.util.List<java.lang.String> dev.proofstone.api.Agent.capabilities()
   method public default dev.proofstone.api.PlayerHandle dev.proofstone.api.Agent.player(dev.proofstone.api.Client)
@@ -65,6 +66,13 @@ public final dev.proofstone.api.DualAssert$ItemAssert
 public final dev.proofstone.api.DualAssert$ItemAssert$ServerOnly
   method public dev.proofstone.api.DualAssert$ItemAssert$ServerOnly dev.proofstone.api.DualAssert$ItemAssert$ServerOnly.pdc(java.lang.String,java.lang.Object)
   method public java.lang.String dev.proofstone.api.DualAssert$ItemAssert$ServerOnly.reason()
+public abstract interface dev.proofstone.api.Isolation implements java.lang.annotation.Annotation
+  method public abstract dev.proofstone.api.Isolation$Mode dev.proofstone.api.Isolation.value()
+public final dev.proofstone.api.Isolation$Mode extends java.lang.Enum<dev.proofstone.api.Isolation$Mode>
+  field public static final dev.proofstone.api.Isolation$Mode PER_CLASS
+  field public static final dev.proofstone.api.Isolation$Mode PER_TEST
+  method public static dev.proofstone.api.Isolation$Mode dev.proofstone.api.Isolation$Mode.valueOf(java.lang.String)
+  method public static dev.proofstone.api.Isolation$Mode[] dev.proofstone.api.Isolation$Mode.values()
 public final dev.proofstone.api.Item
   method public dev.proofstone.api.Item dev.proofstone.api.Item.amount(int)
   method public dev.proofstone.api.Item dev.proofstone.api.Item.damage(int)
@@ -129,6 +137,10 @@ public final dev.proofstone.api.PlayerState extends java.lang.Record
   method public java.lang.String dev.proofstone.api.PlayerState.gamemode()
   method public java.lang.String dev.proofstone.api.PlayerState.name()
   method public java.util.Map<java.lang.Integer, dev.proofstone.api.ItemView> dev.proofstone.api.PlayerState.inventory()
+public abstract interface dev.proofstone.api.PluginHandle
+  method public abstract dev.proofstone.api.PluginHandle dev.proofstone.api.PluginHandle.patchConfig(java.lang.String,java.lang.Object)
+  method public abstract java.lang.Object dev.proofstone.api.PluginHandle.config(java.lang.String)
+  method public abstract java.lang.String dev.proofstone.api.PluginHandle.name()
 public final dev.proofstone.api.Position extends java.lang.Record
   constructor public dev.proofstone.api.Position(double,double,double)
   method public double dev.proofstone.api.Position.x()

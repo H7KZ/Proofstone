@@ -102,8 +102,10 @@
 - **`setblock` answers "That position is not loaded" right after boot** when the target chunk is not loaded. The reply
   is still a normal command reply, not an error, so `PaperHost.command` does not throw. The contract test loads chunk
   `0 0` with `forceload add 0 0` before it places blocks, and checks the block read back (T-M2-02).
-- **The agent's log buffer sees JUL records only.** A real run after boot logs INFO records (`ProofstoneAgent`, `spark`)
-  and no WARN. Server messages that go through Log4j directly are not captured yet (T-M2-02).
+- **The agent's log buffer reads JUL and the Log4j2 root** (`LogBuffer`, `Log4jTap`; Log4j added in T-M2-08, it was
+  JUL only before). Paper forwards every JUL record to Log4j, so each such record arrives twice on one thread; the
+  buffer drops the second copy by level, logger and message. A real run after boot logs INFO records
+  (`ProofstoneAgent`, `spark`) and no WARN.
 
 - **`reset` teleports the player** to the fixture spot, so teleport after it, never before (T-M2-07). A test that
   teleported first and reset second left the client far from its anvil; the window never opened and the server kicked
@@ -124,3 +126,10 @@ Measured from the JUnit XML suite times of one serial run, image already pulled:
 - `PaperHostIT` (4 tests, three of which boot a server) takes about 91 s.
 - A cold first run adds the image pull and the Paper jar download. CI `smoke` took about 3.5 min including Gradle
   setup.
+- **The per-test log check reads WARN and worse, from JUL and Log4j (T-M2-08).** The fixture plugin logs one WARN at
+  enable, before any test's log cursor is taken, so it never fails a test. A test that reloads the fixture logs it
+  again and must expect that. The allowlist (`ErrorLogGuard.ALLOWLIST`) holds the `No key layers` noise and
+  `T<8 hex> moved too quickly!`: with Log4j captured, the server's anti-cheat WARN for the harness client shows up,
+  because the reset teleport races the client's first movement packets. It is allowed for harness client names only.
+- **The client inventory from the driver lists empty slots as `air x0` items**, so "empty" means all items
+  `isEmpty()`, not an empty list. The agent's `inventory` omits empty slots.
