@@ -71,8 +71,9 @@ try (Window w = client.openBlock(pos)) {         // interacts with block; awaits
     w.click(2, Click.LEFT);                      // also SHIFT, RIGHT, NUMBER_KEY(n), DROP, DOUBLE, SWAP_OFFHAND
     w.cursor();                                  // ItemView or empty
     w.dropCursorIntoFirstEmptySlot();
+    w.rename("Blade");                          // anvil only: types the rename box
 }                                                // close() awaits server close + inventory resync
-client.inventory();  client.experience();  client.position();
+client.inventory();  client.experienceLevel();  client.position();
 ```
 
 ## 5. Dual-oracle assertions
@@ -123,8 +124,10 @@ The API is not frozen here; T-M2-99 reconciles this spec with the code and freez
 - `PlayerHandle` has `reset`, `level`, `give`, `state`, `awaitState`. No `gamemode`, no `PlayerState.location` and no
   `openWindow` yet. `Agent.world()`, `events()`, `plugin()`, `awaitTicks`, `assertNoErrorsLogged`, `logLines` and
   `Clients`, `Topology` are not on the public API yet.
-- `Client` has `openBlock` (top face), `inventory`, `position` and `awaitPosition`; `experience()` is missing because
-  the driver does not read it yet, so `DualAssert.level` is not implemented.
+- `Client` has `openBlock` (top face), `inventory`, `position`, `awaitPosition` and `experienceLevel()`. The spec
+  sketch called the last one `experience()`; it is named `experienceLevel()` because it returns the level only, not
+  the points or the progress bar (T-M2-09). It throws until the server's first experience sync. `DualAssert.level`
+  reads it on the client side. `Window.rename(String)` types an anvil's rename box and throws for any other window.
 - `Window.close()` returns after sending the close. It does not await the server close or the inventory resync.
 - `DualAssert.item` offers `inInventory`, `amount`, `enchants`, `storedEnchants`, `name` and `serverOnly(reason).pdc`.
   `serverOnly` records its reason in `DualAssert.serverOnlyReasons()` until a report exists.

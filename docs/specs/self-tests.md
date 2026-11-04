@@ -23,6 +23,10 @@ Minimum scenarios for Java packs. Each one uses the dual oracle, with vanilla be
 | C11 | Log capture: the fixture plugin logs a SEVERE, `assertNoErrorsLogged` fails, the allowlist works | error oracle |
 | C12 | Reset leaves no residue: state before and after compares equal | isolation |
 
+v0 limit for C04: a chest's own contents have no server oracle yet (there is no `openWindow` endpoint on the agent),
+so C04 checks the move through server-answered clicks on the client window and dual-checks only the player inventory
+(the stack must leave it on both oracles). A server-side chest check arrives with that endpoint.
+
 Each pack can add its own scenarios. For example, Folia adds cross-region teleport and region-thread
 assertions.
 
