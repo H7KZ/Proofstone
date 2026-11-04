@@ -2,7 +2,11 @@ package dev.proofstone.driver.mcpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.proofstone.core.driver.Click;
 import dev.proofstone.core.driver.SlotStack;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ClickItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.DropItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerType;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
 import org.junit.jupiter.api.Test;
@@ -35,6 +39,40 @@ class WindowModelTest {
         assertThat(window.claim()).as("unsynced window is not handed out").isFalse();
         window.setContent(1, new ItemStack[1], null);
         assertThat(window.setSlot(2, 5, new ItemStack(1, 1))).isFalse();
+    }
+
+    @Test
+    void everyClickMapsToAPacketWithNoPredictedChanges() {
+        for (Click click : Click.values()) {
+            var packet = McplSession.clickPacket(4, 11, 2, click);
+            assertThat(packet.getContainerId()).isEqualTo(4);
+            assertThat(packet.getStateId()).isEqualTo(11);
+            assertThat(packet.getSlot()).isEqualTo(2);
+            assertThat(packet.getChangedSlots()).isEmpty();
+            assertThat(packet.getCarriedItem()).as("an unknown carried item forces a full resync").isNotNull();
+        }
+        assertThat(McplSession.clickPacket(1, 0, 0, Click.number(3)).getParam()).isEqualTo(MoveToHotbarAction.SLOT_3);
+        assertThat(McplSession.clickPacket(1, 0, 0, Click.SWAP_OFFHAND).getParam())
+                .isEqualTo(MoveToHotbarAction.OFF_HAND);
+        assertThat(McplSession.clickPacket(1, 0, 0, Click.RIGHT).getParam()).isEqualTo(ClickItemAction.RIGHT_CLICK);
+        assertThat(McplSession.clickPacket(1, 0, 0, Click.CTRL_DROP).getParam())
+                .isEqualTo(DropItemAction.DROP_SELECTED_STACK);
+    }
+
+    @Test
+    void closingAContainerHandsItsPlayerSlotsToWindowZero() {
+        WindowModel inventory = new WindowModel(0, "minecraft:inventory", "Inventory");
+        inventory.setContent(1, new ItemStack[46], null);
+        ItemStack[] chestSlots = new ItemStack[3 + 36];
+        chestSlots[3 + 5] = new ItemStack(7, 2);
+        WindowModel chest = new WindowModel(2, "minecraft:generic_9x1", "Chest");
+        chest.setContent(1, chestSlots, null);
+
+        assertThat(inventory.adoptPlayerSlots(chest.slots())).isTrue();
+        assertThat(inventory.slots().get(9 + 5)).isEqualTo(new SlotStack(7, 2));
+        assertThat(inventory.slots()).hasSize(46);
+        assertThat(new WindowModel(0, "minecraft:inventory", "Inventory").adoptPlayerSlots(chest.slots()))
+                .as("unsynced window 0 is not invented").isFalse();
     }
 
     @Test

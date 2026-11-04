@@ -30,6 +30,14 @@
   straight away.
 - Disenchantment-style plugins put the result on the cursor themselves (`setItemOnCursor`). The driver
   must handle a cursor that is not empty after a result click.
+- **Client-initiated window close is not acknowledged (26.3).** The server sends no window 0 resync, and no cursor
+  packet either: items in the container's player slots reach window 0 only as later diffs, and a carried stack is
+  returned silently. A driver with a separate model per window (like mcpl) must copy the container's last 36
+  slots into window 0 and clear the cursor itself on close, then await the inventory it expects.
+- **A click with an empty carried item gets no full resync (26.3).** The server then sends the slot change with a
+  bumped `stateId`, and the cursor arrives in a separate packet after it, so "newer stateId" alone can race the
+  cursor. Claiming an impossible carried stack (air x1) makes the server answer with one `ContainerSetContent`
+  that includes the cursor. A click that changes nothing gets no answer at all.
 - **The itzg digest is per Java tag.** `java17`, `java21` and `java25` have different digests, but `versions.yml`
   holds one digest per host. It is pinned to `java25` (Paper 26.x), so older rows would run on the wrong Java.
   `PaperHost` checks the container's Java major against the cell and fails loudly. Fixing this needs a

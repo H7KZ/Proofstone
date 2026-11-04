@@ -4,6 +4,7 @@ import dev.proofstone.core.await.Await;
 import dev.proofstone.core.await.AwaitTimeoutException;
 import dev.proofstone.core.driver.BlockPos;
 import dev.proofstone.core.driver.ChatMessage;
+import dev.proofstone.core.driver.Click;
 import dev.proofstone.core.driver.ClientDriverException;
 import dev.proofstone.core.driver.ClientSession;
 import dev.proofstone.core.driver.Face;
@@ -17,6 +18,8 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
@@ -31,8 +34,16 @@ import org.cloudburstmc.math.vector.Vector3i;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.object.Direction;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PositionElement;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ClickItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerActionType;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerType;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.DropItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.FillStackAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ShiftClickItemAction;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundDisconnectPacket;
+import org.geysermc.mcprotocollib.protocol.data.game.item.HashedStack;
 import org.geysermc.mcprotocollib.protocol.packet.configuration.clientbound.ClientboundRegistryDataPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundDisguisedChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
@@ -43,6 +54,8 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.C
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetContentPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetSlotPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundOpenScreenPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundSetCursorItemPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundPlayerLoadedPacket;
@@ -66,6 +79,7 @@ final class McplSession implements ClientSession {
     private final List<String> transcript = Collections.synchronizedList(new ArrayList<>());
     private static final double EYE_HEIGHT = 1.62;
     private static final Duration POSITION_WAIT = Duration.ofSeconds(10);
+    private static final Duration CLICK_WAIT = Duration.ofSeconds(10);
 
     /** The player inventory, window id 0. It lives apart from the open windows (client-driver spec §2). */
     private final ItemRegistries registries = ItemRegistries.forProtocol(McplDriver.PROTOCOL_VERSION);
@@ -134,10 +148,13 @@ final class McplSession implements ClientSession {
             synchronized (opened) {
                 for (WindowModel window : opened) {
                     if (window.id() == close.getContainerId()) {
-                        window.markClosed();
+                        retire(window);
                     }
                 }
             }
+        } else if (packet instanceof ClientboundSetCursorItemPacket cursor) {
+            playerInventory.setCursor(cursor.getContents());
+            summary += " cursor";
         } else if (packet instanceof ClientboundSystemChatPacket system) {
             // Overlay is the action bar, which is not chat.
             if (!system.isOverlay()) {
@@ -181,6 +198,11 @@ final class McplSession implements ClientSession {
         if (target == null) {
             return " id=" + content.getContainerId() + " (no such window, ignored)";
         }
+        if (target != playerInventory) {
+            // The cursor belongs to the player, not to a window. It is set before setContent bumps the stateId a
+            // click waits on, so a test thread that sees the new stateId never reads the previous cursor.
+            playerInventory.setCursor(content.getCarriedItem());
+        }
         target.setContent(content.getStateId(), content.getItems(), content.getCarriedItem());
         return " id=" + target.id() + " stateId=" + content.getStateId() + " slots=" + content.getItems().length;
     }
@@ -196,6 +218,17 @@ final class McplSession implements ClientSession {
             return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " (not applied: unknown window or slot)";
         }
         return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " stateId=" + slot.getStateId();
+    }
+
+    /** Marks a window closed and hands its player slots back to window 0 (see {@link WindowModel#adoptPlayerSlots}). */
+    private void retire(WindowModel window) {
+        if (!window.isClosed()) {
+            playerInventory.adoptPlayerSlots(window.slots());
+            // Closing a menu makes the server return or drop the carried stack and it sends no cursor packet for
+            // that, so the cursor is empty from here on (the vanilla client clears it the same way).
+            playerInventory.setCursor(null);
+        }
+        window.markClosed();
     }
 
     /** The model a container packet addresses: the player inventory for id 0, else the newest open window. */
@@ -322,7 +355,34 @@ final class McplSession implements ClientSession {
         public void close() {
             requireOpen("cannot close a window");
             network.send(new ServerboundContainerClosePacket(model.id()));
-            model.markClosed();
+            retire(model);
+        }
+
+        @Override
+        public void click(int slot, Click click) {
+            requireOpen("cannot click a slot");
+            if (model.isClosed()) {
+                throw new ClientDriverException("cannot click slot " + slot + ": window " + model.id() + " is closed");
+            }
+            int sent = model.stateId();
+            // No predicted changes and no carried item: the server sees a mismatch and resyncs (spec §2).
+            network.send(clickPacket(model.id(), sent, slot, click));
+            try {
+                // A disconnect or a server-side close is a value, not an exception: Await retries a throwing probe.
+                Await.until("server sync after " + click + " on slot " + slot + " of window " + model.id(),
+                        () -> state == State.DISCONNECTED || model.isClosed() || model.stateId() != sent,
+                        done -> done, CLICK_WAIT);
+            } catch (AwaitTimeoutException e) {
+                throw new ClientDriverException("server did not answer " + click + " on slot " + slot
+                        + " of window " + model.id() + " within " + CLICK_WAIT + " (a no-op click gets no sync);"
+                        + " transcript tail: " + tail(), e);
+            }
+            if (state == State.DISCONNECTED) {
+                throw new ClientDriverException("disconnected during " + click + ": " + disconnectReason);
+            }
+            if (model.isClosed()) {
+                throw new ClientDriverException("the server closed window " + model.id() + " during " + click);
+            }
         }
 
         @Override
@@ -347,7 +407,7 @@ final class McplSession implements ClientSession {
 
         @Override
         public SlotStack cursor() {
-            return model.cursor();
+            return playerInventory.cursor();
         }
 
         @Override
@@ -360,6 +420,35 @@ final class McplSession implements ClientSession {
             return model.cursorView();
         }
     }
+
+    static ServerboundContainerClickPacket clickPacket(int windowId, int stateId, int slot, Click click) {
+        ContainerActionType type;
+        ContainerAction param;
+        switch (click) {
+            case LEFT -> { type = ContainerActionType.CLICK_ITEM; param = ClickItemAction.LEFT_CLICK; }
+            case RIGHT -> { type = ContainerActionType.CLICK_ITEM; param = ClickItemAction.RIGHT_CLICK; }
+            case SHIFT_LEFT -> { type = ContainerActionType.SHIFT_CLICK_ITEM; param = ShiftClickItemAction.LEFT_CLICK; }
+            case SHIFT_RIGHT -> { type = ContainerActionType.SHIFT_CLICK_ITEM; param = ShiftClickItemAction.RIGHT_CLICK; }
+            case DROP -> { type = ContainerActionType.DROP_ITEM; param = DropItemAction.DROP_FROM_SELECTED; }
+            case CTRL_DROP -> { type = ContainerActionType.DROP_ITEM; param = DropItemAction.DROP_SELECTED_STACK; }
+            case DOUBLE -> { type = ContainerActionType.FILL_STACK; param = FillStackAction.FILL; }
+            case SWAP_OFFHAND -> { type = ContainerActionType.MOVE_TO_HOTBAR_SLOT; param = MoveToHotbarAction.OFF_HAND; }
+            case NUMBER_1, NUMBER_2, NUMBER_3, NUMBER_4, NUMBER_5, NUMBER_6, NUMBER_7, NUMBER_8, NUMBER_9 -> {
+                type = ContainerActionType.MOVE_TO_HOTBAR_SLOT;
+                param = MoveToHotbarAction.values()[click.ordinal() - Click.NUMBER_1.ordinal()];
+            }
+            default -> throw new ClientDriverException("unsupported click " + click);
+        }
+        return new ServerboundContainerClickPacket(windowId, stateId, slot, type, param, UNKNOWN_CARRIED, Map.of());
+    }
+
+    /**
+     * The carried item the click claims. It never equals a real cursor, so the server always answers with a full
+     * resync (ContainerSetContent, cursor included). An empty claim would match an empty cursor, and the server
+     * would then send the slot change and the cursor change as separate packets, with the stateId bump arriving
+     * before the cursor. Air with a count of one cannot exist as a real stack. The model never reads this value.
+     */
+    private static final HashedStack UNKNOWN_CARRIED = new HashedStack(0, 1, Map.of(), Set.of());
 
     private String buffer(String text, boolean system) {
         chat.add(new ChatMessage(text, system));

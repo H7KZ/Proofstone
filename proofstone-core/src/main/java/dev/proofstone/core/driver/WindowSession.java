@@ -1,15 +1,24 @@
 package dev.proofstone.core.driver;
 
 /**
- * An open container window (client-driver spec §1). Clicking is added by T-M2-05.
- *
- * <p>SEAM: {@code click} and the awaiting variant of {@link #close()} join in T-M2-05.
+ * An open container window (client-driver spec §1).
  */
 public interface WindowSession extends WindowView {
 
     /** The window title as plain text. */
     String title();
 
-    /** Tells the server this client closed the window. It does not wait for a resync yet (T-M2-05). */
+    /**
+     * Sends the click and returns once the server answered it with a sync carrying a different {@code stateId}
+     * (spec §2). The slots and cursor are then the server's, never a prediction. A click the server treats as a
+     * no-op produces no sync and fails with {@link ClientDriverException} after the wait.
+     */
+    void click(int slot, Click click);
+
+    /**
+     * Tells the server this client closed the window. The server does not acknowledge a client close, so this
+     * returns after sending. Items the server moves afterwards (a returned cursor) arrive later as syncs of
+     * window 0: await the inventory state you expect instead of reading it straight away.
+     */
     void close();
 }
