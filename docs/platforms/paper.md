@@ -117,8 +117,10 @@
   is still a normal command reply, not an error, so `PaperHost.command` does not throw. The contract test loads chunk
   `0 0` with `forceload add 0 0` before it places blocks, and checks the block read back (T-M2-02).
 - **The agent's log buffer reads JUL and the Log4j2 root** (`LogBuffer`, `Log4jTap`; Log4j added in T-M2-08, it was
-  JUL only before). Paper forwards every JUL record to Log4j, so each such record arrives twice on one thread; the
-  buffer drops the second copy by level, logger and message. A real run after boot logs INFO records
+  JUL only before). Paper forwards every JUL record to Log4j, so each such record arrives twice; the buffer
+  drops the second copy by level, logger, message and time (2 s), whichever side comes first and on whichever thread
+  (T-M3-06: Paper 1.12.2 runs Log4j asynchronously, so the copy arrives on a `Log4j2-TF` thread and a per-thread match
+  kept both). A real run after boot logs INFO records
   (`ProofstoneAgent`, `spark`) and no WARN.
 
 - **`reset` teleports the player** to the fixture spot, so teleport after it, never before (T-M2-07). A test that
@@ -198,3 +200,26 @@ Measured from the JUnit XML suite times of one serial run, image already pulled:
   parks the result in the anvil's empty input slot loses it on 1.8.8. C05 and C06 put it into a player slot.
 - **Pre-1.17 servers answer an accepted click with no echo** (they expect the client's prediction), so a driver that
   waits for the server's answer must make every click be rejected (docs/platforms/viaproxy.md).
+
+### Legacy agent, 1.8.8 to 1.12.2 (T-M3-06, 2026-11-07, golden replay on paper@1.8.8, 1.12.2 and 26.3)
+
+- **Paper 1.8.8 has no `com.destroystokyo.paper.PaperConfig`.** It is PaperSpigot (`org.github.paperspigot.PaperSpigotConfig`),
+  so the agent reported `platform: spigot` and `health/ok` failed. 1.12.2 has the Paper class.
+- **The plugin logger name differs by version.** A plugin's records have the logger `proofstone-fixture` on 26.3 and 1.12.2,
+  and the class name `dev.proofstone.fixture.FixturePlugin` on 1.8.8. The golden says only `<string>`; the contract test
+  picks the fixture record by message.
+- **`NamespacedKey` exists in 1.12, but nothing keyed with it does.** `Enchantment.getKey`, `getByKey` and `Material.getKey`
+  start at 1.13, so "has NamespacedKey" is the wrong legacy test. The agent uses the 1.13 `BlockData` class instead.
+- **A plugin with no `api-version` runs in legacy material mode on 1.13+.** `Material.getMaterial("DIAMOND_SWORD")` is then
+  a legacy material (`Material.getKey()` throws "Cannot get key of Legacy Material"), and `GOLD_SWORD` resolves and gives
+  a golden sword. The agent's `plugin.yml` has `api-version: 1.13`; servers before 1.13 ignore the key.
+- **Legacy material names differ from keys.** `GOLD_SWORD` is `golden_sword`, `IRON_SPADE` is `iron_shovel`, `WOOD` is
+  `planks`. `legacy-materials.csv` lists the renamed ones; every other name is its key in lower case. The agent answers
+  `UNKNOWN_KEY` for a legacy name used as a key on every version. Items with data values (wool colours, stone variants)
+  are not covered.
+- **A block state before 1.13 is the data value.** `legacy-block-states.csv` holds `facing` for anvil, chests and furnace.
+  The anvil rows (0 south, 1 west, 2 north, 3 east) come from the wiki and were not checked against a client.
+  Any other state is `UNKNOWN_KEY`.
+- **PDC is not served at any version.** The agent has no PDC field (`pdc` in an item is `INVALID_REQUEST`), so no
+  version advertises a `pdc` capability and the wire capabilities list is unchanged. A card that adds PDC reads it from
+  1.14 on and reports it unsupported below.

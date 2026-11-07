@@ -1,3 +1,4 @@
+# Manual only (workflow_dispatch): Actions minutes are billed to the maintainer. Run the cells locally instead.
 # CI matrix (T-M3-07, docs/versioning.md §4, ADR-0008). The cells come from versions.yml through
 # `./gradlew printMatrix --scope=pr|nightly`, so adding a row adds a job with no edit here. One job per cell runs
 # `:conformance:run` on that cell and uploads its repro bundle. PR runs only the required rows; nightly runs every
@@ -6,9 +7,6 @@
 name: matrix
 
 on:
-  pull_request:
-  schedule:
-    - cron: "23 3 * * *"
   workflow_dispatch:
     inputs:
       scope:

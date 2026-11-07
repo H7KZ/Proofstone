@@ -3,9 +3,7 @@ package dev.proofstone.agent.bukkit;
 import dev.proofstone.agent.protocol.AgentException;
 import java.lang.reflect.Method;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.regex.Pattern;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -22,10 +20,9 @@ final class Keys {
     private static final Pattern KEY_PATH = Pattern.compile("[a-z0-9_./-]+");
     private static final Pattern ENUM_NAME = Pattern.compile("[A-Z][A-Z0-9_]*");
 
-    /** Legacy (1.8) enchantment name to Minecraft key path. Newer enchantments fail loudly until added. */
-    private static final Map<String, String> LEGACY_ENCHANTMENTS = legacyEnchantments();
-
-    /** org.bukkit.NamespacedKey, or null before 1.13. */
+    /** org.bukkit.block.data.BlockData, or null before the 1.13 flattening. */
+    private static final Class<?> FLATTENED = findClass("org.bukkit.block.data.BlockData");
+    /** org.bukkit.NamespacedKey: null before 1.12, and 1.12 has it without any keyed enchantment API. */
     private static final Class<?> NAMESPACED_KEY = findClass("org.bukkit.NamespacedKey");
     /** NamespacedKey.minecraft(String), or null before 1.13. */
     private static final Method MINECRAFT_KEY = method(NAMESPACED_KEY, "minecraft", String.class);
@@ -34,6 +31,9 @@ final class Keys {
 
     private Keys() {
     }
+
+    /** Material.getKey() (Keyed, 1.13+), or null before. */
+    private static final Method MATERIAL_GET_KEY = method(Material.class, "getKey");
 
     /** Enchantment.getKey(), or null before 1.13. */
     private static final Method GET_KEY = method(Enchantment.class, "getKey");
@@ -45,7 +45,7 @@ final class Keys {
      */
     static String enchantmentKey(Enchantment enchantment) {
         if (GET_KEY == null) {
-            return LEGACY_ENCHANTMENTS.get(enchantment.getName());
+            return LegacyNames.enchantmentKey(enchantment.getName());
         }
         try {
             String key = String.valueOf(GET_KEY.invoke(enchantment));
@@ -66,19 +66,71 @@ final class Keys {
     }
 
     /**
-     * Resolves minecraft:path to a material. The 1.8 enum name of an item is its path in upper case
-     * (DIAMOND_SWORD), so one lookup serves legacy and 1.13+ servers alike.
+     * Resolves minecraft:path to a material. From 1.13 the enum name is the path in upper case. Before that the
+     * name is the path in upper case only when the legacy table has no row for it (DIAMOND_SWORD, but GOLD_SWORD
+     * for golden_sword), and a legacy name that has a row is not a key (T-M3-06).
      */
     static Material material(String key) {
-        String name = path(key).toUpperCase(Locale.ROOT);
+        String path = path(key);
+        String name = path.toUpperCase(Locale.ROOT);
+        if (legacy()) {
+            String renamed = LegacyNames.materialName(path);
+            if (renamed != null) {
+                name = renamed;
+            } else if (LegacyNames.isRenamedMaterial(name)) {
+                throw unknownKey(key);
+            }
+        }
         if (!ENUM_NAME.matcher(name).matches()) {
             throw unknownKey(key);
         }
-        Material material = Material.matchMaterial(name);
+        Material material = Material.getMaterial(name);
         if (material == null || material == Material.AIR) {
             throw unknownKey(key);
         }
+        // A newer server still resolves a legacy enum name (26.3 resolves GOLD_SWORD, whose real key is
+        // golden_sword), so what resolved must read back under the key that was asked for: a name is never a key
+        // on one version and not on another.
+        String actual;
+        try {
+            actual = materialKey(material);
+        } catch (IllegalArgumentException e) {
+            throw unknownKey(key); // the server has no key for a legacy material
+        }
+        if (!path.equals(actual)) {
+            throw unknownKey(key);
+        }
         return material;
+    }
+
+    /**
+     * The key path of a material: the server's own key from 1.13 ({@code Material.getKey()}, by reflection), the
+     * legacy table before.
+     *
+     * @throws IllegalArgumentException when the server has no key for it (a legacy material on a newer server)
+     */
+    static String materialKey(Material material) {
+        if (legacy()) {
+            return LegacyNames.materialKey(material.name());
+        }
+        if (MATERIAL_GET_KEY == null) {
+            return material.name().toLowerCase(Locale.ROOT);
+        }
+        try {
+            return String.valueOf(MATERIAL_GET_KEY.invoke(material)).substring(NAMESPACE.length());
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            if (e.getCause() instanceof IllegalArgumentException) {
+                throw (IllegalArgumentException) e.getCause();
+            }
+            throw new AgentException(500, "INTERNAL", "material key lookup failed: " + e.getCause(), null);
+        } catch (IllegalAccessException e) {
+            throw new AgentException(500, "INTERNAL", "material key lookup failed: " + e, null);
+        }
+    }
+
+    /** True before the 1.13 flattening. Not NamespacedKey: it exists since 1.12. BlockData is the 1.13 marker. */
+    static boolean legacy() {
+        return FLATTENED == null;
     }
 
     static AgentException unknownKey(String key) {
@@ -98,7 +150,7 @@ final class Keys {
     }
 
     private static Enchantment legacy(String path) {
-        String legacy = legacyName(path);
+        String legacy = LegacyNames.enchantmentName(path);
         return legacy == null ? null : Enchantment.getByName(legacy);
     }
 
@@ -108,15 +160,6 @@ final class Keys {
         } catch (ReflectiveOperationException e) {
             throw new AgentException(500, "INTERNAL", "keyed enchantment lookup failed: " + e, null);
         }
-    }
-
-    private static String legacyName(String path) {
-        for (Map.Entry<String, String> entry : LEGACY_ENCHANTMENTS.entrySet()) {
-            if (entry.getValue().equals(path)) {
-                return entry.getKey();
-            }
-        }
-        return null;
     }
 
     private static Class<?> findClass(String name) {
@@ -136,41 +179,5 @@ final class Keys {
         } catch (NoSuchMethodException e) {
             return null;
         }
-    }
-
-    private static Map<String, String> legacyEnchantments() {
-        Map<String, String> table = new LinkedHashMap<>();
-        table.put("PROTECTION_ENVIRONMENTAL", "protection");
-        table.put("PROTECTION_FIRE", "fire_protection");
-        table.put("PROTECTION_FALL", "feather_falling");
-        table.put("PROTECTION_EXPLOSIONS", "blast_protection");
-        table.put("PROTECTION_PROJECTILE", "projectile_protection");
-        table.put("OXYGEN", "respiration");
-        table.put("WATER_WORKER", "aqua_affinity");
-        table.put("THORNS", "thorns");
-        table.put("DEPTH_STRIDER", "depth_strider");
-        table.put("DAMAGE_ALL", "sharpness");
-        table.put("DAMAGE_UNDEAD", "smite");
-        table.put("DAMAGE_ARTHROPODS", "bane_of_arthropods");
-        table.put("KNOCKBACK", "knockback");
-        table.put("FIRE_ASPECT", "fire_aspect");
-        table.put("LOOT_BONUS_MOBS", "looting");
-        table.put("DIG_SPEED", "efficiency");
-        table.put("SILK_TOUCH", "silk_touch");
-        table.put("DURABILITY", "unbreaking");
-        table.put("LOOT_BONUS_BLOCKS", "fortune");
-        table.put("ARROW_DAMAGE", "power");
-        table.put("ARROW_KNOCKBACK", "punch");
-        table.put("ARROW_FIRE", "flame");
-        table.put("ARROW_INFINITE", "infinity");
-        table.put("LUCK", "luck_of_the_sea");
-        table.put("LURE", "lure");
-        // Added in 1.9 to 1.11; 1.8 never offers them, so an agent on 1.8.8 still answers UNKNOWN_KEY for them.
-        table.put("FROST_WALKER", "frost_walker");
-        table.put("MENDING", "mending");
-        table.put("BINDING_CURSE", "binding_curse");
-        table.put("VANISHING_CURSE", "vanishing_curse");
-        table.put("SWEEPING_EDGE", "sweeping_edge");
-        return table;
     }
 }

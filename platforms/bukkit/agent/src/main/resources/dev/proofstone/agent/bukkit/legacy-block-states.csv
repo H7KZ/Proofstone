@@ -1,0 +1,7 @@
+# Pre-1.13 block state: Material enum name;property;data value mask;value=data value,... Read by LegacyBlocks.
+# The data value is the byte Block.setData writes. Only the properties listed here can be set or read on a legacy server.
+ANVIL;facing;3;south=0,west=1,north=2,east=3
+CHEST;facing;7;north=2,south=3,west=4,east=5
+TRAPPED_CHEST;facing;7;north=2,south=3,west=4,east=5
+ENDER_CHEST;facing;7;north=2,south=3,west=4,east=5
+FURNACE;facing;7;north=2,south=3,west=4,east=5
