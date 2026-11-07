@@ -1,5 +1,5 @@
 # Manual only (workflow_dispatch): no schedule, to save billed Actions minutes. Trigger it by hand when you want new builds.
-# version-watch (T-M3-01, docs/versioning.md §2, ADR-0006, ADR-0008). Every 6 hours it fills in versions.yml from the
+# version-watch (T-M3-01, docs/versioning.md §2, ADR-0006, ADR-0008). On manual dispatch it fills in versions.yml from the
 # Paper and Folia fill API and opens a PR with the label `versions`. New rows start as `experimental`; nothing is
 # promoted to `required` here. A run with no changes opens no PR.
 # The PR is opened with GITHUB_TOKEN, and GitHub does not start workflows for such PRs, so `ci.yml` does not run on

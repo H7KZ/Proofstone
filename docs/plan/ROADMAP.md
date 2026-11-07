@@ -149,7 +149,7 @@ M5 can run in parallel with M4 once M3 is done.
   C01 and C02 come from `ConformanceSmokeTest`, C03 to C08 from one class each. Logs: `m99/row-<v>.log`, XML: `m99/xml-<v>/`
   (scratchpad of the review agent, not committed).
 - **Gates** (local, real output, XML checked `skipped="0" failures="0" errors="0"` on every suite): `./gradlew check docsCheck`
-  BUILD SUCCESSFUL, `docsCheck: 0 errors, 253 warning(s)` (some `check` tasks came from the build cache). `:conformance:smoke`
+  BUILD SUCCESSFUL, `docsCheck: 0 errors, 253 warning(s)` (259 on a clean, uncached rerun) (some `check` tasks came from the build cache). `:conformance:smoke`
   2/2. `:drivers:mcpl:integrationTest` 5/5. `:platforms:bukkit:agent:integrationTest` 67/67 (1.8.8, 1.12.2, latest).
   `:proofstone-core:integrationTest` 4/4. `:examples:smoke:test` 11/11. `:examples:disenchantment-anvil:test` 1/1.
 - **What shipped**: PR #35 (T-M3-04, cell selector, scope and version families), #36 (T-M3-01, `version-watch` fills
@@ -180,12 +180,15 @@ M5 can run in parallel with M4 once M3 is done.
      need a manual push to run gates.
   2. Per-Java-tag digests are re-pinned by hand; `updateVersions` does not refresh them. The `java25` digest is stale
      against the moving tag.
-  3. The zero-cell selector error (`ProofstoneExtension`: "has no cell to run") has no automated test.
-  4. No row is `required`, so the PR matrix is empty. Promoting rows is a maintainer decision.
+  3. Resolved after this review (PR #46): the zero-cell decision is covered by `ProofstoneExtensionPlanTest`.
+  4. Resolved after this review (PR #46, ADR-0015): the 11 Paper rows are `required` on local per-row evidence.
   5. Folia rows never booted. PDC is not advertised on any version. Paper 1.8.8 reports as `spigot`.
   6. C06 on 1.8.8 failed about 1 run in 4 before PR #39. The one passing run here is not proof it is flake-free.
   7. Anvil block-state rows in `legacy-block-states.csv` come from the wiki and were not checked against a client.
-  8. Every scenario beyond the anvil was observed on the Paper rows only (no Folia, Purpur or Spigot yet).
+  8. 2026-11-07, independent re-run on `main`: C02 on paper@1.20.4 (bridged) failed once (client join timed out after 30 s)
+     and passed on the immediate rerun; all other rows and tests passed first time. A rare join flake: not retried by
+     the harness, not diagnosed yet. A repeat run (T-M4-04 flake detector) should pin it down.
+  9. Every scenario beyond the anvil was observed on the Paper rows only (no Folia, Purpur or Spigot yet).
 - **Re-estimate.** M3 was estimated at 2.5 weeks; it took about one day of agent time plus the maintainer's gating (PRs
   #35 to #43 merged between 09:58 and 16:34 UTC on 2026-11-07). M4 goes from 2 to 2.5 weeks: more Docker runs (repeat=5
   multiplies each test), a new Node driver, and the reference driver's protocol must be checked first. M5 goes from 2 to
