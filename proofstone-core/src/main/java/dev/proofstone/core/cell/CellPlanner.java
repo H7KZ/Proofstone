@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public final class CellPlanner {
 
     private static final String LATEST = "latest";
+    private static final String ALL = "all";
 
     private final VersionsCatalog catalog;
 
@@ -31,22 +32,55 @@ public final class CellPlanner {
     }
 
     /**
-     * @param platformId platform id from the matrix
-     * @param versions exact Minecraft versions, or {@code latest}; duplicates collapse to one cell
-     * @return one cell per distinct version, in request order
-     * @throws VersionsException on an unknown platform or version, an empty request or a {@code TODO} pin
+     * Plans with the default scope ({@link Scope#PR}) and no version families.
+     *
+     * @see #plan(String, List, Scope, VersionFamilies)
      */
     public List<Cell> plan(String platformId, List<String> versions) {
+        return plan(platformId, versions, Scope.PR, VersionFamilies.none());
+    }
+
+    /**
+     * @param platformId platform id from the matrix
+     * @param versions exact Minecraft versions, {@code latest}, or {@code all} (every row in {@code scope}, plus the
+     *     family versions); duplicates collapse to one cell
+     * @param scope which rows {@code all} takes
+     * @param families the project's version families, used only by {@code all}
+     * @return one cell per distinct version, in request order; {@code all} contributes rows in file order
+     * @throws VersionsException on an unknown platform or version, an empty request, an empty {@code all} or a
+     *     {@code TODO} pin
+     */
+    public List<Cell> plan(String platformId, List<String> versions, Scope scope, VersionFamilies families) {
         Platform platform = catalog.platform(platformId);
         if (versions.isEmpty()) {
             throw new VersionsException("no versions requested for " + platformId);
         }
         Map<String, Cell> cells = new LinkedHashMap<>();
         for (String requested : versions) {
+            if (ALL.equals(requested)) {
+                for (Row row : allRows(platform, scope, families)) {
+                    cells.putIfAbsent(row.mc(), toCell(platform, row, List.of()));
+                }
+                continue;
+            }
             Cell cell = resolve(platform, requested);
             cells.putIfAbsent(cell.mc(), cell);
         }
         return List.copyOf(cells.values());
+    }
+
+    private List<Row> allRows(Platform platform, Scope scope, VersionFamilies families) {
+        List<String> familyVersions = families.versions(platform.id(), scope);
+        List<Row> rows = platform.rows().stream()
+                .filter(row -> row.status() == Status.REQUIRED
+                        || (scope == Scope.NIGHTLY && row.status() == Status.EXPERIMENTAL)
+                        || familyVersions.contains(row.mc()))
+                .toList();
+        if (rows.isEmpty()) {
+            throw new VersionsException("all: " + platform.id() + " has no row in scope " + scope
+                    + " (PR runs required rows, nightly runs required and experimental ones)");
+        }
+        return rows;
     }
 
     private Cell resolve(Platform platform, String requested) {

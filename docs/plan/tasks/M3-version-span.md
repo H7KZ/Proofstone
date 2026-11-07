@@ -161,7 +161,9 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Allow unknown selectors. They are errors.
 
 **Acceptance.**
-- [ ] Unit tests cover every selector form and its error messages.
+- [x] Unit tests cover every selector form and its error messages. Evidence: `CellSelectorTest` (16), `ScopeTest` (3),
+  `VersionFamiliesTest` (10) and new `CellPlannerTest` cases for `all`, scope and families; `:proofstone-core:test`
+  green (71 tests, 0 failures, 0 skipped).
 
 **Verify.**
 `./gradlew :proofstone-core:test`

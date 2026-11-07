@@ -24,9 +24,28 @@ class MyE2E { ... }
 void scenario(Cell cell, Agent agent, Client client) { ... }
 ```
 
-- `versions` accepts exact versions, `latest` (the newest `required` row) and `all` (every row in range).
-- `-Dproofstone.cells=paper@1.21.11,folia@latest` narrows the run at runtime.
-- An unknown version is an error, not a skip.
+- `versions` accepts exact versions, `latest` (the newest `required` row) and `all` (every row in scope, see below).
+- Run-time selector: `-Dproofstone.cells=paper@1.21.11,folia@latest` or the environment variable `PROOFSTONE_CELLS`
+  (the property wins if both are set). Entries are `platform@version` with a lower-case platform and a version that is
+  an exact version, `latest` or `all`. When set, it **replaces** the `versions` of every `@Matrix` whose platform it
+  names, so `paper@1.8.8` runs even if the class says `latest`. A `@Matrix` whose platform it does not name is not run,
+  and the run prints `PROOFSTONE NOT SELECTED`. The selector is not a skip: nothing is reported for those cells.
+- Scope: `-Dproofstone.scope=pr|nightly` or `PROOFSTONE_SCOPE` (default `pr`). It decides what `all` takes:
+  - `pr`: the `required` rows, plus the newest version of each version family (see below);
+  - `nightly`: every `required` and `experimental` row, plus every family version; `retired` rows never, unless named.
+  Explicit exact versions are not filtered by scope.
+- Version families: a `proofstone.yml` in the test working directory (the project directory under Gradle) may map
+  platform ids to named lists of exact versions. A missing file means none. In v0 it is read from that fixed path; the
+  `config` attribute above is a post-v0 idea (section 8.4).
+
+  ```yaml
+  version-families:
+    paper:
+      netty: ["1.8.8", "1.12.2"]
+      modern: ["1.20.4", "26.3"]
+  ```
+- Errors, never skips: an unknown selector form, an unknown platform or version, a `TODO` pin in a selected row, an
+  `all` with no row in scope, and a family version that is not a row of its platform.
 
 ## 2. Injected parameters
 
