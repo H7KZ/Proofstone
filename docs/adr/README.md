@@ -19,5 +19,6 @@ that were rejected. **Accepted ADRs are not re-decided inside a task.** To chall
 | [0011](0011-licensing.md) | Licensing | **Proposed** (owner decides) |
 | [0012](0012-name.md) | Project name: Proofstone | Accepted |
 | [0013](0013-host-digest-per-java-tag.md) | Host image digest is pinned per Java tag (amends 0008) | Accepted |
+| [0014](0014-haiku-first-and-minimal-ci.md) | Haiku-first execution and minimal CI (amends 0010) | Accepted |
 
 Template: [0000-template.md](0000-template.md).

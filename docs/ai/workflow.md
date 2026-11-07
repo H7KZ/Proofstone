@@ -1,7 +1,8 @@
 # Agent workflow: card to merged PR
 
-1. **Pick:** the lowest-numbered open card in the current milestone whose `depends:` are all merged and
-   whose `tier` matches your model.
+1. **Pick:** the lowest-numbered open card in the current milestone whose `depends:` are all merged. Any
+   model may take any card (ADR-0014); for `sonnet` or `opus` cards follow the extra-care steps in
+   [model-tiering.md](model-tiering.md).
 2. **Load context:**
    - [AGENTS.md](../../AGENTS.md);
    - the card;
@@ -10,7 +11,9 @@
 3. **Branch:** `card/<ID>-<slug>`.
 4. **Implement the smallest change that meets the acceptance criteria.** Write the test or golden file
    **before** the implementation where the card says *test-first*.
-5. **Run the gates:** the card's `Verify` commands, plus `./gradlew check`.
+5. **Run the gates locally:** `./gradlew check docsCheck`, the card's `Verify` commands and, where the card
+   touches the real server, `./gradlew :conformance:smoke` (AGENTS.md section 4). Never trigger the
+   manual-only workflows (AGENTS.md, CI cost).
 6. **Open a PR** using the PR template. Include:
    - the card ID;
    - the acceptance checklist, ticked with evidence;
