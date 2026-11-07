@@ -1,6 +1,7 @@
 package dev.proofstone.conformance;
 
 import dev.proofstone.api.Agent;
+import dev.proofstone.api.Cell;
 import dev.proofstone.api.CellTest;
 import dev.proofstone.api.Client;
 import dev.proofstone.api.DualAssert;
@@ -20,7 +21,7 @@ import java.util.Map;
 class C03GiveRoundTripTest {
 
     @CellTest
-    void givenItemsReadTheSameOnBothOracles(Agent agent, Client client) {
+    void givenItemsReadTheSameOnBothOracles(Cell cell, Agent agent, Client client) {
         PlayerHandle player = ConformanceFixture.stand(agent, client);
 
         player.give(Item.of("diamond_sword").name("Blade").enchant("sharpness", 255).enchant("unbreaking", 3));
@@ -30,5 +31,13 @@ class C03GiveRoundTripTest {
         player.give(Item.of("enchanted_book").storedEnchant("sharpness", 5).storedEnchant("knockback", 2));
         DualAssert.item(player, client).inInventory(item -> item.is("enchanted_book")).amount(1)
                 .storedEnchants(Map.of("minecraft:sharpness", 5, "minecraft:knockback", 2)).enchants(Map.of());
+
+        // Mending arrived in 1.9, so 1.8.8 has no such enchantment; every later row keeps the original check.
+        if (!cell.version().startsWith("1.8.")) {
+            player.give(Item.of("enchanted_book").storedEnchant("mending", 1));
+            DualAssert.item(player, client).inInventory(item -> item.is("enchanted_book")
+                    && item.storedEnchants().containsKey("minecraft:mending")).amount(1)
+                    .storedEnchants(Map.of("minecraft:mending", 1)).enchants(Map.of());
+        }
     }
 }
