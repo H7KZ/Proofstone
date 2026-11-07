@@ -71,7 +71,7 @@ Lessons for M3 cards:
 - Promote any row to `required`.
 
 **Acceptance.**
-- [ ] A dry run against a recorded API fixture produces the expected YAML diff.
+- [x] A dry run against a recorded API fixture produces the expected YAML diff.
 
 **Verify.**
 `./gradlew updateVersions --dry-run`, then `./gradlew :build-logic:test`
