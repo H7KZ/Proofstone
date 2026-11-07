@@ -300,7 +300,11 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Start M4.
 
 **Acceptance.**
-- [ ] The exit criterion is shown green across the Paper span.
+- [x] The exit criterion is shown green across the Paper span. Evidence (2026-11-07): one `:conformance:run` per row
+  (1.8.8, 1.12.2, 1.16.5, 1.17.1, 1.18.2, 1.20.4, 1.20.6, 1.21.11, 26.1.2, 26.2, 26.3), XML parsed: 86 of 88 test
+  methods PASS, 2 SKIP. The skips are C07 on 1.8.8 and 1.12.2, a reasoned skip (no grindstone before 1.14, reason in the
+  XML). No failure, no error. Ten rows bridged, 26.3 native. The table is in ROADMAP "M3 review". Deviation: not one
+  `paper@all` invocation, which the verify line names (same cells, one XML per row).
 
 **Verify.**
 `./gradlew :conformance:run -Dproofstone.cells=paper@all`

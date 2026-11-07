@@ -42,6 +42,9 @@ M5 can run in parallel with M4 once M3 is done.
 **Goal.** Every agent operation runs on the thread that owns its data.
 
 **Do.**
+- First boot the Folia rows with the C01 health check only, as T-M3-02 did for Paper, before any scheduler code.
+  The per-tag digests exist, but no Folia row has ever booted (M3 review). Record each failure in
+  `docs/platforms/folia.md`.
 - Add a `FoliaScheduler` that uses reflection only, so the agent still compiles against 1.8.8.
 - Route each operation type to the owning scheduler:
   - player operations go to the entity scheduler;
@@ -121,7 +124,9 @@ M5 can run in parallel with M4 once M3 is done.
 **Do.**
 - Build an image that runs BuildTools for a pinned `--rev`.
 - Cache the resulting jar by SHA-256, both in CI and locally.
-- Run Spigot rows only in the nightly suite, because builds take minutes.
+- Run Spigot rows as manual per-row runs (no schedule: M3 review, PR #40), because builds take minutes.
+- Expect `platform: spigot` for PaperSpigot 1.8.8. M3 found that the Paper 1.8.8 build reports `spigot`
+  (`docs/platforms/paper.md`), so decide the pack's platform name from the jar, not from the Paper config class.
 
 **Don't.**
 - Redistribute the Spigot jars.
@@ -194,6 +199,8 @@ M5 can run in parallel with M4 once M3 is done.
 
 **Do.**
 - Run every gate and paste the output.
+- Run each cell in its own `:conformance:run -Dproofstone.cells=<cell>` invocation, under the Docker lock, and parse
+  each XML for `skipped` and `failures`. One invocation with a long cell list hides which row failed (M3 lesson).
 - Re-estimate the remaining work.
 
 **Don't.**
@@ -203,4 +210,5 @@ M5 can run in parallel with M4 once M3 is done.
 - [ ] The exit criterion is demonstrated.
 
 **Verify.**
-`./gradlew :conformance:run -Dproofstone.cells=folia@all,purpur@latest,spigot@1.21.11`
+`./gradlew :conformance:run -Dproofstone.cells=folia@<v>` for each Folia row, then `purpur@latest` and `spigot@1.21.11`,
+one at a time, each XML checked for `skipped="0" failures="0"` (a reasoned skip is listed, not hidden).

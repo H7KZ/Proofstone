@@ -48,7 +48,11 @@
   - `driver-transcript.jsonl`;
   - `cell.json` (all pins);
   - `snapshot.json`;
-  - `rerun.txt` (the exact Gradle command with its cell selector).
+  - `rerun.txt` (the exact Gradle command with its cell selector, for example
+    `-Dproofstone.cells=paper@1.8.8`; the selector exists since T-M3-04).
+- Bridged cells (every Paper row except 26.3 in M3) also record the ViaProxy container's log in the bundle.
+- `build/proofstone/` is not committed (M3 review). A PR that cites a failure links the Gradle command and the bundle
+  path it printed, and states that the bundle is local.
 
 **Don't.**
 - Include the agent token in any bundle file.
@@ -100,6 +104,9 @@ the bundle.
 
 **Don't.**
 - Use repetition anywhere else as a retry.
+- Use the real C06 flake on 1.8.8 as the acceptance test. Its ~1 in 4 failure rate before PR #39 is not proven fixed
+  (`docs/platforms/viaproxy.md`), so it is a measurement target only: run it with N=5 on 1.8.8 and record the verdicts in
+  the PR. The purpose-built test stays the acceptance test.
 
 **Acceptance.**
 - [ ] A purpose-built random-outcome test is reported as `FLAKY` with N=5.
@@ -123,6 +130,9 @@ the bundle.
 - Item parsing must handle components, including the `stored_enchantments` fix and registry ID → name
   mapping.
 - Write the `max-native` value back to the `versions.yml` driver metadata.
+- M3 fact: only Paper 26.3 is native to the mcpl driver. Every other Paper row runs bridged through ViaProxy. First
+  check which protocol the reference driver speaks, and record the result in `docs/platforms/` before choosing the
+  cells in the acceptance test; a row that needs the bridge needs the bridge in this driver too.
 
 **Don't.**
 - Use it as a primary driver.
@@ -221,15 +231,19 @@ the bundle.
 
 **Do.**
 - Run every gate and paste the output.
-- Turn the nightly workflow on, covering control, differential and repeat runs.
+- Add the nightly set (control, differential and repeat runs) as a job that runs only on `workflow_dispatch`. Do
+  not add a `schedule:` trigger: scheduled Actions minutes were cancelled at PR #40 (billed). Turning on a schedule
+  is a maintainer decision, recorded in the review.
 - Refine the M6 cards.
 
 **Don't.**
 - Start M6.
+- Run the nightly set on every Paper row. Pick the cells the self-tests need and say why in the review.
 
 **Acceptance.**
 - [ ] The exit criterion is demonstrated.
-- [ ] The nightly run is green.
+- [ ] One manual `workflow_dispatch` run of the nightly set is green, linked from the review. A run is evidence only
+  when its XML has `skipped="0" failures="0"` or the skip has a reason, as in M3.
 
 **Verify.**
-The nightly workflow run link.
+The `workflow_dispatch` run link, plus the local `:examples:bad-tests:metaTest` output.

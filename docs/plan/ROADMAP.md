@@ -12,9 +12,9 @@ conformance, golden files and the verdict engine exist.
 | **M0** | Foundation (done, reviewed in T-M0-99) | `./gradlew check` green in CI. `docsCheck` and lint rules enforce the AGENTS.md hard rules. The `versions.yml` schema validates. | 8 | 7 / 1 / 0 | 1 |
 | **M1** | Walking skeleton (Paper, newest; done, reviewed in T-M1-99) | On Paper (newest), the server boots from `versions.yml` with the Bukkit agent. The `mcpl` client joins, runs `/version`, and the JUnit test receives the message. Agent `/v1/health` and `/v1/players/{n}` are verified by golden files. | 12 | 8 / 4 / 0 | 2.5 |
 | **M2** | Windows and the dual oracle (done, reviewed in T-M2-99) | The Disenchantment anvil scenario passes natively on the newest Paper version with a dual-oracle assertion and an event probe. Conformance C01–C06 pass. The test API is frozen (v0). | 11 | 5 / 6 / 0 | 2 (took about 1 day of agent time, see the M2 review) |
-| **M3** | Version span | ViaProxy bridging works. Every Paper row from 1.8.8 to the newest passes C01–C08. `version-watch` opens PRs automatically. | 9 | 5 / 4 / 0 | 2.5 (was 2; T-M3-02 grew, see the M2 review) |
-| **M4** | Self-verification | Control run, differential run (mineflayer-ref), flake detector and repro bundles all work. Verdicts `VACUOUS`, `DISAGREE` and `FLAKY` are demonstrated on purpose-built bad tests. | 9 | 4 / 4 / 1 | 2 |
-| **M5** | Bukkit family complete | Folia (regions), Purpur and Spigot (BuildTools cache) pass conformance. Capability model done. Bedrock-prefix simulation works. | 8 | 5 / 3 / 0 | 2 |
+| **M3** | Version span (done, reviewed in T-M3-99) | ViaProxy bridging works. Every Paper row from 1.8.8 to the newest passes C01–C08. `version-watch` opens PRs automatically. | 9 | 5 / 4 / 0 | 2.5 (was 2; T-M3-02 grew, see the M2 review; it took about one day of agent time, see the M3 review) |
+| **M4** | Self-verification | Control run, differential run (mineflayer-ref), flake detector and repro bundles all work. Verdicts `VACUOUS`, `DISAGREE` and `FLAKY` are demonstrated on purpose-built bad tests. | 9 | 4 / 4 / 1 | 2.5 (was 2; more Docker runs and a new Node driver, see the M3 review) |
+| **M5** | Bukkit family complete | Folia (regions), Purpur and Spigot (BuildTools cache) pass conformance. Capability model done. Bedrock-prefix simulation works. | 8 | 5 / 3 / 0 | 3 (was 2; no Folia row has booted yet, see the M3 review) |
 | **M6** | Dogfood and 0.1 release | Disenchantment's full suite runs on Proofstone in its CI. Maven and Gradle example projects work. Published to Maven Central and GHCR. GitHub Action published. Licence decided. Mutation check passes. | 9 | 6 / 2 / 1 | 2 |
 | **M7** | Proxies | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | epic | refine first (Sonnet) | 2 |
 | **M8** | Mods and data | Fabric and NeoForge agents, multi-version via Stonecutter, plus data pack and resource-pack tests. | epic | refine first (Sonnet/Opus) | 4 |
@@ -23,7 +23,7 @@ conformance, golden files and the verdict engine exist.
 
 **Cards M0–M6:** 66 in total. 40 are Haiku cards (61%), 24 Sonnet and 2 Opus (T-M3-02 moved from Haiku to Sonnet at T-M2-99).
 
-**Total to v0.1 (M0–M6): about 14 focused weeks.** Full ecosystem (M7–M10): about 10+ more weeks.
+**Total to v0.1 (M0–M6): about 15.5 focused weeks** (sum of the estimates, M5 run after M4; was 14). Full ecosystem (M7–M10): about 10+ more weeks.
 These are estimates, and they will be re-estimated at the end of each milestone (card `T-Mx-99`).
 
 ## Milestone rules
@@ -123,3 +123,75 @@ M5 can run in parallel with M4 once M3 is done.
 - **M3 cards refined** (see the "What M1 and M2 produced" section at the top of `tasks/M3-version-span.md`): the cell selector
   (T-M3-04) is now a dependency of the cards that use `-Dproofstone.cells`; T-M3-03 depends on the pins and digests; the `--tests`
   filters use real Gradle syntax.
+
+## M3 review (T-M3-99)
+- **Exit criterion: green on the Paper span**, from the XML of real runs, parsed per row (`testsuite` `skipped`, `failures`,
+  `errors`; skip reasons read from the XML). One row per Gradle invocation, one suite at a time through the Docker lock,
+  EULA accepted in the command environment only. Every row 1.8.8 to 26.3 passes C01 to C08 except C07 on 1.8.8 and 1.12.2,
+  which is a reasoned skip (no grindstone before 1.14; the skip reason is in the XML). No failure, no error, no other skip.
+  Result: 88 test methods (8 per row), 86 pass, 2 skip. Ten rows run bridged through ViaProxy (the log says `(bridged)`);
+  26.3 is native.
+
+  | Row | Bridged | C01 | C02 | C03 | C04 | C05 | C06 | C07 | C08 |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 1.8.8 | yes | PASS | PASS | PASS | PASS | PASS | PASS | SKIP (no grindstone) | PASS |
+  | 1.12.2 | yes | PASS | PASS | PASS | PASS | PASS | PASS | SKIP (no grindstone) | PASS |
+  | 1.16.5 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 1.17.1 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 1.18.2 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 1.20.4 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 1.20.6 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 1.21.11 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 26.1.2 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 26.2 | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+  | 26.3 | no (native) | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+
+  C01 and C02 come from `ConformanceSmokeTest`, C03 to C08 from one class each. Logs: `m99/row-<v>.log`, XML: `m99/xml-<v>/`
+  (scratchpad of the review agent, not committed).
+- **Gates** (local, real output, XML checked `skipped="0" failures="0" errors="0"` on every suite): `./gradlew check docsCheck`
+  BUILD SUCCESSFUL, `docsCheck: 0 errors, 253 warning(s)` (some `check` tasks came from the build cache). `:conformance:smoke`
+  2/2. `:drivers:mcpl:integrationTest` 5/5. `:platforms:bukkit:agent:integrationTest` 67/67 (1.8.8, 1.12.2, latest).
+  `:proofstone-core:integrationTest` 4/4. `:examples:smoke:test` 11/11. `:examples:disenchantment-anvil:test` 1/1.
+- **What shipped**: PR #35 (T-M3-04, cell selector, scope and version families), #36 (T-M3-01, `version-watch` fills
+  `versions.yml`), #37 (T-M3-07, CI matrix from `versions.yml`), #38 (T-M3-02, one host digest per Java tag, closes #23,
+  ADR-0013), #39 (T-M3-03, ViaProxy bridged topology), #40 (ci: smoke manual, no schedules, to cut billed minutes),
+  #41 (T-M3-05, C07 and C08), #42 (T-M3-06, Bukkit agent legacy compatibility, 1.8.8 to 1.12.2), #43 (T-M3-08, version-span
+  gotchas). The review itself is this PR.
+- **Bugs only real runs found** (each fixed in its card; full list with commits in `docs/platforms/paper.md` and
+  `docs/platforms/viaproxy.md`): the itzg digest differs per Java tag (issue #23); `level-type` must be `flat` before 1.18,
+  and 1.8.8 silently builds a default world otherwise; `setblock` outside a loaded chunk changes nothing on 1.8.8; Paper
+  1.8.8 is PaperSpigot and the agent reported `spigot`; the item name `sugar_cane` resolved to `sugar_cane_block` on 1.18.2
+  (C08 DISAGREE) until a legacy material table; legacy block states are data values; Log4j runs async on 1.12.2, so one log
+  record arrived twice; a pre-1.17 window locks after a rejected click until the client acks the ping; mending is absent on
+  1.8.8 (a wrong test, fixed); closing an anvil on 1.8.8 drops its input slots; Docker answered 500 once (26.1.2, passed on
+  rerun). Game rules: the card said 26.1 for snake_case, the run says 1.21.11.
+- **Deviations from the cards**:
+  - C07 on 1.8.8 and 1.12.2 is a reasoned skip, not a pass.
+  - T-M3-02 changed the pin shape: ADR-0013 (one digest per Java tag) supersedes the single `host.digest` of ADR-0008.
+  - The `paper@all` verify command was not run as one invocation. Each row ran alone (Docker stability, one XML per row).
+    The same cells ran; the card's command was not run literally.
+  - The smoke, matrix and version-watch workflows are manual-only since PR #40 (the maintainer cancelled the billed smoke
+    workflow). Branch protection requires only the gates and `renovate-validate`.
+  - The version-span gotchas link their merged PRs, not CI runs (T-M3-08): CI smoke is manual, so there is no CI run.
+  - The branch `card/T-M3-99-milestone-review` was still checked out in an older, locked worktree, so this review is on
+    `card/T-M3-99-milestone-review-2`. The row runs were made in that older worktree at `1f84924`, which is `origin/main`.
+- **Open items for the maintainer**:
+  1. `VERSION_WATCH_TOKEN` secret: PRs opened with the default token do not trigger CI. Without it, version-watch PRs
+     need a manual push to run gates.
+  2. Per-Java-tag digests are re-pinned by hand; `updateVersions` does not refresh them. The `java25` digest is stale
+     against the moving tag.
+  3. The zero-cell selector error (`ProofstoneExtension`: "has no cell to run") has no automated test.
+  4. No row is `required`, so the PR matrix is empty. Promoting rows is a maintainer decision.
+  5. Folia rows never booted. PDC is not advertised on any version. Paper 1.8.8 reports as `spigot`.
+  6. C06 on 1.8.8 failed about 1 run in 4 before PR #39. The one passing run here is not proof it is flake-free.
+  7. Anvil block-state rows in `legacy-block-states.csv` come from the wiki and were not checked against a client.
+  8. Every scenario beyond the anvil was observed on the Paper rows only (no Folia, Purpur or Spigot yet).
+- **Re-estimate.** M3 was estimated at 2.5 weeks; it took about one day of agent time plus the maintainer's gating (PRs
+  #35 to #43 merged between 09:58 and 16:34 UTC on 2026-11-07). M4 goes from 2 to 2.5 weeks: more Docker runs (repeat=5
+  multiplies each test), a new Node driver, and the reference driver's protocol must be checked first. M5 goes from 2 to
+  3 weeks: no Folia row has booted, Spigot builds take minutes, and the Folia pack's thread-check patterns are new.
+  Total to v0.1 is about 15.5 weeks as a sum of the estimates (was 14).
+- **M4 and M5 cards refined** (`tasks/M4-self-verification.md`, `tasks/M5-bukkit-family.md`): bundles name the cell
+  selector and are not committed; the real C06 flake is a measurement target, not the acceptance test; the reference
+  driver's protocol is checked first; the nightly set and Spigot rows are manual (no schedule); Folia rows boot first;
+  every cell runs in its own invocation with an XML check.
