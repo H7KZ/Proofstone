@@ -1,0 +1,43 @@
+{
+  "include" : [ {
+    "cell" : "paper@1.9.4",
+    "platform" : "paper",
+    "mc" : "1.9.4",
+    "build" : 1,
+    "java" : "java8",
+    "status" : "required",
+    "slug" : "paper-1.9.4"
+  }, {
+    "cell" : "paper@1.20.4",
+    "platform" : "paper",
+    "mc" : "1.20.4",
+    "build" : 5,
+    "java" : "java17",
+    "status" : "required",
+    "slug" : "paper-1.20.4"
+  }, {
+    "cell" : "paper@1.21.11",
+    "platform" : "paper",
+    "mc" : "1.21.11",
+    "build" : 132,
+    "java" : "java21",
+    "status" : "experimental",
+    "slug" : "paper-1.21.11"
+  }, {
+    "cell" : "paper@26.3",
+    "platform" : "paper",
+    "mc" : "26.3",
+    "build" : 244,
+    "java" : "java25",
+    "status" : "experimental",
+    "slug" : "paper-26.3"
+  }, {
+    "cell" : "spigot@1.12.2",
+    "platform" : "spigot",
+    "mc" : "1.12.2",
+    "build" : 1,
+    "java" : "java8",
+    "status" : "experimental",
+    "slug" : "spigot-1.12.2"
+  } ]
+}
