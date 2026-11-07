@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="proofstone" tests="7" failures="5" errors="0" skipped="1">
+  <testcase name="skip-me [paper@1.12.2]" classname="proofstone">
+    <skipped message="CAPABILITY_MISSING: grindstone arrived in 1.14"/>
+  </testcase>
+  <testcase name="disagree-me [paper@1.21.11]" classname="proofstone">
+    <failure message="DISAGREE: client and reference driver observations differ" type="DISAGREE"/>
+  </testcase>
+  <testcase name="pass-me [paper@1.21.11]" classname="proofstone"/>
+  <testcase name="fail-me [paper@1.8.8]" classname="proofstone">
+    <failure message="FAIL: expected &quot;5&quot; &lt;got&gt; &amp; 4" type="FAIL"/>
+  </testcase>
+  <testcase name="flaky-me [paper@1.8.8]" classname="proofstone">
+    <failure message="FLAKY: verdicts differ across 5 runs: PASS, FAIL" type="FLAKY"/>
+  </testcase>
+  <testcase name="invalid-me [paper@1.8.8]" classname="proofstone">
+    <failure message="INVALID: cell conformance failed: C03 enchant mismatch" type="INVALID"/>
+  </testcase>
+  <testcase name="vacuous-me [paper@1.8.8]" classname="proofstone">
+    <failure message="VACUOUS: passes without the plugin (control run): the test does not prove the plugin works" type="VACUOUS"/>
+  </testcase>
+</testsuite>

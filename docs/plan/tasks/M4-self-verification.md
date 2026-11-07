@@ -26,7 +26,7 @@
 - Let any verdict other than `PASS` or an allowed `SKIPPED` be green.
 
 **Acceptance.**
-- [ ] Every verdict has a unit test, and a snapshot test covers the report schema.
+- [x] Every verdict has a unit test, and a snapshot test covers the report schema.
 
 **Verify.**
 `./gradlew :proofstone-core:test`
