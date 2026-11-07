@@ -100,10 +100,22 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         CellSelector selector = CellSelector.parse(setting(CELLS, CELLS_ENV), CELLS_SOURCE);
         Scope scope = Scope.parse(setting(SCOPE, SCOPE_ENV), SCOPE_SOURCE);
         VersionFamilies families = VersionFamilies.load(Path.of(FAMILIES_FILE), catalog);
+        List<Cell> cells = planCells(type, matrices, selector, planner, scope, families);
+        Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
+                .orElse(Isolation.Mode.PER_CLASS);
+        return cells.stream().map(cell -> new CellInvocation(cell, config, isolation, catalog));
+    }
+
+    /**
+     * The cell decision for one test class, kept free of JUnit state so it can be unit tested without Docker.
+     * A selector replaces the {@link Matrix} versions of the platforms it names; other platforms are not run.
+     * Zero cells is an error, not a pass: JUnit would otherwise fail with an opaque precondition error.
+     */
+    static List<Cell> planCells(Class<?> type, List<Matrix> matrices, CellSelector selector, CellPlanner planner,
+            Scope scope, VersionFamilies families) {
         List<Cell> cells = new ArrayList<>();
         for (Matrix matrix : matrices) {
             String platform = matrix.platform().name().toLowerCase(Locale.ROOT);
-            // A selector replaces the @Matrix versions of the platforms it names; other platforms are not run.
             List<String> requested = selector.isSet() ? selector.versions(platform) : List.of(matrix.versions());
             if (requested.isEmpty()) {
                 System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares "
@@ -113,13 +125,10 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             cells.addAll(planner.plan(platform, requested, scope, families));
         }
         if (cells.isEmpty()) {
-            // JUnit would fail with an opaque precondition error; a class that runs nothing is never a pass.
             throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
                     + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
         }
-        Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
-                .orElse(Isolation.Mode.PER_CLASS);
-        return cells.stream().map(cell -> new CellInvocation(cell, config, isolation, catalog));
+        return cells;
     }
 
     /** The system property wins over the environment variable of the same meaning (test-api spec §1). */

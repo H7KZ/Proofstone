@@ -30,8 +30,10 @@ Spec for the file format: [specs/versions-yml.md](specs/versions-yml.md). Decisi
      - `status: experimental`.
 2. CI on that PR runs **conformance** and the **example suites** for the new cells.
 3. A maintainer, or an agent with `tier: haiku`, merges it. Experimental cells don't block.
-4. The `promote` workflow (or a card) flips a row to `required` after it has been green for 3 nightly runs
-   in a row.
+4. A row is promoted to `required` after a full per-row `./gradlew :conformance:run` (C01 to C08, only reasoned
+   skips) is green locally, with the XML-based table recorded in the ROADMAP review or the PR. Nightly is manual-only
+   (PR #40), so it is no gate. The rule and its evidence are in [ADR-0015](adr/0015-local-evidence-row-promotion.md),
+   which amends ADR-0008 for this rule only.
 5. When MCProtocolLib publishes the newest protocol, the Renovate PR bumps the driver. Cells that were
    bridged become native.
 
