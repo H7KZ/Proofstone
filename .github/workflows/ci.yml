@@ -5,8 +5,7 @@ name: ci
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,7 +24,9 @@ jobs:
       - name: check and docsCheck
         run: ./gradlew check docsCheck
 
+  # Manual only: Actions minutes are billed to the maintainer. Run `./gradlew :conformance:run` locally instead.
   smoke:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
