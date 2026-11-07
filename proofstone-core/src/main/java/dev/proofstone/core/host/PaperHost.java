@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.await.AwaitTimeoutException;
 import dev.proofstone.core.cell.Cell;
+import dev.proofstone.core.versions.VersionNumber;
 import dev.proofstone.protocol.Command;
 import dev.proofstone.protocol.CommandReply;
 import dev.proofstone.protocol.Envelope;
@@ -49,6 +50,7 @@ public final class PaperHost implements AutoCloseable {
     private static final int TAIL_LINES = 60;
     private static final String BUKKIT_YML = "settings:\n  connection-throttle: -1\n";
     private static final String SEED = "1234567";
+    private static final String WORLD_SPAWN = "setworldspawn 0 64 0";
     // Absent optional fields are omitted: the agent rejects an explicit "timeoutMs": null (found in T-M1-08).
     private static final ObjectMapper JSON = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
     private static final Pattern JAVA_MAJOR = Pattern.compile("version \"(\\d+)(?:\\.(\\d+))?");
@@ -96,6 +98,9 @@ public final class PaperHost implements AutoCloseable {
             verifyPlugins();
             if (options.applyGameRules()) {
                 GameRules.commands(cell.mc()).forEach(this::command);
+                // 1.8.8's flat world spawns about 1500 blocks from the origin, where the fixture is. A spawn at the
+                // origin makes "teleport to spawn" (agent reset) load the fixture's chunk on every version.
+                command(WORLD_SPAWN);
             }
         } catch (RuntimeException e) {
             String tail = logTail();
@@ -114,7 +119,7 @@ public final class PaperHost implements AutoCloseable {
                 .withEnv("PAPER_BUILD", Integer.toString(cell.build()))
                 .withEnv("ONLINE_MODE", "FALSE")
                 .withEnv("ENFORCE_SECURE_PROFILE", "FALSE")
-                .withEnv("LEVEL_TYPE", "minecraft:flat")
+                .withEnv("LEVEL_TYPE", levelType(cell.mc()))
                 .withEnv("SEED", SEED)
                 .withEnv("SPAWN_PROTECTION", "0")
                 .withEnv("DIFFICULTY", "peaceful")
@@ -136,6 +141,19 @@ public final class PaperHost implements AutoCloseable {
         }
         if (options.debugPorts()) {
             container.addExposedPort(AGENT_PORT);
+        }
+    }
+
+    /**
+     * Servers before 1.18 do not know the namespaced name: 1.8.8 silently falls back to a default world (spawn near
+     * -168, 216 at y 77) when it sees {@code minecraft:flat}, and the fixture then has no loaded chunk at the origin
+     * (docs/platforms/paper.md).
+     */
+    static String levelType(String mc) {
+        try {
+            return VersionNumber.compare(mc, "1.18") >= 0 ? "minecraft:flat" : "flat";
+        } catch (IllegalArgumentException e) {
+            throw new PaperHostException("cannot read the Minecraft version from \"" + mc + "\"", e);
         }
     }
 
