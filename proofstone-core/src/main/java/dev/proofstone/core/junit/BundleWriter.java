@@ -43,7 +43,20 @@ final class BundleWriter {
 
     /** Captures the bundle of the test in {@code context}. Called from afterEach, before the server is torn down. */
     static Path capture(ExtensionContext context, Cell cell, TestState state) {
+        return capture(context, cell, state, 0);
+    }
+
+    /**
+     * Captures the bundle of one run. In a flake detector run ({@code -Dproofstone.repeat}) every run gets its own
+     * directory, {@code <TestClass>.<method>.r<N>}, so a FLAKY report keeps the transcripts of all runs.
+     *
+     * @param repetition the run's number from 1 to N, or 0 when the test runs once
+     */
+    static Path capture(ExtensionContext context, Cell cell, TestState state, int repetition) {
         String test = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
+        if (repetition > 0) {
+            test += ".r" + repetition;
+        }
         Path dir = ROOT.resolve(cell.platform() + "@" + cell.mc()).resolve(test);
         List<String> driver = state.client == null ? List.of() : state.client.transcript();
         return write(dir, new Contents(

@@ -8,6 +8,7 @@ import dev.proofstone.core.verdict.ConformanceResult;
 import dev.proofstone.core.verdict.Verdict;
 import dev.proofstone.core.verdict.VerdictEngine;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.platform.commons.support.AnnotationSupport;
@@ -50,24 +51,71 @@ final class VerdictGate {
      */
     static AssertionError judgePass(Method test, String cell, boolean controlRun) {
         String id = test.getDeclaringClass().getSimpleName() + "." + test.getName();
+        Optional<ControlRun> expectation = expectation(test, id);
+        CellResult result = resolve(id, cell, List.of(Attempt.pass()), controlRun, expectation);
+        if (result.verdict() == Verdict.PASS) {
+            announceExpectedPass(controlRun, id, cell, expectation);
+            return null;
+        }
+        return new AssertionError(result.verdict() + " " + id + " on " + cell + ": " + result.reason());
+    }
+
+    /**
+     * Judges all N runs of a test on a cell together (self-tests section 4). A change of verdict across the runs is
+     * {@code FLAKY}; a control run where every run passes is {@code VACUOUS}. An all-{@code FAIL} result is not
+     * reported here: JUnit already reports each failed run, so a second failure would only repeat it.
+     *
+     * @param attempts every run, in order, with the failing runs' details
+     * @return the failure that makes the test non-green, or {@code null} when the runs agree or every run failed
+     */
+    static AssertionError judgeRepeats(Method test, String cell, boolean controlRun, List<Attempt> attempts) {
+        String id = test.getDeclaringClass().getSimpleName() + "." + test.getName();
+        Optional<ControlRun> expectation = expectation(test, id);
+        CellResult result = resolve(id, cell, attempts, controlRun, expectation);
+        return switch (result.verdict()) {
+            case PASS -> {
+                announceExpectedPass(controlRun, id, cell, expectation);
+                yield null;
+            }
+            case FAIL -> null;
+            default -> new AssertionError(result.verdict() + " " + id + " on " + cell + " over " + attempts.size()
+                    + " runs: " + result.reason() + failingDetails(attempts));
+        };
+    }
+
+    private static Optional<ControlRun> expectation(Method test, String id) {
         Optional<ControlRun> expectation = AnnotationSupport.findAnnotation(test, ControlRun.class);
         if (expectation.isPresent() && expectation.get().reason().isBlank()) {
             throw new IllegalStateException(id + ": @ControlRun needs a reason");
         }
+        return expectation;
+    }
+
+    private static CellResult resolve(String id, String cell, List<Attempt> attempts, boolean controlRun,
+            Optional<ControlRun> expectation) {
         // An expected pass is a genuine invariant, not a vacuity signal, so the engine judges it as a non-control run.
         boolean vacuityCheck = controlRun && expectation.isEmpty();
         // Conformance is not run by the extension yet: no runner feeds ConformanceCache, so INVALID cannot fire here.
-        // Tracked as a gap in the card's PR; the verdict below rests only on the test's own pass.
-        CellResult result = VerdictEngine.resolve(
-                new CellRun(id, cell, List.of(Attempt.pass()), vacuityCheck, false),
+        // Tracked as a gap in the card's PR; the verdict below rests only on the test's own runs.
+        return VerdictEngine.resolve(new CellRun(id, cell, attempts, vacuityCheck, false),
                 ConformanceResult.pass(cell));
-        if (result.verdict() == Verdict.PASS) {
-            if (controlRun) {
-                System.err.println("PROOFSTONE EXPECTED PASS (control run): " + id + " on " + cell + ": "
-                        + expectation.map(ControlRun::reason).orElse("no expectation declared"));
-            }
-            return null;
+    }
+
+    private static void announceExpectedPass(boolean controlRun, String id, String cell,
+            Optional<ControlRun> expectation) {
+        if (controlRun) {
+            System.err.println("PROOFSTONE EXPECTED PASS (control run): " + id + " on " + cell + ": "
+                    + expectation.map(ControlRun::reason).orElse("no expectation declared"));
         }
-        return new AssertionError(result.verdict() + " " + id + " on " + cell + ": " + result.reason());
+    }
+
+    private static String failingDetails(List<Attempt> attempts) {
+        List<String> details = new ArrayList<>();
+        for (int run = 0; run < attempts.size(); run++) {
+            if (attempts.get(run).outcome() == Verdict.FAIL) {
+                details.add("run " + (run + 1) + ": " + attempts.get(run).detail());
+            }
+        }
+        return details.isEmpty() ? "" : "; " + String.join("; ", details);
     }
 }

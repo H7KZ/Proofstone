@@ -109,7 +109,9 @@ the bundle.
   the PR. The purpose-built test stays the acceptance test.
 
 **Acceptance.**
-- [ ] A purpose-built random-outcome test is reported as `FLAKY` with N=5.
+- [x] A purpose-built random-outcome test is reported as `FLAKY` with N=5. Evidence: `FlakyE2E` on paper@26.3,
+  `:examples:bad-tests:test -Dproofstone.repeat=5` (1m10s): JUnit XML `FLAKY FlakyE2E.theOutcomeOfThisRunIsRandom ...
+  verdicts differ across 5 runs: PASS, FAIL`; `VacuousE2E` 5/5 PASS in the same run.
 
 **Verify.**
 `./gradlew :examples:bad-tests:test -Dproofstone.repeat=5`
