@@ -219,7 +219,7 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Ship separate agent jars per version.
 
 **Acceptance.**
-- [ ] The golden contract tests pass on 1.8.8, 1.12.2 and the newest row.
+- [x] The golden contract tests pass on 1.8.8, 1.12.2 and the newest row. (`:platforms:bukkit:agent:integrationTest -Dproofstone.cells=paper@1.8.8,paper@1.12.2,paper@latest`, 2026-11-07: 3 cells x 22 tests (boot, 20 golden cases, renamed item keys) plus `everyGoldenCaseIsReplayed`, 67 tests, skipped 0, failures 0; `AgentContractIT` now reads the selected cells and bridges rows the driver does not speak through ViaProxy. Real failures found and fixed: PaperSpigot platform name, the plugin logger name differing by version (test filter was wrong), async Log4j duplicate on 1.12.2, legacy block state, legacy material names, and legacy material mode on 1.13+ without `api-version`. No golden file and no wire protocol change. PDC is not served at any version, so no `pdc` capability is advertised.)
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:integrationTest -Dproofstone.cells=paper@1.8.8,paper@1.12.2,paper@latest`
