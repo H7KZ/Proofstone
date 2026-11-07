@@ -6,6 +6,7 @@ import dev.proofstone.core.driver.ClientSession;
 import dev.proofstone.core.driver.ConnectSpec;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.List;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -30,6 +31,15 @@ public final class MineflayerRefDriver implements ClientDriver {
 
     /** The sidecar's WebSocket port, as {@code images/mineflayer-ref/server.js} listens on it. */
     static final int SIDECAR_PORT = 8765;
+
+    /**
+     * Publishes the sidecar port on loopback only. The sidecar speaks an unauthenticated WebSocket, so it must not be
+     * reachable from other hosts. Docker picks a free host port; the test JVM still reaches it through
+     * {@code getHost()} and {@code getMappedPort()}. A per-run token is deferred: the container is test-only and ephemeral.
+     */
+    static void publishOnLoopbackOnly(GenericContainer<?> sidecar) {
+        sidecar.setPortBindings(List.of("127.0.0.1::" + SIDECAR_PORT));
+    }
 
     private final URI sidecar;
     private final GenericContainer<?> container;
@@ -69,6 +79,7 @@ public final class MineflayerRefDriver implements ClientDriver {
                 .waitingFor(Wait.forListeningPort())
                 // A sidecar crash shows up only as a dropped socket, so its own output goes to the test log.
                 .withLogConsumer(frame -> System.out.print("[sidecar] " + frame.getUtf8String()));
+        publishOnLoopbackOnly(started);
         started.start();
         URI uri = URI.create("ws://" + started.getHost() + ":" + started.getMappedPort(SIDECAR_PORT));
         return new MineflayerRefDriver(uri, started);

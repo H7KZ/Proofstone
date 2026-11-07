@@ -134,6 +134,7 @@ class MineflayerRefDriverIT {
                         .withNetwork(network)
                         .withExposedPorts(SIDECAR_PORT)
                         .waitingFor(Wait.forListeningPort());
+                MineflayerRefDriver.publishOnLoopbackOnly(sidecar);
                 sidecar.start();
                 URI uri = URI.create("ws://" + sidecar.getHost() + ":" + sidecar.getMappedPort(SIDECAR_PORT));
                 return new Topology(cell, host, proxy, sidecar, network, new MineflayerRefDriver(uri));
