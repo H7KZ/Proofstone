@@ -61,7 +61,8 @@ A framework for real-server end-to-end tests of Minecraft plugins, mods and add-
 
 - **Docker runs** (`:conformance:smoke`, any Testcontainers test, the card's Verify commands that need
   Docker): take a single machine-wide lock before the run and release it after. Only one Docker or
-  Testcontainers Gradle run at a time; parallel runs break Docker Desktop.
+  Testcontainers Gradle run at a time; parallel runs break Docker Desktop. Use `bash scripts/dockerlock.sh ./gradlew <task> --no-parallel`
+  (a mkdir lock; a lock older than 40 minutes counts as stale).
 - **EULA:** set `PROOFSTONE_ACCEPT_EULA=true` per command, in the environment only (for example
   `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke`). Never write it to any file, never commit it.
 - **Evidence:** read the results in `build/test-results/**` XML. Every suite must show `skipped="0"
