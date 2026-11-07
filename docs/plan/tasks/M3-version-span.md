@@ -105,7 +105,10 @@ ADR-0008. Also pin `sha256` and `build` for every row you want to run.
 - Hard-code per-row Java tags unless a rule can't express the case.
 
 **Acceptance.**
-- [ ] Every Paper row boots. The table is updated and marked "observed".
+- [x] Every Paper row boots. The table is updated and marked "observed". Evidence: C01 passed on all 11 Paper rows
+  (1.8.8, 1.12.2, 1.16.5, 1.17.1, 1.18.2, 1.20.4, 1.20.6, 1.21.11, 26.1.2, 26.2, 26.3) with their rule-assigned tag;
+  1.21.11 needed a `GameRules` fix first, 26.1.2 passed on a rerun after a Docker 500. `docs/versioning.md` §3.
+  Folia rows have per-tag digests but were not booted.
 
 **Verify.**
 `./gradlew :conformance:run -Dproofstone.cells=paper@all --tests '*ConformanceSmokeTest*'`

@@ -23,7 +23,8 @@ Spec for the file format: [specs/versions-yml.md](specs/versions-yml.md). Decisi
    - **Output:** a PR that adds or updates rows in `versions.yml` with:
      - the pinned build number;
      - the jar SHA-256;
-     - the image digest;
+     - the image digest (one per Java tag, ADR-0013; `updateVersions` does not refresh these, a maintainer re-pins them with
+       `docker buildx imagetools inspect itzg/minecraft-server:<tag>`);
      - the Java tag (from the rule table);
      - the protocol number;
      - `status: experimental`.
@@ -49,15 +50,20 @@ reopen the PR (from a maintainer account) to start `ci.yml`.
 **No code change is needed for a version unless conformance shows a real behaviour change.** A real
 change becomes a card against the pack, with the gotcha recorded in `docs/platforms/<id>.md`.
 
-## 3. Java rule table (initial; verify in T-M3-02)
+## 3. Java rule table (observed in T-M3-02, 2026-11-07)
 
-| MC versions | Java image tag |
-|---|---|
-| ≤ 1.16.5 | `java8` |
-| 1.17.x | `java16` (verify the tag exists; otherwise `java17`) |
-| 1.18 – 1.20.4 | `java17` (observed) |
-| 1.20.5 – 1.21.x | `java21` (observed) |
-| 26.x | `java25` (observed) |
+Each row booted with its rule-assigned tag and passed C01 (agent health, Java major checked by `PaperHost`).
+
+| MC versions | Java image tag | Observed on |
+|---|---|---|
+| ≤ 1.16.5 | `java8` | Paper 1.8.8, 1.12.2, 1.16.5 (observed) |
+| 1.17.x | `java16` (the tag exists on Docker Hub) | Paper 1.17.1 (observed) |
+| 1.18 – 1.20.4 | `java17` | Paper 1.18.2, 1.20.4 (observed) |
+| 1.20.5 – 1.21.x | `java21` | Paper 1.20.6, 1.21.11 (observed) |
+| 26.x | `java25` | Paper 26.1.2, 26.2, 26.3 (observed) |
+
+No rule needed changing. The host digest is pinned per tag (`host.digests`, ADR-0013). Folia has the same digests but
+no run on them yet.
 
 ## 4. Choosing cells
 

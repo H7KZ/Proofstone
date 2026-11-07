@@ -2,8 +2,9 @@
 
 ## Host
 - Image `itzg/minecraft-server:<javaTag>` with `TYPE=PAPER`, `VERSION=<mc>` and `PAPER_BUILD=<pinned>`.
-- Java tags as observed: `java17` for 1.18.2, `java21` for 1.21.11, `java25` for 26.1.2 and 26.3.
-  Versions up to 1.16.5 need `java8`; verify on card T-M3-02.
+- Java tags as observed (T-M3-02, C01 on every row): `java8` for 1.8.8, 1.12.2 and 1.16.5; `java16` for 1.17.1;
+  `java17` for 1.18.2 and 1.20.4; `java21` for 1.20.6 and 1.21.11; `java25` for 26.1.2, 26.2 and 26.3.
+  The image digest is pinned per tag in `versions.yml` (`host.digests`, ADR-0013).
 - The Paper download API is `https://fill.papermc.io/v3/projects/paper`.
 - Ready when the log shows `Done (` **and** the agent's `/v1/health` returns OK.
 
@@ -38,10 +39,19 @@
   bumped `stateId`, and the cursor arrives in a separate packet after it, so "newer stateId" alone can race the
   cursor. Claiming an impossible carried stack (air x1) makes the server answer with one `ContainerSetContent`
   that includes the cursor. A click that changes nothing gets no answer at all.
-- **The itzg digest is per Java tag.** `java17`, `java21` and `java25` have different digests, but `versions.yml`
-  holds one digest per host. It is pinned to `java25` (Paper 26.x), so older rows would run on the wrong Java.
-  `PaperHost` checks the container's Java major against the cell and fails loudly. Fixing this needs a
-  per-tag digest in the spec (ADR challenge, not done here).
+- **The itzg digest is per Java tag.** `java8`, `java16`, `java17`, `java21` and `java25` all have different
+  digests, so `versions.yml` pins one per tag (ADR-0013, fixes issue #23). `PaperHost` still checks the container's
+  Java major against the cell and fails loudly.
+- **Game rules became snake_case at 1.21.11, not 26.1.** `gamerule randomTickSpeed 0` fails on Paper 1.21.11 with
+  `Incorrect argument for command`. `GameRules` now switches at 1.21.11 (observed 2026-11-07, T-M3-02).
+- **Paperclip jars before 1.17 carry no `version.json`** (checked on 1.8.8, 1.12.2, 1.16.5, 1.17.1). The fill API gives
+  no protocol number either, so `updateVersions` keeps the row's own `protocol` for them and logs it.
+- Paper 1.8.8 build 445, 1.12.2 build 1620 and 1.16.5 build 794 start and answer the agent health check on `java8`
+  (C01 only; C02 and later need the bridge, T-M3-03).
+- `Could not save bukkit.yml (Permission denied)` is logged at ERROR during startup of 1.21.11 (the file
+  `PaperHost` copies in is not writable by the server user). The server still starts. Not yet seen to matter.
+- Docker Desktop answered `InternalServerError` for one cell (26.1.2) in a nine-cell run; the cell passed when run
+  again alone. Treat a 500 from Docker as infrastructure, not a result.
 - The image has `curl` and `sha256sum`, so `PaperHost` reaches the agent with `docker exec curl` and
   publishes no port. A published port is debug mode only.
 - itzg copies `/plugins` into `/data/plugins` at start, so `copyFileToContainer` into `/plugins` before start

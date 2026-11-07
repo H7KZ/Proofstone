@@ -1,14 +1,16 @@
 package dev.proofstone.core.host;
 
+import dev.proofstone.core.versions.VersionNumber;
 import java.util.List;
 
 /**
- * The deterministic-world setup commands. Minecraft 26.1 renamed game rules from camelCase to snake_case
+ * The deterministic-world setup commands. Minecraft 1.21.11 renamed game rules from camelCase to snake_case
  * (docs/platforms/paper.md), so the names depend on the cell's Minecraft version.
  */
 final class GameRules {
 
-    private static final int FIRST_SNAKE_CASE_MAJOR = 26;
+    // Observed on Paper 1.21.11 (T-M3-02): the rename landed there, not at 26.1 as first assumed.
+    private static final String FIRST_SNAKE_CASE = "1.21.11";
 
     private GameRules() {
     }
@@ -35,11 +37,10 @@ final class GameRules {
 
     /** Unparsable versions fail loudly: guessing the naming would apply the wrong rules silently. */
     static boolean usesSnakeCase(String mc) {
-        String major = mc.split("\\.", 2)[0];
         try {
-            return Integer.parseInt(major) >= FIRST_SNAKE_CASE_MAJOR;
-        } catch (NumberFormatException e) {
-            throw new PaperHostException("cannot read the Minecraft major version from \"" + mc + "\"", e);
+            return VersionNumber.compare(mc, FIRST_SNAKE_CASE) >= 0;
+        } catch (IllegalArgumentException e) {
+            throw new PaperHostException("cannot read the Minecraft version from \"" + mc + "\"", e);
         }
     }
 }
