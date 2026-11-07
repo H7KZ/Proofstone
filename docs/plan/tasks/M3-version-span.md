@@ -191,11 +191,14 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Use `serverOnly`.
 
 **Acceptance.**
-- [ ] Both pass natively on the newest row and bridged on 1.12.2 and 1.18.2. Not met, evidence 2026-11-07
-  (`:conformance:run -Dproofstone.cells=paper@latest,paper@1.12.2,paper@1.18.2 --tests '*C07*' --tests '*C08*'`, 6 tests,
-  1 failed, 1 skipped): C07 PASSED on 26.3 and 1.18.2 (bridged), SKIPPED on 1.12.2 (no grindstone before 1.14, by
-  design). C08 PASSED on 26.3 and 1.12.2 (bridged), FAILED on 1.18.2 (bridged): DISAGREE at the give check, agent
-  resolves `sugar_cane` to `sugar_cane_block` (docs/platforms/paper.md; needs the T-M3-06 legacy material table).
+- [x] Both pass natively on the newest row and bridged on 1.12.2 and 1.18.2. Evidence 2026-11-07, after merging
+  T-M3-06: `:conformance:run -Dproofstone.cells=paper@latest,paper@1.12.2,paper@1.18.2 --tests '*C07*' --tests '*C08*'`,
+  BUILD SUCCESSFUL, 6 tests: C08 PASSED on 26.3, 1.12.2 (bridged) and 1.18.2 (bridged); C07 PASSED on 26.3 and 1.18.2
+  (bridged), SKIPPED on 1.12.2 (no grindstone before 1.14, a visible reasoned skip, docs/specs/self-tests.md). Earlier
+  run before T-M3-06 failed C08 on 1.18.2 (sugar_cane resolved as sugar_cane_block), fixed by the legacy table.
+- [x] Regression: C01 to C06 on paper@1.18.2 (bridged), `:conformance:run -Dproofstone.cells=paper@1.18.2 --tests
+  '*ConformanceSmokeTest' --tests '*C03*' --tests '*C04*' --tests '*C05*' --tests '*C06*'`: 6 tests, 0 skipped, 0 failures
+  (XML), BUILD SUCCESSFUL.
 
 **Verify.**
 `./gradlew :conformance:run --tests '*C07*' --tests '*C08*'`

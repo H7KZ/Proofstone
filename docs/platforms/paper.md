@@ -160,8 +160,8 @@
 - **Item names are 1.8 enum names on every row (T-M3-05).** `Item.of("sugar_cane")` is resolved by the agent through
   `Material.matchMaterial("SUGAR_CANE")`. On paper@1.18.2 that gave `minecraft:sugar_cane_block` x3 on the server,
   while the client read `minecraft:sugar_cane` x3, so the dual oracle returned DISAGREE at the give check (C08).
-  On 1.12.2 and 26.3 the same name resolved correctly. The agent needs a legacy material table (T-M3-06) before C08
-  can pass on 1.18.2. Observed 2026-11-07, run of `:conformance:run` for C07 and C08.
+  On 1.12.2 and 26.3 the same name resolved correctly. Fixed by the legacy material table (T-M3-06), after which C08
+  passes on 1.18.2. Observed 2026-11-07, before and after the merge.
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:
