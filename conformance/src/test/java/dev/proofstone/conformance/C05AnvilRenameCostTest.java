@@ -44,7 +44,7 @@ class C05AnvilRenameCostTest {
 
             anvil.click(2, Click.LEFT);
             assertThat(anvil.cursor().name()).as("the renamed sword on the cursor").isEqualTo("Blade");
-            anvil.dropCursorIntoFirstEmptySlot();
+            ConformanceFixture.placeCursorInInventory(anvil);
         }
 
         DualAssert.item(player, client).inInventory(ConformanceFixture.sword()).amount(1).name("Blade");

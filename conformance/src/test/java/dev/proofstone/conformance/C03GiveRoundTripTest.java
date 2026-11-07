@@ -27,8 +27,8 @@ class C03GiveRoundTripTest {
         DualAssert.item(player, client).inInventory(ConformanceFixture.sword()).amount(1).name("Blade")
                 .enchants(Map.of("minecraft:sharpness", 255, "minecraft:unbreaking", 3));
 
-        player.give(Item.of("enchanted_book").storedEnchant("sharpness", 5).storedEnchant("mending", 1));
+        player.give(Item.of("enchanted_book").storedEnchant("sharpness", 5).storedEnchant("knockback", 2));
         DualAssert.item(player, client).inInventory(item -> item.is("enchanted_book")).amount(1)
-                .storedEnchants(Map.of("minecraft:sharpness", 5, "minecraft:mending", 1)).enchants(Map.of());
+                .storedEnchants(Map.of("minecraft:sharpness", 5, "minecraft:knockback", 2)).enchants(Map.of());
     }
 }
