@@ -192,7 +192,7 @@ public final class PaperHost implements AutoCloseable {
         int major = Integer.parseInt(matcher.group(1).equals("1") ? matcher.group(2) : matcher.group(1));
         if (!cell.java().equals("java" + major)) {
             throw new PaperHostException("cell wants " + cell.java() + " but the host image runs Java " + major
-                    + ". The host digest in versions.yml pins one Java tag only.");
+                    + ". The digest for " + cell.java() + " in versions.yml points at a different Java (ADR-0013).");
         }
         String sums = exec("sh", "-c", "sha256sum /data/paper-*.jar");
         if (!sums.contains(cell.sha256())) {

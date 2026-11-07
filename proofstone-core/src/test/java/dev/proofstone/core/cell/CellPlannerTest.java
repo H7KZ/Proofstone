@@ -33,7 +33,7 @@ class CellPlannerTest {
         assertThat(cell.build()).isEqualTo(2);
         assertThat(cell.sha256()).isEqualTo("a2");
         assertThat(cell.hostImage()).isEqualTo("itzg/minecraft-server");
-        assertThat(cell.hostDigest()).isEqualTo("sha256:0123");
+        assertThat(cell.hostDigest()).isEqualTo("sha256:08");
         assertThat(cell.status()).isEqualTo(Status.REQUIRED);
         assertThat(cell.java()).isEqualTo("java8");
         assertThat(cell.notes()).isEmpty();
@@ -118,7 +118,27 @@ class CellPlannerTest {
     }
 
     @Test
-    void allInPrScopeTakesOnlyRequiredRowsAndNeverRetired() throws IOException {
+    void eachCellTakesTheHostDigestOfItsOwnJavaTag() throws IOException {
+        List<Cell> cells = planner(VersionsFixture.valid()).plan("paper", List.of("1.10.2", "1.17.1", "1.20.4", "26.3"));
+
+        assertThat(cells).extracting(Cell::java).containsExactly("java8", "java16", "java17", "java25");
+        assertThat(cells).extracting(Cell::hostDigest)
+                .containsExactly("sha256:08", "sha256:16", "sha256:17", "sha256:25");
+    }
+
+    @Test
+    void todoDigestForTheCellsJavaTagFailsAndNamesTheTag() throws IOException {
+        String yaml = VersionsFixture.valid().replace("java17: \"sha256:17\"", "java17: TODO");
+
+        assertThatThrownBy(() -> planner(yaml).plan("paper", List.of("1.20.4")))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContaining("host digest for java17");
+        // Another tag is unaffected: there is no fallback and no cross-talk.
+        assertThat(planner(yaml).plan("paper", List.of("26.3"))).hasSize(1);
+    }
+
+    @Test
+    void allInPrScopeTakesOnlyRequiredRowsAndNeverRetired()throws IOException {
         List<Cell> cells = planner(VersionsFixture.valid()).plan("paper", List.of("all"), Scope.PR, VersionFamilies.none());
 
         assertThat(cells).extracting(Cell::mc).containsExactly("1.9.4", "1.10.2", "1.20.4");

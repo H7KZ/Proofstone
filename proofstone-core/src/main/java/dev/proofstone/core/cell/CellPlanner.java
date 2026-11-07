@@ -123,8 +123,10 @@ public final class CellPlanner {
         if (row.sha256() == null) {
             todo.add("sha256");
         }
-        if (platform.host().digest() == null) {
-            todo.add("host digest");
+        String javaTag = catalog.javaTag(row);
+        String hostDigest = platform.host().digest(javaTag);
+        if (hostDigest == null) {
+            todo.add("host digest for " + javaTag);
         }
         if (!todo.isEmpty()) {
             throw new VersionsException(platform.id() + "@" + row.mc() + " has TODO pins: "
@@ -139,10 +141,10 @@ public final class CellPlanner {
                 row.mc(),
                 row.build(),
                 row.sha256(),
-                catalog.javaTag(row),
+                javaTag,
                 row.status(),
                 platform.host().image(),
-                platform.host().digest(),
+                hostDigest,
                 List.copyOf(notes));
     }
 }

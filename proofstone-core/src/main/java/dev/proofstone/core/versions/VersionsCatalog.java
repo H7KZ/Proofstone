@@ -55,7 +55,27 @@ public final class VersionsCatalog {
         if (!errors.isEmpty()) {
             throw new VersionsException(versionsFile + " is invalid:\n  " + String.join("\n  ", errors));
         }
-        return fromDocument(document);
+        VersionsCatalog catalog = fromDocument(document);
+        catalog.requireDigestKeys(document);
+        return catalog;
+    }
+
+    // ADR-0013: a row's Java tag must have a host.digests key (the value may still be TODO; the planner refuses that).
+    private void requireDigestKeys(JsonNode document) {
+        List<String> errors = new ArrayList<>();
+        for (Platform platform : platforms.values()) {
+            JsonNode digests = document.path("platforms").path(platform.id()).path("host").path("digests");
+            for (Row row : platform.rows()) {
+                String tag = javaTag(row);
+                if (!digests.has(tag)) {
+                    errors.add("platforms." + platform.id() + " (mc " + row.mc()
+                            + "): host.digests has no entry for Java tag " + tag);
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new VersionsException("versions.yml is invalid:\n  " + String.join("\n  ", errors));
+        }
     }
 
     /** @return platform ids in file order */
@@ -156,7 +176,16 @@ public final class VersionsCatalog {
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
             JsonNode node = entry.getValue();
-            Host host = new Host(node.path("host").path("image").asText(), pin(node.path("host").path("digest")));
+            Map<String, String> digests = new LinkedHashMap<>();
+            Iterator<Map.Entry<String, JsonNode>> tags = node.path("host").path("digests").fields();
+            while (tags.hasNext()) {
+                Map.Entry<String, JsonNode> tag = tags.next();
+                String digest = pin(tag.getValue());
+                if (digest != null) {
+                    digests.put(tag.getKey(), digest);
+                }
+            }
+            Host host = new Host(node.path("host").path("image").asText(), digests);
             List<Row> rows = new ArrayList<>();
             for (JsonNode row : node.path("rows")) {
                 rows.add(toRow(row));

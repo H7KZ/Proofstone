@@ -118,7 +118,7 @@ Agent families share the **wire protocol**, so core code doesn't care which plat
 Each row is a platform and version, with:
 - the Java image tag;
 - the server build pin;
-- the image digest;
+- the image digest, per Java tag ([ADR-0013](adr/0013-host-digest-per-java-tag.md));
 - the protocol number;
 - `status`;
 - `native drivers`;

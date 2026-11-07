@@ -1,0 +1,10 @@
+schema: 2
+java-rules:
+  - { range: ">=1.20.5 <26", image: java21 }
+drivers:
+  mcpl: { library: "org.geysermc.mcprotocollib:protocol", version: "26.3-2", protocol: "26.3" }
+platforms:
+  paper:
+    host: { image: "itzg/minecraft-server", digests: { java21: TODO } }
+    rows:
+      - { mc: "1.21.11", build: 132, sha256: "1111111111111111111111111111111111111111111111111111111111111111", status: required, observed: "ok" }

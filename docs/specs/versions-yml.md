@@ -1,10 +1,11 @@
 # Spec: `versions.yml`
 
-Decision: [ADR-0008](../adr/0008-versions-yml-single-source-of-truth.md). A JSON Schema for validation,
+Decision: [ADR-0008](../adr/0008-versions-yml-single-source-of-truth.md), amended by
+[ADR-0013](../adr/0013-host-digest-per-java-tag.md) (host digest per Java tag). A JSON Schema for validation,
 `proofstone-protocol/schemas/versions.schema.json`, is created in T-M0-04.
 
 ```yaml
-schema: 1                                  # file format version
+schema: 2                                  # file format version
 java-rules:                                # first match wins
   - { range: ">=1.20.5 <26", image: java21 }
 drivers:
@@ -13,7 +14,10 @@ drivers:
   viaproxy:       { image: "<repo>", digest: "sha256:…" }
 platforms:
   <platform-id>:
-    host: { image: "<repo>", digest: "sha256:…" }
+    host:
+      image: "<repo>"
+      digests:                             # one digest per Java tag (ADR-0013); a key per tag the rules can assign
+        java21: "sha256:…"
     rows:
       - mc: "1.21.11"                      # Minecraft version (string; 26.x style accepted)
         build: 132                         # platform build number
@@ -29,5 +33,10 @@ platforms:
 Validation rules, enforced in `check`:
 - `mc` values are unique within a platform.
 - `required` rows have no `TODO` values.
+- `host.digests` has a key for every `image` named in `java-rules` and every row `java` override. A `required`
+  row's tag has a real digest, not `TODO`.
 - Every row's Java tag resolves to an image that exists (an online check, run nightly only).
 - `latest` always resolves to the highest `required` row.
+
+A cell takes the digest of its row's Java tag (`java` override, else the first matching `java-rules` entry). A tag
+with no digest is an error that names the tag and the row, never a fallback to another tag.

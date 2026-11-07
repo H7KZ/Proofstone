@@ -29,7 +29,7 @@ class CiMatrixTest {
 
     /** A matrix with Java rules as in the seed file; the unknown-rule test removes the {@code >=26} rule. */
     private static final String FIXTURE = """
-            schema: 1
+            schema: 2
             java-rules:
               - { range: "<=1.16.5", image: java8 }
               - { range: "1.17.x", image: java16 }
@@ -40,7 +40,7 @@ class CiMatrixTest {
               mcpl: { library: "g:a", version: "1.0", protocol: "26.3" }
             platforms:
               paper:
-                host: { image: "itzg/minecraft-server", digest: "sha256:0123" }
+                host: { image: "itzg/minecraft-server", digests: { java8: "sha256:08", java17: "sha256:17", java21: "sha256:21", java25: "sha256:25" } }
                 rows:
                   - { mc: "1.9.4", build: 1, sha256: "a1", status: required }
                   - { mc: "1.20.4", build: 5, sha256: "a5", status: required }
@@ -48,11 +48,11 @@ class CiMatrixTest {
                   - { mc: "26.3", build: 244, sha256: "a7", status: experimental }
                   - { mc: "1.8.8", build: 9, sha256: "a9", status: retired }
               folia:
-                host: { image: "itzg/minecraft-server", digest: "TODO" }
+                host: { image: "itzg/minecraft-server", digests: { java25: "TODO" } }
                 rows:
                   - { mc: "26.3", build: 6, sha256: "c1", status: required }
               spigot:
-                host: { image: "itzg/minecraft-server", digest: "sha256:0456" }
+                host: { image: "itzg/minecraft-server", digests: { java8: "sha256:08" } }
                 rows:
                   - { mc: "1.12.2", build: 1, sha256: "d1", status: experimental }
             """;
