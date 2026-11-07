@@ -32,6 +32,8 @@ dependencies {
     integrationTestImplementation(project(":proofstone-core"))
     integrationTestImplementation(testFixtures(project(":proofstone-protocol")))
     integrationTestImplementation(project(":drivers:mcpl"))
+    // Old rows are reached through ViaProxy, which the test starts on a Docker network (T-M3-06).
+    integrationTestImplementation(libs.testcontainers)
 }
 
 // Golden wire cases (T-M1-02) are replayed by the agent's unit tests over HTTP.
@@ -69,6 +71,8 @@ tasks.named<Test>("integrationTest") {
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.get().asFile.absolutePath)
     systemProperty("proofstone.fixtureJar", fixtureJar.asFile.absolutePath)
+    // The run-time cell selector reaches the test JVM from the Gradle command line (test-api spec §1, T-M3-06).
+    providers.systemProperty("proofstone.cells").orNull?.let { systemProperty("proofstone.cells", it) }
 }
 
 // AGENTS.md §3: bundled libraries are relocated so they never clash with the server's own copies.
