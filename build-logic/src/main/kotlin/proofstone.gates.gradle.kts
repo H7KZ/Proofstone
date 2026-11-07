@@ -2,6 +2,8 @@
 // `check` runs each module's `check` (which runs archTest), the lintVersions scan and the build-logic tests.
 import dev.proofstone.build.docs.DocsCheck
 import dev.proofstone.build.lint.VersionLint
+import dev.proofstone.build.versions.HttpVersionSource
+import dev.proofstone.build.versions.VersionsUpdater
 import dev.proofstone.build.versions.VersionsValidator
 import org.gradle.api.GradleException
 
@@ -64,4 +66,27 @@ tasks.register("validateVersions") {
 
 tasks.named("check") {
     dependsOn("validateVersions")
+}
+
+// version-watch (T-M3-01, docs/versioning.md §2). Fills in versions.yml from the fill API. Add
+// -Pproofstone.versions.dryRun=true to print the diff without writing. Gradle's own --dry-run only lists tasks.
+tasks.register("updateVersions") {
+    group = "versions"
+    description = "Fills in versions.yml from the Paper and Folia fill API (T-M3-01, docs/versioning.md §2)."
+    val root = rootDir
+    val dryRun = providers.gradleProperty("proofstone.versions.dryRun").map { it.toBoolean() }.orElse(false)
+    doLast {
+        val result = VersionsUpdater.run(
+            root.toPath().resolve("versions.yml"),
+            root.toPath().resolve("proofstone-protocol/schemas/versions.schema.json"),
+            dryRun.get(),
+            HttpVersionSource(),
+        )
+        result.log().forEach { logger.lifecycle(it) }
+        when {
+            dryRun.get() -> logger.lifecycle(result.diff().ifEmpty { "dry run: no changes" })
+            result.text() == result.original() -> logger.lifecycle("versions.yml: no changes")
+            else -> logger.lifecycle("versions.yml: updated")
+        }
+    }
 }

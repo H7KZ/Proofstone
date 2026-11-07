@@ -34,6 +34,18 @@ Spec for the file format: [specs/versions-yml.md](specs/versions-yml.md). Decisi
 5. When MCProtocolLib publishes the newest protocol, the Renovate PR bumps the driver. Cells that were
    bridged become native.
 
+Run it locally with `./gradlew updateVersions`. Add `-Pproofstone.versions.dryRun=true` to print the diff and write
+nothing. The task re-pins a row only when its build changed, its sha256 is `TODO`, or it has no protocol. It adds stable
+Paper or Folia versions newer than a platform's newest row, as `experimental`. Its unit tests use recorded API responses
+(`build-logic/src/test/resources/versions/api`) and never touch the network.
+
+**CI on version-watch PRs.** The workflow opens its PR with `GITHUB_TOKEN`, and GitHub does not start workflows from
+PRs made that way. `ci.yml` therefore does not run, and the required checks (gates, smoke, renovate-validate) stay
+pending and block the merge. The fix is to give `create-pull-request` a token that can trigger workflows: a
+fine-grained PAT or GitHub App token stored as the repository secret `VERSION_WATCH_TOKEN`, passed as `token:` in
+`.github/workflows/version-watch.yml`. A maintainer creates that secret; it is not in the repo. Until then, close and
+reopen the PR (from a maintainer account) to start `ci.yml`.
+
 **No code change is needed for a version unless conformance shows a real behaviour change.** A real
 change becomes a card against the pack, with the gotcha recorded in `docs/platforms/<id>.md`.
 

@@ -1,0 +1,50 @@
+# version-watch (T-M3-01, docs/versioning.md §2, ADR-0006, ADR-0008). Every 6 hours it fills in versions.yml from the
+# Paper and Folia fill API and opens a PR with the label `versions`. New rows start as `experimental`; nothing is
+# promoted to `required` here. A run with no changes opens no PR.
+# The PR is opened with GITHUB_TOKEN, and GitHub does not start workflows for such PRs, so `ci.yml` does not run on
+# it and the required checks (gates, smoke, renovate-validate) stay pending, which blocks the merge.
+# Recommended fix: a repository secret named VERSION_WATCH_TOKEN (a fine-grained PAT with contents and pull-requests
+# write, or a GitHub App token), passed as `token: ${{ secrets.VERSION_WATCH_TOKEN }}` to create-pull-request below.
+# The secret is not added here; a maintainer creates it. Until then, close and reopen the PR to start ci.yml, or push
+# an empty commit to its branch from a maintainer account.
+name: version-watch
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: updateVersions
+        run: ./gradlew updateVersions
+      - name: open PR
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: version-watch
+          delete-branch: true
+          add-paths: versions.yml
+          commit-message: "chore(versions): version-watch update"
+          title: "chore(versions): version-watch update"
+          body: |
+            Filled in by the `version-watch` workflow (T-M3-01) with `./gradlew updateVersions`.
+
+            - Build numbers, jar SHA-256s and protocol numbers are read from the fill API and the server jars.
+            - New rows are `status: experimental`. No row was promoted to `required`.
+            - The job log lists each row it checked, with the checksum result.
+          labels: versions
