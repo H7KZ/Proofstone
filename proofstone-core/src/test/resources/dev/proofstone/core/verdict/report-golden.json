@@ -1,0 +1,78 @@
+{
+  "schema" : "proofstone-report/1",
+  "green" : false,
+  "summary" : {
+    "PASS" : 1,
+    "FAIL" : 1,
+    "INVALID" : 1,
+    "VACUOUS" : 1,
+    "FLAKY" : 1,
+    "DISAGREE" : 1,
+    "SKIPPED" : 1
+  },
+  "results" : [
+    {
+      "cell" : "paper@1.12.2",
+      "test" : "skip-me",
+      "verdict" : "SKIPPED",
+      "green" : true,
+      "runs" : 1,
+      "reason" : "grindstone arrived in 1.14",
+      "skipReason" : "CAPABILITY_MISSING"
+    },
+    {
+      "cell" : "paper@1.21.11",
+      "test" : "disagree-me",
+      "verdict" : "DISAGREE",
+      "green" : false,
+      "runs" : 1,
+      "reason" : "client and reference driver observations differ",
+      "skipReason" : null
+    },
+    {
+      "cell" : "paper@1.21.11",
+      "test" : "pass-me",
+      "verdict" : "PASS",
+      "green" : true,
+      "runs" : 1,
+      "reason" : null,
+      "skipReason" : null
+    },
+    {
+      "cell" : "paper@1.8.8",
+      "test" : "fail-me",
+      "verdict" : "FAIL",
+      "green" : false,
+      "runs" : 1,
+      "reason" : "expected \"5\" <got> & 4",
+      "skipReason" : null
+    },
+    {
+      "cell" : "paper@1.8.8",
+      "test" : "flaky-me",
+      "verdict" : "FLAKY",
+      "green" : false,
+      "runs" : 5,
+      "reason" : "verdicts differ across 5 runs: PASS, FAIL",
+      "skipReason" : null
+    },
+    {
+      "cell" : "paper@1.8.8",
+      "test" : "invalid-me",
+      "verdict" : "INVALID",
+      "green" : false,
+      "runs" : 1,
+      "reason" : "cell conformance failed: C03 enchant mismatch",
+      "skipReason" : null
+    },
+    {
+      "cell" : "paper@1.8.8",
+      "test" : "vacuous-me",
+      "verdict" : "VACUOUS",
+      "green" : false,
+      "runs" : 1,
+      "reason" : "passes without the plugin (control run): the test does not prove the plugin works",
+      "skipReason" : null
+    }
+  ]
+}

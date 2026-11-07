@@ -25,3 +25,11 @@ PROOFSTONE_ACCEPT_EULA=true ./gradlew :examples:smoke:test
 
 Needs Docker and a Java 21+ toolchain (the mcpl driver needs it). Without the EULA variable or without Docker the
 tests are skipped with that reason. A skip is not a pass.
+
+Repro bundles (T-M4-02): `ForcedFailureE2E` passes normally and fails on purpose with `-Dproofstone.forceFail=true`.
+Its failure writes `build/proofstone/paper@<mc>/ForcedFailureE2E.failsOnPurposeWhenForced/`, and the run prints that
+path as `PROOFSTONE BUNDLE:`.
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:smoke:test -Dproofstone.forceFail=true --no-parallel
+```

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.await.AwaitTimeoutException;
 import dev.proofstone.core.cell.Cell;
@@ -18,12 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
@@ -48,6 +52,7 @@ public final class PaperHost implements AutoCloseable {
     public static final int GAME_PORT = 25565;
     private static final String AGENT_URL = "http://127.0.0.1:" + AGENT_PORT;
     private static final int TAIL_LINES = 60;
+    private static final int TRANSCRIPT_TEXT_LIMIT = 500;
     private static final String BUKKIT_YML = "settings:\n  connection-throttle: -1\n";
     private static final String SEED = "1234567";
     private static final String WORLD_SPAWN = "setworldspawn 0 64 0";
@@ -61,6 +66,8 @@ public final class PaperHost implements AutoCloseable {
     private final LogBuffer logs = new LogBuffer();
     private final GenericContainer<?> container;
     private final List<String> copiedPlugins = new ArrayList<>();
+    /** One JSON line per agent call, for the repro bundle. The token is never recorded: headers are not. */
+    private final List<String> agentTranscript = Collections.synchronizedList(new ArrayList<>());
     private Health health;
 
     private PaperHost(Cell cell, PaperHostOptions options) {
@@ -284,13 +291,47 @@ public final class PaperHost implements AutoCloseable {
     }
 
     private String agent(String method, String path, String body) {
+        String requestId = UUID.randomUUID().toString();
         List<String> args = new ArrayList<>(List.of("curl", "-sS", "-m", "5", "-X", method,
-                "-H", "Authorization: Bearer " + token, "-H", "Content-Type: application/json"));
+                "-H", "Authorization: Bearer " + token, "-H", "Content-Type: application/json",
+                "-H", "X-Proofstone-Request-Id: " + requestId));
         if (body != null) {
             args.addAll(List.of("-d", body));
         }
         args.add(AGENT_URL + path);
-        return exec(args.toArray(String[]::new));
+        String call = method + " " + path;
+        try {
+            String reply = exec(args.toArray(String[]::new));
+            recordAgentCall(requestId, call, body, reply);
+            return reply;
+        } catch (RuntimeException e) {
+            recordAgentCall(requestId, call, body, "error: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    private void recordAgentCall(String requestId, String call, String body, String reply) {
+        ObjectNode line = JSON.createObjectNode()
+                .put("at", Instant.now().toString())
+                .put("requestId", requestId)
+                .put("call", call);
+        if (body != null) {
+            line.put("request", truncate(body));
+        }
+        line.put("reply", truncate(reply));
+        agentTranscript.add(line.toString());
+    }
+
+    /** Keeps a recorded reply short; the full output is in the server log. */
+    private static String truncate(String text) {
+        return text.length() <= TRANSCRIPT_TEXT_LIMIT ? text : text.substring(0, TRANSCRIPT_TEXT_LIMIT) + "...";
+    }
+
+    /** The agent calls made so far, as JSON lines (repro bundle, agent-transcript.jsonl). */
+    public List<String> agentTranscript() {
+        synchronized (agentTranscript) {
+            return new ArrayList<>(agentTranscript);
+        }
     }
 
     private String exec(String... args) {

@@ -41,5 +41,13 @@ Java tags come from `java-rules` (first match wins). A row's `java:` field overr
 The tests read the real schema and seed from the repo root (`proofstone.repoRoot`, set in `build.gradle.kts`).
 
 `./gradlew :proofstone-core:integrationTest --tests '*PaperHostIT*'` needs Docker and `PROOFSTONE_ACCEPT_EULA=true` (read <https://aka.ms/MinecraftEULA> first; the harness never accepts it for you). Without the variable the server tests are skipped with that reason. It is not part of `check`.
+- `dev.proofstone.core.verdict` (T-M4-01): the verdict engine. `VerdictEngine.resolve(CellRun, ConformanceResult)` gives
+  one `CellResult` per test and cell; `Verdict` (`PASS`, `FAIL`, `INVALID`, `VACUOUS`, `FLAKY`, `DISAGREE`, `SKIPPED`,
+  green = `PASS` or `SKIPPED` only); `Attempt` (one run: PASS, FAIL or SKIPPED); `SkipReason` (the allowed skip reasons);
+  `ConformanceCache` (conformance once per cell per run); `ReportWriter` (`proofstone-report.json`, schema
+  `proofstone-report/1`) and `JunitXml` (`proofstone-junit.xml`, non-green verdicts as failures). Precedence: INVALID,
+  DISAGREE, FLAKY, VACUOUS, then the run's own result. The engine is pure: it takes run results as input and never runs
+  a test. The verdict types stay in core, not `proofstone-api`, so the frozen v0 baseline does not change.
 - `dev.proofstone.core.driver`: the client driver SPI (`ClientDriver`, `ClientSession`, `ConnectSpec`, `ChatMessage`, `ClientDriverException`). Implemented by `drivers/mcpl`.
 - `dev.proofstone.core.junit.ProofstoneExtension`: the JUnit 5 extension behind `@Proofstone`, `@Matrix` and `@CellTest` (T-M1-10). One invocation per cell, displayed `paper@26.3`; one server per class and cell; a fresh `mcpl` client per test named `T<hash>`. It skips with a printed reason when the EULA is not accepted or Docker is missing. It reads the system properties `proofstone.repoRoot` and `proofstone.agentJar` and finds the driver through `ServiceLoader`.
+- Repro bundles (T-M4-02, package `junit`, `BundleWriter`): a test that does not pass writes `build/proofstone/<platform>@<mc>/<TestClass>.<method>/` from afterEach, while the server is still up. Files: `server.log`, `viaproxy.log` (bridged cells only), `agent-transcript.jsonl` (`PaperHost.agentTranscript()`), `driver-transcript.jsonl`, `cell.json`, `snapshot.json` (`GET /v1/snapshot`, or the error if the agent does not serve it), `rerun.txt`. The agent token is redacted from every file and each file is scanned again after writing. Bundles are local and never committed.
