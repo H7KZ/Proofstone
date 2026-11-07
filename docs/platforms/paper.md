@@ -134,6 +134,12 @@
   each plugin's classloader (T-M2-10).
 - **`client.inventory()` is stale while a container window is open.** Check the player's inventory on the client oracle
   after closing the window; the agent oracle is current at any time (T-M2-10).
+- **The protocol number is not in the Mojang version manifest.** The per-version JSON from `piston-meta` has no
+  `protocol_version`. The server jar's `version.json` has it (`protocol_version`, for example 777 in Paper 26.3 build 244,
+  read on 2026-11-07). `VersionsUpdater` reads it from the jar, so a jar without it fails the run (T-M3-01).
+- **The fill API's "latest" build can be on another channel.** On 2026-11-07 Folia 26.3 build 6 was `ALPHA` and 26.2
+  build 7 was `BETA`, while the Paper rows were `STABLE`. The updater pins whatever `builds/latest` returns and logs the
+  channel. The `experimental` status keeps these rows from blocking (T-M3-01).
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:

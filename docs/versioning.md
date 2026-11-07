@@ -34,6 +34,11 @@ Spec for the file format: [specs/versions-yml.md](specs/versions-yml.md). Decisi
 5. When MCProtocolLib publishes the newest protocol, the Renovate PR bumps the driver. Cells that were
    bridged become native.
 
+Run it locally with `./gradlew updateVersions`. Add `-Pproofstone.versions.dryRun=true` to print the diff and write
+nothing. The task re-pins a row only when its build changed, its sha256 is `TODO`, or it has no protocol. It adds stable
+Paper or Folia versions newer than a platform's newest row, as `experimental`. Its unit tests use recorded API responses
+(`build-logic/src/test/resources/versions/api`) and never touch the network.
+
 **No code change is needed for a version unless conformance shows a real behaviour change.** A real
 change becomes a card against the pack, with the gotcha recorded in `docs/platforms/<id>.md`.
 
