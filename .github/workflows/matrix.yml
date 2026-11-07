@@ -39,7 +39,13 @@ jobs:
         env:
           SCOPE: ${{ github.event_name == 'schedule' && 'nightly' || github.event.inputs.scope || 'pr' }}
         run: |
-          ./gradlew printMatrix --scope="$SCOPE"
+          ./gradlew printMatrix --scope="$SCOPE" 2> >(tee build-matrix.err >&2)
+          # Make skipped platforms (TODO pins, no required row) visible on the run page, not only in the log.
+          {
+            echo "### matrix plan ($SCOPE): $(jq '.include | length' "build/ci/matrix-$SCOPE.json") cell(s)"
+            grep '^printMatrix: skipped' build-matrix.err || echo "no platform skipped"
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep '^printMatrix: skipped' build-matrix.err | sed 's/^/::warning::/' || true
           echo "matrix=$(jq -c . "build/ci/matrix-$SCOPE.json")" >> "$GITHUB_OUTPUT"
           echo "has_cells=$(jq -r '.include | length > 0' "build/ci/matrix-$SCOPE.json")" >> "$GITHUB_OUTPUT"
 
