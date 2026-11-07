@@ -65,7 +65,8 @@ jobs:
           cache: gradle
       - name: conformance on ${{ matrix.cell }}
         env:
-          PROOFSTONE_ACCEPT_EULA: "true"
+          # The EULA acceptance is a repository variable, never written into a file (AGENTS.md section 4).
+          PROOFSTONE_ACCEPT_EULA: ${{ vars.PROOFSTONE_ACCEPT_EULA }}
           CELL: ${{ matrix.cell }}
         run: ./gradlew :conformance:run -Dproofstone.cells="$CELL"
       - name: upload repro bundle

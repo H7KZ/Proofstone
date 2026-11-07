@@ -1,5 +1,5 @@
 # Gate workflow: AGENTS.md §4. `gates` and `renovate-validate` need no Docker. `smoke` runs `:conformance:run`
-# (C01 to C06 on the newest Paper row, T-M1-11, T-M2-09) on a Docker runner. Without the Minecraft EULA it fails, never skips.
+# (C01 to C08 on the newest Paper row, T-M1-11, T-M2-09, T-M3-05) on a Docker runner. Without the Minecraft EULA it fails, never skips.
 # The repo owner accepts the Minecraft EULA (https://aka.ms/MinecraftEULA) for the `smoke` job below, and said so in chat on 2026-11-03.
 name: ci
 
@@ -36,7 +36,7 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-      - name: conformance (C01 to C06)
+      - name: conformance (C01 to C08)
         env:
           PROOFSTONE_ACCEPT_EULA: "true"
         run: ./gradlew :conformance:run
