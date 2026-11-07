@@ -60,6 +60,13 @@ public abstract interface dev.proofstone.api.Client
   method public abstract java.lang.String dev.proofstone.api.Client.name()
   method public abstract java.util.List<dev.proofstone.api.ItemView> dev.proofstone.api.Client.inventory()
   method public abstract void dev.proofstone.api.Client.command(java.lang.String)
+public abstract interface dev.proofstone.api.ControlRun implements java.lang.annotation.Annotation
+  method public abstract dev.proofstone.api.ControlRun$Expectation dev.proofstone.api.ControlRun.value()
+  method public abstract java.lang.String dev.proofstone.api.ControlRun.reason()
+public final dev.proofstone.api.ControlRun$Expectation extends java.lang.Enum<dev.proofstone.api.ControlRun$Expectation>
+  field public static final dev.proofstone.api.ControlRun$Expectation EXPECTED_PASS
+  method public static dev.proofstone.api.ControlRun$Expectation dev.proofstone.api.ControlRun$Expectation.valueOf(java.lang.String)
+  method public static dev.proofstone.api.ControlRun$Expectation[] dev.proofstone.api.ControlRun$Expectation.values()
 public final dev.proofstone.api.DisagreeException extends java.lang.AssertionError
   constructor public dev.proofstone.api.DisagreeException(java.lang.String,java.lang.String,java.lang.String)
   method public java.lang.String dev.proofstone.api.DisagreeException.clientObserved()

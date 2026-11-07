@@ -84,7 +84,7 @@ the bundle.
 - Remove the agent or the fixtures in control runs.
 
 **Acceptance.**
-- [ ] A purpose-built vacuous test is reported as `VACUOUS`.
+- [x] A purpose-built vacuous test is reported as `VACUOUS`.
 
 **Verify.**
 `./gradlew :examples:bad-tests:test -Dproofstone.controlRun=true`
