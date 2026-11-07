@@ -31,4 +31,5 @@ include(
     "platforms:bukkit:fixture",
     "examples:smoke",
     "examples:disenchantment-anvil",
+    "examples:bad-tests",
 )

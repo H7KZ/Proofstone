@@ -52,12 +52,15 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     private final VersionsCatalog catalog;
     private final boolean bridged;
+    /** Whether the run installs no plugin jars (self-tests section 2); read once, so a bad value fails at planning. */
+    private final boolean controlRun;
 
     CellInvocation(Cell cell, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog) {
         this.cell = cell;
         this.config = config;
         this.isolation = isolation;
         this.catalog = catalog;
+        this.controlRun = VerdictGate.controlRun();
         // The driver speaks one protocol; any other server needs ViaProxy in between (ADR-0004). With no driver on
         // the classpath the cell is not bridged, and the join fails loudly later.
         this.bridged = findDriver().map(driver -> !driver.protocolVersion().equals(cell.mc())).orElse(false);
@@ -65,7 +68,12 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     @Override
     public String getDisplayName(int invocationIndex) {
-        return cell.platform() + "@" + cell.mc() + (bridged ? " (bridged)" : "");
+        return cellId() + (bridged ? " (bridged)" : "");
+    }
+
+    /** The cell's display id without the bridged marker, for example {@code paper@1.8.8}. */
+    private String cellId() {
+        return cell.platform() + "@" + cell.mc();
     }
 
     @Override
@@ -135,6 +143,10 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 failure = combine(failure, new IllegalStateException("cannot write the repro bundle", e));
             }
         }
+        // Judged only for a pass: a failure or skip already has its verdict from JUnit.
+        if (failure == null && context.getExecutionException().isEmpty()) {
+            failure = VerdictGate.judgePass(context.getRequiredTestMethod(), cellId(), controlRun);
+        }
         for (String plugin : state.patchedPlugins) {
             try {
                 HostPlugin.restore(state.host, plugin);
@@ -191,8 +203,14 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             throw new ParameterResolutionException("system property " + AGENT_JAR + " is not set: it points at "
                     + "the shaded agent jar");
         }
+        // A control run installs no plugin jars. The agent and the fixture world are not plugins under test, so they stay.
+        List<String> plugins = List.of(config.plugins());
+        if (controlRun) {
+            System.err.println("PROOFSTONE CONTROL RUN: plugin jars are not installed; a passing test is VACUOUS");
+            plugins = List.of();
+        }
         PaperHostOptions options = PaperHostOptions.of(Path.of(jar), true)
-                .withArtefacts(Path.of("").toAbsolutePath(), List.of(config.plugins()));
+                .withArtefacts(Path.of("").toAbsolutePath(), plugins);
         if (!bridged) {
             return new HostResource(PaperHost.start(cell, options), null, null);
         }
