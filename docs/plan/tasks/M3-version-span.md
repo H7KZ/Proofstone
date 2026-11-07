@@ -191,7 +191,16 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Use `serverOnly`.
 
 **Acceptance.**
-- [ ] Both pass natively on the newest row and bridged on 1.12.2 and 1.18.2.
+- [x] C08 passes natively on the newest row and bridged on 1.12.2 and 1.18.2. C07 passes natively on the newest row
+  and bridged on 1.18.2, but NOT on 1.12.2: that row is a reasoned skip, because 1.12.2 has no grindstone (added in
+  1.14). C07 is therefore not proven on 1.12.2 and no pass is claimed there. Evidence 2026-11-07, after merging
+  T-M3-06: `:conformance:run -Dproofstone.cells=paper@latest,paper@1.12.2,paper@1.18.2 --tests '*C07*' --tests '*C08*'`,
+  BUILD SUCCESSFUL, 6 tests: C08 PASSED on 26.3, 1.12.2 (bridged) and 1.18.2 (bridged); C07 PASSED on 26.3 and 1.18.2
+  (bridged), SKIPPED on 1.12.2 (no grindstone before 1.14, a visible reasoned skip, docs/specs/self-tests.md). Earlier
+  run before T-M3-06 failed C08 on 1.18.2 (sugar_cane resolved as sugar_cane_block), fixed by the legacy table.
+- [x] Regression: C01 to C06 on paper@1.18.2 (bridged), `:conformance:run -Dproofstone.cells=paper@1.18.2 --tests
+  '*ConformanceSmokeTest' --tests '*C03*' --tests '*C04*' --tests '*C05*' --tests '*C06*'`: 6 tests, 0 skipped, 0 failures
+  (XML), BUILD SUCCESSFUL.
 
 **Verify.**
 `./gradlew :conformance:run --tests '*C07*' --tests '*C08*'`

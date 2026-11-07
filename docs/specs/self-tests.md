@@ -27,6 +27,10 @@ v0 limit for C04: a chest's own contents have no server oracle yet (there is no 
 so C04 checks the move through server-answered clicks on the client window and dual-checks only the player inventory
 (the stack must leave it on both oracles). A server-side chest check arrives with that endpoint.
 
+v0 limit for C07: the grindstone arrived in 1.14, so 1.12.2 has no grindstone and cannot cover C07. The scenario
+skips there with that reason (a visible skip, never a pass). Every row from 1.14 on runs it, and it is part of the
+conformance evidence only on those rows (docs/platforms/paper.md, T-M3-05).
+
 Each pack can add its own scenarios. For example, Folia adds cross-region teleport and region-thread
 assertions.
 
