@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -97,9 +98,11 @@ public final class VersionFamilies {
                 byFamily.put(family.getKey(), versionsOf(platform.getKey(), family.getKey(), family.getValue(),
                         catalog));
             }
-            byPlatform.put(platform.getKey(), Map.copyOf(byFamily));
+            // Declaration order matters (the newest of each family is listed in file order), and Map.copyOf
+            // iterates in an order that varies per JVM.
+            byPlatform.put(platform.getKey(), Collections.unmodifiableMap(byFamily));
         }
-        return new VersionFamilies(Map.copyOf(byPlatform));
+        return new VersionFamilies(Collections.unmodifiableMap(byPlatform));
     }
 
     /**
