@@ -27,8 +27,9 @@ public final class DocsCheck {
 
     private static final Pattern LINK = Pattern.compile("\\[[^\\]]*\\]\\(([^)\\s]+)\\)");
     private static final Pattern HEADING = Pattern.compile("^#{1,6}\\s+(.*)$");
-    private static final Pattern CARD_HEADING = Pattern.compile("^### (T-M(\\d+)-\\d{2}) · .+$");
-    private static final Pattern CARD_ID = Pattern.compile("T-M\\d+-\\d{2}");
+    // A letter suffix marks a follow-up split of a card (T-M4-05b), so the card keeps its number.
+    private static final Pattern CARD_HEADING = Pattern.compile("^### (T-M(\\d+)-\\d{2}[a-z]?) · .+$");
+    private static final Pattern CARD_ID = Pattern.compile("T-M\\d+-\\d{2}[a-z]?");
     private static final Pattern MILESTONE_FILE = Pattern.compile("^M(\\d+)[-.].*\\.md$");
     private static final List<String> METADATA = List.of("tier", "depends", "modules", "adrs", "specs", "test-first");
     private static final List<String> TIERS = List.of("haiku", "sonnet", "opus");

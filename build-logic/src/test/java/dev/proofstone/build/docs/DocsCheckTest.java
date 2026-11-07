@@ -85,6 +85,13 @@ class DocsCheckTest {
     }
 
     @Test
+    void letterSuffixedSplitCardPasses() throws IOException {
+        write("docs/plan/tasks/M0-foundation.md", card("T-M0-01", metadata("haiku"), sections())
+                + card("T-M0-01b", metadata("haiku").replace("—", "T-M0-01"), sections()));
+        assertThat(DocsCheck.run(root).errors()).isEmpty();
+    }
+
+    @Test
     void avoidedGlossaryTermWarnsWithoutFailing() throws IOException {
         write("docs/glossary.md", "| Term | Meaning | Avoid saying |\n|---|---|---|\n"
                 + "| **Agent** | The in-server part. | helper plugin, test plugin |\n");

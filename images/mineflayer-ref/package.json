@@ -1,0 +1,18 @@
+{
+  "name": "proofstone-mineflayer-ref",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reference client driver sidecar: Mineflayer behind a JSON-RPC WebSocket (ADR-0004, client-driver spec section 4).",
+  "license": "UNLICENSED",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "mineflayer": "4.39.0",
+    "ws": "8.18.3"
+  }
+}
