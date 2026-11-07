@@ -2,6 +2,7 @@
 // `check` runs each module's `check` (which runs archTest), the lintVersions scan and the build-logic tests.
 import dev.proofstone.build.docs.DocsCheck
 import dev.proofstone.build.lint.VersionLint
+import dev.proofstone.build.matrix.PrintMatrix
 import dev.proofstone.build.versions.HttpVersionSource
 import dev.proofstone.build.versions.VersionsUpdater
 import dev.proofstone.build.versions.VersionsValidator
@@ -10,6 +11,14 @@ import org.gradle.api.GradleException
 plugins {
     base
 }
+
+// printMatrix runs proofstone-core's CiMatrix, so the CI matrix uses the same planner the tests use. A private
+// configuration keeps the classpath resolvable by the configuration cache (no config-time resolution).
+val printMatrixClasspath = configurations.create("printMatrixClasspath") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+dependencies.add(printMatrixClasspath.name, project(":proofstone-core"))
 
 tasks.named("check") {
     // Skip grouping projects such as `:platforms` and `:platforms:bukkit`, which have no build file or check task.
@@ -66,6 +75,27 @@ tasks.register("validateVersions") {
 
 tasks.named("check") {
     dependsOn("validateVersions")
+}
+
+// CI matrix (T-M3-07, docs/versioning.md §4): `./gradlew printMatrix --scope=pr|nightly` prints {"include": [...]}
+// and writes build/ci/matrix-<scope>.json. The workflows read that file, so no version is listed in YAML.
+tasks.register<PrintMatrix>("printMatrix") {
+    group = "verification"
+    description = "Prints the CI matrix JSON for --scope=pr|nightly from versions.yml (T-M3-07)."
+    mainClass.set("dev.proofstone.core.cell.CiMatrix")
+    classpath(printMatrixClasspath)
+    // Read at execution, so the --scope option is known. Copies to locals so the lambda does not capture the script.
+    val repo = rootDir
+    doFirst {
+        val task = this as PrintMatrix
+        val out = repo.resolve("build/ci/matrix-${task.scope}.json")
+        task.args = listOf(
+            "--scope", task.scope,
+            "--versions", repo.resolve("versions.yml").absolutePath,
+            "--schema", repo.resolve("proofstone-protocol/schemas/versions.schema.json").absolutePath,
+            "--out", out.absolutePath,
+        )
+    }
 }
 
 // version-watch (T-M3-01, docs/versioning.md §2). Fills in versions.yml from the fill API. Add

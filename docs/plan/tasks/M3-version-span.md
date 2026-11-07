@@ -241,7 +241,7 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Duplicate version lists in YAML.
 
 **Acceptance.**
-- [ ] Adding a row to `versions.yml` adds a CI job with no workflow edit.
+- [x] Adding a row to `versions.yml` adds a CI job with no workflow edit. Evidence: `CiMatrixTest.addingARowAddsACellWithoutAnyOtherChange` (matrix from the planner, no YAML list); `printMatrix --scope=nightly` lists the four Paper rows from the seed.
 
 **Verify.**
 `./gradlew printMatrix --scope=nightly`
