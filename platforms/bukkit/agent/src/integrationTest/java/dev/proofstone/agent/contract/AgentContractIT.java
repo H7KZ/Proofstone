@@ -224,14 +224,16 @@ class AgentContractIT {
     /**
      * The golden log case holds the fixture plugin's one WARN. The agent also reads Log4j (T-M2-08), so the real
      * server's own boot warnings (offline mode, and whatever a joined player provokes) are in the reply too and
-     * vary by version. The reply is narrowed to the fixture's logger before it is matched, which still checks the
+     * vary by version. The reply is narrowed to the fixture's record before it is matched (by its message: the logger
+     * name of a plugin logger is the plugin name on 26.3 but the class name on 1.8.8, the golden says only
+     * {@code <string>}), which still checks the
      * record shape and that the fixture's record arrived exactly once.
      */
     private static String onlyFixtureRecords(String body) throws IOException {
         JsonNode reply = JSON.readTree(body);
         com.fasterxml.jackson.databind.node.ArrayNode kept = JSON.createArrayNode();
         for (JsonNode record : reply.path("data").path("records")) {
-            if ("proofstone-fixture".equals(record.path("logger").asText())) {
+            if (record.path("message").asText().contains("fixture warning for the log contract")) {
                 kept.add(record);
             }
         }
