@@ -58,8 +58,8 @@
 - Include the agent token in any bundle file.
 
 **Acceptance.**
-- [ ] A forced failure produces a complete bundle.
-- [ ] A secret-scan test proves the token is absent.
+- [x] A forced failure produces a complete bundle. Evidence: `ForcedFailureE2E` on paper@26.3 (real server, run 2026-11-07, 3m32s) printed `PROOFSTONE BUNDLE: build\proofstone\paper@26.3\ForcedFailureE2E.failsOnPurposeWhenForced`; files present: server.log, agent-transcript.jsonl, driver-transcript.jsonl, cell.json, snapshot.json, rerun.txt. Bridged viaproxy.log not exercised (no bridged row in M4 smoke).
+- [x] A secret-scan test proves the token is absent. Evidence: `BundleWriterTest` (7 tests, 0 failures); real bundle contains no `Bearer` and no `PROOFSTONE_AGENT_TOKEN`.
 
 **Verify.**
 `./gradlew :examples:smoke:test -Dproofstone.forceFail=true` (the test is expected to fail), then check

@@ -46,7 +46,8 @@ tasks.test {
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     // The run-time cell selector and scope reach the test JVM from the Gradle command line (test-api spec §1).
-    for (name in listOf("proofstone.cells", "proofstone.scope")) {
+    // proofstone.forceFail makes ForcedFailureE2E fail on purpose, to prove a failure leaves a repro bundle (T-M4-02).
+    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.forceFail")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
     }
     // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.

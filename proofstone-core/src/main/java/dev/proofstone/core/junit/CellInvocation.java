@@ -105,6 +105,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         PaperHost host = resource.host();
         // Before the join, so anything the join or the reset logs counts for this test.
         TestState state = new TestState(host, ErrorLogGuard.cursor(host));
+        state.proxy = resource.proxy();
         context.getStore(NAMESPACE).put(STATE, state);
         if (declaresClient(context)) {
             state.client = joinClient(resource, context);
@@ -125,6 +126,14 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             ErrorLogGuard.check(state.host, state.logCursor);
         } catch (RuntimeException | AssertionError e) {
             failure = e;
+        }
+        // Before the restore, so the bundle sees the config the test left behind; the server is still up.
+        if (failure != null || context.getExecutionException().isPresent()) {
+            try {
+                System.err.println("PROOFSTONE BUNDLE: " + BundleWriter.capture(context, cell, state));
+            } catch (RuntimeException e) {
+                failure = combine(failure, new IllegalStateException("cannot write the repro bundle", e));
+            }
         }
         for (String plugin : state.patchedPlugins) {
             try {
