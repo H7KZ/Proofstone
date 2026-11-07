@@ -17,6 +17,13 @@ class PlatformDetectorTest {
     }
 
     @Test
+    void namesPaperOnTheOldPaperSpigotFork() {
+        // Paper 1.8.8 is "PaperSpigot": it has no com.destroystokyo.paper.PaperConfig (observed on build 445).
+        assertThat(PlatformDetector.detect(present("org.github.paperspigot.PaperSpigotConfig",
+                "org.spigotmc.SpigotConfig"))).isEqualTo("paper");
+    }
+
+    @Test
     void purpurWinsOverPaperBecauseItShipsPaperClassesToo() {
         assertThat(PlatformDetector.detect(present(
                 "org.purpurmc.purpur.PurpurConfig", "com.destroystokyo.paper.PaperConfig")))

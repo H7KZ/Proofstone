@@ -20,7 +20,9 @@ public final class PlatformDetector {
             return "purpur";
         }
         if (classPresent.test("com.destroystokyo.paper.PaperConfig")
-                || classPresent.test("io.papermc.paper.configuration.Configuration")) {
+                || classPresent.test("io.papermc.paper.configuration.Configuration")
+                // Paper 1.8.8 is still called PaperSpigot and has neither of the classes above.
+                || classPresent.test("org.github.paperspigot.PaperSpigotConfig")) {
             return "paper";
         }
         if (classPresent.test("org.spigotmc.SpigotConfig")) {

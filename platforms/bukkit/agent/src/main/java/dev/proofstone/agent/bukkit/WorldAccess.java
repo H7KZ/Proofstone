@@ -5,7 +5,6 @@ import dev.proofstone.agent.protocol.AgentException;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
@@ -16,15 +15,15 @@ import org.bukkit.block.Block;
 
 /**
  * Block reads and writes (spec §2, block.json). Block data (namespaced type plus state) uses the 1.13+ BlockData API
- * through reflection, since the agent compiles against 1.8.8. On 1.8.8 only the material name is supported: a state
- * is then UNKNOWN_KEY, never silently dropped. Runs on the main thread (BukkitGame wraps the calls).
+ * through reflection, since the agent compiles against 1.8.8. Before 1.13 the state is the data value, as far as the
+ * legacy table goes (LegacyBlocks); a state outside it is UNKNOWN_KEY, never silently dropped. Runs on the main thread (BukkitGame wraps the calls).
  */
 final class WorldAccess {
 
     private static final Pattern NAMESPACED = Pattern.compile("^[a-z0-9_.-]+:[a-z0-9_./-]+$");
     private static final Pattern STATE_KEY = Pattern.compile("^[a-z_]+$");
 
-    /** Null on 1.8.8, where there is no BlockData. */
+    /** Null before 1.13, where there is no BlockData. */
     private static final Method CREATE_BLOCK_DATA = find(Bukkit.class, "createBlockData", String.class);
     private static final Method GET_BLOCK_DATA = find(Block.class, "getBlockData");
     private static final Method GET_AS_STRING = blockDataMethod("getAsString");
@@ -41,8 +40,10 @@ final class WorldAccess {
         out.put("y", y);
         out.put("z", z);
         if (GET_BLOCK_DATA == null) {
-            out.put("type", "minecraft:" + block.getType().name().toLowerCase(Locale.ROOT));
-            out.put("state", Collections.emptyMap());
+            // Before 1.13 a state is the data value; the legacy table says which properties it carries.
+            out.put("type", "minecraft:" + Keys.materialKey(block.getType()));
+            out.put("state", new TreeMap<String, Object>(
+                    LegacyBlocks.state(block.getType().name(), block.getData())));
             return out;
         }
         String data = blockDataString(block);
@@ -68,17 +69,18 @@ final class WorldAccess {
         return block(world, x, y, z);
     }
 
+    /** Sets the material, then the data value the state stands for. Nothing changes when the state is unknown. */
     private static void setLegacy(Block block, String type, Map<String, String> state) {
-        if (!state.isEmpty()) {
-            throw new AgentException(400, "UNKNOWN_KEY", "block state needs the 1.13+ block data API",
-                    Collections.singletonMap("type", type));
-        }
-        Material material = Material.matchMaterial(type.substring(type.indexOf(':') + 1).toUpperCase(Locale.ROOT));
-        if (material == null || !material.isBlock()) {
+        Material material = Keys.material(type);
+        if (!material.isBlock()) {
             throw new AgentException(400, "UNKNOWN_KEY", "unknown block " + type,
                     Collections.singletonMap("key", type));
         }
+        // A new block of another material starts from data 0; the same material keeps its other bits.
+        int current = block.getType() == material ? block.getData() : 0;
+        int data = LegacyBlocks.data(material.name(), state, current);
         block.setType(material);
+        block.setData((byte) data);
     }
 
     private static void setData(Block block, String type, Map<String, String> state) {

@@ -46,11 +46,14 @@ setup writes: give, reset and PATCH.
 - `dev.proofstone.agent.protocol`: `Health`, `ProtocolError`, `Envelope<T>`, `AgentException`.
 - `dev.proofstone.agent.game.Game`: the state seam (reads and writes). Implemented by
   `dev.proofstone.agent.bukkit.BukkitGame`; `game.Fields` checks request bodies.
-- Key resolution (`bukkit.Keys`): `Material.matchMaterial` on the upper-case path (the 1.8 enum name). Its 1.13+
-  behaviour is unverified until T-M1-05. Enchantments: legacy name on 1.8, `Enchantment.getByKey` on 1.13+ via
-  reflection.
-  Verified on Paper 26.3 by the T-M1-05 contract test. Known gap: an item whose 1.8 enum name differs from its key
-  (for example `minecraft:grass_block`) is `UNKNOWN_KEY` until a legacy table covers it.
+- Key resolution (`bukkit.Keys`): from 1.13 the server's own key (`Material.getKey`, `Enchantment.getByKey`, by
+  reflection). Before 1.13 (no `org.bukkit.block.data.BlockData`) the legacy tables in `LegacyNames` and `LegacyBlocks`,
+  loaded from `src/main/resources/dev/proofstone/agent/bukkit/legacy-*.csv`: renamed materials (`GOLD_SWORD` is
+  `golden_sword`), enchantments and block states (data values). A legacy name used as a key is `UNKNOWN_KEY` on every
+  version. Verified by the golden replay on Paper 1.8.8, 1.12.2 and 26.3 (T-M3-06). Known gaps: items and blocks that
+  differ only by data value (wool colours, stone variants), and block states other than `facing`. `plugin.yml` sets
+  `api-version: 1.13` so a 1.13+ server does not run the agent in legacy material mode.
+- PDC is not served: an item field `pdc` is `INVALID_REQUEST` on every version.
 - `dev.proofstone.agent.scheduler`: `Scheduler` (main-thread hand-off, Folia comes in M5) and `MainThread.call`,
   which waits for a result with the request timeout.
 - Platform detection: `dev.proofstone.agent.platform.PlatformDetector`.
@@ -65,8 +68,12 @@ setup writes: give, reset and PATCH.
   `BukkitGame` on a live server (reset, PATCH, enchantment levels) needs a real server, so it is covered by the
   T-M1-05 contract test, not here. Test-only dependencies: `spigot-api` (no transitives), Guava 17.0 and
   commons-lang 2.6, the versions its POM declares, so the static registries load.
-- `./gradlew :platforms:bukkit:agent:integrationTest`: `contract.AgentContractIT` boots the newest Paper row (`PaperHost`,
-  Docker and `PROOFSTONE_ACCEPT_EULA=true` needed; skipped with that reason otherwise) with the agent jar, joins Alex
+  `LegacyTablesTest` checks the pre-1.13 name and block state tables (resources `legacy-*.csv`, one jar for every
+  version), `LogBufferTest` the JUL and Log4j twin matching and `EventProbesTest` a getter that fails on one version.
+- `./gradlew :platforms:bukkit:agent:integrationTest [-Dproofstone.cells=paper@1.8.8,paper@1.12.2,paper@latest]`:
+  `contract.AgentContractIT` boots one Paper server per selected cell (the newest row when no selector is set;
+  `PaperHost`, plus ViaProxy for rows the driver does not speak; Docker and `PROOFSTONE_ACCEPT_EULA=true` needed;
+  skipped with that reason otherwise) with the agent jar, joins Alex
   with the mcpl driver, and replays every golden case in the golden README's order over the debug-published agent
   port, comparing with `GoldenMatcher`. Its source set compiles at `--release 17` on a JDK 21, because the mcpl driver
   is Java 21 bytecode. It is not part of `check`.

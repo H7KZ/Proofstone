@@ -2,6 +2,7 @@ package dev.proofstone.agent.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.DynamicContainer.dynamicContainer;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -9,11 +10,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.cell.Cell;
 import dev.proofstone.core.cell.CellPlanner;
+import dev.proofstone.core.cell.CellSelector;
 import dev.proofstone.core.driver.ClientSession;
 import dev.proofstone.core.driver.ConnectSpec;
 import dev.proofstone.core.host.Eula;
 import dev.proofstone.core.host.PaperHost;
 import dev.proofstone.core.host.PaperHostOptions;
+import dev.proofstone.core.host.ViaProxyHost;
 import dev.proofstone.core.versions.VersionsCatalog;
 import dev.proofstone.driver.mcpl.McplDriver;
 import dev.proofstone.protocol.testing.GoldenMatcher;
@@ -34,16 +37,17 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
+import org.testcontainers.containers.Network;
 
 /**
  * Replays the golden cases (proofstone-protocol/golden) against the agent in a real Paper server: the newest row of
- * versions.yml (T-M1-05, ADR-0002, ADR-0005). Every reply is compared with {@link GoldenMatcher}.
+ * versions.yml (T-M1-05, ADR-0002, ADR-0005), or the cells that {@code -Dproofstone.cells} (or
+ * {@code PROOFSTONE_CELLS}) selects (T-M3-06): one real server per cell, one container of cases per cell. Every reply
+ * is compared with {@link GoldenMatcher}, and the same golden files serve every version.
  *
  * <p>The agent port is published for this test only, through PaperHost debug mode, so the host can call it. Cases
  * about {@code Alex} join the server with the mcpl driver first and then reset him, as golden/README.md says. Needs
@@ -97,21 +101,48 @@ class AgentContractIT {
             "players/open-anvil");
 
     private final HttpClient http = HttpClient.newHttpClient();
+    private VersionsCatalog catalog;
     private PaperHost host;
+    private ViaProxyHost proxy;
+    private Network network;
     private ClientSession alex;
 
-    @BeforeAll
-    void bootPaper() {
-        assumeTrue(Eula.accepted(), "Minecraft EULA not accepted: set " + Eula.VARIABLE + "=true");
-        VersionsCatalog catalog = VersionsCatalog.load(ROOT.resolve("versions.yml"),
+    /**
+     * The cells to run: the run-time selector when it is set, otherwise the newest row. A selector that does not
+     * name paper is an error, never a silent fall back to the newest row (a class that runs nothing is no pass).
+     */
+    List<Cell> selectedCells() {
+        catalog = VersionsCatalog.load(ROOT.resolve("versions.yml"),
                 ROOT.resolve("proofstone-protocol/schemas/versions.schema.json"));
-        Cell cell = new CellPlanner(catalog).plan("paper", List.of("latest")).get(0);
+        String setting = System.getProperty("proofstone.cells");
+        if (setting == null || setting.isBlank()) {
+            setting = System.getenv("PROOFSTONE_CELLS");
+        }
+        CellSelector selector = CellSelector.parse(setting, "-Dproofstone.cells or PROOFSTONE_CELLS");
+        List<String> versions = selector.isSet() ? selector.versions("paper") : List.of("latest");
+        if (versions.isEmpty()) {
+            throw new IllegalStateException("-Dproofstone.cells does not name paper, the platform of the agent "
+                    + "contract test: " + setting);
+        }
+        return new CellPlanner(catalog).plan("paper", versions);
+    }
+
+    private void bootPaper(Cell cell) {
+        assumeTrue(Eula.accepted(), "Minecraft EULA not accepted: set " + Eula.VARIABLE + "=true");
         // The fixture plugin (platforms/bukkit/fixture) carries the config.yml the config cases read and patch.
         Path fixture = Path.of(System.getProperty("proofstone.fixtureJar"));
         PaperHostOptions options = PaperHostOptions.of(Path.of(System.getProperty("proofstone.agentJar")), true)
                 .withArtefacts(fixture.getParent(), List.of(fixture.getFileName().toString()))
                 .withDebugPorts(true);
-        host = PaperHost.start(cell, options);
+        McplDriver driver = new McplDriver();
+        // The driver speaks one protocol; any other row is reached through ViaProxy (ADR-0004), as in CellInvocation.
+        if (driver.protocolVersion().equals(cell.mc())) {
+            host = PaperHost.start(cell, options);
+        } else {
+            network = Network.newNetwork();
+            host = PaperHost.start(cell, options.withNetwork(network));
+            proxy = ViaProxyHost.start(cell, catalog.driverImage("viaproxy"), network);
+        }
         // golden/README.md: the reset lands Alex on (0.5, 64.0, 0.5). The spawn is block (0, 63, 0), and a stone block
         // under it holds the player at y 64, so he does not fall between the reset and the read.
         // Right after boot the spawn chunk is not loaded, and setblock answers "That position is not loaded" (the
@@ -121,13 +152,22 @@ class AgentContractIT {
         host.command("setworldspawn 0 63 0");
     }
 
-    @AfterAll
-    void stopPaper() {
+    private void stopPaper() {
         if (alex != null) {
             alex.close();
+            alex = null;
+        }
+        if (proxy != null) {
+            proxy.close();
+            proxy = null;
         }
         if (host != null) {
             host.close();
+            host = null;
+        }
+        if (network != null) {
+            network.close();
+            network = null;
         }
     }
 
@@ -147,12 +187,49 @@ class AgentContractIT {
         assertThat(onDisk).containsExactlyInAnyOrderElementsOf(known);
     }
 
+    /**
+     * One container per selected cell. The server boots as the container's first test and closes with its stream,
+     * so a failed boot is reported on the cell and the other cells still run.
+     */
     @TestFactory
-    Stream<DynamicTest> goldenCases() {
-        return CASES.stream().map(name -> dynamicTest(name, () -> replay(name)));
+    Stream<DynamicNode> goldenCases() {
+        return selectedCells().stream().map(cell -> {
+            String label = cell.platform() + "@" + cell.mc();
+            Stream<DynamicNode> children = Stream.concat(
+                    Stream.concat(
+                            Stream.of(dynamicTest("boot " + label, () -> bootPaper(cell))),
+                            CASES.stream().map(name -> dynamicTest(name, () -> replay(name)))),
+                    // Not a golden case: the key of a renamed item is the same on every version (T-M3-06).
+                    Stream.of(dynamicTest("renamed item keys", this::renamedItemKeys)));
+            return dynamicContainer(label, children.onClose(this::stopPaper));
+        });
+    }
+
+    /**
+     * golden_sword is GOLD_SWORD before 1.13. It must read back under the 1.13 key, and the legacy enum name must
+     * not be accepted as a key on any version, so a test passes or fails the same way on every row.
+     */
+    private void renamedItemKeys() throws Exception {
+        assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
+        joinAndResetPlayer();
+        // The golden cases left their sword in slot 0.
+        assertThat(send("POST", "/v1/players/" + PLAYER + "/reset", true, null).status()).isEqualTo(200);
+        Reply refused = send("POST", "/v1/players/" + PLAYER + "/give", true,
+                "{\"type\":\"minecraft:gold_sword\",\"amount\":1}");
+        assertThat(refused.status()).as("gold_sword is not a key; body was " + refused.body() + " player " + send("GET", "/v1/players/" + PLAYER, true, null).body()).isEqualTo(400);
+        assertThat(refused.body()).contains("UNKNOWN_KEY");
+
+        Reply given = send("POST", "/v1/players/" + PLAYER + "/give", true,
+                "{\"type\":\"minecraft:golden_sword\",\"amount\":1,\"enchants\":{\"minecraft:knockback\":2}}");
+        assertThat(given.status()).as("give golden_sword; body was " + given.body()).isEqualTo(200);
+        JsonNode slot = JSON.readTree(send("GET", "/v1/players/" + PLAYER, true, null).body())
+                .path("data").path("inventory").path("0");
+        assertThat(slot.path("type").asText()).as("slot 0 was " + slot).isEqualTo("minecraft:golden_sword");
+        assertThat(slot.path("enchants").path("minecraft:knockback").asInt()).as("slot 0 was " + slot).isEqualTo(2);
     }
 
     private void replay(String name) throws Exception {
+        assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
         JsonNode request = JSON.readTree(GOLDEN.resolve(name + ".request.json").toFile());
         JsonNode expected = JSON.readTree(GOLDEN.resolve(name + ".response.json").toFile());
         String path = request.get("path").asText();
@@ -173,14 +250,16 @@ class AgentContractIT {
     /**
      * The golden log case holds the fixture plugin's one WARN. The agent also reads Log4j (T-M2-08), so the real
      * server's own boot warnings (offline mode, and whatever a joined player provokes) are in the reply too and
-     * vary by version. The reply is narrowed to the fixture's logger before it is matched, which still checks the
+     * vary by version. The reply is narrowed to the fixture's record before it is matched (by its message: the logger
+     * name of a plugin logger is the plugin name on 26.3 but the class name on 1.8.8, the golden says only
+     * {@code <string>}), which still checks the
      * record shape and that the fixture's record arrived exactly once.
      */
     private static String onlyFixtureRecords(String body) throws IOException {
         JsonNode reply = JSON.readTree(body);
         com.fasterxml.jackson.databind.node.ArrayNode kept = JSON.createArrayNode();
         for (JsonNode record : reply.path("data").path("records")) {
-            if ("proofstone-fixture".equals(record.path("logger").asText())) {
+            if (record.path("message").asText().contains("fixture warning for the log contract")) {
                 kept.add(record);
             }
         }
@@ -193,10 +272,28 @@ class AgentContractIT {
         if (alex != null) {
             return;
         }
-        alex = new McplDriver().connect(new ConnectSpec(host.gameHost(), host.gamePort(), PLAYER, JOIN_TIMEOUT));
+        String address = proxy == null ? host.gameHost() : proxy.gameHost();
+        int port = proxy == null ? host.gamePort() : proxy.gamePort();
+        alex = new McplDriver().connect(new ConnectSpec(address, port, PLAYER, JOIN_TIMEOUT));
         Await.until(PLAYER + " online per the agent", this::playerStatus, status -> status == 200, JOIN_TIMEOUT);
+        // Chunks load around players only (docs/platforms/paper.md), and a server before 1.13 has no forceload, so
+        // the block under the reset spot is placed once Alex is in. The golden world cases read it back.
+        host.command("setblock 0 63 0 minecraft:stone");
+        Await.until("stone under the spawn", this::spawnBlockBody, body -> body.contains("minecraft:stone"),
+                JOIN_TIMEOUT);
         Reply reset = send("POST", "/v1/players/" + PLAYER + "/reset", true, null);
         assertThat(reset.status()).as("reset " + PLAYER + "; body was " + reset.body()).isEqualTo(200);
+    }
+
+    private String spawnBlockBody() {
+        try {
+            return send("GET", "/v1/world/block?world=world&x=0&y=63&z=0", true, null).body();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while reading the spawn block", e);
+        }
     }
 
     private int playerStatus() {

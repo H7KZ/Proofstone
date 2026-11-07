@@ -161,7 +161,7 @@ final class EventProbes {
      */
     static Map<String, Object> fields(Event event) {
         List<Method> getters = new ArrayList<>();
-        for (Method method : event.getClass().getMethods()) {
+        for (Method method : publicMethods(event.getClass())) {
             if (isGetter(method)) {
                 getters.add(method);
             }
@@ -177,6 +177,31 @@ final class EventProbes {
             out.put(getter.getName(), value(getter, event));
         }
         return out;
+    }
+
+    /**
+     * getMethods() resolves the types in every public signature, so one getter that mentions a class the running
+     * server lacks makes it throw for the whole event. Walking the hierarchy with getDeclaredMethods() fails per
+     * class instead, and the getters of the other classes still count.
+     */
+    private static List<Method> publicMethods(Class<?> type) {
+        try {
+            return java.util.Arrays.asList(type.getMethods());
+        } catch (LinkageError e) {
+            List<Method> methods = new ArrayList<>();
+            for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+                try {
+                    for (Method method : c.getDeclaredMethods()) {
+                        if (Modifier.isPublic(method.getModifiers())) {
+                            methods.add(method);
+                        }
+                    }
+                } catch (LinkageError skipped) {
+                    // This class has a signature the server cannot resolve; its superclasses may still be fine.
+                }
+            }
+            return methods;
+        }
     }
 
     private static boolean isGetter(Method method) {
@@ -196,8 +221,12 @@ final class EventProbes {
         Object result;
         try {
             result = getter.invoke(event);
-        } catch (ReflectiveOperationException | RuntimeException e) {
-            return typed("error", String.valueOf(e));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            // LinkageError: a getter whose body needs a class this server version lacks (NoClassDefFoundError,
+            // NoSuchMethodError). It is one field's error, not a reason to lose the event (T-M3-06).
+            Throwable cause = e instanceof java.lang.reflect.InvocationTargetException && e.getCause() != null
+                    ? e.getCause() : e;
+            return typed("error", String.valueOf(cause));
         }
         if (result == null || result instanceof String || result instanceof Boolean) {
             return result;
