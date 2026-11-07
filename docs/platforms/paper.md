@@ -152,6 +152,15 @@
   build 7 was `BETA`, while the Paper rows were `STABLE`. The updater pins whatever `builds/latest` returns and logs the
   channel. The `experimental` status keeps these rows from blocking (T-M3-01).
 
+- **No grindstone before 1.14 (T-M3-05).** 1.12.2 has no grindstone block, so C07 cannot cover it. C07 skips there
+  with that reason (`assumeTrue` on the version), which is a visible skip, not a pass. Observed 2026-11-07 on
+  paper@26.3 and paper@1.18.2 (bridged): PASSED; paper@1.12.2 (bridged): SKIPPED. Every row from 1.14 on runs it.
+- **Item names are 1.8 enum names on every row (T-M3-05).** `Item.of("sugar_cane")` is resolved by the agent through
+  `Material.matchMaterial("SUGAR_CANE")`. On paper@1.18.2 that gave `minecraft:sugar_cane_block` x3 on the server,
+  while the client read `minecraft:sugar_cane` x3, so the dual oracle returned DISAGREE at the give check (C08).
+  On 1.12.2 and 26.3 the same name resolved correctly. The agent needs a legacy material table (T-M3-06) before C08
+  can pass on 1.18.2. Observed 2026-11-07, run of `:conformance:run` for C07 and C08.
+
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:
 - One suite that boots a cell, joins one client and tears down: about 31 to 32 s (`:conformance:smoke` 2 tests,

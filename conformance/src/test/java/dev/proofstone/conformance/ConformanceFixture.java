@@ -23,8 +23,37 @@ final class ConformanceFixture {
     private static final int PLAYER_SLOTS = 36;
     static final BlockPos ANVIL = new BlockPos(0, 64, 2);
     static final BlockPos CHEST = new BlockPos(-1, 64, 0);
+    /** C07 only: a grindstone, placed by {@link #placeBlock} because 1.12.2 has none (docs/platforms/paper.md). */
+    static final BlockPos GRINDSTONE = new BlockPos(0, 64, -2);
+    /** C08 only: a crafting table, placed by {@link #placeBlock}. */
+    static final BlockPos CRAFTING_TABLE = new BlockPos(2, 64, 0);
 
     private ConformanceFixture() {
+    }
+
+    /**
+     * Puts a block on solid ground next to the player, after {@link #stand}: a floor block under it, because a
+     * grindstone breaks over air (docs/platforms/paper.md). The block is chosen by the scenario, not the fixture.
+     */
+    static void placeBlock(Agent agent, BlockPos pos, String block) {
+        agent.command("setblock " + pos.x() + " " + (pos.y() - 1) + " " + pos.z() + " minecraft:stone");
+        agent.command("setblock " + pos.x() + " " + pos.y() + " " + pos.z() + " minecraft:" + block);
+    }
+
+    /**
+     * The first player-inventory slot of the window that the predicate accepts. The player's 36 slots trail every
+     * window's own slots.
+     *
+     * @throws IllegalStateException when no player slot matches
+     */
+    static int playerSlot(Window window, Predicate<ItemView> predicate) {
+        List<ItemView> slots = window.slots();
+        for (int i = Math.max(0, slots.size() - PLAYER_SLOTS); i < slots.size(); i++) {
+            if (predicate.test(slots.get(i))) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("no matching player slot in " + window.type());
     }
 
     /** Resets the player, builds the fixture and teleports the client onto it. Reset comes first (it teleports). */

@@ -191,7 +191,11 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Use `serverOnly`.
 
 **Acceptance.**
-- [ ] Both pass natively on the newest row and bridged on 1.12.2 and 1.18.2.
+- [ ] Both pass natively on the newest row and bridged on 1.12.2 and 1.18.2. Not met, evidence 2026-11-07
+  (`:conformance:run -Dproofstone.cells=paper@latest,paper@1.12.2,paper@1.18.2 --tests '*C07*' --tests '*C08*'`, 6 tests,
+  1 failed, 1 skipped): C07 PASSED on 26.3 and 1.18.2 (bridged), SKIPPED on 1.12.2 (no grindstone before 1.14, by
+  design). C08 PASSED on 26.3 and 1.12.2 (bridged), FAILED on 1.18.2 (bridged): DISAGREE at the give check, agent
+  resolves `sugar_cane` to `sugar_cane_block` (docs/platforms/paper.md; needs the T-M3-06 legacy material table).
 
 **Verify.**
 `./gradlew :conformance:run --tests '*C07*' --tests '*C08*'`

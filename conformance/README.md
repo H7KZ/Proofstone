@@ -11,7 +11,11 @@ itself against real vanilla behaviour, on the newest Paper row:
 - C05 vanilla anvil rename: the result name, one level paid, the experience sync on both oracles (`C05AnvilRenameCostTest`).
 - C06 vanilla anvil combine: sword and enchanted book give the vanilla result and the levels paid (`C06AnvilCombineTest`).
 
-C07 onward (grindstone, shift-click, events, config, log, reset) arrive with later cards.
+- C07 grindstone removes enchants, the result slot and the input on both oracles (`C07GrindstoneTest`). Skipped on
+  1.12.2, which has no grindstone (1.14 introduced it).
+- C08 shift-click on a crafting table result moves the whole result into the inventory (`C08ShiftClickCraftTest`).
+
+C09 onward (events, config, log, reset) arrive with later cards.
 
 ## Boundaries
 
