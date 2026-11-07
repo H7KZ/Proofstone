@@ -391,7 +391,7 @@ public final class BukkitGame implements Game {
 
     private static Map<String, Object> item(ItemStack stack) {
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("type", "minecraft:" + stack.getType().name().toLowerCase(Locale.ROOT));
+        out.put("type", "minecraft:" + Keys.materialKey(stack.getType()));
         out.put("amount", stack.getAmount());
         ItemMeta meta = stack.getItemMeta();
         if (meta != null && meta.hasDisplayName()) {

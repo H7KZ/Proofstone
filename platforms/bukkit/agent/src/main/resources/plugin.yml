@@ -3,3 +3,6 @@ version: 0.1.0
 main: dev.proofstone.agent.bukkit.ProofstoneAgentPlugin
 folia-supported: true
 load: STARTUP
+# Servers before 1.13 ignore this key. From 1.13 a plugin without it runs in legacy material mode, where DIAMOND_SWORD
+# is a legacy material with no key and GOLD_SWORD resolves (T-M3-06, docs/platforms/paper.md).
+api-version: 1.13

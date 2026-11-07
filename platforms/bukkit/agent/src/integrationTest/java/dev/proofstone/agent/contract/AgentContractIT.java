@@ -196,10 +196,36 @@ class AgentContractIT {
         return selectedCells().stream().map(cell -> {
             String label = cell.platform() + "@" + cell.mc();
             Stream<DynamicNode> children = Stream.concat(
-                    Stream.of(dynamicTest("boot " + label, () -> bootPaper(cell))),
-                    CASES.stream().map(name -> dynamicTest(name, () -> replay(name))));
+                    Stream.concat(
+                            Stream.of(dynamicTest("boot " + label, () -> bootPaper(cell))),
+                            CASES.stream().map(name -> dynamicTest(name, () -> replay(name)))),
+                    // Not a golden case: the key of a renamed item is the same on every version (T-M3-06).
+                    Stream.of(dynamicTest("renamed item keys", this::renamedItemKeys)));
             return dynamicContainer(label, children.onClose(this::stopPaper));
         });
+    }
+
+    /**
+     * golden_sword is GOLD_SWORD before 1.13. It must read back under the 1.13 key, and the legacy enum name must
+     * not be accepted as a key on any version, so a test passes or fails the same way on every row.
+     */
+    private void renamedItemKeys() throws Exception {
+        assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
+        joinAndResetPlayer();
+        // The golden cases left their sword in slot 0.
+        assertThat(send("POST", "/v1/players/" + PLAYER + "/reset", true, null).status()).isEqualTo(200);
+        Reply refused = send("POST", "/v1/players/" + PLAYER + "/give", true,
+                "{\"type\":\"minecraft:gold_sword\",\"amount\":1}");
+        assertThat(refused.status()).as("gold_sword is not a key; body was " + refused.body() + " player " + send("GET", "/v1/players/" + PLAYER, true, null).body()).isEqualTo(400);
+        assertThat(refused.body()).contains("UNKNOWN_KEY");
+
+        Reply given = send("POST", "/v1/players/" + PLAYER + "/give", true,
+                "{\"type\":\"minecraft:golden_sword\",\"amount\":1,\"enchants\":{\"minecraft:knockback\":2}}");
+        assertThat(given.status()).as("give golden_sword; body was " + given.body()).isEqualTo(200);
+        JsonNode slot = JSON.readTree(send("GET", "/v1/players/" + PLAYER, true, null).body())
+                .path("data").path("inventory").path("0");
+        assertThat(slot.path("type").asText()).as("slot 0 was " + slot).isEqualTo("minecraft:golden_sword");
+        assertThat(slot.path("enchants").path("minecraft:knockback").asInt()).as("slot 0 was " + slot).isEqualTo(2);
     }
 
     private void replay(String name) throws Exception {
