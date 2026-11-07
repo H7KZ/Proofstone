@@ -18,6 +18,11 @@ class WindowModel implements WindowView {
     private final String title;
     private List<SlotStack> slots;
     private int stateId;
+    // Counts full resyncs (ContainerSetContent). Servers older than 1.17 have no state id, and ViaProxy then sends a
+    // constant one, so "the state id moved" cannot be the sign of an answer. A single slot update is no sign either:
+    // such a server sends it before the rest of its answer, and the next click must wait for the whole answer,
+    // including the ping that ViaProxy turns the server's rejection into (T-M3-03).
+    private int syncs;
     private SlotStack cursor = SlotStack.EMPTY;
     private boolean synced;
     private boolean consumed;
@@ -53,6 +58,7 @@ class WindowModel implements WindowView {
         rawSlots = new ArrayList<>(java.util.Arrays.asList(items));
         rawCursor = carried;
         stateId = newStateId;
+        syncs++;
         cursor = convert(carried);
         synced = true;
     }
@@ -151,6 +157,11 @@ class WindowModel implements WindowView {
     @Override
     public int id() {
         return id;
+    }
+
+    /** How many full content resyncs the server has sent for this window. */
+    synchronized int syncs() {
+        return syncs;
     }
 
     @Override

@@ -44,6 +44,8 @@ import org.geysermc.mcprotocollib.protocol.data.game.inventory.FillStackAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ShiftClickItemAction;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundDisconnectPacket;
+import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundPingPacket;
+import org.geysermc.mcprotocollib.protocol.packet.common.serverbound.ServerboundPongPacket;
 import org.geysermc.mcprotocollib.protocol.data.game.item.HashedStack;
 import org.geysermc.mcprotocollib.protocol.packet.configuration.clientbound.ClientboundRegistryDataPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundDisguisedChatPacket;
@@ -132,6 +134,10 @@ final class McplSession implements ClientSession {
         String summary = packet.getClass().getSimpleName();
         if (packet instanceof ClientboundLoginPacket) {
             state = State.PLAYING;
+        } else if (packet instanceof ClientboundPingPacket ping) {
+            // A vanilla client answers every ping. ViaProxy turns a rejected click of a pre-1.17 server into a
+            // ping, and the server ignores all further clicks until the pong comes back (T-M3-03).
+            network.send(new ServerboundPongPacket(ping.getId()));
         } else if (packet instanceof ClientboundDisconnectPacket kick) {
             disconnectReason = flatten(kick.getReason());
             summary += " " + disconnectReason;
@@ -394,13 +400,13 @@ final class McplSession implements ClientSession {
             if (model.isClosed()) {
                 throw new ClientDriverException("cannot click slot " + slot + ": window " + model.id() + " is closed");
             }
-            int sent = model.stateId();
+            int sent = model.syncs();
             // No predicted changes and no carried item: the server sees a mismatch and resyncs (spec §2).
             network.send(clickPacket(model.id(), sent, slot, click));
             try {
                 // A disconnect or a server-side close is a value, not an exception: Await retries a throwing probe.
                 Await.until("server sync after " + click + " on slot " + slot + " of window " + model.id(),
-                        () -> state == State.DISCONNECTED || model.isClosed() || model.stateId() != sent,
+                        () -> state == State.DISCONNECTED || model.isClosed() || model.syncs() != sent,
                         done -> done, CLICK_WAIT);
             } catch (AwaitTimeoutException e) {
                 throw new ClientDriverException("server did not answer " + click + " on slot " + slot
@@ -475,12 +481,16 @@ final class McplSession implements ClientSession {
     }
 
     /**
-     * The carried item the click claims. It never equals a real cursor, so the server always answers with a full
-     * resync (ContainerSetContent, cursor included). An empty claim would match an empty cursor, and the server
+     * The carried item the click claims. It must never equal what the server holds, so the server answers with a
+     * full resync (ContainerSetContent, cursor included). An empty claim would match an empty cursor, and the server
      * would then send the slot change and the cursor change as separate packets, with the stateId bump arriving
-     * before the cursor. Air with a count of one cannot exist as a real stack. The model never reads this value.
+     * before the cursor. Air with a count of one is no real stack on 26.3, but a pre-1.17 server reads it through
+     * ViaProxy as an empty stack, which matches an empty slot: the server then accepts the click and sends no echo,
+     * because it expects the client to have predicted it (T-M3-03). A barrier cannot be in a test inventory, and
+     * every version has it. The model never reads this value.
      */
-    private static final HashedStack UNKNOWN_CARRIED = new HashedStack(0, 1, Map.of(), Set.of());
+    private static final HashedStack UNKNOWN_CARRIED = new HashedStack(
+            ItemRegistries.forProtocol(McplDriver.PROTOCOL_VERSION).itemId("minecraft:barrier"), 1, Map.of(), Set.of());
 
     private String buffer(String text, boolean system) {
         chat.add(new ChatMessage(text, system));
