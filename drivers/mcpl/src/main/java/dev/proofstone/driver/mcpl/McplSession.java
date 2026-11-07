@@ -400,13 +400,15 @@ final class McplSession implements ClientSession {
             if (model.isClosed()) {
                 throw new ClientDriverException("cannot click slot " + slot + ": window " + model.id() + " is closed");
             }
-            int sent = model.syncs();
+            int sent = model.stateId();
+            int sentSyncs = model.syncs();
             // No predicted changes and no carried item: the server sees a mismatch and resyncs (spec §2).
             network.send(clickPacket(model.id(), sent, slot, click));
             try {
                 // A disconnect or a server-side close is a value, not an exception: Await retries a throwing probe.
                 Await.until("server sync after " + click + " on slot " + slot + " of window " + model.id(),
-                        () -> state == State.DISCONNECTED || model.isClosed() || model.syncs() != sent,
+                        () -> state == State.DISCONNECTED || model.isClosed()
+                                || model.stateId() != sent || model.syncs() != sentSyncs,
                         done -> done, CLICK_WAIT);
             } catch (AwaitTimeoutException e) {
                 throw new ClientDriverException("server did not answer " + click + " on slot " + slot

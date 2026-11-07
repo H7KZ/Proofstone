@@ -136,7 +136,7 @@ ADR-0008. Also pin `sha256` and `build` for every row you want to run.
 - Install Via plugins inside the server under test.
 
 **Acceptance.**
-- [ ] C01–C06 pass, bridged, on 1.8.8, 1.12.2, 1.16.5, 1.18.2 and 1.20.4.
+- [x] C01–C06 pass, bridged, on 1.8.8, 1.12.2, 1.16.5, 1.18.2 and 1.20.4. (30 of 30, skipped 0, failures 0: `:conformance:run -Dproofstone.cells=paper@1.8.8,paper@1.12.2,paper@1.16.5,paper@1.18.2,paper@1.20.4`, 2026-11-07, BUILD SUCCESSFUL.)
 
 **Verify.**
 `./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8,paper@1.12.2,paper@1.16.5,paper@1.18.2,paper@1.20.4`
