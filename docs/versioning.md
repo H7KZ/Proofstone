@@ -68,6 +68,10 @@ change becomes a card against the pack, with the gotcha recorded in `docs/platfo
   Retired rows never run unless named.
 - **Local:** `-Dproofstone.cells=paper@1.21.11,folia@latest` (or `PROOFSTONE_CELLS`). It replaces the `@Matrix`
   versions of the platforms it names. Syntax and errors: test-api spec §1.
+- **CI:** `./gradlew printMatrix --scope=pr|nightly` prints the matrix JSON (`{"include": [...]}`) from the same
+  planner, and writes `build/ci/matrix-<scope>.json`. `.github/workflows/matrix.yml` reads it with `fromJSON` and runs
+  one job per cell, so a new row needs no workflow edit. A platform with a `TODO` pin is left out with its reason
+  printed; PR has no cell for a platform without a `required` row. None of these jobs is a required check.
 
 ## 5. Dependency bumps (Renovate)
 

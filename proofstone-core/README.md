@@ -30,6 +30,8 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
   (T-M1-05).
 - `dev.proofstone.core.host.PaperHostOptions`, `Eula`, `LogBuffer`, `PaperHostException`: options, the EULA gate (`PROOFSTONE_ACCEPT_EULA=true`), the log buffer for repro bundles, and the failure type (message includes the log tail).
 
+- `dev.proofstone.core.cell.CiMatrix`: the CI matrix JSON for `printMatrix --scope=pr|nightly` (T-M3-07), built with `CellPlanner` and `all`. A platform with a `TODO` pin is skipped with its reason.
+
 Java tags come from `java-rules` (first match wins). A row's `java:` field overrides them. A version that matches no rule is an error.
 
 ## How to test
