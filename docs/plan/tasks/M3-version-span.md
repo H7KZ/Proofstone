@@ -191,7 +191,9 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Use `serverOnly`.
 
 **Acceptance.**
-- [x] Both pass natively on the newest row and bridged on 1.12.2 and 1.18.2. Evidence 2026-11-07, after merging
+- [x] C08 passes natively on the newest row and bridged on 1.12.2 and 1.18.2. C07 passes natively on the newest row
+  and bridged on 1.18.2, but NOT on 1.12.2: that row is a reasoned skip, because 1.12.2 has no grindstone (added in
+  1.14). C07 is therefore not proven on 1.12.2 and no pass is claimed there. Evidence 2026-11-07, after merging
   T-M3-06: `:conformance:run -Dproofstone.cells=paper@latest,paper@1.12.2,paper@1.18.2 --tests '*C07*' --tests '*C08*'`,
   BUILD SUCCESSFUL, 6 tests: C08 PASSED on 26.3, 1.12.2 (bridged) and 1.18.2 (bridged); C07 PASSED on 26.3 and 1.18.2
   (bridged), SKIPPED on 1.12.2 (no grindstone before 1.14, a visible reasoned skip, docs/specs/self-tests.md). Earlier
