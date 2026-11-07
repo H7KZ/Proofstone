@@ -19,22 +19,26 @@ import java.util.logging.Logger;
 /**
  * Keeps the last {@value #CAPACITY} records the root JUL logger and the Log4j2 root logger see, with stack traces
  * (spec §2, log-record.json). Plugins log through JUL; the server's own messages go through Log4j directly. Paper
- * forwards every JUL record to Log4j as well, so a record can arrive twice on one thread, once from each side. The
- * second copy is dropped, matched on level, logger and message against the last record the other side delivered on
- * that thread. Without Log4j2 on the server only JUL is read.
+ * forwards every JUL record to Log4j as well, so a record arrives twice, once from each side, in either order and
+ * possibly on different threads (Log4j is asynchronous on 1.12.2). The second copy is dropped, matched on level,
+ * logger and message against recent records of the other side that no twin has claimed yet, within
+ * {@value #TWIN_WINDOW_MILLIS} ms of each other. Without Log4j2 on the server only JUL is read.
  */
 final class LogBuffer {
 
     static final int CAPACITY = 5000;
+    /** The forwarded copy carries the same time; this much slack covers a clock read on each side. */
+    static final long TWIN_WINDOW_MILLIS = 2000;
+    private static final int PENDING_CAPACITY = 256;
 
     private static final List<String> ORDER = Arrays.asList("TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL");
 
     private final Deque<Entry> entries = new ArrayDeque<>();
     private final Handler handler = new Capture();
     private final String tapName = "ProofstoneLog-" + java.util.UUID.randomUUID();
-    /** Last record each side delivered on this thread, to drop the forwarded copy from the other side. */
-    private final ThreadLocal<String> lastJul = new ThreadLocal<>();
-    private final ThreadLocal<String> lastLog4j = new ThreadLocal<>();
+    /** Records of each side whose twin from the other side has not shown up yet, oldest first. */
+    private final Deque<Pending> pendingJul = new ArrayDeque<>();
+    private final Deque<Pending> pendingLog4j = new ArrayDeque<>();
     private volatile Log4jTap tap;
     /** Sequence number of the next record. The buffer holds the records with sequence [total - size, total). */
     private long total;
@@ -79,16 +83,15 @@ final class LogBuffer {
         return page;
     }
 
-    private void addJul(LogRecord record) {
+    synchronized void addJul(LogRecord record) {
         String level = name(record.getLevel());
         String logger = record.getLoggerName() == null ? "" : record.getLoggerName();
         String message = formatted(record);
         String key = key(level, logger, message);
-        if (key.equals(lastLog4j.get())) {
-            lastLog4j.remove(); // Log4j delivered this record first; Paper's JUL forwarder is why JUL sees it again
-            return;
+        if (claimTwin(pendingLog4j, key, record.getMillis())) {
+            return; // Log4j delivered this record first; Paper's JUL forwarder is why JUL sees it again
         }
-        lastJul.set(key);
+        remember(pendingJul, key, record.getMillis());
         add(record.getMillis(), level, logger, message, thrown(record.getThrown()));
     }
 
@@ -99,21 +102,51 @@ final class LogBuffer {
         }
         try {
             String message = source.text(event);
-            if (message == null) {
-                message = "";
-            }
             // An unknown level is kept as WARN, so it is never silently below a reader's floor.
             String level = ORDER.contains(source.level(event)) ? source.level(event) : "WARN";
-            String logger = source.logger(event);
-            String key = key(level, logger, message);
-            if (key.equals(lastJul.get())) {
-                lastJul.remove();
-                return;
-            }
-            lastLog4j.set(key);
-            add(source.millis(event), level, logger, message, thrown(source.thrown(event)));
+            acceptLog4j(source.millis(event), level, source.logger(event), message == null ? "" : message,
+                    source.thrown(event));
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("cannot read a Log4j event", e);
+        }
+    }
+
+    synchronized void acceptLog4j(long millis, String level, String logger, String message, Throwable thrown) {
+        String key = key(level, logger, message);
+        if (claimTwin(pendingJul, key, millis)) {
+            return;
+        }
+        remember(pendingLog4j, key, millis);
+        add(millis, level, logger, message, thrown(thrown));
+    }
+
+    /** Removes and reports the oldest pending record with this key and a time within the window. */
+    private static boolean claimTwin(Deque<Pending> pending, String key, long millis) {
+        for (java.util.Iterator<Pending> it = pending.iterator(); it.hasNext();) {
+            Pending candidate = it.next();
+            if (candidate.key.equals(key) && Math.abs(candidate.millis - millis) <= TWIN_WINDOW_MILLIS) {
+                it.remove();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void remember(Deque<Pending> pending, String key, long millis) {
+        pending.addLast(new Pending(key, millis));
+        if (pending.size() > PENDING_CAPACITY) {
+            pending.removeFirst();
+        }
+    }
+
+    private static final class Pending {
+
+        private final String key;
+        private final long millis;
+
+        Pending(String key, long millis) {
+            this.key = key;
+            this.millis = millis;
         }
     }
 
