@@ -277,7 +277,7 @@ overrides them; this card adds the run-time selector that the other M3 cards use
 - Speculate. Record only what was observed.
 
 **Acceptance.**
-- [ ] Each gotcha links to a CI run or a repro bundle.
+- [x] Each gotcha links to a CI run or a repro bundle. Evidence: each version-span gotcha in `docs/platforms/paper.md` and `docs/platforms/viaproxy.md` links its merged PR (#35 to #42, whose descriptions hold the real-server output) and commit. Deviation: no CI run and no repro bundle exist (CI smoke is manual since PR #40; bundles under `build/proofstone/` are not committed). `./gradlew docsCheck --offline` (2026-11-07): `docsCheck: 0 errors, 253 warning(s)`, none in the two edited files, `BUILD SUCCESSFUL`.
 
 **Verify.**
 `./gradlew docsCheck`
