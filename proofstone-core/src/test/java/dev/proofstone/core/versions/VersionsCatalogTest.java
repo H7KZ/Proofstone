@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -28,7 +29,7 @@ class VersionsCatalogTest {
 
     @Test
     void rejectsDocumentThatFailsSchema() throws IOException {
-        String yaml = VersionsFixture.valid().replace("schema: 1", "schema: 2");
+        String yaml = VersionsFixture.valid().replace("schema: 2", "schema: 99");
 
         assertThatThrownBy(() -> VersionsFixture.load(dir, yaml))
                 .isInstanceOf(VersionsException.class)
@@ -55,13 +56,27 @@ class VersionsCatalogTest {
     }
 
     @Test
-    void loadsSeedFileWhoseUnpinnedRowsStillHaveTodoPins() throws IOException {
+    void loadsSeedFileWithADigestForEveryJavaTagItsRowsUse() throws IOException {
         Path seed = VersionsFixture.REPO_ROOT.resolve("versions.yml");
 
         VersionsCatalog catalog = VersionsCatalog.load(seed, VersionsFixture.schema());
 
         assertThat(catalog.platformIds()).contains("paper");
-        assertThat(catalog.platform("folia").host().digest()).isNull();
+        for (Platform platform : List.of(catalog.platform("paper"), catalog.platform("folia"))) {
+            for (Row row : platform.rows()) {
+                assertThat(platform.host().digest(catalog.javaTag(row)))
+                        .as(platform.id() + " " + row.mc()).startsWith("sha256:");
+            }
+        }
+    }
+
+    @Test
+    void rejectsRowWhoseJavaTagHasNoHostDigestKey() throws IOException {
+        String yaml = VersionsFixture.valid().replace(", java16: \"sha256:16\"", "");
+
+        assertThatThrownBy(() -> VersionsFixture.load(dir, yaml))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContaining("host.digests has no entry for Java tag java16");
     }
 
     @Test

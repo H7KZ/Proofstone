@@ -5,7 +5,7 @@ Decision: [ADR-0008](../adr/0008-versions-yml-single-source-of-truth.md), amende
 `proofstone-protocol/schemas/versions.schema.json`, is created in T-M0-04.
 
 ```yaml
-schema: 1                                  # file format version
+schema: 2                                  # file format version
 java-rules:                                # first match wins
   - { range: ">=1.20.5 <26", image: java21 }
 drivers:

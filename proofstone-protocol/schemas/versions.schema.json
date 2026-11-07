@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schema", "java-rules", "drivers", "platforms"],
   "properties": {
-    "schema": { "const": 1 },
+    "schema": { "const": 2 },
     "java-rules": {
       "type": "array",
       "items": {
@@ -40,10 +40,18 @@
         "host": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["image", "digest"],
+          "required": ["image", "digests"],
           "properties": {
             "image": { "type": "string", "minLength": 1 },
-            "digest": { "type": "string", "minLength": 1 }
+            "digests": {
+              "description": "Image digest by Java tag (ADR-0013). TODO until pinned.",
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": { "$ref": "#/$defs/javaImage" },
+              "additionalProperties": {
+                "anyOf": [{ "type": "string", "pattern": "^sha256:[0-9a-f]+$" }, { "const": "TODO" }]
+              }
+            }
           }
         },
         "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }

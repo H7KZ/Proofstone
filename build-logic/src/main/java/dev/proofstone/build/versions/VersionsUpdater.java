@@ -175,7 +175,19 @@ public final class VersionsUpdater {
                 throw new IOException(platform + " " + mc + ": sha256 mismatch for " + url + " (fill says "
                         + expected + ", download is " + actual + ")");
             }
-            int protocol = protocolVersion(jar, platform + " " + mc);
+            Integer fromJar = protocolVersion(jar, platform + " " + mc);
+            int protocol;
+            if (fromJar != null) {
+                protocol = fromJar;
+            } else if (row != null && row.path("protocol").isInt()) {
+                // Paperclip jars before 1.17 do not embed version.json. The row's own protocol stays the truth, and the
+                // log says so; a new row without one fails instead of guessing (AGENTS.md: fail loudly on unknowns).
+                protocol = row.path("protocol").asInt();
+                log.add(platform + " " + mc + ": jar has no version.json, protocol " + protocol + " kept from versions.yml");
+            } else {
+                throw new IOException(platform + " " + mc + ": the server jar has no version.json, so no protocol_version,"
+                        + " and the row has none to keep");
+            }
             String change = row == null ? "new row" : "build " + row.path("build").asText() + " -> " + build;
             log.add(platform + " " + mc + ": " + change + ", sha256 verified, protocol " + protocol
                     + ", channel " + latest.path("channel").asText());
@@ -199,12 +211,12 @@ public final class VersionsUpdater {
         return stable;
     }
 
-    /** Protocol number from the server jar's version.json. A jar without one fails the run. */
-    static int protocolVersion(Path jar, String what) throws IOException {
+    /** Protocol number from the server jar's version.json, or null when the jar has none (old Paperclip jars). */
+    static Integer protocolVersion(Path jar, String what) throws IOException {
         try (ZipFile zip = new ZipFile(jar.toFile())) {
             ZipEntry entry = zip.getEntry("version.json");
             if (entry == null) {
-                throw new IOException(what + ": the server jar has no version.json, so no protocol_version");
+                return null;
             }
             JsonNode protocol = JSON.readTree(zip.getInputStream(entry)).path("protocol_version");
             if (!protocol.isInt()) {

@@ -38,6 +38,18 @@ class VersionsValidatorTest {
         assertThat(errors("unknown-status.yml")).anySatisfy(e -> assertThat(e).contains("status"));
     }
 
+    @Test
+    void rowWhoseJavaTagHasNoHostDigestKeyFails() throws Exception {
+        assertThat(errors("missing-digest-tag.yml")).singleElement().asString()
+                .contains("1.21.11").contains("no entry for Java tag java21");
+    }
+
+    @Test
+    void requiredRowWithTodoHostDigestFails() throws Exception {
+        assertThat(errors("required-todo-digest.yml")).singleElement().asString()
+                .contains("required row needs a real host digest for java21");
+    }
+
     private static List<String> errors(String fixture) throws Exception {
         Path file = Path.of(VersionsValidatorTest.class.getResource("/versions/" + fixture).toURI());
         return VersionsValidator.validate(file, SCHEMA);

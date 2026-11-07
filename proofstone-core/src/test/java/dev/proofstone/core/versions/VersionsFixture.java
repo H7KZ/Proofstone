@@ -22,7 +22,9 @@ public final class VersionsFixture {
     static final String PLATFORM_HEADER = """
             platforms:
               paper:
-                host: { image: "itzg/minecraft-server", digest: "sha256:0123" }
+                host:
+                  image: "itzg/minecraft-server"
+                  digests: { java8: "sha256:08", java11: "sha256:11", java16: "sha256:16", java17: "sha256:17", java21: "sha256:21", java25: "sha256:25" }
                 rows:
             """;
 
@@ -44,7 +46,7 @@ public final class VersionsFixture {
 
     /** A valid document: the pinned rows plus the standard Java rules. */
     public static String valid() {
-        return "schema: 1\n" + JAVA_RULES
+        return "schema: 2\n" + JAVA_RULES
                 + "drivers:\n  mcpl: { library: \"g:a\", version: \"1.0\", protocol: \"26.3\" }\n"
                 + PLATFORM_HEADER + PINNED_ROWS;
     }

@@ -71,6 +71,18 @@ public final class VersionsValidator {
                 if ("required".equals(status) && containsTodo(row)) {
                     errors.add(where + ": required row must not contain TODO");
                 }
+                // ADR-0013: the host digest is per Java tag, so the row's tag must have one.
+                String tag = row.has("java")
+                        ? row.path("java").asText()
+                        : JavaRules.tagFor(document.path("java-rules"), mc).orElse(null);
+                if (tag == null) {
+                    errors.add(where + ": no java-rules entry matches, so its Java tag is unknown");
+                } else if (!platform.getValue().path("host").path("digests").has(tag)) {
+                    errors.add(where + ": host.digests has no entry for Java tag " + tag);
+                } else if ("required".equals(status)
+                        && "TODO".equals(platform.getValue().path("host").path("digests").path(tag).asText())) {
+                    errors.add(where + ": required row needs a real host digest for " + tag + ", not TODO");
+                }
             }
         }
         return errors;

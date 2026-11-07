@@ -115,6 +115,19 @@ class VersionsUpdaterTest {
                 .hasMessageContaining("version.json");
     }
 
+    @Test
+    void oldJarWithoutVersionJsonKeepsTheRowsOwnProtocol() throws Exception {
+        // Paperclip jars before 1.17 carry no version.json; the row's protocol stays and the log says so.
+        String input = read("update-input.yml").replace("{ mc: \"1.18.2\",  build: 388,", "{ mc: \"1.18.2\",  protocol: 758, build: 388,");
+        Map<String, Integer> others = Map.of("26.3", 777, "26.1.2", 775, "26.2", 776, "1.21.11", 774);
+
+        VersionsUpdater.Result result = VersionsUpdater.update(input, new StubSource(others, true));
+
+        assertThat(result.log()).anySatisfy(line -> assertThat(line)
+                .contains("1.18.2").contains("protocol 758 kept from versions.yml"));
+        assertThat(result.text()).contains("protocol: 758");
+    }
+
     private static List<String> rowLines(String text) {
         return text.lines().filter(line -> line.matches("^\\s*- \\{ mc: .*")).toList();
     }
