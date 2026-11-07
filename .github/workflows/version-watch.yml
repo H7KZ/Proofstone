@@ -2,7 +2,11 @@
 # Paper and Folia fill API and opens a PR with the label `versions`. New rows start as `experimental`; nothing is
 # promoted to `required` here. A run with no changes opens no PR.
 # The PR is opened with GITHUB_TOKEN, and GitHub does not start workflows for such PRs, so `ci.yml` does not run on
-# it. A maintainer runs the gates on the PR, or the token is replaced by one that can trigger workflows.
+# it and the required checks (gates, smoke, renovate-validate) stay pending, which blocks the merge.
+# Recommended fix: a repository secret named VERSION_WATCH_TOKEN (a fine-grained PAT with contents and pull-requests
+# write, or a GitHub App token), passed as `token: ${{ secrets.VERSION_WATCH_TOKEN }}` to create-pull-request below.
+# The secret is not added here; a maintainer creates it. Until then, close and reopen the PR to start ci.yml, or push
+# an empty commit to its branch from a maintainer account.
 name: version-watch
 
 on:
