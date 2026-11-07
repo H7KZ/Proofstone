@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.proofstone.core.versions.Status;
+import dev.proofstone.core.versions.VersionsCatalog;
 import dev.proofstone.core.versions.VersionsException;
 import dev.proofstone.core.versions.VersionsFixture;
 import java.io.IOException;
