@@ -33,5 +33,16 @@ network, and never installs Via plugins in the server under test.
   server" is printed before the bind, so it is not used.
 
 ## Gotchas
+- **A server before 1.17 has no state id.** ViaProxy sends a constant one, so "the state id moved" is never the sign
+  that a click was answered. The mcpl driver counts full `ContainerSetContent` resyncs instead (T-M3-03).
+- **A server before 1.17 locks a window after a rejected click until the client acks it.** ViaVersion turns the
+  server's rejection (the claimed stack differs from the real one) into a clientbound ping, and sends the ack only
+  when the pong comes back. A client that never pongs gets every later click ignored, silently. The driver answers
+  every ping, and waits for the full resync, which follows the ping, before it sends the next click.
+- **The claimed stack of a click must never equal the real one.** The driver relies on a rejection to get the
+  server's resync. Air with a count of one reads as an empty stack on a pre-1.17 server, so it matched an empty
+  slot: the server accepted the click and, expecting a client prediction, sent no echo. The claim is a barrier x1.
+- ViaProxy turns 1.17+ item components into hashes in click packets, and an old server sees the claimed carried item
+  as the clicked item (ViaVersion `ItemPacketRewriter1_17`). Both are why the claim above is a plain id and count.
 - Docker on Windows under Git Bash rewrites `/app/...` arguments into `C:/Program Files/Git/app/...`. Use PowerShell
   (or `MSYS_NO_PATHCONV=1`) when running the image by hand.
