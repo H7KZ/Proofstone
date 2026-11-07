@@ -203,3 +203,6 @@ M5 can run in parallel with M4 once M3 is done.
      endpoint to the agent protocol (a card that changes the spec), then the bundle carries real state.
   2. Bridged `viaproxy.log` is unexercised: no bridged row runs in the M4 smoke, so the bundle path for it has no real-server
      evidence. Run a bridged forced failure (for example `paper@1.20.4`) before M4 closes.
+  3. Known gap from T-M4-03 (control run): the JUnit extension passes `ConformanceResult.pass(cell)` as an assumption
+     (`VerdictGate.judgePass`), so `INVALID` cannot fire from the extension. No runner feeds `ConformanceCache` yet.
+     T-M4-07 must wire a conformance runner for its invalid test before M4 closes.
