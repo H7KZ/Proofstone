@@ -119,7 +119,7 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         }
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
-        return cells.stream().map(cell -> new CellInvocation(cell, config, isolation));
+        return cells.stream().map(cell -> new CellInvocation(cell, config, isolation, catalog));
     }
 
     /** The system property wins over the environment variable of the same meaning (test-api spec §1). */

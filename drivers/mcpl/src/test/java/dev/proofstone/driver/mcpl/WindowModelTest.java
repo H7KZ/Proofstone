@@ -14,6 +14,18 @@ import org.junit.jupiter.api.Test;
 class WindowModelTest {
 
     @Test
+    void onlyAFullContentResyncCountsAsTheServersAnswerToAClick() {
+        WindowModel chest = new WindowModel(3, "minecraft:generic_9x1", "Chest");
+        chest.setContent(0, new ItemStack[] {null, null}, null);
+        int before = chest.syncs();
+
+        chest.setSlot(0, 1, new ItemStack(6, 4));
+        assertThat(chest.syncs()).as("a slot update is only the start of an answer").isEqualTo(before);
+        chest.setContent(0, new ItemStack[] {null, new ItemStack(6, 4)}, null);
+        assertThat(chest.syncs()).as("a constant state id still counts").isEqualTo(before + 1);
+    }
+
+    @Test
     void contentStoresStateIdSlotsAndCursorAndSlotUpdatesOnlyTouchTheirWindow() {
         WindowModel inventory = new WindowModel(0, "minecraft:inventory", "Inventory");
         WindowModel chest = new WindowModel(3, "minecraft:generic_9x1", "Chest");

@@ -35,6 +35,7 @@ Validation rules, enforced in `check`:
 - `required` rows have no `TODO` values.
 - `host.digests` has a key for every `image` named in `java-rules` and every row `java` override. A `required`
   row's tag has a real digest, not `TODO`.
+- `drivers.viaproxy.digest` is a real digest before any cell is bridged; core fails on `TODO` (client-driver §5).
 - Every row's Java tag resolves to an image that exists (an online check, run nightly only).
 - `latest` always resolves to the highest `required` row.
 

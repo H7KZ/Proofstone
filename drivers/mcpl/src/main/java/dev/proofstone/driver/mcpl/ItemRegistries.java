@@ -74,6 +74,15 @@ final class ItemRegistries {
         received.put(registry, List.copyOf(keys));
     }
 
+    /** The numeric id of an item key; an unknown key is an error, never a guess. */
+    int itemId(String key) {
+        int id = items.indexOf(key);
+        if (id < 0) {
+            throw new IllegalStateException("unknown minecraft:item key " + key);
+        }
+        return id;
+    }
+
     String item(int id) {
         return lookup("minecraft:item", items, id);
     }

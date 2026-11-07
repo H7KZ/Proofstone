@@ -33,10 +33,13 @@ public final class VersionsCatalog {
 
     private final Map<String, Platform> platforms;
     private final List<JavaRule> javaRules;
+    private final Map<String, ImagePin> driverImages;
 
-    private VersionsCatalog(Map<String, Platform> platforms, List<JavaRule> javaRules) {
+    private VersionsCatalog(Map<String, Platform> platforms, List<JavaRule> javaRules,
+            Map<String, ImagePin> driverImages) {
         this.platforms = platforms;
         this.javaRules = javaRules;
+        this.driverImages = driverImages;
     }
 
     /**
@@ -76,6 +79,20 @@ public final class VersionsCatalog {
         if (!errors.isEmpty()) {
             throw new VersionsException("versions.yml is invalid:\n  " + String.join("\n  ", errors));
         }
+    }
+
+    /**
+     * The pinned image of a driver-side container (for example {@code viaproxy}).
+     *
+     * @throws VersionsException when the driver has no image, or its digest is still {@code TODO}, so an unpinned
+     *     image never runs (AGENTS.md section 3)
+     */
+    public ImagePin driverImage(String driverId) {
+        ImagePin pin = driverImages.get(driverId);
+        if (pin == null) {
+            throw new VersionsException("drivers." + driverId + " has no image with a pinned digest in versions.yml");
+        }
+        return pin;
     }
 
     /** @return platform ids in file order */
@@ -192,7 +209,16 @@ public final class VersionsCatalog {
             }
             platforms.put(entry.getKey(), new Platform(entry.getKey(), host, List.copyOf(rows)));
         }
-        return new VersionsCatalog(platforms, List.copyOf(rules));
+        Map<String, ImagePin> driverImages = new LinkedHashMap<>();
+        Iterator<Map.Entry<String, JsonNode>> drivers = document.path("drivers").fields();
+        while (drivers.hasNext()) {
+            Map.Entry<String, JsonNode> driver = drivers.next();
+            String digest = pin(driver.getValue().path("digest"));
+            if (driver.getValue().has("image") && digest != null) {
+                driverImages.put(driver.getKey(), new ImagePin(driver.getValue().path("image").asText(), digest));
+            }
+        }
+        return new VersionsCatalog(platforms, List.copyOf(rules), Map.copyOf(driverImages));
     }
 
     private static Row toRow(JsonNode row) {

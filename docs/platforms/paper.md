@@ -175,3 +175,17 @@ Measured from the JUnit XML suite times of one serial run, image already pulled:
   because the reset teleport races the client's first movement packets. It is allowed for harness client names only.
 - **The client inventory from the driver lists empty slots as `air x0` items**, so "empty" means all items
   `isEmpty()`, not an empty list. The agent's `inventory` omits empty slots.
+- **`level-type` is `flat` before 1.18, `minecraft:flat` from 1.18.** 1.8.8 silently builds a default world when it
+  sees the namespaced name (spawn near -1500, 1100 at y 77), so the fixture at the origin has no chunk. The host sets
+  the name per version (T-M3-03).
+- **Old flat worlds spawn far from the origin** (1.8.8: about 1500 blocks away). The host runs
+  `setworldspawn 0 64 0` after the game rules, so the agent's "teleport to spawn" loads the fixture's chunk on every
+  version. `setblock` outside a loaded chunk answers "Cannot place block outside of the world" (1.8.8) and changes
+  nothing.
+- **Mending and other 1.9+ enchantments are absent on 1.8.8.** C03 used mending as its second stored enchantment, so
+  the test, not the server, was wrong there: it now uses knockback. The agent's pre-1.13 name table also lacked the
+  1.9 to 1.11 enchantments (mending, frost walker, the curses, sweeping edge), found on 1.12.2.
+- **Closing an anvil on 1.8.8 drops its input slots on the ground; 26.3 returns them to the inventory.** A test that
+  parks the result in the anvil's empty input slot loses it on 1.8.8. C05 and C06 put it into a player slot.
+- **Pre-1.17 servers answer an accepted click with no echo** (they expect the client's prediction), so a driver that
+  waits for the server's answer must make every click be rejected (docs/platforms/viaproxy.md).

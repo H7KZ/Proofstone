@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.proofstone.api.Agent;
 import dev.proofstone.api.BlockPos;
+import dev.proofstone.api.Click;
 import dev.proofstone.api.Client;
 import dev.proofstone.api.ItemView;
 import dev.proofstone.api.PlayerHandle;
 import dev.proofstone.api.Position;
+import dev.proofstone.api.Window;
+import java.util.List;
 import java.util.function.Predicate;
 
 /**
@@ -17,6 +20,7 @@ import java.util.function.Predicate;
  */
 final class ConformanceFixture {
 
+    private static final int PLAYER_SLOTS = 36;
     static final BlockPos ANVIL = new BlockPos(0, 64, 2);
     static final BlockPos CHEST = new BlockPos(-1, 64, 0);
 
@@ -36,6 +40,22 @@ final class ConformanceFixture {
         Position at = client.awaitPosition("teleport to the fixture spot", p -> p.y() == 64.0);
         assertThat(at.x()).isEqualTo(0.5);
         return player;
+    }
+
+    /**
+     * Puts the carried stack into the first empty slot of the player's own 36 slots, which trail every window's own
+     * slots. Not {@code dropCursorIntoFirstEmptySlot}: that takes the anvil's empty input slot, and closing the anvil
+     * returns that to the inventory on 26.3 but drops it on the ground on 1.8.8 (docs/platforms/paper.md).
+     */
+    static void placeCursorInInventory(Window window) {
+        List<ItemView> slots = window.slots();
+        for (int i = Math.max(0, slots.size() - PLAYER_SLOTS); i < slots.size(); i++) {
+            if (slots.get(i).isEmpty()) {
+                window.click(i, Click.LEFT);
+                return;
+            }
+        }
+        throw new IllegalStateException("no empty player slot in " + window.type());
     }
 
     /** The diamond sword, matched on either oracle's view. */

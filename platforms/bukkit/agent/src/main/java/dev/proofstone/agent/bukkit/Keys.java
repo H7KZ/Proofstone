@@ -165,6 +165,12 @@ final class Keys {
         table.put("ARROW_INFINITE", "infinity");
         table.put("LUCK", "luck_of_the_sea");
         table.put("LURE", "lure");
+        // Added in 1.9 to 1.11; 1.8 never offers them, so an agent on 1.8.8 still answers UNKNOWN_KEY for them.
+        table.put("FROST_WALKER", "frost_walker");
+        table.put("MENDING", "mending");
+        table.put("BINDING_CURSE", "binding_curse");
+        table.put("VANISHING_CURSE", "vanishing_curse");
+        table.put("SWEEPING_EDGE", "sweeping_edge");
         return table;
     }
 }

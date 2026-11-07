@@ -13,7 +13,7 @@ java-rules:            # first match wins; observed in T-M3-02, see docs/version
 drivers:
   mcpl:            { library: "org.geysermc.mcprotocollib:protocol", version: "26.3-2", protocol: "26.3" }
   mineflayer-ref:  { library: "mineflayer", version: "4.39.0", max-native: "26.1" }
-  viaproxy:        { image: "ghcr.io/viaversion/viaproxy", digest: TODO }
+  viaproxy:        { image: "ghcr.io/viaversion/viaproxy", digest: "sha256:46eef05d0d3c165a2a731a94b3be1771510e3db3c6db2f12b93c91c73b6672c4" }  # ViaProxy 3.4.15, index digest of 2026-11-07 (T-M3-03)
 
 platforms:
   paper:

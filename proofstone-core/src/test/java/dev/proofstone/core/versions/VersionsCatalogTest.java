@@ -71,6 +71,21 @@ class VersionsCatalogTest {
     }
 
     @Test
+    void seedFilePinsViaProxyByDigestAndAnUnpinnedDriverFailsLoudly() throws IOException {
+        VersionsCatalog seed = VersionsCatalog.load(VersionsFixture.REPO_ROOT.resolve("versions.yml"),
+                VersionsFixture.schema());
+
+        ImagePin viaProxy = seed.driverImage("viaproxy");
+
+        assertThat(viaProxy.image()).isEqualTo("ghcr.io/viaversion/viaproxy");
+        assertThat(viaProxy.digest()).startsWith("sha256:");
+        assertThat(viaProxy.reference()).isEqualTo(viaProxy.image() + "@" + viaProxy.digest());
+        VersionsCatalog fixture = VersionsFixture.load(dir, VersionsFixture.valid());
+        assertThatThrownBy(() -> fixture.driverImage("viaproxy")).isInstanceOf(VersionsException.class)
+                .hasMessageContaining("viaproxy");
+    }
+
+    @Test
     void rejectsRowWhoseJavaTagHasNoHostDigestKey() throws IOException {
         String yaml = VersionsFixture.valid().replace(", java16: \"sha256:16\"", "");
 

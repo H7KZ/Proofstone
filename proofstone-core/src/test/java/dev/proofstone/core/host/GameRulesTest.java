@@ -31,4 +31,13 @@ class GameRulesTest {
                 .isInstanceOf(PaperHostException.class)
                 .hasMessageContaining("banana");
     }
+
+    @Test
+    void levelTypeIsNamespacedFrom118() {
+        assertThat(PaperHost.levelType("1.8.8")).isEqualTo("flat");
+        assertThat(PaperHost.levelType("1.16.5")).isEqualTo("flat");
+        assertThat(PaperHost.levelType("1.17.1")).isEqualTo("flat");
+        assertThat(PaperHost.levelType("1.18.2")).isEqualTo("minecraft:flat");
+        assertThat(PaperHost.levelType("26.3")).isEqualTo("minecraft:flat");
+    }
 }

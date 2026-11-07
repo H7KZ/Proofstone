@@ -62,9 +62,14 @@ Anything else is ignored, unless a later card adds it with a conformance scenari
 
 ## 5. Bridging (ViaProxy)
 
-- Core starts `ghcr.io/viaversion/viaproxy@<digest>`:
-  - pointed at the server's Docker hostname;
-  - target version set to the server version;
-  - with auth disabled (offline mode).
-- The driver connects to ViaProxy, and `Cell.bridged()` returns true.
-- Exact ViaProxy CLI flags are verified in card T-M3-03 and recorded in `docs/platforms/viaproxy.md`.
+- A cell is *bridged* when the driver's protocol (`driver.protocolVersion()`) is not the row's Minecraft version.
+- Core puts the server and ViaProxy on one Docker network (the server has the alias `server`) and starts
+  `ghcr.io/viaversion/viaproxy@<digest>` (`drivers.viaproxy` in `versions.yml`; a `TODO` digest is an error):
+  - in `cli` mode, with the image entrypoint overridden, so no file is copied or mounted;
+  - `--target-address server:25565`, `--target-version <row mc>`, `--auth-method NONE` (offline), and
+    `--bind-address 0.0.0.0:25568`;
+  - ready when the bind port is in the container's listening socket table.
+- The driver connects to ViaProxy's mapped port, and `Cell.bridged()` returns true. Reports and display names say
+  "bridged".
+- The flags were verified against the pinned image in card T-M3-03 and are recorded in
+  [viaproxy](../platforms/viaproxy.md).

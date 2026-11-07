@@ -42,7 +42,7 @@ class C06AnvilCombineTest {
             assertThat(result.storedEnchants()).isEmpty();
 
             anvil.click(2, Click.LEFT);
-            anvil.dropCursorIntoFirstEmptySlot();
+            ConformanceFixture.placeCursorInInventory(anvil);
         }
 
         DualAssert.item(player, client).inInventory(ConformanceFixture.sword()).amount(1).enchants(SHARPNESS_FIVE);
