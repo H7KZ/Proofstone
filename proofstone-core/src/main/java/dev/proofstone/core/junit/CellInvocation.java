@@ -43,6 +43,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private static final Namespace NAMESPACE = Namespace.create(CellInvocation.class);
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(30);
     private static final String AGENT_JAR = "proofstone.agentJar";
+    /** The driver the cells run is chosen by id; mcpl is the primary (ADR-0004). */
+    private static final String DRIVER_PROPERTY = "proofstone.driver";
+    private static final String PRIMARY_DRIVER = "mcpl";
 
     private static final String STATE = "state";
 
@@ -184,62 +187,99 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         }
         PaperHostOptions options = PaperHostOptions.of(Path.of(jar), true)
                 .withArtefacts(Path.of("").toAbsolutePath(), List.of(config.plugins()));
-        if (!bridged) {
-            return new HostResource(PaperHost.start(cell, options), null, null);
+        // A driver other than mcpl (the reference sidecar) runs on the cell network, so it reaches the server by alias.
+        if (!bridged && PRIMARY_DRIVER.equals(driverId())) {
+            return new HostResource(PaperHost.start(cell, options), null, null, null);
         }
         Network network = Network.newNetwork();
         PaperHost host = null;
+        ViaProxyHost proxy = null;
+        ClientDriver bound = null;
         try {
             host = PaperHost.start(cell, options.withNetwork(network));
-            ViaProxyHost proxy = ViaProxyHost.start(cell, catalog.driverImage("viaproxy"), network);
-            return new HostResource(host, proxy, network);
-        } catch (RuntimeException e) {
-            if (host != null) {
-                host.close();
+            if (bridged) {
+                proxy = ViaProxyHost.start(cell, catalog.driverImage("viaproxy"), network);
             }
-            network.close();
+            bound = findDriver().orElseThrow(() -> new ParameterResolutionException("no client driver " + driverId()
+                    + " on the classpath")).onNetwork(network, Path.of(System.getProperty("proofstone.repoRoot")));
+            return new HostResource(host, proxy, network, bound);
+        } catch (RuntimeException e) {
+            new HostResource(host, proxy, network, bound).closeQuietly(e);
             throw e;
         }
     }
 
     private SessionClient joinClient(HostResource resource, ExtensionContext context) {
-        ClientDriver driver = findDriver().orElseThrow(() -> new ParameterResolutionException(
-                "no mcpl client driver on the classpath: add drivers:mcpl to the test runtime"));
-        // Bridged cells are reached through ViaProxy, which speaks the driver's protocol (ADR-0004).
-        String address = resource.proxy() == null ? resource.host().gameHost() : resource.proxy().gameHost();
-        int port = resource.proxy() == null ? resource.host().gamePort() : resource.proxy().gamePort();
+        ClientDriver driver = resource.driver() != null ? resource.driver() : findDriver().orElseThrow(
+                () -> new ParameterResolutionException("no client driver " + driverId() + " on the classpath"));
+        String address;
+        int port;
+        if (!PRIMARY_DRIVER.equals(driverId())) {
+            // A sidecar driver sits on the cell network: the server by its alias, or ViaProxy on a bridged cell.
+            address = resource.proxy() == null ? PaperHost.NETWORK_ALIAS : "viaproxy";
+            port = resource.proxy() == null ? PaperHost.GAME_PORT : ViaProxyHost.PROXY_PORT;
+        } else {
+            // Bridged cells are reached through ViaProxy, which speaks the driver's protocol (ADR-0004).
+            address = resource.proxy() == null ? resource.host().gameHost() : resource.proxy().gameHost();
+            port = resource.proxy() == null ? resource.host().gamePort() : resource.proxy().gamePort();
+        }
         // A hash of the unique test id keeps the name stable for a test and different between tests.
         String name = String.format("T%08x", context.getUniqueId().hashCode());
         ClientSession session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT));
         return new SessionClient(name, session);
     }
 
+    /** The driver the cells run, by id: {@code -Dproofstone.driver}, default mcpl. */
+    private static String driverId() {
+        return System.getProperty(DRIVER_PROPERTY, PRIMARY_DRIVER);
+    }
+
     private static Optional<ClientDriver> findDriver() {
         for (ClientDriver driver : ServiceLoader.load(ClientDriver.class)) {
-            if (driver.id().equals("mcpl")) {
+            if (driver.id().equals(driverId())) {
                 return Optional.of(driver);
             }
         }
         return Optional.empty();
     }
 
-    /** Closes ViaProxy, the server and the network when the owning store closes. */
-    private record HostResource(PaperHost host, ViaProxyHost proxy, Network network) implements AutoCloseable {
+    /** Closes the bound driver, ViaProxy, the server and the network when the owning store closes. */
+    private record HostResource(PaperHost host, ViaProxyHost proxy, Network network, ClientDriver driver)
+            implements AutoCloseable {
         @Override
         public void close() {
+            RuntimeException failure = null;
             try {
-                if (proxy != null) {
-                    proxy.close();
+                closeQuietly(null);
+            } catch (RuntimeException e) {
+                failure = e;
+            }
+            if (failure != null) {
+                throw failure;
+            }
+        }
+
+        /** Closes every part, keeping the first failure; a cause already in flight gets the suppressed ones. */
+        void closeQuietly(RuntimeException cause) {
+            RuntimeException failure = cause;
+            for (AutoCloseable part : new AutoCloseable[] {driver, proxy, host, network}) {
+                if (part == null) {
+                    continue;
                 }
-            } finally {
                 try {
-                    host.close();
-                } finally {
-                    if (network != null) {
-                        network.close();
+                    part.close();
+                } catch (Exception e) {
+                    if (failure == null) {
+                        failure = new IllegalStateException("cannot close " + part, e);
+                    } else {
+                        failure.addSuppressed(e);
                     }
                 }
             }
+            if (failure != null && failure != cause) {
+                throw failure;
+            }
         }
+
     }
 }
