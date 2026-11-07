@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.proofstone.core.versions.Status;
-import dev.proofstone.core.versions.VersionsCatalog;
 import dev.proofstone.core.versions.VersionsException;
 import dev.proofstone.core.versions.VersionsFixture;
 import java.io.IOException;
@@ -108,10 +107,10 @@ class CellPlannerTest {
 
     @Test
     void chosenRowWithTodoPinFailsBeforeAnyContainerStarts() throws IOException {
-        Path seed = VersionsFixture.REPO_ROOT.resolve("versions.yml");
-        CellPlanner planner = new CellPlanner(VersionsCatalog.load(seed, VersionsFixture.schema()));
+        // Was the seed row 1.21.11. version-watch (T-M3-01) pins every seed row, so the TODO now comes from this fixture.
+        String yaml = VersionsFixture.valid().replace("sha256: \"a8\"", "sha256: TODO");
 
-        assertThatThrownBy(() -> planner.plan("paper", List.of("1.21.11")))
+        assertThatThrownBy(() -> planner(yaml).plan("paper", List.of("26.3")))
                 .isInstanceOf(VersionsException.class)
                 .hasMessageContaining("TODO")
                 .hasMessageContaining("sha256");
