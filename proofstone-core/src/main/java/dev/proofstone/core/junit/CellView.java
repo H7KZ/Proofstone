@@ -2,8 +2,8 @@ package dev.proofstone.core.junit;
 
 import dev.proofstone.core.cell.Cell;
 
-/** The API view of a planned cell. Bridging is not available yet, so it is never bridged. */
-record CellView(Cell cell) implements dev.proofstone.api.Cell {
+/** The API view of a planned cell. {@code bridged} is true when ViaProxy sits between the driver and the server. */
+record CellView(Cell cell, boolean bridged) implements dev.proofstone.api.Cell {
 
     @Override
     public String platform() {
@@ -22,6 +22,6 @@ record CellView(Cell cell) implements dev.proofstone.api.Cell {
 
     @Override
     public boolean bridged() {
-        return false;
+        return bridged;
     }
 }

@@ -41,7 +41,10 @@ import org.testcontainers.utility.MountableFile;
 public final class PaperHost implements AutoCloseable {
 
     static final int AGENT_PORT = 25580;
-    private static final int GAME_PORT = 25565;
+    /** The server's name on the cell network, where {@link PaperHostOptions#network()} is set. */
+    public static final String NETWORK_ALIAS = "server";
+    /** The port the server listens on inside its container. */
+    public static final int GAME_PORT = 25565;
     private static final String AGENT_URL = "http://127.0.0.1:" + AGENT_PORT;
     private static final int TAIL_LINES = 60;
     private static final String BUKKIT_YML = "settings:\n  connection-throttle: -1\n";
@@ -128,6 +131,9 @@ public final class PaperHost implements AutoCloseable {
         container.withCopyToContainer(Transferable.of(BUKKIT_YML), "/data/bukkit.yml");
         // Players join over the game port, so it is the one port always published (T-M1-08).
         container.addExposedPort(GAME_PORT);
+        if (options.network() != null) {
+            container.withNetwork(options.network()).withNetworkAliases(NETWORK_ALIAS);
+        }
         if (options.debugPorts()) {
             container.addExposedPort(AGENT_PORT);
         }
