@@ -112,6 +112,11 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             }
             cells.addAll(planner.plan(platform, requested, scope, families));
         }
+        if (cells.isEmpty()) {
+            // JUnit would fail with an opaque precondition error; a class that runs nothing is never a pass.
+            throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
+                    + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
+        }
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
         return cells.stream().map(cell -> new CellInvocation(cell, config, isolation));
