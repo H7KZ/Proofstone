@@ -6,6 +6,9 @@ import dev.proofstone.api.Matrix;
 import dev.proofstone.api.Proofstone;
 import dev.proofstone.core.cell.Cell;
 import dev.proofstone.core.cell.CellPlanner;
+import dev.proofstone.core.cell.CellSelector;
+import dev.proofstone.core.cell.Scope;
+import dev.proofstone.core.cell.VersionFamilies;
 import dev.proofstone.core.host.Eula;
 import dev.proofstone.core.versions.VersionsCatalog;
 import java.lang.reflect.AnnotatedElement;
@@ -34,6 +37,15 @@ import org.testcontainers.DockerClientFactory;
 public final class ProofstoneExtension implements TestTemplateInvocationContextProvider, ExecutionCondition {
 
     static final String REPO_ROOT = "proofstone.repoRoot";
+    /** Run-time cell selector and scope (test-api spec §1); the property wins over the environment variable. */
+    static final String CELLS = "proofstone.cells";
+    static final String CELLS_ENV = "PROOFSTONE_CELLS";
+    static final String CELLS_SOURCE = "-Dproofstone.cells or PROOFSTONE_CELLS";
+    static final String SCOPE = "proofstone.scope";
+    static final String SCOPE_ENV = "PROOFSTONE_SCOPE";
+    static final String SCOPE_SOURCE = "-Dproofstone.scope or PROOFSTONE_SCOPE";
+    /** Read from the test working directory, which is the project directory under Gradle. */
+    static final String FAMILIES_FILE = "proofstone.yml";
 
     @Override
     public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
@@ -83,14 +95,40 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         if (matrices.isEmpty()) {
             throw new IllegalStateException("@CellTest needs at least one @Matrix on " + type.getName());
         }
-        CellPlanner planner = new CellPlanner(catalog());
+        VersionsCatalog catalog = catalog();
+        CellPlanner planner = new CellPlanner(catalog);
+        CellSelector selector = CellSelector.parse(setting(CELLS, CELLS_ENV), CELLS_SOURCE);
+        Scope scope = Scope.parse(setting(SCOPE, SCOPE_ENV), SCOPE_SOURCE);
+        VersionFamilies families = VersionFamilies.load(Path.of(FAMILIES_FILE), catalog);
         List<Cell> cells = new ArrayList<>();
         for (Matrix matrix : matrices) {
-            cells.addAll(planner.plan(matrix.platform().name().toLowerCase(Locale.ROOT), List.of(matrix.versions())));
+            String platform = matrix.platform().name().toLowerCase(Locale.ROOT);
+            // A selector replaces the @Matrix versions of the platforms it names; other platforms are not run.
+            List<String> requested = selector.isSet() ? selector.versions(platform) : List.of(matrix.versions());
+            if (requested.isEmpty()) {
+                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares "
+                        + platform + ", which " + CELLS_SOURCE + " does not name");
+                continue;
+            }
+            cells.addAll(planner.plan(platform, requested, scope, families));
+        }
+        if (cells.isEmpty()) {
+            // JUnit would fail with an opaque precondition error; a class that runs nothing is never a pass.
+            throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
+                    + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
         }
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
         return cells.stream().map(cell -> new CellInvocation(cell, config, isolation));
+    }
+
+    /** The system property wins over the environment variable of the same meaning (test-api spec §1). */
+    private static String setting(String property, String environment) {
+        String value = System.getProperty(property);
+        if (value == null || value.isBlank()) {
+            value = System.getenv(environment);
+        }
+        return value;
     }
 
     private static VersionsCatalog catalog() {

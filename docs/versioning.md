@@ -61,11 +61,13 @@ change becomes a card against the pack, with the gotcha recorded in `docs/platfo
 
 ## 4. Choosing cells
 
-- **PR default:** for each pack, the newest native version, plus one per "version family" that the user
-  project declares in its own `proofstone.yml`. For example, Disenchantment declares one version per NMS
-  module.
-- **Nightly:** every `required` and `experimental` row in range.
-- **Local:** `-Dproofstone.cells=paper@1.21.11,folia@latest`.
+- **PR default** (`all` with scope `pr`, which is the default): the `required` rows, plus the newest version of
+  each family that the user project declares in its own `proofstone.yml` (test-api spec §1). Experimental rows run on
+  a PR only when named. Retired rows never run unless named.
+- **Nightly** (`-Dproofstone.scope=nightly`): every `required` and `experimental` row, plus every family version.
+  Retired rows never run unless named.
+- **Local:** `-Dproofstone.cells=paper@1.21.11,folia@latest` (or `PROOFSTONE_CELLS`). It replaces the `@Matrix`
+  versions of the platforms it names. Syntax and errors: test-api spec §1.
 
 ## 5. Dependency bumps (Renovate)
 

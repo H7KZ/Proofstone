@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.proofstone.core.versions.Status;
+import dev.proofstone.core.versions.VersionsCatalog;
 import dev.proofstone.core.versions.VersionsException;
 import dev.proofstone.core.versions.VersionsFixture;
 import java.io.IOException;
@@ -114,6 +115,87 @@ class CellPlannerTest {
                 .isInstanceOf(VersionsException.class)
                 .hasMessageContaining("TODO")
                 .hasMessageContaining("sha256");
+    }
+
+    @Test
+    void allInPrScopeTakesOnlyRequiredRowsAndNeverRetired() throws IOException {
+        List<Cell> cells = planner(VersionsFixture.valid()).plan("paper", List.of("all"), Scope.PR, VersionFamilies.none());
+
+        assertThat(cells).extracting(Cell::mc).containsExactly("1.9.4", "1.10.2", "1.20.4");
+    }
+
+    @Test
+    void allInNightlyScopeTakesRequiredAndExperimentalButNeverRetired() throws IOException {
+        List<Cell> cells = planner(VersionsFixture.valid())
+                .plan("paper", List.of("all"), Scope.NIGHTLY, VersionFamilies.none());
+
+        assertThat(cells).extracting(Cell::mc)
+                .containsExactly("1.9.4", "1.10.2", "1.16.5", "1.17.1", "1.20.4", "1.20.5", "26.1", "26.3");
+    }
+
+    @Test
+    void allMergesWithExplicitVersionsWithoutDuplicatingCells() throws IOException {
+        List<Cell> cells = planner(VersionsFixture.valid())
+                .plan("paper", List.of("all", "1.8.8", "1.9.4"), Scope.PR, VersionFamilies.none());
+
+        assertThat(cells).extracting(Cell::mc).containsExactly("1.9.4", "1.10.2", "1.20.4", "1.8.8");
+    }
+
+    @Test
+    void experimentalRowIsRunInPrOnlyWhenNamedExplicitly() throws IOException {
+        CellPlanner planner = planner(VersionsFixture.valid());
+
+        assertThat(planner.plan("paper", List.of("26.3"), Scope.PR, VersionFamilies.none()))
+                .extracting(Cell::mc).containsExactly("26.3");
+    }
+
+    @Test
+    void familiesAddTheNewestVersionOfEachFamilyInPrAndEveryFamilyVersionInNightly() throws IOException {
+        VersionsCatalog catalog = VersionsFixture.load(dir, VersionsFixture.valid());
+        CellPlanner planner = new CellPlanner(catalog);
+        VersionFamilies families = VersionFamilies.parse(
+                "version-families:\n  paper:\n    netty: [\"1.9.4\", \"1.16.5\"]\n", catalog);
+
+        assertThat(planner.plan("paper", List.of("all"), Scope.PR, families))
+                .extracting(Cell::mc).containsExactly("1.9.4", "1.10.2", "1.16.5", "1.20.4");
+        assertThat(planner.plan("paper", List.of("all"), Scope.NIGHTLY, families))
+                .extracting(Cell::mc)
+                .containsExactly("1.9.4", "1.10.2", "1.16.5", "1.17.1", "1.20.4", "1.20.5", "26.1", "26.3");
+    }
+
+    @Test
+    void familyVersionThatIsNotARowOfThePlatformFailsWhenTheFileIsRead() throws IOException {
+        VersionsCatalog catalog = VersionsFixture.load(dir, VersionsFixture.valid());
+
+        assertThatThrownBy(() -> VersionFamilies.parse(
+                "version-families:\n  paper:\n    netty: [\"1.99\"]\n", catalog))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContaining("1.99");
+    }
+
+    @Test
+    void allFailsWhenNoRowIsInScope() throws IOException {
+        String yaml = VersionsFixture.valid().replace("status: required", "status: experimental");
+
+        assertThatThrownBy(() -> planner(yaml).plan("paper", List.of("all"), Scope.PR, VersionFamilies.none()))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContaining("all")
+                .hasMessageContaining("paper")
+                .hasMessageContaining("PR");
+    }
+
+    @Test
+    void allFailsOnAnUnpinnedRowThatIsInScope() throws IOException {
+        String yaml = VersionsFixture.valid()
+                .replace("build: 1, sha256: \"a1\", status: required", "build: 1, sha256: TODO, status: experimental");
+
+        assertThatThrownBy(() -> planner(yaml).plan("paper", List.of("all"), Scope.NIGHTLY, VersionFamilies.none()))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContaining("paper@1.9.4")
+                .hasMessageContaining("sha256");
+        // Outside PR scope the same row is not selected, so it does not fail the PR run.
+        assertThat(planner(yaml).plan("paper", List.of("all"), Scope.PR, VersionFamilies.none()))
+                .extracting(Cell::mc).containsExactly("1.10.2", "1.20.4");
     }
 
     @Test

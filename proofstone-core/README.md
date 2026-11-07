@@ -19,7 +19,8 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
 - `dev.proofstone.core.versions.VersionsCatalog`: `load(versionsFile, schemaFile)`, `platform(id)`, `platformIds()`, `javaTag(row)`.
 - `dev.proofstone.core.versions`: `Platform`, `Host`, `Row`, `Status`, `VersionNumber`, `VersionsException`.
 - `dev.proofstone.core.cell.Cell`: one resolved environment (platform, mc, build, sha256, java, host image and digest, notes).
-- `dev.proofstone.core.cell.CellPlanner`: `plan(platformId, versions)`; `latest` means the highest `required` row, or the highest `experimental` row with a warning.
+- `dev.proofstone.core.cell.CellPlanner`: `plan(platformId, versions, scope, families)`; `latest` means the highest `required` row, or the highest `experimental` row with a warning; `all` means the rows in `scope` plus the family versions.
+- `dev.proofstone.core.cell.CellSelector`: parses `-Dproofstone.cells` / `PROOFSTONE_CELLS` (`platform@version`, `latest`, `all`); `Scope` (`pr`, `nightly`) and `VersionFamilies` (the `version-families` of `proofstone.yml`).
 
 - `dev.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).
 - `dev.proofstone.core.await.AwaitTimeoutException`: thrown on timeout, carries description, elapsed time and last observations.
