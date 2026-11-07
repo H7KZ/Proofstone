@@ -69,6 +69,11 @@ final class SessionClient implements Client, AutoCloseable {
         return session.experienceLevel();
     }
 
+    /** The driver's packet transcript, for the repro bundle. */
+    List<String> transcript() {
+        return session.transcript();
+    }
+
     @Override
     public void close() {
         session.close();

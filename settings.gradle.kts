@@ -26,6 +26,7 @@ include(
     "proofstone-protocol",
     "conformance",
     "drivers:mcpl",
+    "drivers:mineflayer-ref",
     "platforms:bukkit:agent",
     "platforms:bukkit:fixture",
     "examples:smoke",

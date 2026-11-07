@@ -58,8 +58,8 @@
 - Include the agent token in any bundle file.
 
 **Acceptance.**
-- [ ] A forced failure produces a complete bundle.
-- [ ] A secret-scan test proves the token is absent.
+- [x] A forced failure produces a complete bundle. Evidence: `ForcedFailureE2E` on paper@26.3 (real server, run 2026-11-07, 3m32s) printed `PROOFSTONE BUNDLE: build\proofstone\paper@26.3\ForcedFailureE2E.failsOnPurposeWhenForced`; files present: server.log, agent-transcript.jsonl, driver-transcript.jsonl, cell.json, snapshot.json, rerun.txt. Bridged viaproxy.log not exercised (no bridged row in M4 smoke).
+- [x] A secret-scan test proves the token is absent. Evidence: `BundleWriterTest` (7 tests, 0 failures); real bundle contains no `Bearer` and no `PROOFSTONE_AGENT_TOKEN`.
 
 **Verify.**
 `./gradlew :examples:smoke:test -Dproofstone.forceFail=true` (the test is expected to fail), then check
@@ -124,11 +124,13 @@ the bundle.
 
 **Goal.** An independent reference driver for differential runs.
 
+**Part 1 of 2 (split, maintainer accepted).** Windows, blocks, inventory and item parsing moved to T-M4-05b.
+Part 1 covers join, chat, replies and disconnect on 26.1.2 (native) and 1.21.11 (bridged). The acceptance below
+stays unticked until T-M4-05b lands.
+
 **Do.**
 - Build a Node image with pinned `mineflayer` and `minecraft-data`. The SPI is exposed over WebSocket
   JSON-RPC.
-- Item parsing must handle components, including the `stored_enchantments` fix and registry ID → name
-  mapping.
 - Write the `max-native` value back to the `versions.yml` driver metadata.
 - M3 fact: only Paper 26.3 is native to the mcpl driver. Every other Paper row runs bridged through ViaProxy. First
   check which protocol the reference driver speaks, and record the result in `docs/platforms/` before choosing the
@@ -143,9 +145,36 @@ the bundle.
 **Verify.**
 `./gradlew :drivers:mineflayer-ref:integrationTest`
 
+### T-M4-05b · mineflayer-ref windows, blocks, inventory and items
+- tier: sonnet
+- depends: T-M4-05
+- modules: drivers/mineflayer-ref, images/mineflayer-ref
+- adrs: 0004, 0006
+- specs: specs/client-driver.md §4
+- test-first: no
+
+**Goal.** Part 2 of T-M4-05: the reference driver answers windows, blocks and inventory, so C03–C06 pass on it.
+
+**Do.**
+- Implement `useBlock`, `awaitWindow` and `inventory` in the sidecar JSON-RPC and in `MineflayerRefSession`
+  (replacing the T-M4-05 "not in the reference driver yet" failures).
+- Item parsing must handle components, including the `stored_enchantments` fix and registry ID → name
+  mapping (minecraft-data).
+
+**Don't.**
+- Return empty data for anything still unimplemented. Keep failing loudly.
+- Change the protocol version or the native row.
+
+**Acceptance.**
+- [ ] C02–C06 pass on the reference driver on 1.21.11 and 26.1.x.
+- [ ] `MineflayerRefDriverIT` XML shows `skipped="0" failures="0" errors="0"`.
+
+**Verify.**
+`./gradlew :drivers:mineflayer-ref:integrationTest`
+
 ### T-M4-06 · Differential runner and comparator
 - tier: sonnet
-- depends: T-M4-05, T-M4-01
+- depends: T-M4-05, T-M4-05b, T-M4-01
 - modules: proofstone-core, drivers/mineflayer-ref
 - adrs: 0003
 - specs: specs/self-tests.md §3

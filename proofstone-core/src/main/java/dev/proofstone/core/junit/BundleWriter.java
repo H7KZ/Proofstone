@@ -1,0 +1,164 @@
+package dev.proofstone.core.junit;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.proofstone.core.cell.Cell;
+import dev.proofstone.core.host.PaperHost;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.extension.ExtensionContext;
+
+/**
+ * The repro bundle of a test that did not pass (glossary: Repro bundle). It is written to
+ * {@code build/proofstone/<platform>@<mc>/<TestClass>.<method>/} while the server still runs, so the server log, the
+ * agent state and the client transcript are all still there. The bundle is local and never committed (build/).
+ *
+ * <p>The agent token is redacted from every file, and every file is scanned again after writing: a bundle that
+ * still holds the token is an error, never a silent leak (AGENTS.md section 3, the secret-scan test).
+ */
+final class BundleWriter {
+
+    /** Relative to the test working directory, which is the project directory under Gradle. */
+    static final Path ROOT = Path.of("build", "proofstone");
+    static final String REDACTED = "<redacted: agent token>";
+    /** The switch that makes the forced-failure example fail on purpose (ForcedFailureE2E). */
+    static final String FORCE_FAIL = "proofstone.forceFail";
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    /** Everything a bundle holds. {@code viaproxyLog} is {@code null} for an unbridged cell. */
+    record Contents(String serverLog, String viaproxyLog, List<String> agentTranscript,
+            List<String> driverTranscript, Cell cell, String snapshot, String rerun, String secret) {
+    }
+
+    private BundleWriter() {
+    }
+
+    /** Captures the bundle of the test in {@code context}. Called from afterEach, before the server is torn down. */
+    static Path capture(ExtensionContext context, Cell cell, TestState state) {
+        String test = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
+        Path dir = ROOT.resolve(cell.platform() + "@" + cell.mc()).resolve(test);
+        List<String> driver = state.client == null ? List.of() : state.client.transcript();
+        return write(dir, new Contents(
+                state.host.logs().all(),
+                state.proxy == null ? null : state.proxy.logs().all(),
+                state.host.agentTranscript(),
+                driver,
+                cell,
+                snapshot(state.host),
+                rerun(context, cell),
+                state.host.agentToken()));
+    }
+
+    /** Writes the files, replacing an earlier bundle of the same test, and returns the directory. */
+    static Path write(Path dir, Contents contents) {
+        if (contents.secret() == null || contents.secret().isBlank()) {
+            throw new IllegalStateException("a repro bundle needs the agent token to redact it");
+        }
+        Map<String, String> files = new LinkedHashMap<>();
+        files.put("server.log", contents.serverLog() + "\n");
+        if (contents.viaproxyLog() != null) {
+            files.put("viaproxy.log", contents.viaproxyLog() + "\n");
+        }
+        files.put("agent-transcript.jsonl", lines(contents.agentTranscript()));
+        files.put("driver-transcript.jsonl", lines(contents.driverTranscript().stream()
+                .map(line -> JSON.createObjectNode().put("line", line).toString()).toList()));
+        files.put("cell.json", JSON.valueToTree(contents.cell()).toPrettyString() + "\n");
+        files.put("snapshot.json", contents.snapshot() + "\n");
+        files.put("rerun.txt", contents.rerun());
+        deleteTree(dir);
+        try {
+            Files.createDirectories(dir);
+            for (Map.Entry<String, String> file : files.entrySet()) {
+                Files.writeString(dir.resolve(file.getKey()),
+                        redact(file.getValue(), contents.secret()), StandardCharsets.UTF_8);
+            }
+            for (String name : files.keySet()) {
+                String text = Files.readString(dir.resolve(name), StandardCharsets.UTF_8);
+                if (text.contains(contents.secret())) {
+                    throw new IllegalStateException("the agent token is in bundle file " + name + "; not left behind");
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot write the repro bundle to " + dir, e);
+        }
+        return dir;
+    }
+
+    /** Replaces every occurrence of the secret. A blank secret would match everywhere, so it is refused. */
+    static String redact(String text, String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalArgumentException("a secret to redact must not be blank");
+        }
+        return text.replace(secret, REDACTED);
+    }
+
+    /**
+     * The gradle task of the project the test runs in, for example {@code :examples:smoke:test}. The test working
+     * directory is the project directory, and the root is {@code proofstone.repoRoot}.
+     */
+    static String gradleTask(Path root, Path projectDir) {
+        StringBuilder task = new StringBuilder();
+        for (Path part : root.toAbsolutePath().normalize().relativize(projectDir.toAbsolutePath().normalize())) {
+            if (!part.toString().isEmpty()) {
+                task.append(':').append(part);
+            }
+        }
+        return task.append(":test").toString();
+    }
+
+    /** The command that reruns the one test on the one cell, with the Docker lock (AGENTS.md section 4). */
+    static String rerun(ExtensionContext context, Cell cell) {
+        String root = System.getProperty(ProofstoneExtension.REPO_ROOT);
+        if (root == null) {
+            throw new IllegalStateException("system property " + ProofstoneExtension.REPO_ROOT + " is not set");
+        }
+        String test = context.getRequiredTestClass().getName() + "." + context.getRequiredTestMethod().getName();
+        StringBuilder command = new StringBuilder("bash scripts/dockerlock.sh ./gradlew ")
+                .append(gradleTask(Path.of(root), Path.of("")))
+                .append(" --tests '").append(test).append('\'')
+                .append(" -Dproofstone.cells=").append(cell.platform()).append('@').append(cell.mc());
+        // A forced run reproduces only with its flag, so the flag is part of the command.
+        String forced = System.getProperty(FORCE_FAIL);
+        if (forced != null) {
+            command.append(" -D").append(FORCE_FAIL).append('=').append(forced);
+        }
+        return "# Set PROOFSTONE_ACCEPT_EULA=true in the environment for this command; it is never written to a file.\n"
+                + command + " --no-parallel\n";
+    }
+
+    /** The agent's full-state dump (agent-protocol §2). A failure is recorded in the file, not left out. */
+    private static String snapshot(PaperHost host) {
+        ObjectNode node = JSON.createObjectNode();
+        try {
+            node.set("snapshot", host.request("GET", "/v1/snapshot", null));
+        } catch (RuntimeException e) {
+            node.put("endpoint", "GET /v1/snapshot").put("error", String.valueOf(e.getMessage()));
+        }
+        return node.toPrettyString();
+    }
+
+    private static String lines(List<String> lines) {
+        return lines.isEmpty() ? "" : String.join("\n", lines) + "\n";
+    }
+
+    private static void deleteTree(Path dir) {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        try (Stream<Path> walk = Files.walk(dir)) {
+            for (Path path : walk.sorted(Comparator.reverseOrder()).toList()) {
+                Files.delete(path);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot clear the old repro bundle " + dir, e);
+        }
+    }
+}

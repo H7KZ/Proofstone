@@ -198,3 +198,8 @@ M5 can run in parallel with M4 once M3 is done.
   selector and are not committed; the real C06 flake is a measurement target, not the acceptance test; the reference
   driver's protocol is checked first; the nightly set and Spigot rows are manual (no schedule); Folia rows boot first;
   every cell runs in its own invocation with an XML check.
+- **M4 follow-ups from T-M4-02 (repro bundles, for the T-M4-99 review):**
+  1. The agent has no `GET /v1/snapshot` yet, so `snapshot.json` records the error instead of the agent state. Add the
+     endpoint to the agent protocol (a card that changes the spec), then the bundle carries real state.
+  2. Bridged `viaproxy.log` is unexercised: no bridged row runs in the M4 smoke, so the bundle path for it has no real-server
+     evidence. Run a bridged forced failure (for example `paper@1.20.4`) before M4 closes.
