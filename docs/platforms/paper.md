@@ -72,9 +72,10 @@
   `Bukkit.getConsoleSender()` and reads the output from a log4j appender (by reflection, calling thread only,
   `LogCapture`), best effort. Output logged from another thread is missed, for example `version`, which replies
   "Checking version, please wait..." and the result later.
-- **Game rules are snake_case from 26.1.** `randomTickSpeed` is `random_tick_speed`, `doDaylightCycle` is
-  `advance_time`, `doWeatherCycle` is `advance_weather`, `doMobSpawning` is `spawn_mobs`. The old names fail with
-  `Incorrect argument for command`. `PaperHost` picks the set by Minecraft major version (`GameRules`).
+- **Game rules are snake_case from 1.21.11** (corrected in T-M3-02; first seen on 26.1). `randomTickSpeed` is
+  `random_tick_speed`, `doDaylightCycle` is `advance_time`, `doWeatherCycle` is `advance_weather`, `doMobSpawning` is
+  `spawn_mobs`. The old names fail with `Incorrect argument for command`. `PaperHost` picks the set by Minecraft
+  version (`GameRules`).
 - **Enchant levels are capped at 255 by the server.** `addUnsafeEnchantment` with 255, 256, 1000 or 32767 all read
   back as 255 on Paper 26.3, in every stack. The agent passes levels through, so the server's value is the truth.
   The golden give case uses 255 for this reason (T-M1-05).
