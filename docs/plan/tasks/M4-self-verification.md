@@ -215,6 +215,8 @@ stays unticked until T-M4-05b lands.
   - invalid (a conformance-breaking cell override);
   - leak (state left behind).
 - Each test is expected to produce its verdict, and the expectation is asserted by a meta-test.
+- **Gap from T-M4-03:** the extension passes `ConformanceResult.pass(cell)` (`VerdictGate.judgePass`), so `INVALID`
+  cannot fire from it. The invalid test needs a conformance runner wired to `ConformanceCache` first.
 
 **Don't.**
 - Let these tests run in normal user-facing suites.
