@@ -129,7 +129,9 @@ M5 can run in parallel with M4 once M3 is done.
 - Add Purpur-specific API usage to the agent.
 
 **Acceptance.**
-- [ ] C01–C08 pass on the newest Purpur row and one older Purpur row.
+- [x] C01–C08 pass on the newest Purpur row and one older Purpur row. (`purpur@26.3` native and `purpur@1.21.11` bridged,
+  2026-11-08: C01–C08 pass, skipped 0 failures 0 errors 0; C-F01/C-F02 skip on the missing FOLIA_REGIONS capability.
+  Details in `docs/platforms/purpur.md`.)
 
 **Verify.**
 `./gradlew :conformance:run -Dproofstone.cells=purpur@latest`

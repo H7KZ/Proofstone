@@ -1,0 +1,16 @@
+# Purpur platform pack (T-M5-04). Reviewed line by line for Purpur, not copied from the Paper or Folia pack.
+# The enforced copy of the log patterns is ErrorLogGuard.Patterns.PURPUR (proofstone-core); keep the two in step.
+id: purpur
+family: bukkit
+host:
+  image: itzg/minecraft-server   # digests per Java tag in versions.yml (platforms.purpur.host)
+  type: PURPUR
+  build-env: PURPUR_BUILD        # itzg's start-deployPurpur reads PURPUR_BUILD, not PAPER_BUILD (PaperHost.buildEnv)
+capabilities:                    # declared; a cell holds one only when the agent reports its token
+  BUKKIT_EVENTS: events
+  CONSOLE: command
+log-patterns:
+  errors: []                     # no Purpur error pattern observed yet (docs/platforms/purpur.md, Gotchas)
+  allowlist:                     # only noise that a reviewed Purpur run showed; each entry says why
+    - pattern: "^T[0-9a-f]{8} moved too quickly! "
+      why: Reset teleport races the harness client's first move packets (seen on purpur@26.3, C02-C08). Harness clients only.

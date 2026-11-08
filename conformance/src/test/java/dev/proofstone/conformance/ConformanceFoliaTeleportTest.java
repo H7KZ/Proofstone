@@ -28,6 +28,7 @@ import dev.proofstone.api.Requires;
 // class a reasoned skip there, since only Folia has regions.
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
+@Matrix(platform = Platform.PURPUR, versions = {"latest"})
 @Requires(Capability.FOLIA_REGIONS)
 class ConformanceFoliaTeleportTest {
 

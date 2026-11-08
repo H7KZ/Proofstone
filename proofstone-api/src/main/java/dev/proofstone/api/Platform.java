@@ -5,5 +5,8 @@ public enum Platform {
     PAPER,
 
     /** Folia, Paper's regionised fork: no main thread, each region owns its data (docs/platforms/folia.md). */
-    FOLIA
+    FOLIA,
+
+    /** Purpur, a Paper fork with its own config and gameplay extras (docs/platforms/purpur.md). */
+    PURPUR
 }
