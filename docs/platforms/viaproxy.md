@@ -35,13 +35,28 @@ network, and never installs Via plugins in the server under test.
 ## Bridged rows observed (M5, 2026-11-08)
 Local real-server runs, one full `:conformance:run` per row, through this ViaProxy image:
 - Folia 1.21.11, 26.1.2 and 26.2 (C01 to C08, C-F01, C-F02 pass). Folia 26.3 is native.
-- Purpur 1.21.11 (C01 to C08 pass). Purpur 26.3 is native.
+- Purpur 1.20.6 and 1.21.11 (C01 to C08 pass, two runs on 1.20.6). Purpur 26.3 is native.
 - Spigot 1.8.8 and 1.21.11 (C01 to C08 pass, except one red C06 on 1.21.11, see [spigot.md](spigot.md)). Spigot 26.3 is native.
 - Bridged `SIMULATED_BEDROCK` is not held: a `.`-prefixed login stalls on 1.21.11 at this proxy, with no `[AUTH]` line.
   The cause is not identified. Details in [paper.md](paper.md), "Simulated Bedrock". No Bedrock client was joined through
   ViaProxy, so this image is not a Bedrock bridge.
 
 ## Gotchas
+
+### Bridged login stall (M5 follow-up, 2026-11-08)
+- **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,
+  Java 25) lists `--auth-method` (default NONE), `--proxy-online-mode` (default false), `--chat-signing`,
+  `--rewrite-handshake-packet`, `--ignore-protocol-translation-errors`, `--suppress-client-protocol-errors`, and no
+  flag that names a Bedrock prefix. The image bundles ViaBedrock (`BedrockProxyConnection`, `BedrockAccount`), which is
+  a likely place for a `.`-prefixed login to wait for Bedrock auth. Not verified: the `viaproxy.yml` in the jar root
+  is absent, so its option comments could not be read.
+- **Not reproduced in this follow-up.** Reproducing the `.Name` stall needs C-B01 on a bridged cell, which the
+  capability model does not allow (`SIMULATED_BEDROCK` is native-only), so a run needs a temporary override. Not
+  done: the time-box was used up. No fix, and the bridged prefixed login stays unsupported.
+- **A plain-name bridged join also stalls, once.** On folia@1.20.6 (run 1 of 2), `ConformanceFoliaTeleportTest` sent
+  `ClientIntention` and `Hello`, and then nothing for 30 s: no server login and no ViaProxy connection line. The
+  other 10 tests on that row joined. Read as the same family, but only seen once, so not proven. Folia 1.20.6 is not
+  in `versions.yml` (see `folia.md`). _folia 1.20.6 · 2026-11-08_
 
 > Version-span entries (1.8.8 to 26.3, bridged cells) were observed on local real-server runs through the Docker lock.
 > CI smoke is manual since [PR #40](https://github.com/H7KZ/Proofstone/pull/40) (billed Actions minutes), so no CI run

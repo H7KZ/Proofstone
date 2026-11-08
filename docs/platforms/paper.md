@@ -133,6 +133,7 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   `ClientIntention` and `Hello`. The default `T<hex>` client joins through the same proxy in the same run. So a bridged
   cell does not hold `SIMULATED_BEDROCK` (`CapabilityModel`), and C-B01 skips there with its reason. The cause is not
   identified (ViaProxy 3.4.15, `--auth-method NONE`). The 1.8.8 to 1.12.2 bridged rows are unverified. _1.21.11 · C-B01, 2026-11-08 (T-M5-06)_
+  M5 follow-up (2026-11-08): the image's CLI has no prefix option, and the image bundles ViaBedrock. Not reproduced, no fix; see [viaproxy.md](viaproxy.md) Gotchas.
 - **The harness's prefixed client logs `moved too quickly!` on its first move.** It is named `.<Name>` by the test, not
   `T<hex>`, so the Paper allowlist matches the prefixed form too (`ErrorLogGuard.Patterns.PAPER`). Only prefixed names
   match; a plain player's warning still fails the test. _26.3 · C-B01, 2026-11-08_

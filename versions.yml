@@ -51,7 +51,7 @@ platforms:
         java21: "sha256:04b5ee189f5f2c1992fa557e366cf2e4d09fe2abfbd57d2d1f977d8c038c1b98"
         java25: "sha256:e2fabc536673f8c6b343055c93f7a73e10caa79cd3368f645987593c65adf1e0"
     rows:
-      - { mc: "1.21.11", build: 14, sha256: "f52c408490a0225611e67907a3ca19f7e6da2c6bc899e715d5f46844e7103c39", protocol: 774, status: experimental, observed: "client oracle OK, RCON oracle unusable" }
+      - { mc: "1.21.11", build: 14,sha256: "f52c408490a0225611e67907a3ca19f7e6da2c6bc899e715d5f46844e7103c39", protocol: 774, status: experimental, observed: "client oracle OK, RCON oracle unusable" }
       - { mc: "26.1.2", build: 8, sha256: "607afd1c3320008e1ffd2eaee6780ace4419d5f8c527b75e79f259be79ebf57b", protocol: 775, status: experimental }
       - { mc: "26.2", build: 7, sha256: "128a634192261cd38bb4a5dc54075018a0f896fd6c6f529e37dca6e99e32b3b3", protocol: 776, status: experimental }
       - { mc: "26.3", build: 6, sha256: "3d0a694905ddd9ec956af52259d555274ab8d3191871296d7094c290b686920d", protocol: 777, status: experimental }
@@ -64,8 +64,9 @@ platforms:
         java25: "sha256:e2fabc536673f8c6b343055c93f7a73e10caa79cd3368f645987593c65adf1e0"
     rows:
       # Purpur's API gives md5 only. sha256 is computed from the downloaded jar and checked against that md5 (T-M5-04).
-      - { mc: "1.21.11", build: 2568, sha256: "ee199511bf0a970ee8459fe3a351703fec37293f00bc2de1c5cb746c7e4acc34", protocol: 774, status: experimental, observed: "T-M5-04 2026-11-08: md5 verified against api.purpurmc.org" }
-      - { mc: "26.3", build: 2657, sha256: "8438bbbf6a865cb5097eb13f54e016c07d9c12d2aca778d01a3be3a1e636b862", protocol: 777, status: experimental, observed: "T-M5-04 2026-11-08: md5 verified against api.purpurmc.org" }
+      - { mc: "1.20.6", build: 2233, sha256: "7d5410a978360a46faa76a288b1eab353135d8db16e40329a154402ec1b12d91", protocol: 766, status: required, observed: "M5 follow-up 2026-11-08: md5 d4ef6834... matches api.purpurmc.org; protocol from jar version.json" }
+      - { mc: "1.21.11", build: 2568,sha256: "ee199511bf0a970ee8459fe3a351703fec37293f00bc2de1c5cb746c7e4acc34", protocol: 774, status: required, observed: "T-M5-04 2026-11-08: md5 verified against api.purpurmc.org" }
+      - { mc: "26.3", build: 2657, sha256: "8438bbbf6a865cb5097eb13f54e016c07d9c12d2aca778d01a3be3a1e636b862", protocol: 777, status: required, observed: "T-M5-04 2026-11-08: md5 verified against api.purpurmc.org" }
   spigot:
     host:
       image: "itzg/minecraft-server"
@@ -90,6 +91,6 @@ platforms:
       # Manual per-row runs only (docs/platforms/spigot.md). No build number: the rev is the Minecraft version.
       # BuildTools jars differ between runs only in the Maven date line of pom.properties, so sha256 is a content digest, not the
       # jar's byte hash. A cache miss that builds a different digest fails loudly (docs/platforms/spigot.md).
-      - { mc: "1.8.8", sha256: "34091112f3f9f8c0e17cb79c88bf3c244801648e395eb4f0cb95eb8c27781c9b", protocol: 47, status: experimental, observed: "T-M5-05 2026-11-08: BuildTools 201 on java8, 3m31s" }
-      - { mc: "1.21.11", sha256: "4aae5835adcd683c9ed7b7a78851dec718173b6dff854f09e1c10f654c0d5ca0", protocol: 774, status: experimental, observed: "T-M5-05 2026-11-08: BuildTools 201 on java21 (manual build of the pinned rev, then cell run)" }
-      - { mc: "26.3", sha256: "22b5f5b31d000eed1dfbf21995a168ec93352a79842c34526b8b543cf086e78d", protocol: 777, status: experimental, observed: "T-M5-05 2026-11-08: BuildTools 201 on java25 (manual build of the pinned rev, then cell run)" }
+      - { mc: "1.8.8", sha256: "34091112f3f9f8c0e17cb79c88bf3c244801648e395eb4f0cb95eb8c27781c9b", protocol: 47, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java8, 3m31s" }
+      - { mc: "1.21.11", sha256: "4aae5835adcd683c9ed7b7a78851dec718173b6dff854f09e1c10f654c0d5ca0", protocol: 774, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java21 (manual build of the pinned rev, then cell run)" }
+      - { mc: "26.3", sha256: "22b5f5b31d000eed1dfbf21995a168ec93352a79842c34526b8b543cf086e78d", protocol: 777, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java25 (manual build of the pinned rev, then cell run)" }

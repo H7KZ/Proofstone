@@ -46,6 +46,17 @@ C07 runs on every row (all at or above 1.14).
 Also: `AgentContractIT` 25 of 25 on folia@26.3 (T-M5-02), and `:conformance:smoke` 4 tests, 0 failed, on the four rows.
 Each row has one full run. None is repeated, and no repeat was used to turn a red run green.
 
+## M5 follow-up (2026-11-08): folia@1.20.6 not added
+Tried as the older Folia row (build 6, channel ALPHA, Java 21, protocol 766 from the jar). Full `:conformance:run` twice,
+one Docker invocation each, XML read per run. Both runs red, on different tests, so the row is not in `versions.yml`:
+- Run 1: `ConformanceFoliaTeleportTest` (C-F02) `ClientDriverException: timed out joining ... after PT30S`. The transcript
+  shows `ClientIntention` and `ServerboundHelloPacket`, then nothing. The server log has no login, and the ViaProxy log has
+  no connection line. The other 10 tests on the row joined fine. Same symptom as the bridged prefixed stall (viaproxy.md).
+- Run 2: `C07GrindstoneTest` `AssertionFailedError: [the bare sword on the cursor] Expecting value to be true but was false`
+  (C07.java:55). Every other test passed, including C-F02.
+Not diagnosed. Two different reds on one row is an unexplained flake, so `folia` rows stay `experimental`. _folia 1.20.6 ·
+M5 follow-up_
+
 ## Gotchas
 - **Boot used to fail on every row.** `ProofstoneAgent.onEnable` called `Bukkit.getScheduler().scheduleSyncRepeatingTask`
   for the tick counter. Folia's `CraftScheduler` throws `UnsupportedOperationException` (there is no main thread), and
@@ -79,6 +90,8 @@ Each row has one full run. None is repeated, and no repeat was used to turn a re
 - Rows 1.19.4 to 1.21.10 and the other 26.x builds are unpinned and unrun.
 - Each row has one full run. Promotion to `required` is not done: ADR-0015 needs a maintainer decision here, because the
   allowlist entry above was added after a red run (smoke, 26.3). The four rows stay `experimental`.
+- **M5 follow-up (ADR-0015):** no C06 repeat was run on Folia, so there is no repeat evidence for this platform, and
+  folia@1.20.6 failed twice on different tests (above). No Folia row is promoted in this PR.
 - Cross-region teleports are not covered; reset and patch teleports are tested at the fixture spot only.
 - The exact Folia region-thread name is not recorded (C-F02 logs it per run).
 - Folia `SIMULATED_BEDROCK` is not declared and not run.
