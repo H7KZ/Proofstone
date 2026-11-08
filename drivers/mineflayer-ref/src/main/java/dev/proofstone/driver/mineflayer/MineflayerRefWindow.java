@@ -22,10 +22,17 @@ final class MineflayerRefWindow implements WindowSession {
 
     private final MineflayerRefSession session;
     private final int id;
+    /** Whether {@link MineflayerRefFault} corrupts this window's item views (the player inventory only). */
+    private final boolean faulty;
 
     MineflayerRefWindow(MineflayerRefSession session, int id) {
+        this(session, id, false);
+    }
+
+    MineflayerRefWindow(MineflayerRefSession session, int id, boolean faulty) {
         this.session = session;
         this.id = id;
+        this.faulty = faulty;
     }
 
     @Override
@@ -68,7 +75,7 @@ final class MineflayerRefWindow implements WindowSession {
         for (JsonNode stack : current().path("slots")) {
             out.add(MineflayerRefItems.view(stack));
         }
-        return out;
+        return faulty ? MineflayerRefFault.corrupt(out) : out;
     }
 
     @Override

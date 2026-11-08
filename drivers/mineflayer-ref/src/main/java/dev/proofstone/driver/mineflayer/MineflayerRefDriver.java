@@ -29,6 +29,12 @@ public final class MineflayerRefDriver implements ClientDriver {
      */
     static final String PROTOCOL_VERSION = "26.1.2";
 
+    /**
+     * The test-only driver fault switch (T-M4-06, self-tests section 3): {@code true} makes this driver report one extra
+     * point of damage on the player inventory, so a differential run reports {@code DISAGREE}. Off by default.
+     */
+    public static final String FAULT_PROPERTY = "proofstone.injectDriverFault";
+
     /** The sidecar's WebSocket port, as {@code images/mineflayer-ref/server.js} listens on it. */
     static final int SIDECAR_PORT = 8765;
 

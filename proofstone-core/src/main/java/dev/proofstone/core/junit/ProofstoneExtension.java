@@ -9,6 +9,7 @@ import dev.proofstone.core.cell.CellPlanner;
 import dev.proofstone.core.cell.CellSelector;
 import dev.proofstone.core.cell.Scope;
 import dev.proofstone.core.cell.VersionFamilies;
+import dev.proofstone.core.driver.ClientDriver;
 import dev.proofstone.core.host.Eula;
 import dev.proofstone.core.versions.VersionsCatalog;
 import java.lang.reflect.AnnotatedElement;
@@ -103,7 +104,32 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         List<Cell> cells = planCells(type, matrices, selector, planner, scope, families);
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
-        return cells.stream().map(cell -> new CellInvocation(cell, config, isolation, catalog));
+        boolean differential = DifferentialRun.enabled();
+        List<TestTemplateInvocationContext> invocations = new ArrayList<>();
+        for (Cell cell : cells) {
+            if (differential && !referenceNative(cell)) {
+                System.err.println("PROOFSTONE NOT DIFFERENTIAL (not run, not a pass): " + cell.platform() + "@"
+                        + cell.mc() + " is not the reference driver's native row");
+                continue;
+            }
+            for (String driverId : CellInvocation.driversFor(differential)) {
+                invocations.add(new CellInvocation(cell, config, isolation, catalog, driverId));
+            }
+        }
+        if (invocations.isEmpty()) {
+            throw new IllegalStateException(type.getName() + " has no cell for a differential run: the reference driver "
+                    + DifferentialRun.REFERENCE + " must be native on a selected cell. Select its row, for example "
+                    + "-Dproofstone.cells=paper@26.1.2.");
+        }
+        return invocations.stream();
+    }
+
+    /** Whether the reference driver speaks this cell's row natively: the differential run is only defined there. */
+    private static boolean referenceNative(Cell cell) {
+        ClientDriver reference = CellInvocation.findDriver(DifferentialRun.REFERENCE).orElseThrow(
+                () -> new IllegalStateException("-D" + DifferentialRun.PROPERTY + " needs the reference driver "
+                        + DifferentialRun.REFERENCE + " on the classpath"));
+        return DifferentialRun.referenceNative(cell.mc(), reference.protocolVersion());
     }
 
     /**
