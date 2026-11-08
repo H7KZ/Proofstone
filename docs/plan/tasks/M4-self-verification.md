@@ -250,10 +250,217 @@ after T-M4-05b (PR #53) landed the windows, blocks and items.
 - Implement the fixes here.
 
 **Acceptance.**
-- [ ] The review is written up, gap cards are created, and the measured costs are recorded.
+- [x] The review is written up, gap cards are created, and the measured costs are recorded. Evidence:
+  `docs/robustness.md` §4 (measured) and §5 (R1 to R16 review, X1 to X7); gap cards T-M4-09 to T-M4-15; local
+  `:examples:bad-tests:metaTest` run 2026-11-08 (1:16); `gh run view` timings for five M4 PR `gates` runs.
 
 **Verify.**
 `./gradlew docsCheck`
+
+### T-M4-09 · Repro bundles and verdict report complete (review gap)
+- tier: sonnet
+- depends: T-M4-07
+- modules: proofstone-core
+- adrs: 0006
+- specs: specs/self-tests.md, specs/test-api.md §7
+- test-first: yes
+
+**Goal.** Every non-PASS verdict leaves a complete bundle with a rerun command that reproduces it, and the machine-readable
+report exists at run time (robustness.md §5, R2, R5, R10, X2, X4).
+
+**Do.**
+- Write the bundle for a single-run VACUOUS and for any verdict from `judgePass`. Today `CellInvocation.afterEach` writes
+  it before `judgePass`, so the `VacuousE2E` run writes none.
+- Add `-Dproofstone.repeat`, `-Dproofstone.controlRun` and `-Dproofstone.injectConformanceFault` to `rerun.txt` when set.
+- Record host info (OS, Docker server version, Java) and the ViaProxy image digest and driver pins in the bundle.
+- Call `ReportWriter` and `JunitXml` at run end, so `build/proofstone/proofstone-report.json` exists (T-M4-01's Do list).
+- Show a FLAKY verdict on every repeat of that test, or list the verdicts per test in the report. Today only repeat 5 is
+  non-green in the XML.
+
+**Don't.**
+- Change any verdict rule in `VerdictEngine`.
+
+**Acceptance.**
+- [ ] `metaVacuous` writes a bundle for `VacuousE2E`, and its `rerun.txt` names `-Dproofstone.controlRun=true`.
+- [ ] `metaFlaky`'s `rerun.txt` names `-Dproofstone.repeat=5`, and running that command reproduces the flake.
+- [ ] `build/proofstone/proofstone-report.json` exists after `metaTest`, and a schema snapshot test covers it.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`, then
+check the bundle files and the report.
+
+### T-M4-10 · Full conformance per cell (review gap)
+- tier: sonnet
+- depends: T-M4-07
+- modules: proofstone-core, conformance
+- adrs: 0003
+- specs: specs/self-tests.md §1
+- test-first: yes
+
+**Goal.** INVALID fires on a broken window, inventory or agent round trip, not only on a broken `list` (robustness.md
+§5, R1, R3, R4, X6).
+
+**Do.**
+- Run the C03 to C08 scenarios of the conformance module in the per-cell check (`CellConformance`), once per cell per run
+  through `ConformanceCache`.
+- Run C03 (agent round trip) on every cell, and the window scenarios C04 to C08 on every bridged cell.
+- Record the added cost per cell in robustness.md §4.
+- Add C09 to C12, or record in the PR why each one is deferred.
+
+**Don't.**
+- Skip a scenario silently on a row. A scenario that does not apply (C07 before 1.14) keeps its reason.
+
+**Acceptance.**
+- [ ] A conformance-breaking override on the window scenario makes every test on that cell `INVALID` (a new bad test in
+  metaTest).
+- [ ] Real-server run on paper@26.3 and paper@26.1.2 (bridged): C01 to C08 pass, with XML `skipped="0" failures="0"
+  errors="0"` except the reasoned C07 skip.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run :examples:bad-tests:metaTest --no-parallel`
+
+### T-M4-11 · Differential integrity and coverage (review gap)
+- tier: sonnet
+- depends: T-M4-06
+- modules: proofstone-core, drivers/mineflayer-ref, versions.yml
+- adrs: 0004
+- specs: specs/self-tests.md §3
+- test-first: yes
+
+**Goal.** A differential run cannot pass by comparing nothing, its skips are visible, and its pins are right (robustness.md
+§5, R1, X1, X3, X5).
+
+**Do.**
+- Fail a differential test that recorded zero client observations. A test with no `DualAssert` must not be "equal".
+- Report `NOT DIFFERENTIAL` rows as JUnit skips with their reason, not only on stderr.
+- Correct `versions.yml` `mineflayer-ref` `max-native` from `"26.1"` to `26.1.2`, the protocol the driver speaks.
+- Record in `docs/platforms/` which rows the reference driver covers. Widening coverage changes the design, so it needs an
+  ADR challenge if the answer is to widen.
+
+**Don't.**
+- Change the comparison list in `DifferentialRun.canonicalItem`.
+
+**Acceptance.**
+- [ ] A test with no dual assertion fails under `-Dproofstone.differential=true` (unit test, plus a meta run if one is added).
+- [ ] A non-native row appears as a skipped testcase in the XML.
+- [ ] `lintVersions` and `validateVersions` pass with the corrected value.
+
+**Verify.**
+`./gradlew check docsCheck`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.
+
+### T-M4-12 · Agent state snapshot and wider leak detector (review gap)
+- tier: sonnet
+- depends: T-M4-02, T-M4-07
+- modules: platforms/bukkit/agent, proofstone-core, docs/specs
+- adrs: 0002, 0006
+- specs: specs/agent-protocol.md §2, specs/self-tests.md §4b
+- test-first: yes
+
+**Goal.** Bundles carry real agent state (ROADMAP M4 follow-up 1), and the leak detector sees more than four world rules
+(robustness.md §5, R6, X6).
+
+**Do.**
+- Implement `GET /v1/snapshot`. The agent-protocol spec lists it, and it returns `NOT_FOUND` today. Output must be
+  deterministic: loaded plugins, config snapshots, world rules, players with their inventory and XP. No timestamps.
+- Use the snapshot in `LeakDetector`, in addition to the gamerules.
+- Spec change in agent-protocol §2 (an additive endpoint). The agent stays Java 8 bytecode.
+
+**Don't.**
+- Put the agent token in the output. `BundleWriter` redacts it, but the endpoint must not rely on that.
+
+**Acceptance.**
+- [ ] `snapshot.json` of a real bundle holds the snapshot, not the `NOT_FOUND` error.
+- [ ] A new bad test that leaves a player's XP changed fails with `LEAK` (added to metaTest).
+- [ ] `AgentContractIT` stays green, with a new golden file for the endpoint.
+
+**Verify.**
+`./gradlew :platforms:bukkit:agent:integrationTest`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.
+
+### T-M4-13 · Harness test hardening (review gap)
+- tier: sonnet
+- depends: T-M4-07
+- modules: examples/bad-tests, proofstone-core
+- adrs: 0007
+- specs: specs/self-tests.md §4
+- test-first: yes
+
+**Goal.** `metaTest` asserts what its name says, per test, and runs its Docker work the way AGENTS.md section 4 requires
+(robustness.md §4, §5, R5, R15, X1).
+
+**Do.**
+- Decide, and record with XML timestamps, whether the five bad-test tasks may overlap inside one locked run. The T-M4-08
+  run overlapped them (starts within 0.11 s). If they must not, order them with `mustRunAfter`.
+- Assert per test: each bad test's verdict and its bundle, not "at least one failure per task".
+- Remove the `random draw` exemption in `metaFlaky`. Match the FLAKY message instead.
+- Report `NOT SELECTED` rows as JUnit skips. `ProofstoneExtension` prints them to stderr only today.
+- Measure a repeat run that re-boots per repeat (PER_TEST isolation). Repeats share one boot today, so boot races are not
+  covered. Record the cost, and keep or drop the mode.
+
+**Don't.**
+- Weaken a meta expectation to make it pass.
+
+**Acceptance.**
+- [ ] A unit test of the metaTest checker shows red when one bad test gives the wrong verdict.
+- [ ] The overlap question is answered in the PR with XML timestamps.
+- [ ] The repeat-with-boot cost is in robustness.md §4.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.
+
+### T-M4-14 · Assertion lint and negative pairs, or retire the claim (review gap)
+- tier: haiku
+- depends: T-M4-07
+- modules: build-logic, examples/bad-tests
+- adrs: 0007
+- specs: specs/self-tests.md §2
+- test-first: no
+
+**Goal.** Decide whether R2's assertion lint and paired-negative rule are real. Build them or remove them from the register
+(robustness.md §5, R2).
+
+**Do.**
+- Define "negative assertion" for `DualAssert` and AssertJ calls, for example checks that only use `isEmpty`, `isNull`
+  or `isFalse`.
+- Add a lint (in `docsCheck`, or an `archTest` rule) that fails a test class where every assertion is negative, unless
+  its method has `@ControlRun`.
+- If the lint is not worth it, change R2 in robustness.md to say so, and name the control run as the only check.
+
+**Don't.**
+- Lint the framework's own tests.
+
+**Acceptance.**
+- [ ] A fixture test with only negative assertions fails the lint. The current examples pass it.
+- [ ] `./gradlew check docsCheck` is green.
+
+**Verify.**
+`./gradlew check docsCheck`
+
+### T-M4-15 · Per-cell expect hook and per-pack error patterns (review gap)
+- tier: opus
+- depends: T-M4-07
+- modules: proofstone-api, proofstone-core, platforms/bukkit/agent
+- adrs: 0003, 0006
+- specs: specs/test-api.md, docs/platforms/paper.md
+- test-first: yes
+
+**Goal.** A wrong version mapping (R7) or a logged error (R9) fails a test. Folia's thread-check patterns (R8) come with the
+Folia row, before M5 (robustness.md §5).
+
+**Do.**
+- Add an additive per-cell `expect` hook to the test API. This is an `api-change`: regenerate `proofstone-api/api-baseline.txt`
+  deliberately and review the diff in `ApiSurfaceTest`. v0 signatures stay frozen.
+- Add per-pack error patterns to `ErrorLogGuard`. Each pack supplies its list. Paper keeps the current allowlist.
+- Document both in the test-api spec.
+
+**Don't.**
+- Change a frozen v0 signature. Additive only.
+
+**Acceptance.**
+- [ ] A bad test whose `expect` fails on a cell reports FAIL with the expect message (metaTest).
+- [ ] `ApiSurfaceTest` is green with the regenerated baseline.
+
+**Verify.**
+`./gradlew :proofstone-api:test :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.
 
 ### T-M4-99 · Milestone review M4
 - tier: sonnet
