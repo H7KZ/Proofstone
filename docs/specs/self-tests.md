@@ -85,12 +85,12 @@ section 5. This section is the short list, and it wins over the wording above un
 
 - **Section 1 (conformance):** only the `list` check runs per cell. C03 to C08 exist in the conformance module but are not
   run per cell, and C09 to C12 are not written. Card T-M4-10.
-- **Section 2 (control run):** a single-run VACUOUS writes no repro bundle, and the rerun file drops
-  `-Dproofstone.controlRun`. Card T-M4-09.
+- **Section 2 (control run):** done in T-M4-09. A single-run VACUOUS writes a bundle, and erun.txt names
+  `-Dproofstone.controlRun`.
 - **Section 3 (differential):** only client observations at `DualAssert` points are compared, so a test with no dual
   assertion cannot DISAGREE. Only paper@26.1.2 is a differential row. Card T-M4-11.
 - **Section 4 (flake detector):** repeats share the class server, so they do not repeat boots. FLAKY is shown on the
-  last repeat only. Card T-M4-09 (verdict visibility) and T-M4-13 (boot coverage).
+  last repeat only; the report lists every run's verdict (T-M4-09). Boot coverage: card T-M4-13.
 - **Section 4b (leak detector):** four world rules only. `GET /v1/snapshot` is still missing. Card T-M4-12.
 - **Section 5 (mutation check):** not built.
-- **Report file:** `proofstone-report.json` is not written at run time. Card T-M4-09.
+- **Report file:** written at run end by `RunReport` (T-M4-09). The bad-test `metaTest` merges the five tasks' reports.

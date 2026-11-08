@@ -64,22 +64,28 @@ tasks.test {
     badTestSetup()
     // The run-time cell selector, scope, control-run, flake-detector repeat count and differential switches reach the
     // test JVM from the Gradle command line (test-api spec section 1, self-tests sections 2, 3 and 4).
+    // injectConformanceFault is forwarded too, so the rerun.txt of an INVALID bundle reproduces from the command line.
     for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun", "proofstone.repeat",
-            "proofstone.differential")) {
+            "proofstone.differential", "proofstone.injectConformanceFault")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
     }
     // The differential bad test (T-M4-06) only means something in a differential run, where its reference driver is
     // faulted. A differential run runs only that package (the other bad tests have no cell on the native row), and
     // every other run leaves it out, so it never shows up in a normal bad-tests suite.
     val differential = providers.systemProperty("proofstone.differential").orNull == "true"
+    // A rerun.txt command names its test with --tests. That explicit filter selects the bad test even when the whole task
+    // excludes its package, so the printed command reproduces the verdict (T-M4-09).
+    val explicitTests = gradle.startParameter.taskRequests.flatMap { it.args }.any { it == "--tests" }
     if (differential) {
         include("**/differential/**")
         systemProperty("proofstone.injectDriverFault", "true")
-    } else {
+    } else if (!explicitTests) {
         exclude("**/differential/**")
     }
     // The invalid and leak bad tests (T-M4-07) fail on purpose in every run, so only metaTest runs them.
-    exclude("**/invalid/**", "**/leak/**")
+    if (!explicitTests) {
+        exclude("**/invalid/**", "**/leak/**")
+    }
 }
 
 /**
@@ -116,7 +122,15 @@ badRuns.forEach { run ->
         // A bad test fails on purpose: metaTest judges its failure, so Gradle does not fail the build here.
         ignoreFailures = true
         reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/${run.task}"))
+        // Each task is its own JVM, so each writes its own proofstone-report.json; metaTest merges them (T-M4-09).
+        val reportDir = layout.buildDirectory.dir("proofstone-meta/${run.task}").get().asFile
+        systemProperty("proofstone.reportDir", reportDir.absolutePath)
+        doFirst { reportDir.deleteRecursively() }
     }
+}
+
+val badRunReportDirs: Map<String, File> = badRuns.associate { run ->
+    run.task to layout.buildDirectory.dir("proofstone-meta/${run.task}").get().asFile
 }
 
 // Runs every bad test with its switch and asserts its verdict. It needs Docker and the EULA; run it through
@@ -129,6 +143,8 @@ tasks.register("metaTest") {
     // Local copies, so the action captures only these values and not the script.
     val expectations = badRunExpectations
     val dirsByTask = badRunDirs
+    val reportDirsByTask = badRunReportDirs
+    val mergedDir = layout.buildDirectory.dir("proofstone").get().asFile
     doLast {
         val problems = mutableListOf<String>()
         val factory = DocumentBuilderFactory.newInstance()
@@ -179,6 +195,30 @@ tasks.register("metaTest") {
                 problems += "$task: no test produced $verdict"
             }
         }
+        // One report for the whole meta run (T-M4-09): every task's own results, in the report's cell and test order.
+        val results = mutableListOf<Map<String, Any?>>()
+        for ((task, _) in expectations) {
+            val file = File(reportDirsByTask.getValue(task), "proofstone-report.json")
+            if (!file.isFile) {
+                problems += "$task: no proofstone-report.json, so its verdicts are missing from the report"
+                continue
+            }
+            val parsed = groovy.json.JsonSlurper().parse(file) as Map<*, *>
+            @Suppress("UNCHECKED_CAST")
+            results += (parsed["results"] as List<Map<String, Any?>>)
+        }
+        val sorted = results.sortedWith(compareBy<Map<String, Any?>>({ it["cell"] as String }, { it["test"] as String }))
+        val merged = linkedMapOf<String, Any?>(
+            "schema" to "proofstone-report/1",
+            "green" to (sorted.isNotEmpty() && sorted.all { it["green"] == true }),
+            "summary" to listOf("PASS", "FAIL", "INVALID", "VACUOUS", "FLAKY", "DISAGREE", "SKIPPED")
+                .associateWith { verdict -> sorted.count { it["verdict"] == verdict } },
+            "results" to sorted,
+        )
+        val mergedFile = File(mergedDir, "proofstone-report.json")
+        mergedFile.parentFile.mkdirs()
+        mergedFile.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(merged)) + "\n")
+        println("metaTest: merged report " + mergedFile)
         if (problems.isNotEmpty()) {
             throw GradleException("metaTest is red:\n" + problems.joinToString("\n"))
         }

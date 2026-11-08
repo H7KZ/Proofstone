@@ -13,8 +13,10 @@ import dev.proofstone.core.host.LeakDetector;
 import dev.proofstone.core.host.PaperHostOptions;
 import dev.proofstone.core.host.ViaProxyHost;
 import dev.proofstone.core.verdict.Attempt;
+import dev.proofstone.core.verdict.CellResult;
 import dev.proofstone.core.verdict.ConformanceCache;
 import dev.proofstone.core.verdict.ConformanceResult;
+import dev.proofstone.core.verdict.Verdict;
 import dev.proofstone.core.versions.VersionsCatalog;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -62,6 +64,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private static final String STATE = "state";
     /** The root-store key of the conformance cache: one per run, so each cell's conformance runs once (section 1). */
     private static final String CONFORMANCE = "conformance";
+    /** The root-store key of the run's report collector (RunReport). */
+    private static final String REPORT = "report";
 
     private final Cell cell;
     private final Proofstone config;
@@ -198,6 +202,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 if (verdict != null) {
                     throw verdict;
                 }
+            } else {
+                // No server, so no bundle: the report still counts the run as the failure it was.
+                String reason = context.getExecutionException().map(CellInvocation::detail)
+                        .orElse("the server or the client did not start; see the failure reported for this run");
+                report(context, new CellResult(reportName(context), cellId(), Verdict.FAIL, reason, null, 1));
             }
             return;
         }
@@ -230,12 +239,20 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 failure = failure == null ? verdict : combine(verdict, failure);
             }
         }
+        // The run's own outcome, before the verdict rules: a VACUOUS or DISAGREE verdict is resolved from it.
+        Attempt outcome = failure == null && context.getExecutionException().isEmpty() ? Attempt.pass()
+                : Attempt.fail(detail(failure != null ? failure : context.getExecutionException().get()));
+        // Judged before the bundle, so a single-run VACUOUS has a bundle with its rerun command (T-M4-09).
+        if (repeats == 1 && failure == null && context.getExecutionException().isEmpty()) {
+            failure = VerdictGate.judgePass(context.getRequiredTestMethod(), cellId(), controlRun,
+                    state.conformance);
+        }
         // Before the restore, so the bundle sees the config the test left behind; the server is still up. A flake run
         // keeps every run's bundle, so a FLAKY report has the transcripts of the runs that passed as well.
         if (repeats > 1 || failure != null || context.getExecutionException().isPresent()) {
             try {
-                Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0,
-                        differential ? driverId : null);
+                Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0, driverId,
+                        differential, catalog);
                 if (disagreement != null) {
                     DifferentialRun.writeEvidence(bundle, disagreement, state.host.agentToken());
                 }
@@ -243,12 +260,6 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             } catch (RuntimeException e) {
                 failure = combine(failure, new IllegalStateException("cannot write the repro bundle", e));
             }
-        }
-        // Judged only for a pass of a single run: a failure or skip already has its verdict from JUnit. A flake run
-        // judges all its runs together, after the last one (see below).
-        if (repeats == 1 && failure == null && context.getExecutionException().isEmpty()) {
-            failure = VerdictGate.judgePass(context.getRequiredTestMethod(), cellId(), controlRun,
-                    state.conformance);
         }
         for (String plugin : state.patchedPlugins) {
             try {
@@ -277,6 +288,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 }
                 failure = verdict;
             }
+        } else {
+            report(context, settle(VerdictGate.single(reportName(context), context.getRequiredTestMethod(), cellId(),
+                    controlRun, outcome, disagreement != null, state.conformance), failure));
         }
         // The INVALID failure was already thrown by beforeEach, so it is not thrown twice.
         if (failure != null && failure == state.invalid) {
@@ -338,7 +352,35 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             return null;
         }
         context.getRoot().getStore(NAMESPACE).remove(key);
+        report(context, VerdictGate.repeated(reportName(context), test, cellId(), controlRun, runs, conformance));
         return VerdictGate.judgeRepeats(test, cellId(), controlRun, runs, conformance);
+    }
+
+    /**
+     * The test's name in the report: the fully qualified class and method, plus the driver of a differential run, so
+     * each driver's run is its own row (the report holds one row per test, cell and driver).
+     */
+    private String reportName(ExtensionContext context) {
+        String name = context.getRequiredTestClass().getName() + "." + context.getRequiredTestMethod().getName();
+        return differential ? name + " [" + driverId + "]" : name;
+    }
+
+    /** Adds one verdict to the run's report, which is written when the run ends (T-M4-09, X2). */
+    private void report(ExtensionContext context, CellResult result) {
+        RunReport report = context.getRoot().getStore(NAMESPACE).getOrComputeIfAbsent(REPORT,
+                key -> new RunReport(RunReport.defaultDirectory()), RunReport.class);
+        report.record(result);
+    }
+
+    /**
+     * A PASS whose own teardown then failed is reported as a FAIL: the test is red in JUnit, so the report never shows
+     * it green.
+     */
+    private static CellResult settle(CellResult verdict, Throwable failure) {
+        if (verdict.verdict() == Verdict.PASS && failure != null) {
+            return new CellResult(verdict.test(), verdict.cell(), Verdict.FAIL, detail(failure), null, 1);
+        }
+        return verdict;
     }
 
     private static boolean declaresClient(ExtensionContext context) {
