@@ -3,7 +3,10 @@ package dev.proofstone.core.junit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.proofstone.core.cell.Cell;
+import dev.proofstone.core.driver.ClientDriver;
 import dev.proofstone.core.host.PaperHost;
+import dev.proofstone.core.versions.ImagePin;
+import dev.proofstone.core.versions.VersionsCatalog;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.testcontainers.DockerClientFactory;
 
 /**
  * The repro bundle of a test that did not pass (glossary: Repro bundle). It is written to
@@ -35,40 +39,34 @@ final class BundleWriter {
     static final String DRIVER_FAULT = "proofstone.injectDriverFault";
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    /** Everything a bundle holds. {@code viaproxyLog} is {@code null} for an unbridged cell. */
+    /**
+     * Everything a bundle holds. {@code viaproxyLog} is {@code null} for an unbridged cell. {@code host} is the rendered
+     * host.json: OS, Java, Docker server version and the pins of the run.
+     */
     record Contents(String serverLog, String viaproxyLog, List<String> agentTranscript,
-            List<String> driverTranscript, Cell cell, String snapshot, String rerun, String secret) {
+            List<String> driverTranscript, Cell cell, String snapshot, String host, String rerun, String secret) {
     }
 
     private BundleWriter() {
     }
 
-    /** Captures the bundle of the test in {@code context}. Called from afterEach, before the server is torn down. */
-    static Path capture(ExtensionContext context, Cell cell, TestState state) {
-        return capture(context, cell, state, 0, null);
-    }
-
     /**
-     * Captures the bundle of one run. In a flake detector run ({@code -Dproofstone.repeat}) every run gets its own
-     * directory, {@code <TestClass>.<method>.r<N>}, so a FLAKY report keeps the transcripts of all runs.
+     * Captures the bundle of one run. Called from afterEach, before the server is torn down. In a flake detector run
+     * ({@code -Dproofstone.repeat}) every run gets its own directory, {@code <TestClass>.<method>.r<N>}, so a FLAKY
+     * report keeps the transcripts of all runs.
      *
      * @param repetition the run's number from 1 to N, or 0 when the test runs once
+     * @param driverId the driver of this run; a differential run keeps each driver's bundle under {@code <test>/<driver>/}
+     * @param differential whether this run is one half of a differential run
      */
-    static Path capture(ExtensionContext context, Cell cell, TestState state, int repetition) {
-        return capture(context, cell, state, repetition, null);
-    }
-
-    /**
-     * As {@link #capture(ExtensionContext, Cell, TestState, int)}. A differential run passes its driver id, so the two
-     * runs of one test keep separate bundles, under {@code <test>/<driver>/}.
-     */
-    static Path capture(ExtensionContext context, Cell cell, TestState state, int repetition, String driverId) {
+    static Path capture(ExtensionContext context, Cell cell, TestState state, int repetition, String driverId,
+            boolean differential, VersionsCatalog catalog) {
         String test = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
         if (repetition > 0) {
             test += ".r" + repetition;
         }
         Path dir = ROOT.resolve(cell.platform() + "@" + cell.mc()).resolve(test);
-        if (driverId != null) {
+        if (differential) {
             dir = dir.resolve(driverId);
         }
         List<String> driver = state.client == null ? List.of() : state.client.transcript();
@@ -79,6 +77,7 @@ final class BundleWriter {
                 driver,
                 cell,
                 snapshot(state.host),
+                hostInfo(catalog, driverId, state.proxy != null),
                 rerun(context, cell),
                 state.host.agentToken()));
     }
@@ -98,6 +97,7 @@ final class BundleWriter {
                 .map(line -> JSON.createObjectNode().put("line", line).toString()).toList()));
         files.put("cell.json", JSON.valueToTree(contents.cell()).toPrettyString() + "\n");
         files.put("snapshot.json", contents.snapshot() + "\n");
+        files.put("host.json", contents.host() + "\n");
         files.put("rerun.txt", contents.rerun());
         deleteTree(dir);
         try {
@@ -147,26 +147,74 @@ final class BundleWriter {
             throw new IllegalStateException("system property " + ProofstoneExtension.REPO_ROOT + " is not set");
         }
         String test = context.getRequiredTestClass().getName() + "." + context.getRequiredTestMethod().getName();
+        return rerunCommand(gradleTask(Path.of(root), Path.of("")), test, cell, switches());
+    }
+
+    /**
+     * The command for one test on one cell. Every switch is passed, so the rerun reproduces the verdict: a repeat, a
+     * control run, a conformance fault or a differential run only fails the same way with its switch on (T-M4-09, X4).
+     *
+     * @param gradleTask the Gradle test task, for example {@code :examples:bad-tests:test}
+     * @param switches the system properties to pass, name to value; a null value is not allowed
+     */
+    static String rerunCommand(String gradleTask, String test, Cell cell, Map<String, String> switches) {
         StringBuilder command = new StringBuilder("bash scripts/dockerlock.sh ./gradlew ")
-                .append(gradleTask(Path.of(root), Path.of("")))
+                .append(gradleTask)
                 .append(" --tests '").append(test).append('\'')
                 .append(" -Dproofstone.cells=").append(cell.platform()).append('@').append(cell.mc());
-        // A forced run reproduces only with its flag, so the flag is part of the command.
-        String forced = System.getProperty(FORCE_FAIL);
-        if (forced != null) {
-            command.append(" -D").append(FORCE_FAIL).append('=').append(forced);
-        }
-        // A differential bundle is only reproduced by a differential run of the same test, with the reference driver
-        // faulted when the fault switch was on (T-M4-06, MineflayerRefDriver.FAULT_PROPERTY).
-        if (DifferentialRun.enabled()) {
-            command.append(" -D").append(DifferentialRun.PROPERTY).append("=true");
-        }
-        String fault = System.getProperty(DRIVER_FAULT);
-        if (fault != null) {
-            command.append(" -D").append(DRIVER_FAULT).append('=').append(fault);
+        for (Map.Entry<String, String> entry : switches.entrySet()) {
+            command.append(" -D").append(entry.getKey()).append('=').append(entry.getValue());
         }
         return "# Set PROOFSTONE_ACCEPT_EULA=true in the environment for this command; it is never written to a file.\n"
                 + command + " --no-parallel\n";
+    }
+
+    /** The switches that were set on this run, in a fixed order, so a rerun carries every one of them. */
+    private static Map<String, String> switches() {
+        Map<String, String> switches = new LinkedHashMap<>();
+        for (String name : List.of(FORCE_FAIL, DifferentialRun.PROPERTY, DRIVER_FAULT, FlakeDetector.REPEAT,
+                VerdictGate.CONTROL_RUN, CellConformance.INJECT)) {
+            String value = System.getProperty(name);
+            if (value != null) {
+                switches.put(name, value);
+            }
+        }
+        return switches;
+    }
+
+    /**
+     * The host and the pins of the run (T-M4-09): OS, Java, the Docker server version, the driver and, when the cell is
+     * bridged, the ViaProxy image. A value that cannot be read is written as its error, never left out.
+     */
+    static String hostInfo(VersionsCatalog catalog, String driverId, boolean bridged) {
+        ObjectNode node = JSON.createObjectNode();
+        node.put("os", System.getProperty("os.name") + " " + System.getProperty("os.version") + " ("
+                + System.getProperty("os.arch") + ")");
+        node.put("java", System.getProperty("java.version") + " (" + System.getProperty("java.vendor") + ")");
+        node.put("docker", dockerVersion());
+        ObjectNode driver = node.putObject("driver");
+        driver.put("id", driverId);
+        ClientDriver found = CellInvocation.findDriver(driverId).orElse(null);
+        if (found == null) {
+            driver.put("protocol", "driver " + driverId + " is not on the classpath");
+        } else {
+            driver.put("protocol", found.protocolVersion());
+        }
+        if (bridged) {
+            ImagePin pin = catalog.driverImage("viaproxy");
+            node.putObject("viaproxy").put("image", pin.image()).put("digest", pin.digest());
+        } else {
+            node.putNull("viaproxy");
+        }
+        return node.toPrettyString();
+    }
+
+    private static String dockerVersion() {
+        try {
+            return DockerClientFactory.instance().client().versionCmd().exec().getVersion();
+        } catch (RuntimeException e) {
+            return "unavailable: " + e.getMessage();
+        }
     }
 
     /** The agent's full-state dump (agent-protocol §2). A failure is recorded in the file, not left out. */

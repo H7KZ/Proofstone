@@ -281,9 +281,13 @@ report exists at run time (robustness.md §5, R2, R5, R10, X2, X4).
 - Change any verdict rule in `VerdictEngine`.
 
 **Acceptance.**
-- [ ] `metaVacuous` writes a bundle for `VacuousE2E`, and its `rerun.txt` names `-Dproofstone.controlRun=true`.
-- [ ] `metaFlaky`'s `rerun.txt` names `-Dproofstone.repeat=5`, and running that command reproduces the flake.
-- [ ] `build/proofstone/proofstone-report.json` exists after `metaTest`, and a schema snapshot test covers it.
+- [x] `metaVacuous` writes a bundle for `VacuousE2E`, and its `rerun.txt` names `-Dproofstone.controlRun=true`. Evidence:
+  `metaTest` 2026-11-08 on paper@26.3, `examples/bad-tests/build/proofstone/paper@26.3/VacuousE2E.aFreshPlayerHasNoExperienceLevel/`
+  (all bundle files, `host.json` with Docker 29.9.2 and Java 21). Its printed rerun reproduced `VACUOUS` (run locally).
+- [x] `metaFlaky`'s `rerun.txt` names `-Dproofstone.repeat=5`, and running that command reproduces the flake. Evidence: the printed
+  command gave `FLAKY FlakyE2E.theOutcomeOfThisRunIsRandom ... over 5 runs: verdicts differ across 5 runs: PASS, FAIL` on repeat 5/5.
+- [x] `build/proofstone/proofstone-report.json` exists after `metaTest`, and a schema snapshot test covers it. Evidence: merged report
+  of all five tasks (verdicts PASS, DISAGREE, FAIL, FLAKY, VACUOUS, INVALID); `ReportWriterTest` golden snapshot.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`, then

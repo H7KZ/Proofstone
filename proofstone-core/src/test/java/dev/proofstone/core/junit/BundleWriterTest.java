@@ -33,6 +33,7 @@ class BundleWriterTest {
                 List.of("12:00:00 handshake", "12:00:01 " + TOKEN),
                 CELL,
                 "{\"error\":\"not found\"}\n",
+                "{\"os\":\"Windows 11\",\"docker\":\"29.9.2\",\"viaproxy\":{\"digest\":\"sha256:46ee\"}}\n",
                 "bash scripts/dockerlock.sh ./gradlew :examples:smoke:test\n",
                 TOKEN);
     }
@@ -66,9 +67,34 @@ class BundleWriterTest {
 
         assertThat(Files.list(dir).map(p -> p.getFileName().toString()).toList()).containsExactlyInAnyOrder(
                 "server.log", "viaproxy.log", "agent-transcript.jsonl", "driver-transcript.jsonl", "cell.json",
-                "snapshot.json", "rerun.txt");
+                "snapshot.json", "host.json", "rerun.txt");
         assertThat(Files.readString(dir.resolve("cell.json"))).contains("\"mc\" : \"1.8.8\"", "\"sha256\"");
         assertThat(Files.readString(dir.resolve("rerun.txt"))).contains("examples:smoke:test");
+    }
+
+    @Test
+    void theHostFileRecordsTheHostAndThePins() throws IOException {
+        Path dir = BundleWriter.write(tmp.resolve("bundle"), contents("log", "viaproxy log"));
+
+        assertThat(Files.readString(dir.resolve("host.json"))).contains("\"docker\"", "\"digest\"");
+    }
+
+    @Test
+    void aRerunNamesEveryConfiguredSwitchThatReproducesTheVerdict() {
+        String command = BundleWriter.rerunCommand(":examples:bad-tests:test", "dev.x.FlakyE2E.theOutcome", CELL,
+                java.util.Map.of(FlakeDetector.REPEAT, "5", VerdictGate.CONTROL_RUN, "true",
+                        CellConformance.INJECT, "true"));
+
+        assertThat(command).contains("--tests 'dev.x.FlakyE2E.theOutcome'", "-Dproofstone.cells=paper@1.8.8",
+                "-Dproofstone.repeat=5", "-Dproofstone.controlRun=true",
+                "-Dproofstone.injectConformanceFault=true", "--no-parallel");
+    }
+
+    @Test
+    void aRerunOmitsASwitchThatWasNotSet() {
+        String command = BundleWriter.rerunCommand(":test", "dev.x.T.m", CELL, java.util.Map.of());
+
+        assertThat(command).doesNotContain("-Dproofstone.repeat", "-Dproofstone.controlRun");
     }
 
     @Test
@@ -88,7 +114,7 @@ class BundleWriterTest {
     @Test
     void theWriterRefusesToWriteWithoutTheTokenToRedact() {
         assertThatThrownBy(() -> BundleWriter.write(tmp.resolve("bundle"),
-                new BundleWriter.Contents("log", null, List.of(), List.of(), CELL, "{}", "", " ")))
+                new BundleWriter.Contents("log", null, List.of(), List.of(), CELL, "{}", "{}", "", " ")))
                 .isInstanceOf(IllegalStateException.class);
     }
 
