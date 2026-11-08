@@ -122,9 +122,9 @@ to T-M4-15. Cards are not implemented here.
 | R4 | Partly, manual | A bump PR passes `gates`, which has no Docker. | No real-server gate runs on a bump PR. `smoke` is manual, so conformance on the newest version is a local step. This is a residual risk by design (CI cost). | 10 and a maintainer decision |
 | R5 | Partly | Repeat-N works: `metaFlaky` gives FLAKY. | Repeats share the class server, so boot-level races are not repeated. In the XML, repeats 1, 2 and 4 show green testcases, and FLAKY is on repeat 5 only. The flake detector has no nightly job yet. | 09, 13 |
 | R6 | Partly | The leak detector gives LEAK for `random_tick_speed` (`metaLeak`). | It reads four world rules only (`GameRules.names`). `GET /v1/snapshot` is missing, so every bundle's `snapshot.json` holds a `NOT_FOUND` error. Player, inventory and config leaks are not seen. | 12 |
-| R7 | Not built | None. | No per-cell `expect` hook in `proofstone-api`. | 15 |
+| R7 | Built (T-M4-15) | `@Expect` hook in `proofstone-api`, checked per cell after the body; a wrong expectation is `FAIL`, shown by `metaExpect`. | No suite uses it yet, so a real version mapping is not guarded until a user suite adds one. | none |
 | R8 | Not built | None. | No Folia row has booted (ROADMAP M3 open item 5). No thread-check patterns exist. | 15 (before M5) |
-| R9 | Partly | `ErrorLogGuard` with a static allowlist, covered by `ErrorLogFailsTheTestE2E`. | No per-pack error-pattern list. | 15 |
+| R9 | Built (T-M4-15) | `ErrorLogGuard` takes each pack's allowlist and error patterns; Paper's allowlist, covered by `ErrorLogFailsTheTestE2E`. | No Folia list yet (it comes with the Folia row, before M5). | M5 |
 | R10 | Partly | No bind mounts. Image digests are pinned. No bundle holds the agent token (checked: only the redaction comment in `rerun.txt`). | The bundle has no host info (OS, Docker, Java). `cell.json` has no ViaProxy digest and no driver pins. | 09 |
 | R11 | Not built | Expected at M5. | Spigot pack not built. | M5 |
 | R12 | Not reviewed | `Cell.sha256` is recorded. | The download and cache path was not reviewed in this card. | none |

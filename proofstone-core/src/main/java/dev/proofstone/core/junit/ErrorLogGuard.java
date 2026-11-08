@@ -10,19 +10,42 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * Fails a test for the server errors logged while it ran (robustness R9). A record counts when it is WARN or worse
- * and matches nothing on the allowlist. The allowlist holds known vanilla noise only; an unknown record is never
- * skipped, because "no errors" must mean no errors.
+ * Fails a test for the server errors logged while it ran (robustness R9). A record counts when it is WARN or worse and
+ * is not allowed: it matches an error pattern of its platform pack, or it matches nothing on that pack's allowlist. The
+ * allowlist holds known vanilla noise only; an unknown record is never skipped, because "no errors" must mean no errors.
  */
 final class ErrorLogGuard {
 
-    /** Vanilla noise, each with the reason it is allowed (docs/platforms/paper.md, Gotchas). */
-    static final Map<Pattern, String> ALLOWLIST = Map.of(
-            Pattern.compile("No key layers in MapLike"), "flat world without generator settings, 1.21.11+",
-            // Only the harness's own clients, named by CellInvocation.joinClient ("T" and 8 hex digits). The reset
-            // teleport races the client's first movement packets, and the Log4j capture (T-M2-08) shows the server's
-            // anti-cheat WARN for it. Any other player, or a plugin's own message, still fails the test.
-            Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move");
+    /**
+     * The log patterns one platform pack supplies (robustness R8, R9). Each pack owns its list: a platform without one
+     * fails loudly in {@link #of}, it never gets a silent default.
+     *
+     * @param platform     the platform id, for example {@code paper}
+     * @param allowlist    known noise, each pattern with the reason it is allowed
+     * @param errorPatterns records that fail the test even when the allowlist matches, such as a thread-check violation
+     */
+    record Patterns(String platform, Map<Pattern, String> allowlist, List<Pattern> errorPatterns) {
+
+        /**
+         * Paper (docs/platforms/paper.md, Gotchas): vanilla noise only, and no error patterns yet.
+         */
+        static final Patterns PAPER = new Patterns("paper", Map.of(
+                Pattern.compile("No key layers in MapLike"), "flat world without generator settings, 1.21.11+",
+                // Only the harness's own clients, named by CellInvocation.joinClient ("T" and 8 hex digits). The reset
+                // teleport races the client's first movement packets, and the Log4j capture (T-M2-08) shows the
+                // server's anti-cheat WARN for it. Any other player, or a plugin's own message, still fails the test.
+                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                List.of());
+
+        /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
+        static Patterns of(String platform) {
+            return switch (platform) {
+                case "paper" -> PAPER;
+                default -> throw new IllegalStateException("no log patterns for platform " + platform
+                        + ": its platform pack must supply its own list (robustness R9)");
+            };
+        }
+    }
 
     /** A cursor value past any record, so reading from it returns no records and the current end. */
     private static final long END = Long.MAX_VALUE;
@@ -37,16 +60,16 @@ final class ErrorLogGuard {
     }
 
     /** @throws AssertionError naming every unexpected record logged since the cursor */
-    static void check(PaperHost host, long cursor) {
-        String problem = describe(read(host, cursor, "WARN").records());
+    static void check(PaperHost host, long cursor, Patterns patterns) {
+        String problem = describe(read(host, cursor, "WARN").records(), patterns);
         if (problem != null) {
             throw new AssertionError(problem);
         }
     }
 
-    /** The failure text for the records that are not allowlisted, or {@code null} when there are none. */
-    static String describe(List<LogRecord> records) {
-        List<LogRecord> unexpected = records.stream().filter(record -> !allowed(record)).toList();
+    /** The failure text for the records that are not allowed, or {@code null} when there are none. */
+    static String describe(List<LogRecord> records, Patterns patterns) {
+        List<LogRecord> unexpected = records.stream().filter(record -> !allowed(record, patterns)).toList();
         if (unexpected.isEmpty()) {
             return null;
         }
@@ -62,8 +85,14 @@ final class ErrorLogGuard {
         return text.toString();
     }
 
-    static boolean allowed(LogRecord record) {
-        for (Pattern pattern : ALLOWLIST.keySet()) {
+    /** An error pattern wins over the allowlist: a record that matches one is never allowed. */
+    static boolean allowed(LogRecord record, Patterns patterns) {
+        for (Pattern pattern : patterns.errorPatterns()) {
+            if (pattern.matcher(record.message()).find()) {
+                return false;
+            }
+        }
+        for (Pattern pattern : patterns.allowlist().keySet()) {
             if (pattern.matcher(record.message()).find()) {
                 return true;
             }

@@ -460,8 +460,12 @@ Folia row, before M5 (robustness.md §5).
 - Change a frozen v0 signature. Additive only.
 
 **Acceptance.**
-- [ ] A bad test whose `expect` fails on a cell reports FAIL with the expect message (metaTest).
-- [ ] `ApiSurfaceTest` is green with the regenerated baseline.
+- [x] A bad test whose `expect` fails on a cell reports FAIL with the expect message (metaTest). Evidence:
+  `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel` on
+  paper@26.3, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, LEAK, FAIL)", BUILD
+  SUCCESSFUL; `metaExpect` XML tests=2 skipped=0 failures=1 (the wrong expectation FAILs with its message, the holding one passes).
+- [x] `ApiSurfaceTest` is green with the regenerated baseline. Evidence: baseline diff is 4 insertions, 0 deletions;
+  `:proofstone-api:test :proofstone-core:test` BUILD SUCCESSFUL, no failing or skipped XML.
 
 **Verify.**
 `./gradlew :proofstone-api:test :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.

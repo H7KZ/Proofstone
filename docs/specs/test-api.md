@@ -194,3 +194,37 @@ These appear in the sketches and are **not** part of the contract. Each needs an
 - Test hygiene: the world fixture region reset and the leak detector (T-M2-08 left them out).
 - `Cell.capabilities()`, `Cell.driver()`, `@Requires` and `Capability`.
 - Verdict reporting (`serverOnlyReasons` is its stand-in).
+
+## 9. Per-cell expectations and error patterns (T-M4-15, post-v0 additive)
+
+Added by T-M4-15 as an `api-change`: `CellExpectation` and `Expect` are new members of `dev.proofstone.api`, and
+`api-baseline.txt` gains exactly those four lines. No frozen v0 signature changed.
+
+```java
+public class SmokeE2E {
+    public static final class NmsModuleOnThisVersion implements CellExpectation {
+        @Override public void check(Cell cell, Agent agent) {
+            // read the server (observe only), then assert on what the suite expects for cell.version()
+        }
+    }
+
+    @CellTest
+    @Expect(NmsModuleOnThisVersion.class)       // or on the class: every @CellTest in it
+    void scenario(Agent agent) { ... }
+}
+```
+
+- **Where it runs.** After the test body and the log check, on each cell the test runs on. It runs only when the test
+  is otherwise green, and before the leak detector. A class-level and a method-level `@Expect` both run, class first.
+- **Verdict.** A failure throws, and any exception counts. The test is reported `FAIL` with the message
+  `FAIL expect <class> on <platform>@<version>: <message>`. A class that cannot be created (it needs a public
+  no-argument constructor) is also a `FAIL`, never a pass. Every expectation runs, so the report names each failing one.
+- **Read only.** The check observes after the test's actions and never changes the server. Its message is the reason a
+  wrong version mapping (robustness R7) fails the cell.
+- **Error patterns per pack (robustness R8, R9).** `ErrorLogGuard` takes its lists from the cell's platform pack. A pack
+  supplies an allowlist (known vanilla noise, each with a reason) and an error-pattern list: a record that matches an
+  error pattern fails the test even when the allowlist also matches it. Paper supplies the allowlist of
+  `docs/platforms/paper.md` and no error patterns yet. A platform with no list fails loudly, never passes silently.
+  Folia's thread-check patterns come with the Folia row (before M5).
+- **Bad test.** `examples/bad-tests/.../expect/ExpectFailsE2E` holds one wrong expectation (it must produce `FAIL`, asserted
+  by `metaExpect` in `metaTest`) and one holding expectation (it must stay `PASS`).

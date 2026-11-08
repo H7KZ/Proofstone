@@ -214,9 +214,15 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // already failed in beforeEach, so that failure is the first one.
         Throwable failure = state.invalid;
         try {
-            ErrorLogGuard.check(state.host, state.logCursor);
+            ErrorLogGuard.check(state.host, state.logCursor, ErrorLogGuard.Patterns.of(cell.platform()));
         } catch (RuntimeException | AssertionError e) {
             failure = combine(failure, e);
+        }
+        // The per-cell expectations (test-api spec section 9, robustness R7) judge a test that is otherwise green. They
+        // read the server after the test's actions, so they run before the leak detector, and never change anything.
+        if (failure == null && context.getExecutionException().isEmpty()) {
+            failure = CellExpectations.check(context.getRequiredTestClass(), context.getRequiredTestMethod(),
+                    new CellView(cell, bridged), new HostAgent(state.host, state.patchedPlugins));
         }
         // The leak detector (robustness R6) judges a test that is otherwise green, so it never hides another failure.
         if (failure == null && state.gameRules != null) {
