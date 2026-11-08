@@ -68,6 +68,17 @@ class ErrorLogGuardTest {
     }
 
     @Test
+    void foliaAllowsOnlyTheHarnessClientsMovedTooQuicklyAndNotTheBootErrors() {
+        assertThat(ErrorLogGuard.describe(List.of(
+                record("WARN", "T94d99d12 moved too quickly! -1.5,-60.0,2.5", null)), Patterns.FOLIA)).isNull();
+        assertThat(ErrorLogGuard.describe(List.of(
+                record("WARN", "Steve moved too quickly! -1.5,-60.0,2.5", null),
+                record("ERROR", "No key layers in MapLike[{}]", null),
+                record("ERROR", "Could not save bukkit.yml", null)), Patterns.FOLIA))
+                .contains("3 unexpected").contains("Steve").contains("No key layers").contains("bukkit.yml");
+    }
+
+    @Test
     void aPackWithoutItsOwnListFailsLoudly() {
         assertThat(Patterns.of("paper")).isSameAs(PAPER);
         assertThat(Patterns.of("folia")).isSameAs(Patterns.FOLIA);

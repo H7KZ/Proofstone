@@ -24,6 +24,9 @@ import dev.proofstone.api.Requires;
  * it does not hard-code the region thread's name.
  */
 @Proofstone
+// Paper is declared so a paper@latest selection plans a cell (zero cells is a loud error); @Requires then makes the
+// class a reasoned skip there, since only Folia has regions.
+@Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Requires(Capability.FOLIA_REGIONS)
 class ConformanceFoliaEventTest {
@@ -39,6 +42,8 @@ class ConformanceFoliaEventTest {
             agent.command("gamemode creative " + client.name());
             CapturedEvent event = probe.awaitOne();
             assertThat(event.className()).isEqualTo(GAMEMODE_EVENT);
+            // Evidence that the event ran on a region thread: the observed name goes to the run output.
+            System.err.println("PROOFSTONE C-F02 observed event thread: " + event.thread());
             assertThat(event.thread()).as("thread that ran PlayerGameModeChangeEvent").isNotBlank()
                     .isNotEqualTo(MAIN_THREAD);
         }

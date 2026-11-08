@@ -56,7 +56,12 @@ The agent reports the token `regions` on Folia only, which confirms `FOLIA_REGIO
   _26.3 · this PR_
 - **Boot logs two ERRORs on every Folia row, and neither fails a test:** `No key layers in MapLike[{}]` (1.21.11+
   flat world, the same line Paper logs) and `[CraftServer] Could not save bukkit.yml`. Both come before any test runs,
-  so the log guard does not see them. The pack's allowlist stays empty until a test-window noise line appears.
-  _1.21.11, 26.1.2, 26.2, 26.3 · this PR_
+  so the log guard does not see them, and they are deliberately not allowlisted. _1.21.11, 26.1.2, 26.2, 26.3 · this PR_
+- **`:conformance:smoke` on folia@26.3 logs `T<8 hex> moved too quickly!` (WARN) in the c02 window,** the same
+  anti-cheat line Paper logs when the reset teleport (here `teleportAsync`) races the client's first movement packets.
+  The Folia pack allows it for the harness's own clients only (`^T[0-9a-f]{8} moved too quickly! `), like Paper. It is
+  a race, so it shows in some tests and not others. _26.3 · this PR_
+- **C-F01 and C-F02 declare Paper too and carry `@Requires(FOLIA_REGIONS)`,** so a `paper@latest` selection plans a
+  cell (zero cells stays a loud error) and Paper reports a capability skip with its reason. _paper@latest · this PR_
 - **Folia 1.21.11 and 26.x through ViaProxy (bridged) pass C01-C08 unchanged.** The fixture, chest and anvil
   windows, grindstone, and shift-click all work on the region thread. _1.21.11, 26.1.2, 26.2 bridged; 26.3 native_

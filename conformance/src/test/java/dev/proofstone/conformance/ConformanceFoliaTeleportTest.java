@@ -20,10 +20,13 @@ import dev.proofstone.api.Requires;
  * player to the region that owns the destination through {@code teleportAsync}, and the agent waits for that future,
  * so the client and the server both read the new spot, and the inventory arrives with the player.
  *
- * <p>Only Folia has regions, so the scenario is declared for Folia alone and needs {@link Capability#FOLIA_REGIONS}.
+ * <p>Only Folia has regions, so Paper skips the scenario (missing capability) and it needs {@link Capability#FOLIA_REGIONS}.
  * The destination is 512 blocks from the fixture, far beyond one region.
  */
 @Proofstone
+// Paper is declared so a paper@latest selection plans a cell (zero cells is a loud error); @Requires then makes the
+// class a reasoned skip there, since only Folia has regions.
+@Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Requires(Capability.FOLIA_REGIONS)
 class ConformanceFoliaTeleportTest {
