@@ -80,6 +80,8 @@ GitHub Actions minutes are billed to the maintainer. Keep CI minimal.
 - Push to a PR branch as few times as possible. Run the gates locally first and batch commits.
 - Do not add scheduled or default-on workflows without maintainer approval.
 - Required checks are `gates` and `renovate-validate`.
+- `ci.yml` cancels a superseded run on the same PR (`concurrency`), and `renovate-validate` runs Renovate only when `renovate.json` changed.
+  Local `./gradlew check docsCheck` is the same command `gates` runs, so a green local run predicts it.
 
 ## 5. When you are stuck
 
