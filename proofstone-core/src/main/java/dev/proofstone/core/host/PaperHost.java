@@ -124,7 +124,7 @@ public final class PaperHost implements AutoCloseable {
                 .withEnv("EULA", "TRUE")
                 .withEnv("TYPE", cell.platform().toUpperCase(Locale.ROOT))
                 .withEnv("VERSION", cell.mc())
-                .withEnv("PAPER_BUILD", Integer.toString(cell.build()))
+                .withEnv(buildEnv(cell.platform()), Integer.toString(cell.build()))
                 .withEnv("ONLINE_MODE", "FALSE")
                 .withEnv("ENFORCE_SECURE_PROFILE", "FALSE")
                 .withEnv("LEVEL_TYPE", levelType(cell.mc()))
@@ -150,6 +150,19 @@ public final class PaperHost implements AutoCloseable {
         if (options.debugPorts()) {
             container.addExposedPort(AGENT_PORT);
         }
+    }
+
+    /**
+     * The itzg variable that selects the server build. Paper and Folia both go through {@code start-deployPaper}, which
+     * reads {@code PAPER_BUILD}. Purpur's {@code start-deployPurpur} reads {@code PURPUR_BUILD} and ignores the other, so
+     * a Purpur cell with {@code PAPER_BUILD} would run the latest build, not the pinned one (docs/platforms/purpur.md).
+     */
+    static String buildEnv(String platform) {
+        return switch (platform) {
+            case "paper", "folia" -> "PAPER_BUILD";
+            case "purpur" -> "PURPUR_BUILD";
+            default -> throw new PaperHostException("no build variable known for platform " + platform);
+        };
     }
 
     /**

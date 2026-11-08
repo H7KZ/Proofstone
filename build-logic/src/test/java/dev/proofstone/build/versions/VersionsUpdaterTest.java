@@ -64,6 +64,103 @@ class VersionsUpdaterTest {
         assertThat(result.log()).anySatisfy(line -> assertThat(line).contains("folia 26.3").contains("new row"));
     }
 
+    // T-M5-04. Purpur's API gives an md5, not a sha256: the jar must match the md5, and the row pins its sha256.
+    @Test
+    void purpurRowsCheckTheMd5AndPinTheSha256() throws Exception {
+        byte[] jar1 = StubSource.jar(774);
+        byte[] jar2 = StubSource.jar(777);
+        String yaml = """
+                java-rules:
+                  - { range: ">=1.20.5 <26", image: java21 }
+                  - { range: ">=26", image: java25 }
+                platforms:
+                  purpur:
+                    host:
+                      image: "itzg/minecraft-server"
+                      digests:
+                        java21: "sha256:04b5ee189f5f2c1992fa557e366cf2e4d09fe2abfbd57d2d1f977d8c038c1b98"
+                    rows:
+                      - { mc: "1.21.11", build: 1, sha256: "TODO", protocol: 774, status: experimental }
+                """;
+        PurpurSource source = new PurpurSource(jar1, jar2, md5Hex(jar1), md5Hex(jar2), "1.21.11", "26.3");
+        VersionsUpdater.Result result = VersionsUpdater.update(yaml, source);
+
+        assertThat(result.text()).contains("mc: \"1.21.11\", build: 2568, sha256: \"" + sha256Hex(jar1)
+                + "\", protocol: 774, status: experimental }");
+        assertThat(result.text()).contains("mc: \"26.3\", build: 2657, sha256: \"" + sha256Hex(jar2)
+                + "\", protocol: 777, status: experimental }");
+        assertThat(source.downloads).containsExactly("https://api.purpurmc.org/v2/purpur/1.21.11/2568/download",
+                "https://api.purpurmc.org/v2/purpur/26.3/2657/download");
+    }
+
+    @Test
+    void purpurJarWithTheWrongMd5FailsLoudly() throws Exception {
+        byte[] jar = StubSource.jar(774);
+        PurpurSource source = new PurpurSource(jar, jar, "0".repeat(32), md5Hex(jar), "1.21.11", "26.3");
+        String yaml = "java-rules:\n  - { range: \">=1.20.5 <26\", image: java21 }\n"
+                + "platforms:\n  purpur:\n    host:\n      image: \"itzg/minecraft-server\"\n      digests:\n"
+                + "        java21: \"sha256:04b5ee189f5f2c1992fa557e366cf2e4d09fe2abfbd57d2d1f977d8c038c1b98\"\n"
+                + "    rows:\n      - { mc: \"1.21.11\", build: 1, sha256: \"TODO\", protocol: 774, status: experimental }\n";
+        assertThatThrownBy(() -> VersionsUpdater.update(yaml, source))
+                .hasMessageContaining("md5 mismatch");
+    }
+
+    /** Serves the Purpur API shapes for two versions, with the jars and md5s given. */
+    static final class PurpurSource implements VersionSource {
+        private final byte[] jarOld;
+        private final byte[] jarNew;
+        private final String md5Old;
+        private final String md5New;
+        private final String oldMc;
+        private final String newMc;
+        final List<String> downloads = new ArrayList<>();
+
+        PurpurSource(byte[] jarOld, byte[] jarNew, String md5Old, String md5New, String oldMc, String newMc) {
+            this.jarOld = jarOld;
+            this.jarNew = jarNew;
+            this.md5Old = md5Old;
+            this.md5New = md5New;
+            this.oldMc = oldMc;
+            this.newMc = newMc;
+        }
+
+        @Override
+        public String getText(URI uri) throws IOException {
+            String path = uri.toString();
+            if (path.equals("https://api.purpurmc.org/v2/purpur")) {
+                return "{\"project\":\"purpur\",\"versions\":[\"" + oldMc + "\",\"" + newMc + "\"]}";
+            }
+            if (path.equals("https://api.purpurmc.org/v2/purpur/" + oldMc + "/latest")) {
+                return "{\"build\":\"2568\",\"md5\":\"" + md5Old + "\"}";
+            }
+            if (path.equals("https://api.purpurmc.org/v2/purpur/" + newMc + "/latest")) {
+                return "{\"build\":\"2657\",\"md5\":\"" + md5New + "\"}";
+            }
+            throw new IOException("stub has no answer for " + uri);
+        }
+
+        @Override
+        public Path download(URI uri) throws IOException {
+            downloads.add(uri.toString());
+            byte[] jar = uri.toString().contains("/" + oldMc + "/") ? jarOld : jarNew;
+            Path file = Files.createTempFile("purpur-stub", ".jar");
+            Files.write(file, jar);
+            return file;
+        }
+    }
+
+    private static String md5Hex(byte[] bytes) throws IOException {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("MD5").digest(bytes));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IOException(e);
+        }
+    }
+
+    private static String sha256Hex(byte[] bytes) throws IOException {
+        return StubSource.sha256Hex(bytes);
+    }
+
     @Test
     void secondRunIsIdempotentAndDownloadsNothing() throws Exception {
         String first = VersionsUpdater.update(read("update-input.yml"), new StubSource(PROTOCOLS, true)).text();

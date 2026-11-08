@@ -53,11 +53,22 @@ final class ErrorLogGuard {
                 List.of(Pattern.compile("Thread failed main thread check"),
                         Pattern.compile("Must use teleportAsync while in region threading")));
 
+        /**
+         * Purpur (docs/platforms/purpur.md, Gotchas), reviewed on its own, not copied from PAPER. Its allowlist holds only
+         * what a reviewed Purpur run showed; the entries are filled in from observed runs (T-M5-04).
+         */
+        static final Patterns PURPUR = new Patterns("purpur", Map.of(
+                // Observed on purpur@26.3 (T-M5-04): "T0cd7aebd moved too quickly! 6.5,-60.0,-2.5" in C02, C04, C07, C08.
+                // The same anti-cheat WARN as Paper and Folia, for the harness's own clients only (CellInvocation.joinClient).
+                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                List.of());
+
         /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
         static Patterns of(String platform) {
             return switch (platform) {
                 case "paper" -> PAPER;
                 case "folia" -> FOLIA;
+                case "purpur" -> PURPUR;
                 default -> throw new IllegalStateException("no log patterns for platform " + platform
                         + ": its platform pack must supply its own list (robustness R9)");
             };

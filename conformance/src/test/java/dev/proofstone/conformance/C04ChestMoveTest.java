@@ -23,6 +23,7 @@ import java.util.Map;
 @Proofstone
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
+@Matrix(platform = Platform.PURPUR, versions = {"latest"})
 class C04ChestMoveTest {
 
     private static final int SLOT_A = 0;

@@ -26,20 +26,23 @@ import java.util.zip.ZipFile;
 /**
  * Fills in versions.yml for the version-watch workflow (T-M3-01; docs/versioning.md §2; ADR-0006, ADR-0008).
  *
- * <p>For every Paper and Folia row it asks the fill API for the newest build. A row is re-pinned when its build
- * changed, its sha256 is TODO, or it has no protocol. A re-pin downloads the jar, checks it against the API
+ * <p>For every Paper, Folia and Purpur row it asks the platform's API for the newest build. A row is re-pinned when its
+ * build changed, its sha256 is TODO, or it has no protocol. A re-pin downloads the jar, checks it against the API
  * checksum, and reads {@code protocol_version} from the jar's {@code version.json} (the Mojang manifest has no
  * protocol number). Stable versions newer than a platform's newest row become new {@code experimental} rows.
+ * Purpur's API gives an md5 only, so its jars are checked against that md5 and pinned by their sha256 (T-M5-04).
  * Nothing else changes: the comments, the java-rules and the statuses stay as written.
  */
 public final class VersionsUpdater {
 
     static final String FILL = "https://fill.papermc.io/v3/projects/";
+    static final String PURPUR = "https://api.purpurmc.org/v2/purpur";
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
     private static final Pattern PLATFORM = Pattern.compile("^  ([a-z][a-z0-9-]*):\\s*$");
     private static final Pattern ROW = Pattern.compile("^(\\s*)- \\{ mc: \"([^\"]+)\",.*\\}\\s*$");
     private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
+    private static final Pattern MD5 = Pattern.compile("[0-9a-f]{32}");
 
     private VersionsUpdater() {
     }
@@ -152,8 +155,11 @@ public final class VersionsUpdater {
      */
     private static Pin pinFor(String platform, String mc, JsonNode row, VersionSource source, List<String> log)
             throws IOException {
-        JsonNode latest = JSON.readTree(source.getText(URI.create(FILL + platform + "/versions/" + mc + "/builds/latest")));
-        int build = latest.path("id").asInt(0);
+        boolean purpur = "purpur".equals(platform);
+        JsonNode latest = JSON.readTree(source.getText(URI.create(purpur
+                ? PURPUR + "/" + mc + "/latest"
+                : FILL + platform + "/versions/" + mc + "/builds/latest")));
+        int build = purpur ? parseBuild(latest.path("build").asText(), platform, mc) : latest.path("id").asInt(0);
         if (build <= 0) {
             throw new IOException(platform + " " + mc + ": builds/latest has no build id");
         }
@@ -162,18 +168,39 @@ public final class VersionsUpdater {
             return null;
         }
 
-        JsonNode server = latest.path("downloads").path("server:default");
-        String url = server.path("url").asText();
-        String expected = server.path("checksums").path("sha256").asText();
-        if (url.isEmpty() || !SHA256.matcher(expected).matches()) {
-            throw new IOException(platform + " " + mc + ": builds/latest has no server:default download with a sha256");
+        String url;
+        String expected;
+        if (purpur) {
+            url = PURPUR + "/" + mc + "/" + build + "/download";
+            expected = latest.path("md5").asText();
+            if (!MD5.matcher(expected).matches()) {
+                throw new IOException(platform + " " + mc + ": the Purpur API gives no md5 for build " + build);
+            }
+        } else {
+            JsonNode server = latest.path("downloads").path("server:default");
+            url = server.path("url").asText();
+            expected = server.path("checksums").path("sha256").asText();
+            if (url.isEmpty() || !SHA256.matcher(expected).matches()) {
+                throw new IOException(platform + " " + mc + ": builds/latest has no server:default download with a sha256");
+            }
         }
         Path jar = source.download(URI.create(url));
         try {
-            String actual = sha256(jar);
-            if (!actual.equals(expected)) {
-                throw new IOException(platform + " " + mc + ": sha256 mismatch for " + url + " (fill says "
-                        + expected + ", download is " + actual + ")");
+            String actual;
+            if (purpur) {
+                // Purpur publishes an md5. The row pins the sha256 of the same bytes, so the md5 must match first.
+                String md5 = digest(jar, "MD5");
+                if (!md5.equals(expected)) {
+                    throw new IOException(platform + " " + mc + ": md5 mismatch for " + url + " (Purpur API says "
+                            + expected + ", download is " + md5 + ")");
+                }
+                actual = sha256(jar);
+            } else {
+                actual = sha256(jar);
+                if (!actual.equals(expected)) {
+                    throw new IOException(platform + " " + mc + ": sha256 mismatch for " + url + " (fill says "
+                            + expected + ", download is " + actual + ")");
+                }
             }
             Integer fromJar = protocolVersion(jar, platform + " " + mc);
             int protocol;
@@ -198,6 +225,20 @@ public final class VersionsUpdater {
     }
 
     private static List<String> stableVersions(String platform, VersionSource source) throws IOException {
+        if ("purpur".equals(platform)) {
+            // Purpur's API lists a flat array of versions, not Paper's groups.
+            JsonNode versions = JSON.readTree(source.getText(URI.create(PURPUR))).path("versions");
+            if (!versions.isArray() || versions.isEmpty()) {
+                throw new IOException(platform + ": the Purpur API lists no versions");
+            }
+            List<String> stable = new ArrayList<>();
+            versions.forEach(version -> {
+                if (McVersions.isStable(version.asText())) {
+                    stable.add(version.asText());
+                }
+            });
+            return stable;
+        }
         JsonNode versions = JSON.readTree(source.getText(URI.create(FILL + platform))).path("versions");
         if (!versions.isObject() || versions.isEmpty()) {
             throw new IOException(platform + ": the fill API lists no versions");
@@ -209,6 +250,14 @@ public final class VersionsUpdater {
             }
         }));
         return stable;
+    }
+
+    private static int parseBuild(String text, String platform, String mc) throws IOException {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            throw new IOException(platform + " " + mc + ": build \"" + text + "\" is not a number", e);
+        }
     }
 
     /** Protocol number from the server jar's version.json, or null when the jar has none (old Paperclip jars). */
@@ -266,8 +315,12 @@ public final class VersionsUpdater {
     }
 
     static String sha256(Path file) throws IOException {
+        return digest(file, "SHA-256");
+    }
+
+    private static String digest(Path file, String algorithm) throws IOException {
         try (InputStream in = Files.newInputStream(file)) {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance(algorithm);
             byte[] buffer = new byte[1 << 16];
             int n;
             while ((n = in.read(buffer)) != -1) {
