@@ -34,7 +34,10 @@ final class ErrorLogGuard {
                 // Only the harness's own clients, named by CellInvocation.joinClient ("T" and 8 hex digits). The reset
                 // teleport races the client's first movement packets, and the Log4j capture (T-M2-08) shows the
                 // server's anti-cheat WARN for it. Any other player, or a plugin's own message, still fails the test.
-                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move",
+                // A Clients client (SIMULATED_BEDROCK) is named with a leading '.' and never reset, so its first move
+                // packets race the join position. Only the prefixed names a test chose match, never a plain player.
+                Pattern.compile("^\\.[A-Za-z0-9_]{1,15} moved too quickly! "), "first move of a prefixed harness client"),
                 List.of());
 
         /**

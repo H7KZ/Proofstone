@@ -46,7 +46,7 @@ Each platform is at one of these status levels:
 | Platform | Agent | Client driver | Milestone | Notes |
 |---|---|---|---|---|
 | Geyser + Floodgate on a Java server | Bukkit agent | Bedrock driver (CloudburstMC Protocol in Java, or the `bedrock-protocol` sidecar; spike decides) | M9 | Unproven: whether offline Bedrock clients can join through Geyser without Xbox auth. **Spike first.** |
-| Simulated Bedrock players (prefix or UUID detection) | Bukkit agent | Java driver with prefixed name | M5 | A cheap tier for "Bedrock-only code paths" in Java plugins. |
+| Simulated Bedrock players (prefix detection) | Bukkit agent | Java driver with prefixed name (`Clients.create(".Name")`) | M5 | Not Bedrock support: a Java client under a `.` name, so a plugin's Bedrock-only branch can run (`SIMULATED_BEDROCK`: native Paper only, C-B01; a bridged prefixed login stalled on 1.21.11). UUID detection is not simulated. |
 | Bedrock Dedicated Server add-ons (behaviour packs, Script API) | Script-API behaviour pack agent using `@minecraft/server-net` (beta, BDS-only) | Bedrock driver | M9 | The Script API changes often. Pin per BDS version. |
 | Third-party Bedrock servers (PocketMine-MP, Nukkit, Endstone, …) | community agents implementing the wire protocol | Bedrock driver | M10 | The wire protocol is language-neutral by design. |
 

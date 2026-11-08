@@ -35,6 +35,15 @@ tasks.test {
 
 val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
 
+// The Bedrock-prefix example plugin (T-M5-06) is the plugin under test for C-B01 only. It is built, never committed, and
+// copied under this project because plugin globs are relative to the project directory (examples/bedrock-prefix).
+val bedrockPrefixPlugins = layout.buildDirectory.dir("bedrock-prefix-plugins")
+val copyBedrockPrefixPlugin = tasks.register<Copy>("copyBedrockPrefixPlugin") {
+    dependsOn(":examples:bedrock-prefix:jar")
+    from(rootProject.layout.projectDirectory.file("examples/bedrock-prefix/build/libs/proofstone-bedrock-prefix.jar"))
+    into(bedrockPrefixPlugins)
+}
+
 /** The setup shared by both scenario tasks: one real Paper cell, the agent jar, and a guard against silent skips. */
 fun Test.realServerScenarios(taskDescription: String) {
     group = "verification"
@@ -43,7 +52,7 @@ fun Test.realServerScenarios(taskDescription: String) {
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform()
     // The agent jar is built, never committed (AGENTS.md §3).
-    dependsOn(":platforms:bukkit:agent:shadowJar", "testClasses")
+    dependsOn(":platforms:bukkit:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin)
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     // The run-time cell selector, scope, driver and flake-detector repeat count reach the test JVM from the Gradle

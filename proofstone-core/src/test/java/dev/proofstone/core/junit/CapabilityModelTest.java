@@ -62,6 +62,26 @@ class CapabilityModelTest {
     }
 
     @Test
+    void simulatedBedrockIsHeldOnNativePaperOnly() {
+        List<String> tokens = List.of("command", "events", "bedrock-prefix");
+        assertThat(CapabilityModel.cellCapabilities("paper", tokens))
+                .contains(Capability.SIMULATED_BEDROCK);
+        // A prefixed login through ViaProxy stalls (paper@1.21.11, T-M5-06), so a bridged cell does not hold it.
+        assertThat(CapabilityModel.cellCapabilities("paper", tokens, true))
+                .containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.CONSOLE);
+    }
+
+    @Test
+    void simulatedBedrockNeedsTheAgentTokenAndADeclaringPack() {
+        // The offline token is missing (online server): the pack declares it, but no cell holds it.
+        assertThat(CapabilityModel.cellCapabilities("paper", List.of("command", "events")))
+                .doesNotContain(Capability.SIMULATED_BEDROCK);
+        // Purpur and Spigot do not declare it (no conformance run has verified a prefixed login there).
+        assertThat(CapabilityModel.cellCapabilities("purpur", List.of("command", "events", "bedrock-prefix")))
+                .doesNotContain(Capability.SIMULATED_BEDROCK);
+    }
+
+    @Test
     void versionStringsNeverImplyACapability() {
         assertThat(CapabilityModel.cellCapabilities("paper", List.of())).isEmpty();
     }
