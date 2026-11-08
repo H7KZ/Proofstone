@@ -206,8 +206,8 @@ M5 can run in parallel with M4 once M3 is done.
 - Claim a status that the conformance results don't back up.
 
 **Acceptance.**
-- [ ] `docsCheck` passes.
-- [ ] Every status level matches the latest conformance results.
+- [x] `docsCheck` passes. (`./gradlew docsCheck --max-workers=1`: 0 errors, 356 warnings, none from this PR.)
+- [x] Every status level matches the latest conformance results. (All non-Paper rows stay `experimental`; evidence per row in `docs/platforms.md` "Status evidence" and each platform doc.)
 
 **Verify.**
 `./gradlew docsCheck`

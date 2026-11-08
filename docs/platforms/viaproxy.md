@@ -32,6 +32,15 @@ network, and never installs Via plugins in the server under test.
 - Ready means ViaProxy's bind port is in the container's listening socket table. The log line "Binding proxy
   server" is printed before the bind, so it is not used.
 
+## Bridged rows observed (M5, 2026-11-08)
+Local real-server runs, one full `:conformance:run` per row, through this ViaProxy image:
+- Folia 1.21.11, 26.1.2 and 26.2 (C01 to C08, C-F01, C-F02 pass). Folia 26.3 is native.
+- Purpur 1.21.11 (C01 to C08 pass). Purpur 26.3 is native.
+- Spigot 1.8.8 and 1.21.11 (C01 to C08 pass, except one red C06 on 1.21.11, see [spigot.md](spigot.md)). Spigot 26.3 is native.
+- Bridged `SIMULATED_BEDROCK` is not held: a `.`-prefixed login stalls on 1.21.11 at this proxy, with no `[AUTH]` line.
+  The cause is not identified. Details in [paper.md](paper.md), "Simulated Bedrock". No Bedrock client was joined through
+  ViaProxy, so this image is not a Bedrock bridge.
+
 ## Gotchas
 
 > Version-span entries (1.8.8 to 26.3, bridged cells) were observed on local real-server runs through the Docker lock.

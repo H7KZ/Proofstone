@@ -1,5 +1,8 @@
 # Spigot
 
+Status: **experimental** (rows 1.8.8, 1.21.11 and 26.3 in `versions.yml`). See [platforms.md](../platforms.md) and the
+conformance table below.
+
 ## Host and builder
 - **Not downloaded.** Spigot is built from source by SpigotMC BuildTools for each row's `--rev` (the Minecraft version,
   for example `1.21.11`). The image is `images/spigot-buildtools`: one per Java tag, `FROM` the pinned eclipse-temurin JDK
@@ -64,3 +67,15 @@ Per-row runs, one `dockerlock` invocation each. `skipped` and `failures` read fr
   combine is the suspect, as on Paper (`docs/platforms/paper.md`, Gotchas on the stale client inventory while a window is
   open).
 - The skips are reasoned (capability and version), not hidden.
+- Evidence per row: 1.8.8 ran twice with the cache cleared between (both pass the pin, C01 to C08 pass, C07 skip);
+  1.21.11 and 26.3 ran once each after the digest fix. `:conformance:smoke` (8 tests, 0 failed) passed with spigot@26.3
+  among the platforms it covers. 1.21.11 C06 is the only red result recorded (one failure, then a pass; verifier repeat
+  5 of 5).
+
+## Open limits
+- Spigot versions other than the three pinned rows are not pinned and not run.
+- 1.21.11 C06 is not explained. The row stays `experimental`, so the failure is not hidden by a `required` claim.
+- Each row has one counted full run. Promotion to `required` is not done: ADR-0015 needs a maintainer decision (C06 red
+  once on 1.21.11).
+- Build times for 1.21.11 and 26.3 were not measured.
+- No `SIMULATED_BEDROCK`, `NMS` or `DATAPACKS` run on Spigot.
