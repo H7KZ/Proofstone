@@ -9,9 +9,12 @@ import dev.proofstone.core.driver.ClientDriver;
 import dev.proofstone.core.driver.ClientSession;
 import dev.proofstone.core.driver.ConnectSpec;
 import dev.proofstone.core.host.PaperHost;
+import dev.proofstone.core.host.LeakDetector;
 import dev.proofstone.core.host.PaperHostOptions;
 import dev.proofstone.core.host.ViaProxyHost;
 import dev.proofstone.core.verdict.Attempt;
+import dev.proofstone.core.verdict.ConformanceCache;
+import dev.proofstone.core.verdict.ConformanceResult;
 import dev.proofstone.core.versions.VersionsCatalog;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -57,6 +60,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private static final String PRIMARY_DRIVER = DifferentialRun.PRIMARY;
 
     private static final String STATE = "state";
+    /** The root-store key of the conformance cache: one per run, so each cell's conformance runs once (section 1). */
+    private static final String CONFORMANCE = "conformance";
 
     private final Cell cell;
     private final Proofstone config;
@@ -158,6 +163,16 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         TestState state = new TestState(host, ErrorLogGuard.cursor(host));
         state.proxy = resource.proxy();
         context.getStore(NAMESPACE).put(STATE, state);
+        // Conformance comes first (self-tests section 1): on a failed cell the test body never runs, and the test is INVALID.
+        state.conformance = conformance(context, host);
+        AssertionError invalid = VerdictGate.judgeInvalid(context.getRequiredTestMethod(), cellId(),
+                state.conformance);
+        if (invalid != null) {
+            state.invalid = invalid;
+            throw invalid;
+        }
+        // Before the join, so the snapshot is the server's state before this test's client arrives.
+        state.gameRules = LeakDetector.snapshot(host);
         if (declaresClient(context)) {
             state.client = joinClient(resource, context);
             // After the join: reset needs the player online. It also teleports to the fixture spot.
@@ -174,20 +189,34 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             // beforeEach failed before it had anything to undo; its own failure is already reported. A flake run still
             // counts this run, as a failure: a run that did not start is never a pass.
             if (repeats > 1) {
+                // The cell never booted, so its conformance never ran: no plugin verdict exists for it (section 1). This
+                // result is not cached, so a later test that boots the cell runs the real conformance.
+                ConformanceResult notRun = new ConformanceResult(cellId(), false,
+                        "the cell did not boot, so its conformance did not run");
                 AssertionError verdict = judgeRepeat(context, Attempt.fail(
-                        "the server or the client did not start; see the failure reported for this run"));
+                        "the server or the client did not start; see the failure reported for this run"), notRun);
                 if (verdict != null) {
                     throw verdict;
                 }
             }
             return;
         }
-        // Every step runs, whatever an earlier one did, and the first failure is the one reported.
-        Throwable failure = null;
+        // Every step runs, whatever an earlier one did, and the first failure is the one reported. An INVALID test
+        // already failed in beforeEach, so that failure is the first one.
+        Throwable failure = state.invalid;
         try {
             ErrorLogGuard.check(state.host, state.logCursor);
         } catch (RuntimeException | AssertionError e) {
-            failure = e;
+            failure = combine(failure, e);
+        }
+        // The leak detector (robustness R6) judges a test that is otherwise green, so it never hides another failure.
+        if (failure == null && state.gameRules != null) {
+            try {
+                failure = VerdictGate.judgeLeak(context.getRequiredTestMethod(), cellId(), state.gameRules,
+                        LeakDetector.snapshot(state.host));
+            } catch (RuntimeException e) {
+                failure = new IllegalStateException("cannot read the server state after the test", e);
+            }
         }
         DifferentialRun.Disagreement disagreement = null;
         if (differential) {
@@ -197,7 +226,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             if (disagreement != null) {
                 AssertionError verdict = DifferentialRun.failure(
                         context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName(),
-                        cellId(), disagreement);
+                        cellId(), disagreement, state.conformance);
                 failure = failure == null ? verdict : combine(verdict, failure);
             }
         }
@@ -218,7 +247,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // Judged only for a pass of a single run: a failure or skip already has its verdict from JUnit. A flake run
         // judges all its runs together, after the last one (see below).
         if (repeats == 1 && failure == null && context.getExecutionException().isEmpty()) {
-            failure = VerdictGate.judgePass(context.getRequiredTestMethod(), cellId(), controlRun);
+            failure = VerdictGate.judgePass(context.getRequiredTestMethod(), cellId(), controlRun,
+                    state.conformance);
         }
         for (String plugin : state.patchedPlugins) {
             try {
@@ -238,7 +268,19 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             Attempt attempt = failure != null ? Attempt.fail(detail(failure))
                     : context.getExecutionException().isPresent()
                             ? Attempt.fail(detail(context.getExecutionException().get())) : Attempt.pass();
-            failure = combine(failure, judgeRepeat(context, attempt));
+            // The verdict over all runs replaces this run's own failure as the reported one (the run's failure stays
+            // attached), so a FLAKY or VACUOUS verdict is never hidden behind a raw assertion.
+            AssertionError verdict = judgeRepeat(context, attempt, state.conformance);
+            if (verdict != null) {
+                if (failure != null && failure != verdict) {
+                    verdict.addSuppressed(failure);
+                }
+                failure = verdict;
+            }
+        }
+        // The INVALID failure was already thrown by beforeEach, so it is not thrown twice.
+        if (failure != null && failure == state.invalid) {
+            return;
         }
         if (failure instanceof Error error) {
             throw error;
@@ -246,6 +288,16 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (failure instanceof RuntimeException exception) {
             throw exception;
         }
+    }
+
+    /**
+     * The cell's conformance result, run once per cell per run and cached in the root store (self-tests section 1). A
+     * failure of the run itself, rather than a failed scenario, is an error and is not cached.
+     */
+    private ConformanceResult conformance(ExtensionContext context, PaperHost host) {
+        ConformanceCache cache = context.getRoot().getStore(NAMESPACE)
+                .getOrComputeIfAbsent(CONFORMANCE, key -> new ConformanceCache(), ConformanceCache.class);
+        return cache.get(cellId(), () -> CellConformance.run(cellId(), host));
     }
 
     /** The two runs of one test on one cell share this key, so the second one finds the first one's evidence. */
@@ -276,7 +328,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      *
      * @return the verdict failure, set only after the last run and only when the runs disagree
      */
-    private AssertionError judgeRepeat(ExtensionContext context, Attempt attempt) {
+    private AssertionError judgeRepeat(ExtensionContext context, Attempt attempt, ConformanceResult conformance) {
         Method test = context.getRequiredTestMethod();
         String key = test.getDeclaringClass().getName() + "#" + test.getName() + "@" + cellId();
         RepeatLedger ledger = context.getRoot().getStore(NAMESPACE)
@@ -286,7 +338,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             return null;
         }
         context.getRoot().getStore(NAMESPACE).remove(key);
-        return VerdictGate.judgeRepeats(test, cellId(), controlRun, runs);
+        return VerdictGate.judgeRepeats(test, cellId(), controlRun, runs, conformance);
     }
 
     private static boolean declaresClient(ExtensionContext context) {

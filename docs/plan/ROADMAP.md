@@ -206,3 +206,5 @@ M5 can run in parallel with M4 once M3 is done.
   3. Known gap from T-M4-03 (control run): the JUnit extension passes `ConformanceResult.pass(cell)` as an assumption
      (`VerdictGate.judgePass`), so `INVALID` cannot fire from the extension. No runner feeds `ConformanceCache` yet.
      T-M4-07 must wire a conformance runner for its invalid test before M4 closes.
+     **Resolved in T-M4-07:** the extension runs a conformance check per cell (`CellConformance`, one scenario so far)
+     through `ConformanceCache`. The full C01 to C12 suite is still not wired.

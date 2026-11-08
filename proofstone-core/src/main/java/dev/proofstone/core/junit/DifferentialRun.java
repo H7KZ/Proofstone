@@ -185,9 +185,10 @@ final class DifferentialRun {
     }
 
     /** The failure of a disagreeing test: its verdict from the engine, then the first point that differs. */
-    static AssertionError failure(String test, String cell, Disagreement disagreement) {
+    static AssertionError failure(String test, String cell, Disagreement disagreement,
+            ConformanceResult conformance) {
         CellResult result = VerdictEngine.resolve(
-                new CellRun(test, cell, List.of(Attempt.pass()), false, true), ConformanceResult.pass(cell));
+                new CellRun(test, cell, List.of(Attempt.pass()), false, true), conformance);
         return new AssertionError(result.verdict() + " " + test + " on " + cell + ": " + result.reason() + "\n"
                 + disagreement.detail());
     }

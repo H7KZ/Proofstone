@@ -1,5 +1,9 @@
 // Deliberately bad tests (T-M4-03 and later M4 cards): each one must produce its expected verdict. Its tests boot a
-// real server, so they need Docker and are not part of `check`.
+// real server, so they need Docker and are not part of `check`. `metaTest` runs each bad test with its switch and
+// asserts the verdict (T-M4-07).
+import javax.xml.parsers.DocumentBuilderFactory
+import org.w3c.dom.Element
+
 plugins {
     id("proofstone.java-host")
 }
@@ -37,12 +41,27 @@ val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
 
 val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
 
-tasks.test {
+/** What every run of a bad test needs: the test classes, the fixture, the agent jar and the repo root. */
+fun Test.badTestSetup() {
+    // A Test task made by hand gets no test classes from the java plugin, so they are set here (as conformance does).
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform()
     dependsOn(copyFixturePlugin)
     // The agent jar is built, never committed (AGENTS.md §3).
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
+    // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+}
+
+tasks.test {
+    badTestSetup()
     // The run-time cell selector, scope, control-run, flake-detector repeat count and differential switches reach the
     // test JVM from the Gradle command line (test-api spec section 1, self-tests sections 2, 3 and 4).
     for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun", "proofstone.repeat",
@@ -59,10 +78,111 @@ tasks.test {
     } else {
         exclude("**/differential/**")
     }
-    // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.
-    outputs.upToDateWhen { false }
-    testLogging {
-        events("passed", "skipped", "failed")
-        showStandardStreams = true
+    // The invalid and leak bad tests (T-M4-07) fail on purpose in every run, so only metaTest runs them.
+    exclude("**/invalid/**", "**/leak/**")
+}
+
+/**
+ * One bad test on its own: the class pattern, the verdict its failure must start with, and the switches that make it
+ * produce that verdict. Each run is a separate Test task, so the switches never leak into another run.
+ */
+data class BadRun(val task: String, val include: String, val verdict: String, val switches: Map<String, String>)
+
+val badRuns = listOf(
+    BadRun("metaVacuous", "**/VacuousE2E*", "VACUOUS", mapOf("proofstone.controlRun" to "true")),
+    BadRun("metaFlaky", "**/FlakyE2E*", "FLAKY", mapOf("proofstone.repeat" to "5")),
+    BadRun(
+        "metaDisagree", "**/differential/DriverFaultDisagreeE2E*", "DISAGREE",
+        mapOf("proofstone.differential" to "true", "proofstone.injectDriverFault" to "true"),
+    ),
+    BadRun("metaInvalid", "**/invalid/**", "INVALID", mapOf("proofstone.injectConformanceFault" to "true")),
+    BadRun("metaLeak", "**/leak/**", "LEAK", emptyMap()),
+)
+
+// The task's own JUnit XML directory, and the expectation, as plain values: the metaTest action must not capture the
+// script's objects, because the configuration cache cannot store them.
+val badRunDirs: Map<String, File> = badRuns.associate { run ->
+    run.task to layout.buildDirectory.dir("test-results/${run.task}").get().asFile
+}
+val badRunExpectations: List<Pair<String, String>> = badRuns.map { run -> run.task to run.verdict }
+
+badRuns.forEach { run ->
+    tasks.register<Test>(run.task) {
+        badTestSetup()
+        group = "verification"
+        description = "Runs the bad test that must produce ${run.verdict}. Part of metaTest; not a user suite."
+        include(run.include)
+        run.switches.forEach { (name, value) -> systemProperty(name, value) }
+        // A bad test fails on purpose: metaTest judges its failure, so Gradle does not fail the build here.
+        ignoreFailures = true
+        reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/${run.task}"))
+    }
+}
+
+// Runs every bad test with its switch and asserts its verdict. It needs Docker and the EULA; run it through
+// scripts/dockerlock.sh (examples/bad-tests/README.md). Per run: nothing skipped or errored, at least one test case, and
+// every failure starts with the expected verdict, with at least one such failure.
+tasks.register("metaTest") {
+    group = "verification"
+    description = "Asserts that every bad test produces its expected verdict (vacuous, flaky, disagree, invalid, leak)."
+    dependsOn(badRuns.map { it.task })
+    // Local copies, so the action captures only these values and not the script.
+    val expectations = badRunExpectations
+    val dirsByTask = badRunDirs
+    doLast {
+        val problems = mutableListOf<String>()
+        val factory = DocumentBuilderFactory.newInstance()
+        for ((task, verdict) in expectations) {
+            val dir = dirsByTask.getValue(task)
+            val reports = dir.listFiles { file -> file.name.startsWith("TEST-") && file.name.endsWith(".xml") }
+                .orEmpty()
+            if (reports.isEmpty()) {
+                problems += "$task: no JUnit XML in $dir, so the run did not happen"
+                continue
+            }
+            var testCases = 0
+            var verdictFailures = 0
+            for (report in reports) {
+                val suite = factory.newDocumentBuilder().parse(report).documentElement
+                if (suite.getAttribute("skipped") != "0") {
+                    problems += "$task: skipped=${suite.getAttribute("skipped")} in ${report.name} (a skip is not a pass)"
+                }
+                if (suite.getAttribute("errors") != "0") {
+                    problems += "$task: errors=${suite.getAttribute("errors")} in ${report.name}"
+                }
+                val cases = suite.getElementsByTagName("testcase")
+                for (index in 0 until cases.length) {
+                    testCases++
+                    val case = cases.item(index) as Element
+                    val failure = case.getElementsByTagName("failure").item(0) as Element? ?: continue
+                    // JUnit prefixes the message with the exception class; the verdict follows it.
+                    val message = failure.getAttribute("message").replaceFirst(Regex("^[\\w.$]+: "), "")
+                    // JUnit reports the test method's own failure first; a verdict from afterEach (the flake judgement)
+                    // is attached to it as a suppressed exception, which the XML keeps in its body.
+                    val named = message.startsWith("$verdict ") ||
+                        failure.textContent.contains(Regex("Suppressed: [\\w.$]+: $verdict "))
+                    if (named) {
+                        verdictFailures++
+                    } else if (task == "metaFlaky" && message.contains("random draw")) {
+                        // A flake's own runs fail on their draws; the FLAKY verdict is on the last run, and the draws
+                        // are the evidence that the runs differ.
+                    } else {
+                        problems += "$task: ${case.getAttribute("name")} failed without $verdict: " +
+                            message.take(300)
+                    }
+                }
+            }
+            if (testCases == 0) {
+                problems += "$task: no test case ran"
+            }
+            if (verdictFailures == 0) {
+                problems += "$task: no test produced $verdict"
+            }
+        }
+        if (problems.isNotEmpty()) {
+            throw GradleException("metaTest is red:\n" + problems.joinToString("\n"))
+        }
+        println("metaTest: every bad test produced its expected verdict (" +
+            expectations.joinToString { it.second } + ")")
     }
 }

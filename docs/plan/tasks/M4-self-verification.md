@@ -224,7 +224,10 @@ after T-M4-05b (PR #53) landed the windows, blocks and items.
 - Let these tests run in normal user-facing suites.
 
 **Acceptance.**
-- [ ] The meta-test is green, and therefore every bad test produced its expected verdict.
+- [x] The meta-test is green, and therefore every bad test produced its expected verdict. (Evidence:
+  `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel` on
+  paper@26.3 and paper@26.1.2, "metaTest: every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE,
+  INVALID, LEAK)", BUILD SUCCESSFUL; XML skipped=0 errors=0 in all five runs.)
 
 **Verify.**
 `./gradlew :examples:bad-tests:metaTest`

@@ -34,6 +34,11 @@ conformance evidence only on those rows (docs/platforms/paper.md, T-M3-05).
 Each pack can add its own scenarios. For example, Folia adds cross-region teleport and region-thread
 assertions.
 
+**Wired into the extension (T-M4-07):** core runs one conformance check per cell per run, cached in `ConformanceCache`,
+before the first test on that cell. It is the first scenario only: the vanilla `list` command must print "players
+online" on the console path. A failed check makes every test on the cell `INVALID` and the test body does not run. The
+full C01 to C12 suite is not wired yet, so `INVALID` covers only that one check.
+
 ## 2. Control run (nightly)
 
 - Run the user's suite with every `plugins` jar **removed**. The agent and fixtures stay.
@@ -52,6 +57,19 @@ assertions.
 
 - Repeat each test N=5 times per cell. N can be configured, and must be at least 3.
 - Any verdict change gets the verdict `FLAKY` and fails the run, with all transcripts attached.
+
+## 4b. Leak detector (every run, minimal)
+
+Robustness R6: a test must not leave server state behind. Numbered 4b so that the section numbers others cite stay put.
+
+- Before each test, and before its client joins, core reads every rule the deterministic world sets
+  (`gamerule <name>` through `POST /v1/command`, one per rule). After the test body, with the server still up, it reads
+  them again. A rule that reads back different fails the test with a message starting `LEAK`.
+- It is a failure, not a verdict: the verdict list in section 7 of the test-api spec has no leak. A test that already
+  failed is not judged again.
+- Minimal, on purpose: it covers only the world rules, not the whole agent state. The full-state dump
+  (`GET /v1/snapshot`, agent-protocol spec) is still unimplemented, so a leak outside those rules is not seen.
+- Console replies are best effort (ADR-0002), so the detector compares them as they are and fails on a blank one.
 
 ## 5. Mutation check (release only)
 

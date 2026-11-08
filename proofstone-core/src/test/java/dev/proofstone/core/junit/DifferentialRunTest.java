@@ -7,6 +7,7 @@ import dev.proofstone.api.ItemView;
 import dev.proofstone.api.spi.OracleWaiter;
 import dev.proofstone.core.junit.DifferentialRun.Evidence;
 import dev.proofstone.core.junit.DifferentialRun.Observation;
+import dev.proofstone.core.verdict.ConformanceResult;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -153,7 +154,7 @@ class DifferentialRunTest {
         DifferentialRun.Disagreement disagreement = DifferentialRun.compare(
                 evidence("mcpl", "a"), evidence("mineflayer-ref", "b"));
 
-        AssertionError failure = DifferentialRun.failure("Test.method", CELL, disagreement);
+        AssertionError failure = DifferentialRun.failure("Test.method", CELL, disagreement, ConformanceResult.pass(CELL));
 
         assertThat(failure.getMessage()).startsWith("DISAGREE Test.method on paper@26.1.2")
                 .contains("mineflayer-ref: point 1 => b");
