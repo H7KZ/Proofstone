@@ -62,8 +62,8 @@ M5 can run in parallel with M4 once M3 is done.
   `./gradlew check docsCheck` is green (0 docsCheck errors). In words: a JUnit test boots the server from
   `versions.yml`, installs the Bukkit agent, joins with the `mcpl` client, runs `/version` and sees the Paper reply;
   `/v1/health` and `/v1/players/{n}` match their golden files on the real server.
-- **CI**: `gates`, `smoke` and `renovate-validate` run on every PR and are required checks on `main`. The `smoke`
-  job accepts the Minecraft EULA by the maintainer's instruction and fails (never skips) without it.
+- **CI** (historical: removed 2026-11-08, see ADR-0014 update): `gates`, `smoke` and `renovate-validate` ran on every PR. The `smoke`
+  job accepted the Minecraft EULA by the maintainer's instruction and fails (never skips) without it.
 - **Bugs only a real server found** (each fixed and merged): the agent reported `26.3.build.238` as the Minecraft
   version; the agent's proxy `CommandSender` could not run vanilla commands; the golden enchant level 32767 is stored
   as 255 by Paper; `reset` put the player on a block corner. Lesson, now in the M2 cards: every endpoint card needs a

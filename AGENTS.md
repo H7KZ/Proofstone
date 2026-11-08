@@ -72,16 +72,15 @@ A framework for real-server end-to-end tests of Minecraft plugins, mods and add-
 
 ### CI cost
 
-GitHub Actions minutes are billed to the maintainer. Keep CI minimal.
+There is no CI. GitHub Actions minutes were billed to the maintainer, so on 2026-11-08 the maintainer removed `ci.yml` and the
+required status checks on `main`. Local runs are the only gate.
 
-- `ci.yml` runs `gates` (`check docsCheck`) and `renovate-validate` on pull requests only.
-- `smoke`, `matrix` and `version-watch` are `workflow_dispatch` only. Never trigger them. Run real-server
-  tests locally and paste the evidence into the PR.
-- Push to a PR branch as few times as possible. Run the gates locally first and batch commits.
-- Do not add scheduled or default-on workflows without maintainer approval.
-- Required checks are `gates` and `renovate-validate`.
-- `ci.yml` cancels a superseded run on the same PR (`concurrency`), and `renovate-validate` runs Renovate only when `renovate.json` changed.
-  Local `./gradlew check docsCheck` is the same command `gates` runs, so a green local run predicts it.
+- Run `bash scripts/gates.sh` before every PR (it is `./gradlew check docsCheck`, plus the pinned Renovate validation when
+  `renovate.json` changed). Paste its summary into the PR. Never claim a gate passed without having run it.
+- `matrix`, `nightly`, `version-watch` stay `workflow_dispatch` only. Never trigger them, and never add `push`, `pull_request` or
+  `schedule` triggers without maintainer approval.
+- A PR merges with no checks reported. The verifier (docs/ai/workflow.md) is the second pair of eyes: it merges `origin/main`,
+  re-runs `bash scripts/gates.sh` and the card's real-server tasks under `scripts/dockerlock.sh`, reads the XML, then merges.
 
 ## 5. When you are stuck
 

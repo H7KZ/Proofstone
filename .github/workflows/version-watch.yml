@@ -2,12 +2,7 @@
 # version-watch (T-M3-01, docs/versioning.md §2, ADR-0006, ADR-0008). On manual dispatch it fills in versions.yml from the
 # Paper and Folia fill API and opens a PR with the label `versions`. New rows start as `experimental`; nothing is
 # promoted to `required` here. A run with no changes opens no PR.
-# The PR is opened with GITHUB_TOKEN, and GitHub does not start workflows for such PRs, so `ci.yml` does not run on
-# it and the required checks (gates, smoke, renovate-validate) stay pending, which blocks the merge.
-# Recommended fix: a repository secret named VERSION_WATCH_TOKEN (a fine-grained PAT with contents and pull-requests
-# write, or a GitHub App token), passed as `token: ${{ secrets.VERSION_WATCH_TOKEN }}` to create-pull-request below.
-# The secret is not added here; a maintainer creates it. Until then, close and reopen the PR to start ci.yml, or push
-# an empty commit to its branch from a maintainer account.
+# There is no CI (ADR-0014 update, 2026-11-08): run `bash scripts/gates.sh` and the affected cells locally before merging its PR.
 name: version-watch
 
 on:
