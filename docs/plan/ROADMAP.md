@@ -13,7 +13,7 @@ conformance, golden files and the verdict engine exist.
 | **M1** | Walking skeleton (Paper, newest; done, reviewed in T-M1-99) | On Paper (newest), the server boots from `versions.yml` with the Bukkit agent. The `mcpl` client joins, runs `/version`, and the JUnit test receives the message. Agent `/v1/health` and `/v1/players/{n}` are verified by golden files. | 12 | 8 / 4 / 0 | 2.5 |
 | **M2** | Windows and the dual oracle (done, reviewed in T-M2-99) | The Disenchantment anvil scenario passes natively on the newest Paper version with a dual-oracle assertion and an event probe. Conformance C01–C06 pass. The test API is frozen (v0). | 11 | 5 / 6 / 0 | 2 (took about 1 day of agent time, see the M2 review) |
 | **M3** | Version span (done, reviewed in T-M3-99) | ViaProxy bridging works. Every Paper row from 1.8.8 to the newest passes C01–C08. `version-watch` opens PRs automatically. | 9 | 5 / 4 / 0 | 2.5 (was 2; T-M3-02 grew, see the M2 review; it took about one day of agent time, see the M3 review) |
-| **M4** | Self-verification | Control run, differential run (mineflayer-ref), flake detector and repro bundles all work. Verdicts `VACUOUS`, `DISAGREE` and `FLAKY` are demonstrated on purpose-built bad tests. | 9 | 4 / 4 / 1 | 2.5 (was 2; more Docker runs and a new Node driver, see the M3 review) |
+| **M4** | Self-verification (exit demonstrated, done, reviewed in T-M4-99; gap cards T-M4-10 to 15 open) | Control run, differential run (mineflayer-ref), flake detector and repro bundles all work. Verdicts `VACUOUS`, `DISAGREE` and `FLAKY` are demonstrated on purpose-built bad tests. | 9 | 4 / 4 / 1 | 2.5 (was 2; more Docker runs and a new Node driver, see the M3 review). Actual: about 15 h wall for PRs #46 to #58 (see the M4 review) |
 | **M5** | Bukkit family complete | Folia (regions), Purpur and Spigot (BuildTools cache) pass conformance. Capability model done. Bedrock-prefix simulation works. | 8 | 5 / 3 / 0 | 3 (was 2; no Folia row has booted yet, see the M3 review) |
 | **M6** | Dogfood and 0.1 release | Disenchantment's full suite runs on Proofstone in its CI. Maven and Gradle example projects work. Published to Maven Central and GHCR. GitHub Action published. Licence decided. Mutation check passes. | 9 | 6 / 2 / 1 | 2 |
 | **M7** | Proxies | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | epic | refine first (Sonnet) | 2 |
@@ -208,3 +208,69 @@ M5 can run in parallel with M4 once M3 is done.
      T-M4-07 must wire a conformance runner for its invalid test before M4 closes.
      **Resolved in T-M4-07:** the extension runs a conformance check per cell (`CellConformance`, one scenario so far)
      through `ConformanceCache`. The full C01 to C12 suite is still not wired.
+
+## M4 review (T-M4-99)
+- **Exit criterion met.** Control run, differential run, flake detector and repro bundles work, and VACUOUS, DISAGREE and
+  FLAKY are each shown on a purpose-built bad test. Evidence (local, real server, EULA in the command environment only,
+  every run through `scripts/dockerlock.sh --no-parallel`, Java 21):
+  - `:examples:bad-tests:metaTest` BUILD SUCCESSFUL, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE,
+    INVALID, LEAK)", 1:39. Per task XML: `metaVacuous` 1 test, 1 failure (VACUOUS); `metaFlaky` 5 tests, 2 failures (FLAKY on
+    run 5, runs 3 and 5 fail on the draw); `metaDisagree` 2 tests, 1 failure (`mcpl` PASS, `mineflayer-ref` DISAGREE on
+    paper@26.1.2); `metaInvalid` 1 failure (INVALID); `metaLeak` 1 failure (LEAK). All `skipped="0" errors="0"`.
+    Merged report: `examples/bad-tests/build/proofstone/proofstone-report.json` (green=false by design: it holds the expected
+    failures).
+  - Control run `:examples:bad-tests:test -Dproofstone.controlRun=true`: `VacuousE2E` VACUOUS (FAILED by design); `FlakyE2E`
+    also VACUOUS, since its first draw passes with no plugin. 1:09.
+  - Repeat run `-Dproofstone.repeat=5`: `FlakyE2E` FLAKY, "verdicts differ across 5 runs: PASS, FAIL". 1:21.
+  - Differential run `-Dproofstone.differential=true`: `DriverFaultDisagreeE2E` DISAGREE on paper@26.1.2. 0:58.
+  - Bundles: `rerun.txt` names the switches; `viaproxy.log` present in the bridged bundles of `DriverFaultDisagreeE2E`
+    and `LeakE2E`. `snapshot.json` still holds `NOT_FOUND` (T-M4-12).
+  - `:conformance:smoke` 2/2, `skipped="0" failures="0" errors="0"` (33.6 s test time).
+  - `./gradlew check docsCheck` BUILD SUCCESSFUL, `docsCheck: 0 errors, 319 warning(s)` (advisory glossary warnings).
+- **What merged**: T-M4-01 verdict engine (PR #49), T-M4-02 repro bundles (commit on `main`), T-M4-03 control run (PR #52),
+  T-M4-04 flake detector (PR #54), T-M4-05 and T-M4-05b mineflayer-ref (PRs #50, #53), T-M4-06 differential (PR #55),
+  T-M4-07 bad tests and metaTest (PR #56), T-M4-08 self-test review and costs (PR #57), T-M4-09 bundles and report
+  (PR #58). Merged PRs #46 to #58 ran from 2026-11-07 21:21 to 2026-11-08 12:23 UTC.
+- **Nightly set (new, `.github/workflows/nightly.yml`)**: `workflow_dispatch` only, no `schedule:`. One job runs
+  `:examples:bad-tests:metaTest`, which runs the control run, the repeat run, the differential run, INVALID and LEAK, and
+  asserts each verdict. Java 21, EULA from the repository variable `PROOFSTONE_ACCEPT_EULA` (same mechanism as the matrix
+  job), repro bundles uploaded on every outcome. Pins are the ones `ci.yml` already uses.
+  - **Cells, and why.** `metaTest` takes the cells its bad tests pin, so it runs paper@26.3 (native; control, repeat,
+    INVALID) and paper@26.1.2 (bridged for `mcpl`; the reference driver's protocol row, so the differential run; LEAK).
+    The brief said 26.1.2 is native: that is true only for `mineflayer-ref`. Its `mcpl` driver is bridged.
+    No other Paper row is needed: a bridged control or repeat on 1.8.8 would need the cell selector forwarded to the
+    `metaTest` tasks, which `badTestSetup` does not do today, plus a local run to prove it. Left as a maintainer decision.
+  - **Not verified:** one manual `workflow_dispatch` run was NOT triggered (maintainer rule: no manual workflow
+    triggers). So the card's acceptance "one manual run green, linked from this review" is **UNVERIFIED**. No run link
+    exists. The YAML was checked with PyYAML (triggers are `workflow_dispatch` only); `actionlint` is not installed here.
+    Maintainer: run it once from the Actions tab (or `gh workflow run nightly.yml`), then link the run here. Set the
+    repository variable `PROOFSTONE_ACCEPT_EULA` first, or the job fails (it never skips).
+- **Costs** (robustness.md section 4): local metaTest 1:39, smoke 0:38, switch runs 0:58 to 1:21. CI nightly is not measured;
+  projection 5 to 10 min on a cold runner.
+- **Open items (not done here)**:
+  1. Gap cards T-M4-10 to T-M4-15 are open (not in T-M4-99's `depends:`): per-cell conformance (R1, R3, R4), differential
+     integrity and the stale `mineflayer-ref` `max-native` `"26.1"` (X1, X3, X5), agent snapshot and wider leak detector
+     (R6, ROADMAP follow-up 1), harness hardening (R5, R15), assertion lint or retire the R2 claim, per-cell `expect` hook and
+     per-pack error patterns (R7, R8, R9).
+  2. ROADMAP follow-up 2 (bridged `viaproxy.log`) has evidence now (`DriverFaultDisagreeE2E`, `LeakE2E` bundles).
+  3. ROADMAP follow-up 3 is partly open: `INVALID` covers one scenario per cell, not C01 to C12 (T-M4-10).
+  4. `ci.yml` `smoke` and the matrix job set up Java 17, but the `conformance` and `mcpl` toolchains need Java 21. The
+     nightly job uses 21. The smoke path has not run on Actions (manual only), so this is unverified, not fixed.
+  5. The `schedule:` question and the bridged 1.8.8 cell are maintainer decisions (below).
+- **Maintainer decisions**:
+  1. **Schedule the nightly set or not.** Recommendation: not yet. Keep it manual until the first manual run is green and the
+     costs are measured on Actions. A schedule needs the billed-minutes approval (PR #40).
+  2. **Do T-M4-10 to T-M4-15 block the next milestone?** Recommendation: T-M4-15 (per-pack error patterns, Folia thread checks,
+     R8) blocks M5's Folia cards (T-M5-02, T-M5-03). T-M4-11 is small and its version fix should land before M5. T-M4-10 and
+     T-M4-12 block M6 (the release claim depends on conformance per cell and the real snapshot). T-M4-13 and T-M4-14
+     can wait. The milestone exit criterion does not need any of them.
+  3. **Per-cell conformance cost (T-M4-10).** Not measured yet. Recommendation: run C03 (agent round trip) on every cell and the
+     window scenarios C04 to C08 on bridged cells only, as the card says. Measure the added time on one cell first, then record
+     it in robustness.md section 4.
+  4. **Bridged 1.8.8 control or repeat cell.** Optional. Needs the cell selector forwarded to the `metaTest` tasks first.
+- **Re-estimate.** M4 was estimated at 2.5 weeks. Merged PRs #46 to #58 spanned about 15 hours of wall clock (2026-11-07
+  21:21 to 2026-11-08 12:23 UTC), with the human gating the Docker runs. M5 stays at 3 weeks: Folia has never booted, and T-M4-15 may come first. M6 stays at 2 weeks,
+  and grows if T-M4-10 and T-M4-12 block it. Total to v0.1 is about 15.5 weeks as a sum of the estimates.
+- **M5 cards refined** (`tasks/M5-bukkit-family.md`, "What M1 to M4 produced"). The next milestone is M5, not M6, so the
+  card's "refine the M6 cards" wording is a typo for M5. The M6 cards are refined in the M5 review (T-M5-99), as the roadmap
+  rules say. M6 was not started.

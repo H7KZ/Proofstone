@@ -7,6 +7,25 @@ M5 can run in parallel with M4 once M3 is done.
 - The capability model is done.
 - Bedrock-prefix simulation works.
 
+## What M1 to M4 produced (refined in T-M4-99)
+
+- Cell selector: `-Dproofstone.cells=folia@latest` (or `folia@<v>`, `all`). A `@Matrix` whose platform the selector does
+  not name is not run. Every M5 verify command uses it, one cell per invocation.
+- Pins: one host digest per Java tag (ADR-0013). Folia has 4 pinned rows (1.21.11, 26.1.2, 26.2, 26.3), all
+  `experimental`. The only Folia observation is 1.21.11: client oracle OK, RCON oracle unusable (`versions.yml`). No
+  Folia row has passed conformance (M3 review, open item 5).
+- Real-server runs go through `scripts/dockerlock.sh --no-parallel` with `PROOFSTONE_ACCEPT_EULA=true` in the command
+  environment. Read each XML for `skipped="0" failures="0" errors="0"`.
+- Self-tests (M4): control run, repeat run and differential run exist, and `:examples:bad-tests:metaTest` asserts every
+  bad test. A Folia row gets the same treatment as a Paper row, but its bad tests are not added in M5.
+- The reference driver (`mineflayer-ref`) speaks only 26.1.2 (ADR-0004). Differential runs cover only that row, so
+  Folia, Purpur and Spigot have no differential run in M5.
+- `ErrorLogGuard` allowlists Paper's log lines only. Folia's thread-check messages need per-pack patterns, which are
+  gap card T-M4-15. It blocks T-M5-03 unless the maintainer decides otherwise (ROADMAP M4 review, decision 2).
+- The nightly set (`.github/workflows/nightly.yml`) runs `metaTest` on the two Paper cells that the bad tests pin. No
+  Folia, Purpur or Spigot row is added to it in M5 without a decision.
+- Java: the agent is Java 8 bytecode (1.8.8 runs). The host-side drivers and bad tests need a Java 21 toolchain.
+
 ### T-M5-01 · Capability model and `@Requires`
 - tier: haiku
 - depends: T-M3-99
@@ -55,6 +74,7 @@ M5 can run in parallel with M4 once M3 is done.
 
 **Don't.**
 - Disable Folia's thread checks.
+- Let a thread-check line pass as a logged-error allowlist entry. The pattern is per pack (T-M4-15), and it is reviewed.
 
 **Acceptance.**
 - [ ] The golden contract tests pass on Folia `latest`.

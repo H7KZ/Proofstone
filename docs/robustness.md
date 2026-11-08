@@ -65,7 +65,7 @@ suite per bad test). Nothing here was triggered on Actions.
 | PR `gates` (`./gradlew check docsCheck`) | No (no Docker) | GitHub, `ubuntu-latest` | 2:01, 2:34, 2:43, 2:43, 3:13 (five M4 PR runs) |
 | PR `renovate-validate` | No | GitHub | 0:35 to 2:41 (five M4 PR runs) |
 | PR `smoke` | Yes | `workflow_dispatch` only; `skipped` on every PR run | not run |
-| Nightly set | Yes | **Does not exist.** No `schedule:` and no dispatch job yet. T-M4-99 adds the dispatch job. | not measured |
+| Nightly set (`nightly.yml`, `:examples:bad-tests:metaTest`) | Yes | `workflow_dispatch` only, no `schedule:`. Added in T-M4-99. The CI run was not triggered (maintainer rule). | CI: not measured. Local, Windows and Docker Desktop: metaTest 1:39 wall, see below |
 | Local `:examples:bad-tests:metaTest` | Yes | Local, through `scripts/dockerlock.sh` | 1:16 wall for all five bad tests |
 
 So a PR runs **zero real-server cells** in CI. The M0 row "Per PR, about 7 cells, 5 to 10 min" was wrong and is removed.
@@ -89,9 +89,14 @@ What the numbers say:
 - A repeat run reuses the class server, so repeats 2 to 5 cost about 1 s each. Repeat-N measures variance in the test
   body, not in the boot. Boot-level races are not repeated (card T-M4-13).
 - The second driver of a differential run adds about 1.6 s on a shared boot.
-- The nightly set is not measured. A projection from the rows above is 11 required Paper rows (ADR-0015) times one
-  boot, about 40 s each, which is about 8 minutes before the test bodies and the second driver. That replaces the M0
-  estimate of 30 to 60 minutes. It stays a projection until a nightly job runs.
+- The nightly set's CI run is not measured (no dispatch was triggered). The set is `metaTest`, which the local runs
+  of T-M4-99 measured on Windows and Docker Desktop, one lock, one run each (Gradle wall clock):
+  `metaTest` 1:39 (five bad tests, two cells), `:conformance:smoke` 0:38 (test 33.6 s), and the three switch runs
+  `differential` 0:58, `controlRun` 1:09, `repeat=5` 1:21. A CI runner adds a cold image pull (about 0.4 to 0.6 GB,
+  research survey) and the Gradle setup, so a first CI run should take roughly 5 to 10 minutes. That is a projection
+  until `nightly.yml` runs on Actions. The M0 estimate of 30 to 60 minutes is replaced.
+- The 11-row Paper matrix (ADR-0015) is not part of the nightly set. Running every row costs about 40 s of boot each
+  plus the bridge, and no self-test needs more than two cells.
 
 **Overlap inside one locked run.** The five bad-test tasks ran concurrently, although the command had `--no-parallel`
 and `gradle.properties` sets `org.gradle.parallel=true`. The XML suite start times are 10:22:20.67 to 10:22:20.78 UTC,
