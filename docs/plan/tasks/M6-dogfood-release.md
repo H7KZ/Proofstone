@@ -8,23 +8,30 @@
 - The licence is decided.
 - The mutation check passes.
 
-## What M1 to M5 produced (refined in T-M5-99)
+## What M1 to M5 produced (refined in T-M5-99, refreshed after the M5 follow-ups, 2026-11-08)
 
-- Cell selector `-Dproofstone.cells=<cell>` for every real-server run. Paper rows 1.8.8 to 26.3 are `required` (ADR-0015).
-  Folia (4 rows), Purpur (2 rows) and Spigot (3 rows) are `experimental`; each passes C01 to C08 once in the M5 review,
-  with one flake (purpur@26.3 C06, red then green).
-- Capability model: `@Requires` skips with a reason. `SIMULATED_BEDROCK` is declared by the Paper pack only. `NMS` and
-  `DATAPACKS` were removed (M5 review, decision 4); re-add one only with its agent token.
+- Cell selector `-Dproofstone.cells=<cell>` for every real-server run. `required` rows (ADR-0015): Paper 1.8.8 to 26.3 (11),
+  Folia 1.21.11, 26.1.2, 26.2, 26.3 (4), Purpur 1.20.6, 1.21.11, 26.3 (3), Spigot 1.8.8, 1.21.11, 26.3 (3). `printMatrix --scope=pr`
+  plans 21 cells. Each was promoted on at least two full per-row runs and, per platform, a C06 `-Dproofstone.repeat=10` of 10 passes.
+  Not added: folia@1.20.6 (two different reds, `docs/platforms/folia.md`). Rows older than that are unpinned and unrun.
+- **There is no CI and no workflow in the repo** (maintainer decision 2026-11-08, PRs #68, #70, #72; ADR-0014 update). The local gate is
+  `bash scripts/gates.sh`; real-server runs go through `scripts/dockerlock.sh`. Cards below that name `.github/workflows`
+  (T-M6-01, T-M6-02, T-M6-03, T-M6-07) must be done as **local release scripts** (`scripts/release-*.sh`, Gradle tasks) that the
+  maintainer runs by hand, with secrets read from the environment and never committed. Adding any workflow, even tag-triggered,
+  needs the maintainer's approval first: record the question in the PR and build the local script so a workflow is optional.
+  T-M6-05 (Disenchantment's own CI) is that repository's concern, not this one's.
+- Capability model: `@Requires` skips with a reason. `SIMULATED_BEDROCK` is declared by the Paper pack only (native cells).
+  `NMS` and `DATAPACKS` were removed; re-add one only with its agent token. `Cell.capabilities()` is a `default` method that throws
+  unless overridden (PR #73).
 - Self-tests (M4): control run, repeat run, differential run (`mineflayer-ref`, 26.1.2 only) and `metaTest` with the bad
   tests. The verdict report and repro bundles exist.
 - Open before the 0.1 release claim: T-M4-10 (per-cell conformance, INVALID on window and inventory breaks) and T-M4-12
   (real agent snapshot in bundles, wider leak detector), per the M4 review. T-M4-13 and T-M4-14 are open and can wait.
-  T-M4-11 and T-M4-15 are done (PRs #60, #61).
-- Risks for M6: the purpur@26.3 C06 flake; the prefixed-Bedrock ViaProxy stall (C-B01 runs native only); `Cell.capabilities()`
-  is a default method that throws unless overridden (fix/m5-capability-api, decision 2).
+- Risks for M6: the prefixed-Bedrock login stalls at ViaProxy on bridged cells (the image bundles ViaBedrock; C-B01 runs native only);
+  two unexplained single reds on record (purpur@26.3 C06 join timeout, spigot@1.21.11 C06 inventory DISAGREE, neither
+  reproduced in 10 repeats); folia@1.20.6 join stall and C07 cursor assertion.
 - T-M6-05 (Disenchantment's Bedrock-prefix chest-menu scenario) can run only on `paper@26.3` today.
-- T-M6-04 example projects: use `paper@26.3` for the native run. Folia and Spigot rows only after promotion (ADR-0015) or a
-  maintainer decision.
+- T-M6-04 example projects: use `paper@26.3` for the native run; Folia, Purpur and Spigot rows are now `required` and may be added.
 
 ### T-M6-01 · Maven Central publishing pipeline
 - tier: haiku
