@@ -14,6 +14,7 @@ import dev.proofstone.api.Platform;
 import dev.proofstone.api.Position;
 import dev.proofstone.api.Proofstone;
 import dev.proofstone.api.Requires;
+import dev.proofstone.core.conformance.ConformanceFixture;
 
 /**
  * C-F01 (specs/self-tests.md §1, Folia pack): a client teleported into another region keeps its state. Folia moves a
