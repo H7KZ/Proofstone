@@ -46,3 +46,17 @@ The agent reports the token `regions` on Folia only, which confirms `FOLIA_REGIO
 - **Folia 1.21.11 boots with `java21` and Folia 26.x with `java25`, and `PAPER_BUILD` selects the build** (itzg's
   `start-deployFolia` hands `PAPER_BUILD` to `start-deployPaper` with `PAPER_PROJECT=folia`). The server jar is
   `/data/folia-*.jar`, and `PaperHost` checks its sha256 against the pin. _26.3 · this PR_
+
+### T-M5-03 conformance (C01-C08, C-F01, C-F02, 2026-11-08)
+- **A console `tp` does not fire `PlayerTeleportEvent`,** on Folia 1.21.11 and 26.3. The entity moves (the client
+  reads the new position), but no event reaches a probe. Use an event that the command fires instead.
+  `gamemode creative <name>` fires `PlayerGameModeChangeEvent` (C-F02). _1.21.11, 26.3 · this PR_
+- **The agent's reset does not fire `PlayerTeleportEvent` either,** even though it teleports through
+  `teleportAsync` and the player does move. A reset from the spawn to itself is not a move, so it fires nothing.
+  _26.3 · this PR_
+- **Boot logs two ERRORs on every Folia row, and neither fails a test:** `No key layers in MapLike[{}]` (1.21.11+
+  flat world, the same line Paper logs) and `[CraftServer] Could not save bukkit.yml`. Both come before any test runs,
+  so the log guard does not see them. The pack's allowlist stays empty until a test-window noise line appears.
+  _1.21.11, 26.1.2, 26.2, 26.3 · this PR_
+- **Folia 1.21.11 and 26.x through ViaProxy (bridged) pass C01-C08 unchanged.** The fixture, chest and anvil
+  windows, grindstone, and shift-click all work on the region thread. _1.21.11, 26.1.2, 26.2 bridged; 26.3 native_

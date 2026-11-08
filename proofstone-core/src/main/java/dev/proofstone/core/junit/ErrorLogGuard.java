@@ -37,10 +37,21 @@ final class ErrorLogGuard {
                 Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
                 List.of());
 
+        /**
+         * Folia (docs/platforms/folia.md, Gotchas), reviewed on its own, not copied from PAPER. A thread-check failure is
+         * an error, never allowlisted (T-M4-15): Folia's TickThread logs "Thread failed main thread check" whenever
+         * data is touched off its region thread, and that is a harness or plugin bug. The allowlist is empty until a
+         * reviewed Folia row shows noise that the vanilla server also produces.
+         */
+        static final Patterns FOLIA = new Patterns("folia", Map.of(),
+                List.of(Pattern.compile("Thread failed main thread check"),
+                        Pattern.compile("Must use teleportAsync while in region threading")));
+
         /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
         static Patterns of(String platform) {
             return switch (platform) {
                 case "paper" -> PAPER;
+                case "folia" -> FOLIA;
                 default -> throw new IllegalStateException("no log patterns for platform " + platform
                         + ": its platform pack must supply its own list (robustness R9)");
             };

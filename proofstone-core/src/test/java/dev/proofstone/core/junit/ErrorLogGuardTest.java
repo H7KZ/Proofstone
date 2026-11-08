@@ -70,7 +70,9 @@ class ErrorLogGuardTest {
     @Test
     void aPackWithoutItsOwnListFailsLoudly() {
         assertThat(Patterns.of("paper")).isSameAs(PAPER);
-        assertThatThrownBy(() -> Patterns.of("folia")).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("folia").hasMessageContaining("its own list");
+        assertThat(Patterns.of("folia")).isSameAs(Patterns.FOLIA);
+        // Spigot has no list until T-M5-05. Folia got its own in T-M5-03, so it no longer stands in for "unknown".
+        assertThatThrownBy(() -> Patterns.of("spigot")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("spigot").hasMessageContaining("its own list");
     }
 }

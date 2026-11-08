@@ -22,6 +22,7 @@ import dev.proofstone.api.Window;
  */
 @Proofstone
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
+@Matrix(platform = Platform.FOLIA, versions = {"latest"})
 class C05AnvilRenameCostTest {
 
     private static final int START_LEVEL = 10;
