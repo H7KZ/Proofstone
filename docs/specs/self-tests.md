@@ -34,10 +34,24 @@ conformance evidence only on those rows (docs/platforms/paper.md, T-M3-05).
 Each pack can add its own scenarios. For example, Folia adds cross-region teleport and region-thread
 assertions.
 
-**Wired into the extension (T-M4-07):** core runs one conformance check per cell per run, cached in `ConformanceCache`,
-before the first test on that cell. It is the first scenario only: the vanilla `list` command must print "players
-online" on the console path. A failed check makes every test on the cell `INVALID` and the test body does not run. The
-full C01 to C12 suite is not wired yet, so `INVALID` covers only that one check.
+**Wired into the extension (T-M4-07, T-M4-10b):** core runs one conformance check per cell per run, cached in
+`ConformanceCache`, before the first test on that cell. It has two parts. First the vanilla `list` command must print
+"players online" on the console path. Then a conformance client joins through the invocation's driver and runs:
+
+- C03 (give round trip) on every cell;
+- C04 to C08 (chest, anvil rename, anvil combine, grindstone, shift-click craft) on every bridged cell. C07 is skipped
+  with its reason before 1.14.
+
+A failed check, or a scenario that fails or cannot join, makes every test on the cell `INVALID`, and the test body does
+not run. The cell's scenario timings are in the log (`PROOFSTONE CONFORMANCE <cell> <scenario> passed in N ms`).
+
+**Not wired yet, with reasons:**
+- C09 (event probe) needs a fixture plugin with a probe; the Folia event probe (`ConformanceFoliaEventTest`) is a
+  per-pack scenario, not a cell-wide one.
+- C10 (config patch and restore) needs the test fixture plugin to ship with the conformance suite (not yet built).
+- C11 (log capture) needs a fixture plugin that logs a SEVERE on purpose; the error oracle is covered by
+  `ErrorLogGuard` unit tests and the leak tests, not by a per-cell scenario.
+- C12 (reset leaves no residue) depends on the agent state snapshot (`GET /v1/snapshot`, card T-M4-12).
 
 ## 2. Control run (nightly)
 
@@ -83,9 +97,10 @@ Robustness R6: a test must not leave server state behind. Numbered 4b so that th
 What the code does today, against sections 1 to 5. The gaps and their cards are in [robustness.md](../robustness.md),
 section 5. This section is the short list, and it wins over the wording above until those cards land.
 
-- **Section 1 (conformance):** only the `list` check runs per cell. C03 to C08 exist in the conformance module but are not
-  run per cell, and C09 to C12 are not written. Card T-M4-10.
-- **Section 2 (control run):** done in T-M4-09. A single-run VACUOUS writes a bundle, and erun.txt names
+- **Section 1 (conformance):** the `list` check, then C03 on every cell and C04 to C08 on bridged cells (T-M4-10b). C09
+  to C12 are not wired; reasons in section 1.
+- **Section 2 (control run):** done in T-M4-09. A single-run VACUOUS writes a bundle, and 
+erun.txt names
   `-Dproofstone.controlRun`.
 - **Section 3 (differential):** only client observations at `DualAssert` points are compared, so a test with no dual
   assertion cannot DISAGREE. Only paper@26.1.2 is a differential row. Card T-M4-11.

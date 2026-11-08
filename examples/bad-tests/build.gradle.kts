@@ -102,7 +102,11 @@ val badRuns = listOf(
         "metaDisagree", "**/differential/DriverFaultDisagreeE2E*", "DISAGREE",
         mapOf("proofstone.differential" to "true", "proofstone.injectDriverFault" to "true"),
     ),
-    BadRun("metaInvalid", "**/invalid/**", "INVALID", mapOf("proofstone.injectConformanceFault" to "true")),
+    BadRun("metaInvalid", "**/invalid/InvalidConformanceE2E*", "INVALID", mapOf("proofstone.injectConformanceFault" to "true")),
+    BadRun(
+        "metaInvalidWindow", "**/invalid/window/**", "INVALID",
+        mapOf("proofstone.injectConformanceFault" to "window"),
+    ),
     BadRun("metaLeak", "**/leak/**", "LEAK", emptyMap()),
     BadRun("metaExpect", "**/expect/**", "FAIL", emptyMap()),
     BadRun("metaRequires", "**/requires/**", "SKIPPED", emptyMap()),

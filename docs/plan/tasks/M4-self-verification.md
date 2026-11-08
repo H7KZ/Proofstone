@@ -308,17 +308,20 @@ check the bundle files and the report.
 - Run the C03 to C08 scenarios of the conformance module in the per-cell check (`CellConformance`), once per cell per run
   through `ConformanceCache`.
 - Run C03 (agent round trip) on every cell, and the window scenarios C04 to C08 on every bridged cell.
-- Record the added cost per cell in robustness.md §4.
-- Add C09 to C12, or record in the PR why each one is deferred.
+- Record the added cost per cell in robustness.md §4. (Done: §4 "Per-cell conformance (T-M4-10b)".)
+- Add C09 to C12, or record in the PR why each one is deferred. (Done: deferred, reasons in docs/specs/self-tests.md §1.)
 
 **Don't.**
 - Skip a scenario silently on a row. A scenario that does not apply (C07 before 1.14) keeps its reason.
 
 **Acceptance.**
-- [ ] A conformance-breaking override on the window scenario makes every test on that cell `INVALID` (a new bad test in
-  metaTest).
-- [ ] Real-server run on paper@26.3 and paper@26.1.2 (bridged): C01 to C08 pass, with XML `skipped="0" failures="0"
-  errors="0"` except the reasoned C07 skip.
+- [x] A conformance-breaking override on the window scenario makes every test on that cell `INVALID` (a new bad test in
+  metaTest). Evidence: `WindowConformanceInvalidE2E` (2 tests, paper@26.1.2 bridged) in `:examples:bad-tests:metaTest` on 2026-11-09,
+  both `INVALID ... cell conformance failed: C04 failed: chest window type expected generic_9x2 but was generic_9x3`;
+  metaTest "every bad test produced its expected verdict" (BUILD SUCCESSFUL, 5m 1s).
+- [x] Real-server run on paper@26.3 (native) and paper@26.1.2 (bridged): C01 to C08 pass, with XML `skipped="0" failures="0"
+  errors="0"`. Evidence: `:conformance:run -Dproofstone.cells=<cell>` with `ConformanceSmokeTest` (C01, C02) and C03 to C08 on each
+  cell, all 7 suites per cell `skipped=0 failures=0 errors=0`. No C07 skip occurred (both rows are 1.14 or later).
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run :examples:bad-tests:metaTest --no-parallel`
