@@ -54,4 +54,4 @@
 
 The maintainer removed `ci.yml` and the required status checks (`gates`, `renovate-validate`) from branch protection, to stop all
 billed Actions minutes. Point 5 above no longer holds: there is no PR workflow. The local gate is `scripts/gates.sh`
-(AGENTS.md section 4). `matrix`, `nightly` and `version-watch` remain manual-only.
+(AGENTS.md section 4). `matrix`, `nightly` and `version-watch` were deleted too (same day): there is no workflow in the repo.
