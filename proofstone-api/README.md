@@ -15,6 +15,8 @@ Public API types for test authors (layer L1, ADR-0001). The only module whose ty
 The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, in `dev.proofstone.api`:
 
 - Annotations: `@Proofstone`, `@Matrix` (repeatable, with `Platform`), `@CellTest` (a JUnit `TestTemplate`).
+- Per-cell expectations (T-M4-15, api-change, test-api spec §9): `@Expect` (class or method) with a `CellExpectation`,
+  checked after the test body on each cell. Added after v0; the four new baseline lines are the only change.
 - Injected parameters: `Cell`, `Agent` (`command`, `capabilities`, `player`) and `Client` (`name`, `command`,
   `awaitMessage`, `position`, `awaitPosition`, `openBlock`, `inventory`).
 - Setup and views (T-M2-07): `PlayerHandle` and `PlayerState` (server oracle), `Window`, `Click`, `Item` (build),

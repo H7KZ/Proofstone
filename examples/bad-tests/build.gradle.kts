@@ -82,9 +82,9 @@ tasks.test {
     } else if (!explicitTests) {
         exclude("**/differential/**")
     }
-    // The invalid and leak bad tests (T-M4-07) fail on purpose in every run, so only metaTest runs them.
+    // The invalid, leak and expect bad tests (T-M4-07, T-M4-15) fail on purpose in every run, so only metaTest runs them.
     if (!explicitTests) {
-        exclude("**/invalid/**", "**/leak/**")
+        exclude("**/invalid/**", "**/leak/**", "**/expect/**")
     }
 }
 
@@ -103,6 +103,7 @@ val badRuns = listOf(
     ),
     BadRun("metaInvalid", "**/invalid/**", "INVALID", mapOf("proofstone.injectConformanceFault" to "true")),
     BadRun("metaLeak", "**/leak/**", "LEAK", emptyMap()),
+    BadRun("metaExpect", "**/expect/**", "FAIL", emptyMap()),
 )
 
 // The task's own JUnit XML directory, and the expectation, as plain values: the metaTest action must not capture the

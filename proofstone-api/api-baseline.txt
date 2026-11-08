@@ -29,6 +29,8 @@ public abstract interface dev.proofstone.api.Cell
   method public abstract java.lang.String dev.proofstone.api.Cell.javaTag()
   method public abstract java.lang.String dev.proofstone.api.Cell.platform()
   method public abstract java.lang.String dev.proofstone.api.Cell.version()
+public abstract interface dev.proofstone.api.CellExpectation
+  method public abstract void dev.proofstone.api.CellExpectation.check(dev.proofstone.api.Cell,dev.proofstone.api.Agent)
 public abstract interface dev.proofstone.api.CellTest implements java.lang.annotation.Annotation
 public final dev.proofstone.api.Click extends java.lang.Enum<dev.proofstone.api.Click>
   field public static final dev.proofstone.api.Click CTRL_DROP
@@ -95,6 +97,8 @@ public abstract interface dev.proofstone.api.EventProbe implements java.lang.Aut
   method public abstract void dev.proofstone.api.EventProbe.close()
 public abstract interface dev.proofstone.api.Events
   method public abstract dev.proofstone.api.EventProbe dev.proofstone.api.Events.subscribe(java.lang.String)
+public abstract interface dev.proofstone.api.Expect implements java.lang.annotation.Annotation
+  method public abstract java.lang.Class<? extends dev.proofstone.api.CellExpectation> dev.proofstone.api.Expect.value()
 public abstract interface dev.proofstone.api.Isolation implements java.lang.annotation.Annotation
   method public abstract dev.proofstone.api.Isolation$Mode dev.proofstone.api.Isolation.value()
 public final dev.proofstone.api.Isolation$Mode extends java.lang.Enum<dev.proofstone.api.Isolation$Mode>
