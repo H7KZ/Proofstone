@@ -14,7 +14,7 @@ Each platform is at one of these status levels:
 | Platform | Pack | Agent | Host | Versions (target) | Milestone | Notes |
 |---|---|---|---|---|---|---|
 | Paper | `bukkit/paper` | Bukkit agent (Java 8 bytecode) | itzg `TYPE=PAPER` | 1.8.8 → newest | M1–M3 | Proven in the prototype (1.18.2, 1.21.11, 26.1.2, 26.3). |
-| Folia | `bukkit/folia` | Bukkit agent + region schedulers | itzg `TYPE=FOLIA` | 1.19.4 → newest | M5 | **Experimental**: rows 1.21.11, 26.1.2, 26.2, 26.3. C01 to C08, C-F01, C-F02 passed once per row locally (`docs/platforms/folia.md`). The agent is required; RCON is unusable as an oracle. |
+| Folia | `bukkit/folia` | Bukkit agent + region schedulers | itzg `TYPE=FOLIA` | 1.19.4 → newest | M5 | **Required**: rows 1.21.11, 26.1.2, 26.2, 26.3 (promoted 2026-11-08, ADR-0015). C01 to C08, C-F01, C-F02 passed in at least two full runs per row; C06 repeat 10 of 10 on 26.3 and 1.21.11 (`docs/platforms/folia.md`). The agent is required; RCON is unusable as an oracle. |
 | Purpur | `bukkit/purpur` | Bukkit agent | itzg `TYPE=PURPUR` (confirmed, T-M5-04) | 1.20.6 → newest (rows so far; 1.14 → newest per Purpur API) | M5 | Paper fork. **Required** (ADR-0015, M5 follow-up): rows 1.20.6 (bridged), 1.21.11 (bridged), 26.3 (native). 1.14 to 1.19.x not run. `docs/platforms/purpur.md`. |
 | Spigot | `bukkit/spigot` | Bukkit agent | BuildTools image (`images/spigot-buildtools`), jar cached by SHA-256, `TYPE=CUSTOM` | 1.8.8 → newest | M5 | Slow to build, so each row is a manual per-row run (no schedule). **Required** (ADR-0015, M5 follow-up): rows 1.8.8 (bridged), 1.21.11 (bridged), 26.3 (native). An earlier C06 red on 1.21.11 is recorded and unexplained. `docs/platforms/spigot.md`. |
 | Other Paper forks (Pufferfish, Leaves, …) | community packs | Bukkit agent | custom | — | M10 | Pack template plus conformance. |
@@ -65,6 +65,6 @@ M5 itself promoted nothing: each row had one full local run. The M5 follow-up (`
 ADR-0015 with the evidence table in [ROADMAP, "M5 follow-up evidence"](plan/ROADMAP.md):
 - **Promoted to `required`:** purpur 1.20.6, 1.21.11, 26.3; spigot 1.8.8, 1.21.11, 26.3. Each has at least two full
   passing per-row runs, and the platform's C06 repeat (10 of 10 on purpur@26.3 and spigot@1.21.11) shows no flake.
-- **Kept `experimental`:** all four Folia rows. No C06 repeat was run on Folia, and folia@1.20.6 failed twice on
-  different tests (`docs/platforms/folia.md`, M5 follow-up).
+- **Folia promoted later the same day:** the four pinned Folia rows, after a C06 repeat of 10 of 10 on folia@26.3 and folia@1.21.11.
+  folia@1.20.6 is not added: it failed twice on different tests (`docs/platforms/folia.md`, M5 follow-up).
 - Paper rows keep their M3 `required` status.

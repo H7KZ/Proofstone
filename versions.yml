@@ -51,10 +51,10 @@ platforms:
         java21: "sha256:04b5ee189f5f2c1992fa557e366cf2e4d09fe2abfbd57d2d1f977d8c038c1b98"
         java25: "sha256:e2fabc536673f8c6b343055c93f7a73e10caa79cd3368f645987593c65adf1e0"
     rows:
-      - { mc: "1.21.11", build: 14,sha256: "f52c408490a0225611e67907a3ca19f7e6da2c6bc899e715d5f46844e7103c39", protocol: 774, status: experimental, observed: "client oracle OK, RCON oracle unusable" }
-      - { mc: "26.1.2", build: 8, sha256: "607afd1c3320008e1ffd2eaee6780ace4419d5f8c527b75e79f259be79ebf57b", protocol: 775, status: experimental }
-      - { mc: "26.2", build: 7, sha256: "128a634192261cd38bb4a5dc54075018a0f896fd6c6f529e37dca6e99e32b3b3", protocol: 776, status: experimental }
-      - { mc: "26.3", build: 6, sha256: "3d0a694905ddd9ec956af52259d555274ab8d3191871296d7094c290b686920d", protocol: 777, status: experimental }
+      - { mc: "1.21.11", build: 14,sha256: "f52c408490a0225611e67907a3ca19f7e6da2c6bc899e715d5f46844e7103c39", protocol: 774, status: required, observed: "client oracle OK, RCON oracle unusable" }
+      - { mc: "26.1.2", build: 8, sha256: "607afd1c3320008e1ffd2eaee6780ace4419d5f8c527b75e79f259be79ebf57b", protocol: 775, status: required }
+      - { mc: "26.2", build: 7, sha256: "128a634192261cd38bb4a5dc54075018a0f896fd6c6f529e37dca6e99e32b3b3", protocol: 776, status: required }
+      - { mc: "26.3", build: 6, sha256: "3d0a694905ddd9ec956af52259d555274ab8d3191871296d7094c290b686920d", protocol: 777, status: required }
   purpur:
     host:
       image: "itzg/minecraft-server"
