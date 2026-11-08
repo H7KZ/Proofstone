@@ -5,7 +5,6 @@ import dev.proofstone.core.versions.Builder;
 import dev.proofstone.core.versions.Platform;
 import dev.proofstone.core.versions.VersionsCatalog;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,8 +22,8 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 /**
  * The Spigot server jar of one cell (T-M5-05, ADR-0005, ADR-0006). Spigot is not downloaded: BuildTools builds it for
  * the cell's {@code --rev} inside the local builder image {@code images/spigot-buildtools}, and the result is cached
- * under its SHA-256. A cached jar is used only when its hash matches the row's pin, and a fresh build that hashes
- * differently fails loudly. No Spigot jar is committed or pushed (docs/platforms/spigot.md).
+ * under its SHA-256. A cached jar is used only when its {@link JarDigest} matches the row's pin, and a fresh build
+ * that digests differently fails loudly. No Spigot jar is committed or pushed (docs/platforms/spigot.md).
  */
 final class SpigotServerJar {
 
@@ -51,7 +50,7 @@ final class SpigotServerJar {
         Path repoRoot = repoRoot();
         Path cacheDir = cacheDir(repoRoot);
         Path cached = cacheDir.resolve(cell.sha256() + ".jar");
-        if (Files.isRegularFile(cached) && cell.sha256().equals(sha256(cached))) {
+        if (Files.isRegularFile(cached) && cell.sha256().equals(JarDigest.of(cached))) {
             return cached;
         }
         VersionsCatalog catalog = VersionsCatalog.load(repoRoot.resolve("versions.yml"),
@@ -67,14 +66,26 @@ final class SpigotServerJar {
                     + " (platforms.spigot.builder.jdk), needed by spigot@" + cell.mc());
         }
         Path built = build(cell, repoRoot.resolve("images/spigot-buildtools"), builder, jdk, cacheDir);
-        String actual = sha256(built);
-        if (!cell.sha256().equals(actual)) {
-            throw new PaperHostException("BuildTools built spigot@" + cell.mc() + " with sha256 " + actual
-                    + ", but versions.yml pins " + cell.sha256() + ". A rebuild differs from the pin: check the"
-                    + " BuildTools build and the JDK, then re-pin the row (docs/platforms/spigot.md).");
-        }
+        requireMatch(built, cell.sha256(), cell.mc());
         publish(built, cached);
         return cached;
+    }
+
+    /** Fails loudly, and removes the partial file, when the built jar's {@link JarDigest} is not the row's pin. */
+    static void requireMatch(Path built, String pin, String mc) {
+        String actual;
+        try {
+            actual = JarDigest.of(built);
+        } catch (RuntimeException e) {
+            discard(built);
+            throw e;
+        }
+        if (!pin.equals(actual)) {
+            discard(built);
+            throw new PaperHostException("BuildTools built spigot@" + mc + " with content digest " + actual
+                    + ", but versions.yml pins " + pin + ". The source or the builder changed: check the BuildTools"
+                    + " build and the JDK, then re-pin the row (docs/platforms/spigot.md).");
+        }
     }
 
     /** Runs BuildTools in the builder image and copies its jar out. The output is named by the rev. */
@@ -141,15 +152,10 @@ final class SpigotServerJar {
         }
     }
 
-    static String sha256(Path file) {
-        try (InputStream in = Files.newInputStream(file)) {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] buffer = new byte[1 << 16];
-            int read;
-            while ((read = in.read(buffer)) > 0) {
-                digest.update(buffer, 0, read);
-            }
-            return HexFormat.of().formatHex(digest.digest());
+    /** The plain SHA-256 of the file's bytes, to check that the copy inside the container is the file resolved here. */
+    static String fileSha256(Path file) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
         } catch (IOException e) {
             throw new UncheckedIOException("cannot hash " + file, e);
         } catch (NoSuchAlgorithmException e) {

@@ -8,8 +8,8 @@
 - **The server runs as `TYPE=CUSTOM`** on the itzg image (`platforms.spigot.host.digests`, one per Java tag, ADR-0013).
   `SpigotServerJar` copies the built jar in as `/data/spigot-<mc>.jar` and sets `CUSTOM_SERVER` to it. itzg never builds.
 - **Cache.** `SpigotServerJar` keeps jars in `build/proofstone/spigot-cache/<sha256>.jar` (override with
-  `-Dproofstone.spigotCache`). A cached jar is used only when its SHA-256 equals the row's pin. A cache miss runs BuildTools
-  and hashes the result: a mismatch fails the cell, and the jar is not cached.
+  `-Dproofstone.spigotCache`). The cache file is named by the row's pin (`JarDigest`, see Gotchas) and is used only when its digest equals the pin.
+  A cache miss runs BuildTools and digests the result: a mismatch fails the cell, deletes the `.jar.part` and caches nothing.
 - **Java per row.** BuildTools needs a `javac`, and the itzg images have none (JRE only). The row's Java tag picks the JDK:
   1.8.8 on `java8`, 1.21.11 on `java21`, 26.3 on `java25`. The server runs on the JDK it was built with.
 - Run it: `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@<mc> --no-parallel --max-workers=1`.
@@ -24,10 +24,17 @@
 and C-F02 skip on spigot with `missing capability FOLIA_REGIONS on cell spigot@<v>`.
 
 ## Gotchas
-- **BuildTools output is not bit-identical between runs.** Two builds of 1.8.8 on the same image and JDK gave
-  `977c722e...` (20957020 bytes) and `c7552585...` (20957021 bytes). The pin is therefore the build that was tested, and
-  a later build that differs fails loudly (`PaperHostException`) rather than passing. Re-pinning is a deliberate step.
-  _1.8.8 · T-M5-05_
+- **BuildTools output is not byte-identical between runs, and the cause is one line.** Builds of 1.8.8 hashed
+  differently every time (9 fresh builds, 9 SHA-256s). Unzipping two builds showed 11961 identical entries and one
+  difference: `META-INF/maven/org.spigotmc/spigot/pom.properties`, whose second line is Maven's build time
+  (`#Sun Nov 08 17:38:31 UTC 2026`). Entry times and order were equal. So the pin is a content digest (`JarDigest`): SHA-256
+  over every entry name and its content, with that date comment dropped. It is as strict as a jar hash for anything that
+  runs (a changed class, resource or entry changes it) and does not break on the build time. The two builds above, and the
+  earlier `c7552585...` jar, share one digest. 1.21.11 and 26.3 use the same rule, so every row is strict, none is exempt.
+  Decision: ADR-0005 (pin everything) is kept, not relaxed; only what is hashed changed. _1.8.8 · T-M5-05_
+- **C06 on 1.21.11 flake measured.** `-Dproofstone.repeat=5 --tests '*C06AnvilCombineTest*'`: 5 of 5 PASSED, no FLAKY
+  verdict. With the full row run (PASSED) that is 6 of 6 passes. The author's single failure is not reproduced; the rate
+  stays unknown below 1 in 6. _1.21.11 · T-M5-05 verify_
 - **BuildTools takes minutes.** 1.8.8 took 3m31s on java8 (Docker Desktop, Windows). The 1.21.11 and 26.3 builds were not
   timed. A cell run that has to build adds that to the boot time.
 - **The harness client logs `moved too quickly!` (WARN) on Spigot too.** The reset teleport races the client's first move

@@ -62,6 +62,8 @@ public final class PaperHost implements AutoCloseable {
     private static final Pattern JAVA_MAJOR = Pattern.compile("version \"(\\d+)(?:\\.(\\d+))?");
 
     private final Cell cell;
+    /** The jar bytes the container must hold: the pin, or for a built jar the sha256 of the file copied in. */
+    private String expectedJarSha256;
     private final PaperHostOptions options;
     private final String token;
     private final LogBuffer logs = new LogBuffer();
@@ -99,6 +101,8 @@ public final class PaperHost implements AutoCloseable {
     }
 
     private void boot(List<Path> artefacts, Path serverJar) {
+        // A built jar is pinned by content digest (JarDigest), so the copy is checked against the file it came from.
+        expectedJarSha256 = serverJar == null ? cell.sha256() : SpigotServerJar.fileSha256(serverJar);
         configure(artefacts, serverJar);
         try {
             container.start();
@@ -249,8 +253,8 @@ public final class PaperHost implements AutoCloseable {
                     + ". The digest for " + cell.java() + " in versions.yml points at a different Java (ADR-0013).");
         }
         String sums = exec("sh", "-c", "sha256sum /data/" + cell.platform() + "-*.jar");
-        if (!sums.contains(cell.sha256())) {
-            throw new PaperHostException("server jar sha256 differs from the pin " + cell.sha256() + ":\n" + sums);
+        if (!sums.contains(expectedJarSha256)) {
+            throw new PaperHostException("server jar sha256 differs from the expected " + expectedJarSha256 + ":\n" + sums);
         }
         if (!cell.mc().equals(health.mcVersion())) {
             throw new PaperHostException("agent reports Minecraft " + health.mcVersion() + ", cell is " + cell.mc());
