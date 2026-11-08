@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -121,7 +122,7 @@ public final class PaperHost implements AutoCloseable {
     private void configure(List<Path> artefacts) {
         container
                 .withEnv("EULA", "TRUE")
-                .withEnv("TYPE", "PAPER")
+                .withEnv("TYPE", cell.platform().toUpperCase(Locale.ROOT))
                 .withEnv("VERSION", cell.mc())
                 .withEnv("PAPER_BUILD", Integer.toString(cell.build()))
                 .withEnv("ONLINE_MODE", "FALSE")
@@ -225,7 +226,7 @@ public final class PaperHost implements AutoCloseable {
             throw new PaperHostException("cell wants " + cell.java() + " but the host image runs Java " + major
                     + ". The digest for " + cell.java() + " in versions.yml points at a different Java (ADR-0013).");
         }
-        String sums = exec("sh", "-c", "sha256sum /data/paper-*.jar");
+        String sums = exec("sh", "-c", "sha256sum /data/" + cell.platform() + "-*.jar");
         if (!sums.contains(cell.sha256())) {
             throw new PaperHostException("server jar sha256 differs from the pin " + cell.sha256() + ":\n" + sums);
         }

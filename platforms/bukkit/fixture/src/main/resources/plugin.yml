@@ -1,6 +1,8 @@
 name: proofstone-fixture
 version: 0.1.0
 main: dev.proofstone.fixture.FixturePlugin
+# Folia refuses a plugin that does not declare it (docs/platforms/folia.md).
+folia-supported: true
 commands:
   fixture-reload:
     description: Reload hook named by the agent's reload endpoint (T-M2-03). Does nothing.

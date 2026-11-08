@@ -3,11 +3,15 @@ package dev.proofstone.agent.bukkit;
 import dev.proofstone.agent.platform.MinecraftVersion;
 import dev.proofstone.agent.platform.PlatformDetector;
 import dev.proofstone.agent.protocol.Health;
+import dev.proofstone.agent.scheduler.FoliaScheduler;
 import dev.proofstone.agent.scheduler.MainThreadScheduler;
+import dev.proofstone.agent.scheduler.Scheduler;
 import dev.proofstone.agent.server.AgentConfig;
 import dev.proofstone.agent.server.AgentServer;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -19,30 +23,46 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
 
     private static final String PROTOCOL = "1.1";
 
-    private AgentServer server;
     private LogBuffer logs;
-    private TickCounter ticks;
+    private Scheduler scheduler;
+    private AgentServer server;
 
     @Override
     public void onEnable() {
-        ticks = TickCounter.start(this);
         logs = LogBuffer.attach();
         try {
             AgentConfig config = AgentConfig.fromEnvironment(System.getenv());
+            String platform = PlatformDetector.detect(this::classPresent);
+            // Folia has no main thread, so the Bukkit scheduler refuses every task. It gets the region scheduler.
+            scheduler = "folia".equals(platform) ? new FoliaScheduler(this) : new MainThreadScheduler(this);
+            TickCounter ticks = TickCounter.start(scheduler);
             Health health = new Health(
                     getDescription().getVersion(),
                     PROTOCOL,
-                    PlatformDetector.detect(this::classPresent),
+                    platform,
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    Arrays.asList("command", "players", "config", "reload", "world", "events", "log", "ticks"));
+                    capabilities(platform));
             EventProbes probes = new EventProbes(this, ticks);
             server = new AgentServer(config, health,
-                    new BukkitGame(new MainThreadScheduler(this), probes, logs, ticks));
+                    new BukkitGame(scheduler, probes, logs, ticks, "folia".equals(platform)));
             server.start();
             getLogger().info("Proofstone agent listening on port " + server.port());
         } catch (IllegalStateException | IOException e) {
             getLogger().severe("Proofstone agent not started: " + e.getMessage());
         }
+    }
+
+    /**
+     * The tokens the agent answers for. {@code regions} is reported on Folia only: it confirms the cell holds
+     * FOLIA_REGIONS (docs/platforms/folia.md), and ticks.json carries per-region counters for it.
+     */
+    static List<String> capabilities(String platform) {
+        List<String> tokens = new ArrayList<>(Arrays.asList(
+                "command", "players", "config", "reload", "world", "events", "log", "ticks"));
+        if ("folia".equals(platform)) {
+            tokens.add("regions");
+        }
+        return tokens;
     }
 
     @Override
@@ -53,7 +73,9 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
         if (logs != null) {
             logs.detach();
         }
-        Bukkit.getScheduler().cancelTasks(this);
+        if (scheduler != null) {
+            scheduler.close();
+        }
     }
 
     private boolean classPresent(String name) {

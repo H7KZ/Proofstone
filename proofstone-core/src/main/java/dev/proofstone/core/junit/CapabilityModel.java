@@ -22,15 +22,17 @@ final class CapabilityModel {
      * declares nothing, so every requirement on its cells is a skip with its reason, never a pass.
      */
     private static final Map<String, Set<Capability>> DECLARED = Map.of(
-            "paper", Set.of(Capability.NMS, Capability.DATAPACKS, Capability.BUKKIT_EVENTS, Capability.CONSOLE));
+            "paper", Set.of(Capability.NMS, Capability.DATAPACKS, Capability.BUKKIT_EVENTS, Capability.CONSOLE),
+            "folia", Set.of(Capability.FOLIA_REGIONS, Capability.BUKKIT_EVENTS, Capability.CONSOLE));
 
     /**
-     * The agent's report token that confirms a declared capability (docs/platforms/paper.md, Gotchas). A capability with no
-     * token is never held, until the agent reports one.
+     * The agent's report token that confirms a declared capability (docs/platforms/paper.md and folia.md, Gotchas). A
+     * capability with no token is never held, until the agent reports one.
      */
     private static final Map<Capability, String> AGENT_TOKEN = Map.of(
             Capability.BUKKIT_EVENTS, "events",
-            Capability.CONSOLE, "command");
+            Capability.CONSOLE, "command",
+            Capability.FOLIA_REGIONS, "regions");
 
     private CapabilityModel() {
     }
