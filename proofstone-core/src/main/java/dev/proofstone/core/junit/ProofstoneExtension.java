@@ -9,6 +9,7 @@ import dev.proofstone.core.cell.CellPlanner;
 import dev.proofstone.core.cell.CellSelector;
 import dev.proofstone.core.cell.Scope;
 import dev.proofstone.core.cell.VersionFamilies;
+import dev.proofstone.core.driver.ClientDriver;
 import dev.proofstone.core.host.Eula;
 import dev.proofstone.core.versions.VersionsCatalog;
 import java.lang.reflect.AnnotatedElement;
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
@@ -104,10 +104,42 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         List<Cell> cells = planCells(type, matrices, selector, planner, scope, families);
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
+        boolean differential = DifferentialRun.enabled();
         // The flake detector (self-tests section 4) runs every cell N times in a row; a plain run runs each cell once.
         int repeats = FlakeDetector.repeats();
-        return cells.stream().flatMap(cell -> IntStream.rangeClosed(1, repeats)
-                .mapToObj(repetition -> new CellInvocation(cell, config, isolation, catalog, repetition, repeats)));
+        if (differential && repeats > 1) {
+            // Both would count every run in one ledger, so a repeat of a differential run has no defined verdict.
+            throw new IllegalStateException("-D" + DifferentialRun.PROPERTY + " and -D" + FlakeDetector.REPEAT
+                    + " cannot be combined: run the differential once, or the flake detector on its own");
+        }
+        List<TestTemplateInvocationContext> invocations = new ArrayList<>();
+        for (Cell cell : cells) {
+            if (differential && !referenceNative(cell)) {
+                System.err.println("PROOFSTONE NOT DIFFERENTIAL (not run, not a pass): " + cell.platform() + "@"
+                        + cell.mc() + " is not the reference driver's native row");
+                continue;
+            }
+            for (String driverId : CellInvocation.driversFor(differential)) {
+                for (int repetition = 1; repetition <= repeats; repetition++) {
+                    invocations.add(new CellInvocation(cell, config, isolation, catalog, driverId, repetition,
+                            repeats));
+                }
+            }
+        }
+        if (invocations.isEmpty()) {
+            throw new IllegalStateException(type.getName() + " has no cell for a differential run: the reference driver "
+                    + DifferentialRun.REFERENCE + " must be native on a selected cell. Select its row, for example "
+                    + "-Dproofstone.cells=paper@26.1.2.");
+        }
+        return invocations.stream();
+    }
+
+    /** Whether the reference driver speaks this cell's row natively: the differential run is only defined there. */
+    private static boolean referenceNative(Cell cell) {
+        ClientDriver reference = CellInvocation.findDriver(DifferentialRun.REFERENCE).orElseThrow(
+                () -> new IllegalStateException("-D" + DifferentialRun.PROPERTY + " needs the reference driver "
+                        + DifferentialRun.REFERENCE + " on the classpath"));
+        return DifferentialRun.referenceNative(cell.mc(), reference.protocolVersion());
     }
 
     /**

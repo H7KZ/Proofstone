@@ -10,6 +10,8 @@ dependencies {
     testRuntimeOnly(project(":proofstone-core"))
     // The mcpl client driver, found through ServiceLoader. It needs Java 21+, hence the toolchain below.
     testRuntimeOnly(project(":drivers:mcpl"))
+    // The reference driver (ADR-0004), found through ServiceLoader for the differential example (T-M4-06) only.
+    testRuntimeOnly(project(":drivers:mineflayer-ref"))
     // Runs the nested error-log scenario and inspects its failure (ErrorLogFailsTheTestE2E).
     testImplementation(libs.junit.platform.launcher)
 }
@@ -47,7 +49,8 @@ tasks.test {
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     // The run-time cell selector and scope reach the test JVM from the Gradle command line (test-api spec §1).
     // proofstone.forceFail makes ForcedFailureE2E fail on purpose, to prove a failure leaves a repro bundle (T-M4-02).
-    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.forceFail")) {
+    // proofstone.differential runs DifferentialAgreeE2E with both drivers (T-M4-06); run it with --tests to select it.
+    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.forceFail", "proofstone.differential")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
     }
     // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.

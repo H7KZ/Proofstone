@@ -65,6 +65,10 @@ final class MineflayerRefSession implements ClientSession {
     /** Opens the sidecar socket and joins the server through the sidecar; returns once the bot has spawned. */
     static MineflayerRefSession open(URI sidecar, ConnectSpec spec) {
         MineflayerRefSession session = new MineflayerRefSession(spec.username());
+        if (MineflayerRefFault.enabled()) {
+            // The repro bundle shows the fault next to the observations it changed (T-M4-06).
+            session.transcript.add("fault injected: " + MineflayerRefDriver.FAULT_PROPERTY + "=true");
+        }
         String where = spec.username() + " -> " + spec.host() + ":" + spec.port() + " via " + sidecar;
         try {
             session.socket = HttpClient.newHttpClient().newWebSocketBuilder()
@@ -144,7 +148,7 @@ final class MineflayerRefSession implements ClientSession {
 
     @Override
     public WindowView inventory() {
-        return new MineflayerRefWindow(this, 0);
+        return new MineflayerRefWindow(this, 0, MineflayerRefFault.enabled());
     }
 
     private Optional<Integer> takeOpened() {

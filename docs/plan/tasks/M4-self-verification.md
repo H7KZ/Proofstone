@@ -194,7 +194,7 @@ after T-M4-05b (PR #53) landed the windows, blocks and items.
 - Compare timing-dependent fields such as positions while moving. Pin the comparison list in the code.
 
 **Acceptance.**
-- [ ] A purpose-built driver-fault injection is reported as `DISAGREE`.
+- [x] A purpose-built driver-fault injection is reported as `DISAGREE`. Evidence (real server, paper@26.1.2, 2026-11-08): `./gradlew :examples:bad-tests:test -Dproofstone.differential=true` ran `DriverFaultDisagreeE2E`; mcpl PASSED, mineflayer-ref FAILED with `DISAGREE ... on paper@26.1.2`, XML skipped=0 errors=0; bundle `build/proofstone/paper@26.1.2/DriverFaultDisagreeE2E.<test>/mineflayer-ref/` holds `differential/` with both transcripts and observations (local, not committed).
 
 **Verify.**
 `./gradlew :examples:bad-tests:test -Dproofstone.differential=true`

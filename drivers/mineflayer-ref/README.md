@@ -25,6 +25,9 @@ answers JSON-RPC 2.0. Its protocol and the protocol finding are in [mineflayer-r
 - `connect(ConnectSpec)`: `host` and `port` are as the sidecar sees them, on the cell network (the server alias
   `server:25565`, or `viaproxy:25568` on a bridged cell).
 - Sessions offer `chat`, `command`, `awaitMessage`, `position`, `experienceLevel`, `transcript` and `close`.
+- Test-only fault (T-M4-06): `MineflayerRefDriver.FAULT_PROPERTY` (`proofstone.injectDriverFault`). With `true` the
+  player inventory reports one extra damage point on its first non-empty item. Nothing else changes, so only a
+  differential run sees it. The bad-tests build sets it for its differential run and nothing else does.
 
 ## How to test
 

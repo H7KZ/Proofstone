@@ -33,3 +33,11 @@ path as `PROOFSTONE BUNDLE:`.
 ```bash
 PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:smoke:test -Dproofstone.forceFail=true --no-parallel
 ```
+
+Differential run (T-M4-06): `DifferentialAgreeE2E` runs with both drivers on 26.1.2, the reference driver's native row,
+and passes only when their client observations match. The run selects it with `--tests`: the other classes here use
+`latest`, which is not that row, so a differential run would not run them (`PROOFSTONE NOT DIFFERENTIAL`).
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:smoke:test -Dproofstone.differential=true --tests '*DifferentialAgreeE2E*' --no-parallel
+```

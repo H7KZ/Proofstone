@@ -10,6 +10,8 @@ dependencies {
     testRuntimeOnly(project(":proofstone-core"))
     // The mcpl client driver, found through ServiceLoader. It needs Java 21+, hence the toolchain below.
     testRuntimeOnly(project(":drivers:mcpl"))
+    // The reference driver (ADR-0004), found through ServiceLoader for differential runs (T-M4-06) only.
+    testRuntimeOnly(project(":drivers:mineflayer-ref"))
 }
 
 // MCProtocolLib is Java 21+ only, and the driver runs in the test JVM (ADR-0004).
@@ -41,10 +43,21 @@ tasks.test {
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
-    // The run-time cell selector, scope, control-run switch and flake-detector repeat count reach the test JVM from
-    // the Gradle command line (test-api spec section 1, self-tests sections 2 and 4).
-    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun", "proofstone.repeat")) {
+    // The run-time cell selector, scope, control-run, flake-detector repeat count and differential switches reach the
+    // test JVM from the Gradle command line (test-api spec section 1, self-tests sections 2, 3 and 4).
+    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun", "proofstone.repeat",
+            "proofstone.differential")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
+    }
+    // The differential bad test (T-M4-06) only means something in a differential run, where its reference driver is
+    // faulted. A differential run runs only that package (the other bad tests have no cell on the native row), and
+    // every other run leaves it out, so it never shows up in a normal bad-tests suite.
+    val differential = providers.systemProperty("proofstone.differential").orNull == "true"
+    if (differential) {
+        include("**/differential/**")
+        systemProperty("proofstone.injectDriverFault", "true")
+    } else {
+        exclude("**/differential/**")
     }
     // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.
     outputs.upToDateWhen { false }

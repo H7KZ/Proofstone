@@ -63,3 +63,7 @@ Notifications from the sidecar: `chat` (`text`, `system`), `disconnect` (`reason
   children, or the name comes out empty and the rename scenario never sees it. _26.1.2 and 1.21.11 · T-M4-05b_
 - **Mineflayer's window state id is private.** The sidecar tracks it from `window_items` and `set_slot`, the same two
   packets Mineflayer uses. _26.1.2 · T-M4-05b_
+- **A differential run needs the reference driver's network, even for the primary.** On 26.1.2 mcpl is bridged (its
+  native row is 26.3), so ViaProxy and the cell network start for both drivers. The sidecar joins the server by its
+  alias, directly, because 26.1.2 is its native row; only a bridged sidecar goes through `viaproxy`. The two drivers
+  run one after the other on one server (T-M4-06). _26.1.2 · T-M4-06_

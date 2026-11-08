@@ -31,6 +31,8 @@ final class BundleWriter {
     static final String REDACTED = "<redacted: agent token>";
     /** The switch that makes the forced-failure example fail on purpose (ForcedFailureE2E). */
     static final String FORCE_FAIL = "proofstone.forceFail";
+    /** The reference driver's fault switch, named as MineflayerRefDriver.FAULT_PROPERTY (core does not depend on it). */
+    static final String DRIVER_FAULT = "proofstone.injectDriverFault";
     private static final ObjectMapper JSON = new ObjectMapper();
 
     /** Everything a bundle holds. {@code viaproxyLog} is {@code null} for an unbridged cell. */
@@ -43,7 +45,7 @@ final class BundleWriter {
 
     /** Captures the bundle of the test in {@code context}. Called from afterEach, before the server is torn down. */
     static Path capture(ExtensionContext context, Cell cell, TestState state) {
-        return capture(context, cell, state, 0);
+        return capture(context, cell, state, 0, null);
     }
 
     /**
@@ -53,11 +55,22 @@ final class BundleWriter {
      * @param repetition the run's number from 1 to N, or 0 when the test runs once
      */
     static Path capture(ExtensionContext context, Cell cell, TestState state, int repetition) {
+        return capture(context, cell, state, repetition, null);
+    }
+
+    /**
+     * As {@link #capture(ExtensionContext, Cell, TestState, int)}. A differential run passes its driver id, so the two
+     * runs of one test keep separate bundles, under {@code <test>/<driver>/}.
+     */
+    static Path capture(ExtensionContext context, Cell cell, TestState state, int repetition, String driverId) {
         String test = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
         if (repetition > 0) {
             test += ".r" + repetition;
         }
         Path dir = ROOT.resolve(cell.platform() + "@" + cell.mc()).resolve(test);
+        if (driverId != null) {
+            dir = dir.resolve(driverId);
+        }
         List<String> driver = state.client == null ? List.of() : state.client.transcript();
         return write(dir, new Contents(
                 state.host.logs().all(),
@@ -142,6 +155,15 @@ final class BundleWriter {
         String forced = System.getProperty(FORCE_FAIL);
         if (forced != null) {
             command.append(" -D").append(FORCE_FAIL).append('=').append(forced);
+        }
+        // A differential bundle is only reproduced by a differential run of the same test, with the reference driver
+        // faulted when the fault switch was on (T-M4-06, MineflayerRefDriver.FAULT_PROPERTY).
+        if (DifferentialRun.enabled()) {
+            command.append(" -D").append(DifferentialRun.PROPERTY).append("=true");
+        }
+        String fault = System.getProperty(DRIVER_FAULT);
+        if (fault != null) {
+            command.append(" -D").append(DRIVER_FAULT).append('=').append(fault);
         }
         return "# Set PROOFSTONE_ACCEPT_EULA=true in the environment for this command; it is never written to a file.\n"
                 + command + " --no-parallel\n";
