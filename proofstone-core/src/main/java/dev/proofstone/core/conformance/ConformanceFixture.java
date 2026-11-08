@@ -1,6 +1,4 @@
-package dev.proofstone.conformance;
-
-import static org.assertj.core.api.Assertions.assertThat;
+package dev.proofstone.core.conformance;
 
 import dev.proofstone.api.Agent;
 import dev.proofstone.api.BlockPos;
@@ -12,13 +10,17 @@ import dev.proofstone.api.Position;
 import dev.proofstone.api.Window;
 import java.util.List;
 import java.util.function.Predicate;
+import org.junit.jupiter.api.Assertions;
 
 /**
- * The vanilla spot the C03 to C06 scenarios build on: an anvil and a chest in reach of a joined player, on solid
+ * The vanilla spot the C03 to C08 scenarios build on: an anvil and a chest in reach of a joined player, on solid
  * ground. Flat worlds spawn underground and chunks load only around players (docs/platforms/paper.md), so the
  * blocks are placed after the join and the player is teleported last.
+ *
+ * <p>Lives in core, not in the conformance module, so the per-cell check (self-tests section 1) can run the same
+ * scenarios as {@code :conformance:run} (T-M4-10). Assertions are JUnit's: core has no AssertJ.
  */
-final class ConformanceFixture {
+public final class ConformanceFixture {
 
     private static final int PLAYER_SLOTS = 36;
     static final BlockPos ANVIL = new BlockPos(0, 64, 2);
@@ -57,7 +59,7 @@ final class ConformanceFixture {
     }
 
     /** Resets the player, builds the fixture and teleports the client onto it. Reset comes first (it teleports). */
-    static PlayerHandle stand(Agent agent, Client client) {
+    public static PlayerHandle stand(Agent agent, Client client) {
         PlayerHandle player = agent.player(client).reset();
         player.awaitState("empty inventory", state -> state.inventory().isEmpty());
         agent.command("setblock 0 63 0 minecraft:stone");
@@ -67,7 +69,7 @@ final class ConformanceFixture {
         agent.command("setblock -1 64 0 minecraft:chest");
         agent.command("tp " + client.name() + " 0.5 64 0.5");
         Position at = client.awaitPosition("teleport to the fixture spot", p -> p.y() == 64.0);
-        assertThat(at.x()).isEqualTo(0.5);
+        Assertions.assertEquals(0.5, at.x(), "x after the teleport to the fixture spot");
         return player;
     }
 
@@ -88,7 +90,7 @@ final class ConformanceFixture {
     }
 
     /** The diamond sword, matched on either oracle's view. */
-    static Predicate<ItemView> sword() {
+    public static Predicate<ItemView> sword() {
         return item -> item.is("diamond_sword");
     }
 }

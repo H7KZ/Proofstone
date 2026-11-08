@@ -19,6 +19,10 @@ itself against real vanilla behaviour, on the newest Paper row:
 
 C09 onward (events, config, log, reset) arrive with later cards.
 
+The C03 to C08 scenarios and their fixture live in `proofstone-core` (`dev.proofstone.core.conformance`, T-M4-10a),
+so the per-cell check can run the same code. The classes here are thin JUnit wrappers: they add the `@Proofstone` matrix
+and, for C07, the 1.14 skip.
+
 ## Boundaries
 
 - Must not run in `check`. The scenarios boot a real server, so they need Docker and the Minecraft EULA.

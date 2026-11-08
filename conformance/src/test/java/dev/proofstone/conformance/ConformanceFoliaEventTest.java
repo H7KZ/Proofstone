@@ -12,6 +12,7 @@ import dev.proofstone.api.Matrix;
 import dev.proofstone.api.Platform;
 import dev.proofstone.api.Proofstone;
 import dev.proofstone.api.Requires;
+import dev.proofstone.core.conformance.ConformanceFixture;
 
 /**
  * C-F02 (specs/self-tests.md §1, Folia pack): an event probe reports the {@code thread} that ran the event. A console

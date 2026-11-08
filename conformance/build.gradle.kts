@@ -10,6 +10,8 @@ plugins {
 
 dependencies {
     testImplementation(project(":proofstone-api"))
+    // The C03 to C08 scenarios live in core (T-M4-10a), so the per-cell check and these wrappers run the same code.
+    testImplementation(project(":proofstone-core"))
     // Registers the JUnit extension through its service file.
     testRuntimeOnly(project(":proofstone-core"))
     // The mcpl client driver, found through ServiceLoader. It needs Java 21+, hence the toolchain below.
