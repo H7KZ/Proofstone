@@ -45,7 +45,7 @@ M5 can run in parallel with M4 once M3 is done.
 - Infer capabilities from version strings.
 
 **Acceptance.**
-- [ ] Unit and integration tests show the skip reason in reports.
+- [x] Unit and integration tests show the skip reason in reports. (`:proofstone-core:test`: CapabilityModelTest 9/9, skipped 0; `:examples:bad-tests:metaRequires` on paper@26.3, 2026-11-08: `RequiresSkipsE2E.skippedWithoutFolia` SKIPPED, `missing capability FOLIA_REGIONS on cell paper@26.3`, CAPABILITY_MISSING in proofstone-report.json; held test PASS.)
 
 **Verify.**
 `./gradlew :proofstone-core:test`

@@ -218,6 +218,10 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   `players`, `config`, `reload`, `world`, `events`, `log` and `ticks`. The `NMS`, `DATAPACKS`, `BUKKIT_EVENTS` and
   `CONSOLE` names are the cell's capability vocabulary, not what the agent answers. A per-cell expectation (test-api
   spec section 9) must assert on the agent's names, or it fails on every cell.
+- **Only `BUKKIT_EVENTS` and `CONSOLE` are held by a Paper cell (T-M5-01).** The agent confirms `events` and `command`,
+  so those two are the cell's capabilities. `NMS` and `DATAPACKS` are declared by the pack but have no agent token yet,
+  so a test with `@Requires(NMS)` or `@Requires(DATAPACKS)` is SKIPPED on every Paper cell. The real-server run is
+  `metaRequires` (`examples/bad-tests`, 26.3 latest).
 - **`reset` teleports the player** to the fixture spot, so teleport after it, never before (T-M2-07). A test that
   teleported first and reset second left the client far from its anvil; the window never opened and the server kicked
   the client with `multiplayer.disconnect.flying`.

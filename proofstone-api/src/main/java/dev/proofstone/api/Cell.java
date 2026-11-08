@@ -1,5 +1,7 @@
 package dev.proofstone.api;
 
+import java.util.Set;
+
 /** The environment of one test invocation (test-api spec §2). */
 public interface Cell {
 
@@ -14,4 +16,10 @@ public interface Cell {
 
     /** True when the client reaches the server through a protocol bridge. */
     boolean bridged();
+
+    /**
+     * The capabilities this cell holds: the ones its platform pack declares that the agent reports (test-api spec section
+     * 10). A test's {@link Requires} is checked against this set before the body runs.
+     */
+    Set<Capability> capabilities();
 }
