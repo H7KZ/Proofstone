@@ -14,6 +14,8 @@ dependencies {
     testRuntimeOnly(project(":proofstone-core"))
     // The mcpl client driver, found through ServiceLoader. It needs Java 21+, hence the toolchain below.
     testRuntimeOnly(project(":drivers:mcpl"))
+    // The reference driver, selected with -Dproofstone.driver=mineflayer-ref (T-M4-05b).
+    testRuntimeOnly(project(":drivers:mineflayer-ref"))
 }
 
 // MCProtocolLib is Java 21+ only, and the driver runs in the test JVM (ADR-0004).
@@ -44,9 +46,9 @@ fun Test.realServerScenarios(taskDescription: String) {
     dependsOn(":platforms:bukkit:agent:shadowJar", "testClasses")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
-    // The run-time cell selector, scope and flake-detector repeat count reach the test JVM from the Gradle command line
-    // (test-api spec §1, self-tests section 4).
-    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.repeat")) {
+    // The run-time cell selector, scope, driver and flake-detector repeat count reach the test JVM from the Gradle
+    // command line (test-api spec §1, self-tests section 4).
+    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.driver", "proofstone.repeat")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
     }
     // The result depends on Docker and the EULA, so always run when asked. A skip is never a pass (AGENTS.md §3).

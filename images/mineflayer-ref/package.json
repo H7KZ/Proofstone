@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "mineflayer": "4.39.0",
+    "minecraft-data": "3.119.0",
+    "vec3": "0.1.10",
     "ws": "8.18.3"
   }
 }

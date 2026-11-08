@@ -39,12 +39,11 @@ import java.util.regex.Pattern;
  * The sidecar pushes chat and disconnect as notifications; this class buffers them, so a reply that beats
  * {@link #awaitMessage} is not lost. Every value it returns is what the sidecar read from the server.
  *
- * <p>Windows, blocks and the player inventory are not in this slice: they fail loudly rather than answer. They
- * come with the item and window parsing card (T-M4-05b), which the C03 to C06 scenarios need.
+ * <p>Windows, blocks and the player inventory come from the sidecar's syncs, which Mineflayer's own predictions
+ * never touch (T-M4-05b).
  */
 final class MineflayerRefSession implements ClientSession {
 
-    private static final String NOT_YET = " is not in the reference driver yet (T-M4-05b: windows, blocks, items)";
     private static final Duration RPC_WAIT = Duration.ofSeconds(20);
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -53,6 +52,8 @@ final class MineflayerRefSession implements ClientSession {
     private final Map<Long, CompletableFuture<JsonNode>> pending = new ConcurrentHashMap<>();
     private final List<ChatMessage> chat = Collections.synchronizedList(new ArrayList<>());
     private final List<String> transcript = Collections.synchronizedList(new ArrayList<>());
+    /** Ids of windows the server opened that no awaitWindow has returned yet, in order. */
+    private final List<Integer> opened = Collections.synchronizedList(new ArrayList<>());
     private volatile WebSocket socket;
     private volatile boolean disconnected;
     private volatile String disconnectReason;
@@ -119,17 +120,37 @@ final class MineflayerRefSession implements ClientSession {
 
     @Override
     public void useBlock(BlockPos pos, Face face) {
-        throw new ClientDriverException("useBlock" + NOT_YET);
+        // The face is not sent: Mineflayer activates the block from its own look at it, which opens the containers
+        // the scenarios use (chest, anvil, grindstone) whatever face the caller names.
+        call("useBlock", mapper.createObjectNode().put("x", pos.x()).put("y", pos.y()).put("z", pos.z()),
+                RPC_WAIT);
     }
 
     @Override
     public WindowSession awaitWindow(Duration timeout) {
-        throw new ClientDriverException("awaitWindow" + NOT_YET);
+        Optional<Integer> opened;
+        try {
+            opened = Await.until("a window opened for " + username, this::takeOpened, found -> found.isPresent()
+                    || disconnected, timeout);
+        } catch (AwaitTimeoutException e) {
+            throw new ClientDriverException("no window opened within " + timeout + "; transcript tail: "
+                    + transcript(), e);
+        }
+        if (opened.isEmpty()) {
+            throw new ClientDriverException("disconnected while waiting for a window: " + disconnectReason);
+        }
+        return new MineflayerRefWindow(this, opened.get());
     }
 
     @Override
     public WindowView inventory() {
-        throw new ClientDriverException("inventory" + NOT_YET);
+        return new MineflayerRefWindow(this, 0);
+    }
+
+    private Optional<Integer> takeOpened() {
+        synchronized (opened) {
+            return opened.isEmpty() ? Optional.empty() : Optional.of(opened.remove(0));
+        }
     }
 
     @Override
@@ -182,8 +203,13 @@ final class MineflayerRefSession implements ClientSession {
         return mapper.createObjectNode().put(key, value);
     }
 
+    /** An empty params object, for the windows to add their fields to. */
+    ObjectNode params() {
+        return mapper.createObjectNode();
+    }
+
     /** Sends one request and waits for its reply, which the listener completes. Errors carry the sidecar's message. */
-    private JsonNode call(String method, ObjectNode params, Duration timeout) {
+    JsonNode call(String method, ObjectNode params, Duration timeout) {
         WebSocket open = socket;
         if (open == null || disconnected) {
             throw new ClientDriverException(method + " on a closed session: " + disconnectReason);
@@ -251,6 +277,11 @@ final class MineflayerRefSession implements ClientSession {
             }
             case "disconnect" -> endConnection("server or bot disconnected: " + params.path("reason").asText());
             case "error" -> transcript.add("<- error " + params.path("message").asText());
+            case "windowOpen" -> {
+                opened.add(params.path("id").asInt());
+                transcript.add("<- windowOpen " + params.path("type").asText());
+            }
+            case "windowClose" -> transcript.add("<- windowClose " + params.path("id").asInt());
             default -> endConnection("unknown sidecar notification: " + method);
         }
     }
