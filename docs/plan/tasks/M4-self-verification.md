@@ -481,16 +481,20 @@ Folia row, before M5 (robustness.md §5).
 - Add the nightly set (control, differential and repeat runs) as a job that runs only on `workflow_dispatch`. Do
   not add a `schedule:` trigger: scheduled Actions minutes were cancelled at PR #40 (billed). Turning on a schedule
   is a maintainer decision, recorded in the review.
-- Refine the M6 cards.
+- Refine the M6 cards. (Typo, found in T-M4-99: M5 is the next milestone, so T-M4-99 refined the M5 cards and left M6 for the M5 review.)
 
 **Don't.**
 - Start M6.
 - Run the nightly set on every Paper row. Pick the cells the self-tests need and say why in the review.
 
 **Acceptance.**
-- [ ] The exit criterion is demonstrated.
-- [ ] One manual `workflow_dispatch` run of the nightly set is green, linked from the review. A run is evidence only
-  when its XML has `skipped="0" failures="0"` or the skip has a reason, as in M3.
+- [x] The exit criterion is demonstrated. Evidence: ROADMAP "M4 review (T-M4-99)": `metaTest` 1:39 (every bad test gave its
+  expected verdict), control run VACUOUS, repeat run FLAKY, differential run DISAGREE, `:conformance:smoke` 2/2, all XML
+  `skipped="0" errors="0"`.
+- [ ] One manual `workflow_dispatch` run of the nightly set is green, linked from the review. **UNVERIFIED:** not triggered
+  (maintainer rule: no manual workflow runs by agents). The job is `.github/workflows/nightly.yml`. The maintainer runs it
+  and links it in the ROADMAP M4 review. A run is evidence only when its XML has `skipped="0" failures="0"` or the skip
+  has a reason, as in M3.
 
 **Verify.**
 The `workflow_dispatch` run link, plus the local `:examples:bad-tests:metaTest` output.
