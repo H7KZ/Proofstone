@@ -11,7 +11,9 @@ import dev.proofstone.core.driver.ConnectSpec;
 import dev.proofstone.core.host.PaperHost;
 import dev.proofstone.core.host.PaperHostOptions;
 import dev.proofstone.core.host.ViaProxyHost;
+import dev.proofstone.core.verdict.Attempt;
 import dev.proofstone.core.versions.VersionsCatalog;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -32,7 +34,8 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContext;
 
 /**
- * One cell of one test method, run with one client driver. It also resolves the parameters, because it knows its cell.
+ * One cell of one test method, run with one client driver, once of N when the flake detector is on. It also resolves
+ * the parameters, because it knows its cell.
  *
  * <p>The server is per class and cell by default ({@link Isolation.Mode#PER_CLASS}): it lives in the class-level
  * store, is booted by the first invocation that needs it and is closed when the class finishes. With
@@ -68,8 +71,13 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private final boolean controlRun;
     /** Whether this invocation is one half of a differential run (self-tests section 3). */
     private final boolean differential;
+    /** This run's number, from 1 to {@link #repeats}. */
+    private final int repetition;
+    /** N of the flake detector (self-tests section 4), or 1 when the detector is off. */
+    private final int repeats;
 
-    CellInvocation(Cell cell, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog, String driverId) {
+    CellInvocation(Cell cell, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog, String driverId,
+            int repetition, int repeats) {
         this.cell = cell;
         this.config = config;
         this.isolation = isolation;
@@ -77,6 +85,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         this.driverId = driverId;
         this.controlRun = VerdictGate.controlRun();
         this.differential = DifferentialRun.enabled();
+        this.repetition = repetition;
+        this.repeats = repeats;
         // The driver speaks one protocol; any other server needs ViaProxy in between (ADR-0004). With no driver on
         // the classpath the cell is not bridged, and the join fails loudly later.
         this.bridged = findDriver(driverId).map(driver -> !driver.protocolVersion().equals(cell.mc())).orElse(false);
@@ -97,7 +107,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     @Override
     public String getDisplayName(int invocationIndex) {
-        return cellId() + (bridged ? " (bridged)" : "") + (differential ? " [" + driverId + "]" : "");
+        return cellId() + (bridged ? " (bridged)" : "") + (differential ? " [" + driverId + "]" : "")
+                + (repeats > 1 ? " repeat " + repetition + "/" + repeats : "");
     }
 
     /** The cell's display id without the bridged marker, for example {@code paper@1.8.8}. */
@@ -160,7 +171,16 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         List<DifferentialRun.Observation> observations = DifferentialRun.end();
         TestState state = context.getStore(NAMESPACE).get(STATE, TestState.class);
         if (state == null) {
-            return; // beforeEach failed before it had anything to undo; its own failure is already reported
+            // beforeEach failed before it had anything to undo; its own failure is already reported. A flake run still
+            // counts this run, as a failure: a run that did not start is never a pass.
+            if (repeats > 1) {
+                AssertionError verdict = judgeRepeat(context, Attempt.fail(
+                        "the server or the client did not start; see the failure reported for this run"));
+                if (verdict != null) {
+                    throw verdict;
+                }
+            }
+            return;
         }
         // Every step runs, whatever an earlier one did, and the first failure is the one reported.
         Throwable failure = null;
@@ -181,10 +201,12 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 failure = failure == null ? verdict : combine(verdict, failure);
             }
         }
-        // Before the restore, so the bundle sees the config the test left behind; the server is still up.
-        if (failure != null || context.getExecutionException().isPresent()) {
+        // Before the restore, so the bundle sees the config the test left behind; the server is still up. A flake run
+        // keeps every run's bundle, so a FLAKY report has the transcripts of the runs that passed as well.
+        if (repeats > 1 || failure != null || context.getExecutionException().isPresent()) {
             try {
-                Path bundle = BundleWriter.capture(context, cell, state, differential ? driverId : null);
+                Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0,
+                        differential ? driverId : null);
                 if (disagreement != null) {
                     DifferentialRun.writeEvidence(bundle, disagreement, state.host.agentToken());
                 }
@@ -193,8 +215,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 failure = combine(failure, new IllegalStateException("cannot write the repro bundle", e));
             }
         }
-        // Judged only for a pass: a failure or skip already has its verdict from JUnit.
-        if (failure == null && context.getExecutionException().isEmpty()) {
+        // Judged only for a pass of a single run: a failure or skip already has its verdict from JUnit. A flake run
+        // judges all its runs together, after the last one (see below).
+        if (repeats == 1 && failure == null && context.getExecutionException().isEmpty()) {
             failure = VerdictGate.judgePass(context.getRequiredTestMethod(), cellId(), controlRun);
         }
         for (String plugin : state.patchedPlugins) {
@@ -209,6 +232,13 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             state.close();
         } catch (RuntimeException e) {
             failure = combine(failure, new IllegalStateException("cannot disconnect the client", e));
+        }
+        if (repeats > 1) {
+            // This run's outcome is what it finally was, after its own restore and disconnect.
+            Attempt attempt = failure != null ? Attempt.fail(detail(failure))
+                    : context.getExecutionException().isPresent()
+                            ? Attempt.fail(detail(context.getExecutionException().get())) : Attempt.pass();
+            failure = combine(failure, judgeRepeat(context, attempt));
         }
         if (failure instanceof Error error) {
             throw error;
@@ -228,8 +258,35 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (first == null) {
             return next;
         }
-        first.addSuppressed(next);
+        if (next != null) {
+            first.addSuppressed(next);
+        }
         return first;
+    }
+
+    /** A failure's message, or its class name when it has none: a FAIL run always needs a detail. */
+    private static String detail(Throwable failure) {
+        String message = failure.getMessage();
+        return message == null || message.isBlank() ? failure.getClass().getName() : message;
+    }
+
+    /**
+     * Records this run in the test's ledger. After the last run it judges all of them together (self-tests section
+     * 4). The ledger lives in the root store, keyed by test and cell, so it survives from one repeat to the next.
+     *
+     * @return the verdict failure, set only after the last run and only when the runs disagree
+     */
+    private AssertionError judgeRepeat(ExtensionContext context, Attempt attempt) {
+        Method test = context.getRequiredTestMethod();
+        String key = test.getDeclaringClass().getName() + "#" + test.getName() + "@" + cellId();
+        RepeatLedger ledger = context.getRoot().getStore(NAMESPACE)
+                .getOrComputeIfAbsent(key, ignored -> new RepeatLedger(repeats), RepeatLedger.class);
+        List<Attempt> runs = ledger.record(repetition, attempt);
+        if (runs == null) {
+            return null;
+        }
+        context.getRoot().getStore(NAMESPACE).remove(key);
+        return VerdictGate.judgeRepeats(test, cellId(), controlRun, runs);
     }
 
     private static boolean declaresClient(ExtensionContext context) {

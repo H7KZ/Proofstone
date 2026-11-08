@@ -105,6 +105,13 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
         boolean differential = DifferentialRun.enabled();
+        // The flake detector (self-tests section 4) runs every cell N times in a row; a plain run runs each cell once.
+        int repeats = FlakeDetector.repeats();
+        if (differential && repeats > 1) {
+            // Both would count every run in one ledger, so a repeat of a differential run has no defined verdict.
+            throw new IllegalStateException("-D" + DifferentialRun.PROPERTY + " and -D" + FlakeDetector.REPEAT
+                    + " cannot be combined: run the differential once, or the flake detector on its own");
+        }
         List<TestTemplateInvocationContext> invocations = new ArrayList<>();
         for (Cell cell : cells) {
             if (differential && !referenceNative(cell)) {
@@ -113,7 +120,10 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                 continue;
             }
             for (String driverId : CellInvocation.driversFor(differential)) {
-                invocations.add(new CellInvocation(cell, config, isolation, catalog, driverId));
+                for (int repetition = 1; repetition <= repeats; repetition++) {
+                    invocations.add(new CellInvocation(cell, config, isolation, catalog, driverId, repetition,
+                            repeats));
+                }
             }
         }
         if (invocations.isEmpty()) {
