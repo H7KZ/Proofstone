@@ -9,7 +9,7 @@ import java.util.List;
  *
  * @param platform platform id, for example {@code paper}
  * @param mc Minecraft version
- * @param build platform build number
+ * @param build platform build number, or {@code null} for a platform built from source (Spigot has no build number)
  * @param sha256 server jar checksum
  * @param java Java image, for example {@code java21}
  * @param status row status
@@ -20,7 +20,7 @@ import java.util.List;
 public record Cell(
         String platform,
         String mc,
-        int build,
+        Integer build,
         String sha256,
         String java,
         Status status,

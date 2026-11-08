@@ -25,7 +25,9 @@ final class CapabilityModel {
             "paper", Set.of(Capability.NMS, Capability.DATAPACKS, Capability.BUKKIT_EVENTS, Capability.CONSOLE),
             "folia", Set.of(Capability.FOLIA_REGIONS, Capability.BUKKIT_EVENTS, Capability.CONSOLE),
             // Purpur declares only what its conformance run verified (docs/platforms/purpur.md), not Paper's NMS.
-            "purpur", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE));
+            "purpur", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE),
+            // Spigot declares only what its conformance run verified (docs/platforms/spigot.md), like Purpur.
+            "spigot", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE));
 
     /**
      * The agent's report token that confirms a declared capability (docs/platforms/paper.md and folia.md, Gotchas). A

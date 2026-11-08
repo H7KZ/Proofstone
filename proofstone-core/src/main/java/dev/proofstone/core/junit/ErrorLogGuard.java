@@ -63,12 +63,24 @@ final class ErrorLogGuard {
                 Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
                 List.of());
 
+        /**
+         * Spigot (docs/platforms/spigot.md, Gotchas), reviewed on its own. It is built by BuildTools, not by itzg, and its
+         * allowlist holds only what a reviewed Spigot run showed (T-M5-05).
+         */
+        static final Patterns SPIGOT = new Patterns("spigot", Map.of(
+                // Observed on spigot@26.3 in :conformance:smoke (T-M5-05): "T94d99d50 moved too quickly! -7.5,-60.0,6.5".
+                // The same anti-cheat WARN as Paper, Folia and Purpur: the reset teleport races the harness client's first
+                // movement packets. Harness clients only (CellInvocation.joinClient).
+                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                List.of());
+
         /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
         static Patterns of(String platform) {
             return switch (platform) {
                 case "paper" -> PAPER;
                 case "folia" -> FOLIA;
                 case "purpur" -> PURPUR;
+                case "spigot" -> SPIGOT;
                 default -> throw new IllegalStateException("no log patterns for platform " + platform
                         + ": its platform pack must supply its own list (robustness R9)");
             };

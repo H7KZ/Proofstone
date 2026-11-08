@@ -37,6 +37,7 @@
       "additionalProperties": false,
       "required": ["host", "rows"],
       "properties": {
+        "builder": { "$ref": "#/$defs/builder" },
         "host": {
           "type": "object",
           "additionalProperties": false,
@@ -57,10 +58,36 @@
         "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }
       }
     },
+    "builder": {
+      "description": "How the server jar is built from source (Spigot, T-M5-05). Rows then need no build number.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["buildtools", "jdk"],
+      "properties": {
+        "buildtools": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["build", "sha256"],
+          "properties": {
+            "build": { "type": "integer", "minimum": 1 },
+            "sha256": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{64}$" }, { "const": "TODO" }] }
+          }
+        },
+        "jdk": {
+          "description": "JDK image by Java tag, pinned by digest (ADR-0013). TODO until pinned.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/javaImage" },
+          "additionalProperties": {
+            "anyOf": [{ "type": "string", "pattern": "^[a-z0-9./-]+@sha256:[0-9a-f]{64}$" }, { "const": "TODO" }]
+          }
+        }
+      }
+    },
     "row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mc", "build", "sha256", "status"],
+      "required": ["mc", "sha256", "status"],
       "properties": {
         "mc": { "type": "string", "minLength": 1 },
         "build": { "anyOf": [{ "type": "integer", "minimum": 1 }, { "const": "TODO" }] },

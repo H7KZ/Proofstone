@@ -160,6 +160,7 @@ public final dev.proofstone.api.Platform extends java.lang.Enum<dev.proofstone.a
   field public static final dev.proofstone.api.Platform FOLIA
   field public static final dev.proofstone.api.Platform PAPER
   field public static final dev.proofstone.api.Platform PURPUR
+  field public static final dev.proofstone.api.Platform SPIGOT
   method public static dev.proofstone.api.Platform dev.proofstone.api.Platform.valueOf(java.lang.String)
   method public static dev.proofstone.api.Platform[] dev.proofstone.api.Platform.values()
 public abstract interface dev.proofstone.api.PlayerHandle

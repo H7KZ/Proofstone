@@ -117,7 +117,7 @@ public final class CellPlanner {
 
     private Cell toCell(Platform platform, Row row, List<String> extraNotes) {
         List<String> todo = new ArrayList<>();
-        if (row.build() == null) {
+        if (row.build() == null && platform.builder() == null) {
             todo.add("build");
         }
         if (row.sha256() == null) {
@@ -127,6 +127,14 @@ public final class CellPlanner {
         String hostDigest = platform.host().digest(javaTag);
         if (hostDigest == null) {
             todo.add("host digest for " + javaTag);
+        }
+        if (platform.builder() != null) {
+            if (platform.builder().buildToolsSha256() == null) {
+                todo.add("builder BuildTools sha256");
+            }
+            if (platform.builder().jdkImage(javaTag) == null) {
+                todo.add("builder JDK for " + javaTag);
+            }
         }
         if (!todo.isEmpty()) {
             throw new VersionsException(platform.id() + "@" + row.mc() + " has TODO pins: "

@@ -16,7 +16,7 @@ Each platform is at one of these status levels:
 | Paper | `bukkit/paper` | Bukkit agent (Java 8 bytecode) | itzg `TYPE=PAPER` | 1.8.8 → newest | M1–M3 | Proven in the prototype (1.18.2, 1.21.11, 26.1.2, 26.3). |
 | Folia | `bukkit/folia` | Bukkit agent + region schedulers | itzg `TYPE=FOLIA` | 1.19.4 → newest | M5 | Prototype: plugin OK, RCON unusable. The agent is required. |
 | Purpur | `bukkit/purpur` | Bukkit agent | itzg `TYPE=PURPUR` (confirmed, T-M5-04) | 1.21.11 → 26.3 (rows so far; 1.14 → newest per Purpur API) | M5 | Paper fork. C01 to C08 pass on 1.21.11 and 26.3 (`docs/platforms/purpur.md`). Experimental rows. |
-| Spigot | `bukkit/spigot` | Bukkit agent | BuildTools image, jar cached by checksum | 1.8.8 → newest | M5 | Slow to build, so it runs nightly. |
+| Spigot | `bukkit/spigot` | Bukkit agent | BuildTools image (`images/spigot-buildtools`), jar cached by SHA-256, `TYPE=CUSTOM` | 1.8.8 → newest | M5 | Slow to build, so each row is a manual per-row run (no schedule). `docs/platforms/spigot.md`. |
 | Other Paper forks (Pufferfish, Leaves, …) | community packs | Bukkit agent | custom | — | M10 | Pack template plus conformance. |
 | Hybrids (Mohist, Arclight, …) | community packs | Bukkit agent + mod agent | custom | — | M10+ | Low priority. Behaviour differs a lot between them. |
 

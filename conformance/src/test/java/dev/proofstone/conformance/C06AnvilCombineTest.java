@@ -25,6 +25,7 @@ import java.util.Map;
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Matrix(platform = Platform.PURPUR, versions = {"latest"})
+@Matrix(platform = Platform.SPIGOT, versions = {"latest"})
 class C06AnvilCombineTest {
 
     private static final int START_LEVEL = 30;

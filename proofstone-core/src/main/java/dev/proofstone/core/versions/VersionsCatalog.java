@@ -162,6 +162,10 @@ public final class VersionsCatalog {
                 if (!seenMc.add(mc)) {
                     errors.add("platforms." + platform.getKey() + ": mc \"" + mc + "\" appears twice");
                 }
+                if (!row.has("build") && !platform.getValue().has("builder")) {
+                    errors.add("platforms." + platform.getKey() + ".rows[" + i + "] (mc " + mc
+                            + "): build is required unless the platform has a builder (Spigot)");
+                }
                 if ("required".equals(row.path("status").asText()) && containsTodo(row)) {
                     errors.add("platforms." + platform.getKey() + ".rows[" + i + "] (mc " + mc
                             + "): required row must not contain TODO");
@@ -207,7 +211,8 @@ public final class VersionsCatalog {
             for (JsonNode row : node.path("rows")) {
                 rows.add(toRow(row));
             }
-            platforms.put(entry.getKey(), new Platform(entry.getKey(), host, List.copyOf(rows)));
+            Builder builder = node.has("builder") ? parseBuilder(node.path("builder")) : null;
+            platforms.put(entry.getKey(), new Platform(entry.getKey(), host, List.copyOf(rows), builder));
         }
         Map<String, ImagePin> driverImages = new LinkedHashMap<>();
         Iterator<Map.Entry<String, JsonNode>> drivers = document.path("drivers").fields();
@@ -236,6 +241,20 @@ public final class VersionsCatalog {
                 List.copyOf(drivers),
                 row.path("observed").asText(""),
                 row.path("notes").asText(""));
+    }
+
+    private static Builder parseBuilder(JsonNode node) {
+        JsonNode buildTools = node.path("buildtools");
+        Map<String, String> jdkImages = new LinkedHashMap<>();
+        Iterator<Map.Entry<String, JsonNode>> jdks = node.path("jdk").fields();
+        while (jdks.hasNext()) {
+            Map.Entry<String, JsonNode> jdk = jdks.next();
+            String image = pin(jdk.getValue());
+            if (image != null) {
+                jdkImages.put(jdk.getKey(), image);
+            }
+        }
+        return new Builder(buildTools.path("build").asInt(), pin(buildTools.path("sha256")), jdkImages);
     }
 
     /** A {@code TODO} pin is stored as {@code null}, so a planner can refuse to use it. */

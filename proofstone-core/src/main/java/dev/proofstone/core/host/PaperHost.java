@@ -91,13 +91,15 @@ public final class PaperHost implements AutoCloseable {
         }
         // Resolve before any container exists, so a bad glob fails fast and names itself.
         List<Path> artefacts = Artefacts.resolve(options.artefactBase(), options.artefactGlobs());
+        // Spigot is built, not downloaded: the jar is resolved before any container exists (T-M5-05).
+        Path serverJar = SpigotServerJar.PLATFORM.equals(cell.platform()) ? SpigotServerJar.resolve(cell) : null;
         PaperHost host = new PaperHost(cell, options);
-        host.boot(artefacts);
+        host.boot(artefacts, serverJar);
         return host;
     }
 
-    private void boot(List<Path> artefacts) {
-        configure(artefacts);
+    private void boot(List<Path> artefacts, Path serverJar) {
+        configure(artefacts, serverJar);
         try {
             container.start();
             awaitDone();
@@ -119,12 +121,11 @@ public final class PaperHost implements AutoCloseable {
         }
     }
 
-    private void configure(List<Path> artefacts) {
+    private void configure(List<Path> artefacts, Path serverJar) {
         container
                 .withEnv("EULA", "TRUE")
-                .withEnv("TYPE", cell.platform().toUpperCase(Locale.ROOT))
+                .withEnv("TYPE", serverJar == null ? cell.platform().toUpperCase(Locale.ROOT) : "CUSTOM")
                 .withEnv("VERSION", cell.mc())
-                .withEnv(buildEnv(cell.platform()), Integer.toString(cell.build()))
                 .withEnv("ONLINE_MODE", "FALSE")
                 .withEnv("ENFORCE_SECURE_PROFILE", "FALSE")
                 .withEnv("LEVEL_TYPE", levelType(cell.mc()))
@@ -136,6 +137,14 @@ public final class PaperHost implements AutoCloseable {
                 .withEnv("PROOFSTONE_AGENT_TOKEN", token)
                 .withEnv("PROOFSTONE_AGENT_PORT", Integer.toString(AGENT_PORT))
                 .withLogConsumer(frame -> logs.append(frame.getUtf8String()));
+        if (serverJar == null) {
+            container.withEnv(buildEnv(cell.platform()), Integer.toString(cell.build()));
+        } else {
+            // itzg runs a jar it is given and never builds one, so BuildTools' output is the only Spigot (T-M5-05).
+            String path = "/data/" + SpigotServerJar.containerName(cell);
+            container.withEnv("CUSTOM_SERVER", path)
+                    .withCopyFileToContainer(MountableFile.forHostPath(serverJar), path);
+        }
         // The image syncs /plugins into /data/plugins at startup. Copy in, never bind-mount (ADR-0005).
         copyPlugin(options.agentJar());
         artefacts.forEach(this::copyPlugin);

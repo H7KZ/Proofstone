@@ -66,3 +66,29 @@ platforms:
       # Purpur's API gives md5 only. sha256 is computed from the downloaded jar and checked against that md5 (T-M5-04).
       - { mc: "1.21.11", build: 2568, sha256: "ee199511bf0a970ee8459fe3a351703fec37293f00bc2de1c5cb746c7e4acc34", protocol: 774, status: experimental, observed: "T-M5-04 2026-11-08: md5 verified against api.purpurmc.org" }
       - { mc: "26.3", build: 2657, sha256: "8438bbbf6a865cb5097eb13f54e016c07d9c12d2aca778d01a3be3a1e636b862", protocol: 777, status: experimental, observed: "T-M5-04 2026-11-08: md5 verified against api.purpurmc.org" }
+  spigot:
+    host:
+      image: "itzg/minecraft-server"
+      # Same image and per-tag digests as paper, folia and purpur (ADR-0013). The jar is not downloaded: itzg runs the
+      # BuildTools output as TYPE=CUSTOM (SpigotServerJar, T-M5-05).
+      digests:
+        java8:  "sha256:1bf0a9afde1fc4a0ffb54075339ec9d28dc6c9cb382e27bba72ebaaa764a7db0"
+        java21: "sha256:04b5ee189f5f2c1992fa557e366cf2e4d09fe2abfbd57d2d1f977d8c038c1b98"
+        java25: "sha256:e2fabc536673f8c6b343055c93f7a73e10caa79cd3368f645987593c65adf1e0"
+    builder:
+      # images/spigot-buildtools runs BuildTools for each row's rev (the Minecraft version). The jar is built locally,
+      # cached by its SHA-256, and never redistributed. A row's sha256 is the built jar's hash; a rebuild must match it.
+      buildtools: { build: 201, sha256: "81ed06f5ce5fb705b558bf9b3cc2c5c53cdd9742406c5338c452faa13a1e1c24" }
+      # One JDK per Java tag, pinned by digest: BuildTools needs a javac (the itzg images have none), and the server runs
+      # on the JDK it was built with.
+      jdk:
+        java8:  "eclipse-temurin@sha256:2612c7d29811c3271e0a3c24a05799b242219a37c4b2d5db9c28db5a19350520"
+        java21: "eclipse-temurin@sha256:4b1a74fbffbe6b4e7b6f0171a472478282fb463790a51edf10e465d578f22b69"
+        java25: "eclipse-temurin@sha256:95e350ad1eb738f943e141640f7e3d797e483359a3b33c3864255bfd1ad71f8a"
+    rows:
+      # Manual per-row runs only (docs/platforms/spigot.md). No build number: the rev is the Minecraft version.
+      # BuildTools output is not bit-identical between runs (977c722e... and c7552585... are two builds of 1.8.8, 1 byte apart).
+      # The pin is the build that was tested; a cache miss that builds a different jar fails loudly (docs/platforms/spigot.md).
+      - { mc: "1.8.8", sha256: "c7552585274417c3b2e36e3aed7c62b310714794f93ae0f17165c83f8adba09c", protocol: 47, status: experimental, observed: "T-M5-05 2026-11-08: BuildTools 201 on java8, 3m31s" }
+      - { mc: "1.21.11", sha256: "b44dda70651771b87521ef5cdb45fcca62059b5a2047133124b43179a4fc5685", protocol: 774, status: experimental, observed: "T-M5-05 2026-11-08: BuildTools 201 on java21 (manual build of the pinned rev, then cell run)" }
+      - { mc: "26.3", sha256: "d64fb48abc0a02c09273487248b641005b363c5070860d97bc13a35c8808a4e4", protocol: 777, status: experimental, observed: "T-M5-05 2026-11-08: BuildTools 201 on java25 (manual build of the pinned rev, then cell run)" }

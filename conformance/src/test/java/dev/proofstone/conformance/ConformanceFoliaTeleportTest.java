@@ -29,6 +29,7 @@ import dev.proofstone.api.Requires;
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Matrix(platform = Platform.PURPUR, versions = {"latest"})
+@Matrix(platform = Platform.SPIGOT, versions = {"latest"})
 @Requires(Capability.FOLIA_REGIONS)
 class ConformanceFoliaTeleportTest {
 

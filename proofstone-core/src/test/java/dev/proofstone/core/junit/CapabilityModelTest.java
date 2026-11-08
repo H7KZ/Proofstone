@@ -43,8 +43,14 @@ class CapabilityModelTest {
 
     @Test
     void aPlatformWithNoPackDeclaresNothing() {
-        // Folia declares its pack capabilities since T-M5-02, so the platform with no pack entry is spigot here.
-        assertThat(CapabilityModel.cellCapabilities("spigot", List.of("command", "events", "regions"))).isEmpty();
+        // Every Bukkit-family pack declares its capabilities now, so the platform with no pack entry is velocity here.
+        assertThat(CapabilityModel.cellCapabilities("velocity", List.of("command", "events", "regions"))).isEmpty();
+    }
+
+    @Test
+    void spigotHoldsOnlyWhatItsPackDeclares() {
+        assertThat(CapabilityModel.cellCapabilities("spigot", List.of("command", "events", "regions")))
+                .containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.CONSOLE);
     }
 
     @Test
