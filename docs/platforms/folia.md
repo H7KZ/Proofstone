@@ -1,7 +1,8 @@
 # Folia
 
-Status: **experimental** (rows 1.21.11, 26.1.2, 26.2, 26.3 in `versions.yml`). Conformance C01 to C08, C-F01 and C-F02
-passed once per row (T-M5-03, fix round). See [platforms.md](../platforms.md).
+Status: **required** (rows 1.21.11, 26.1.2, 26.2, 26.3 in `versions.yml`, promoted 2026-11-08 under ADR-0015). Conformance C01 to C08,
+C-F01 and C-F02 passed in at least two full per-row runs (T-M5-03 and its verifier, the M5 review), and C06 repeated 10 of 10
+on folia@26.3 and on folia@1.21.11 (`-Dproofstone.repeat=10`, 2026-11-08). The extra row folia@1.20.6 is not added (two reds, below). See [platforms.md](../platforms.md).
 
 ## Host
 - Image `itzg/minecraft-server:<javaTag>` with `TYPE=FOLIA`. Builds are listed at
@@ -54,7 +55,7 @@ one Docker invocation each, XML read per run. Both runs red, on different tests,
   no connection line. The other 10 tests on the row joined fine. Same symptom as the bridged prefixed stall (viaproxy.md).
 - Run 2: `C07GrindstoneTest` `AssertionFailedError: [the bare sword on the cursor] Expecting value to be true but was false`
   (C07.java:55). Every other test passed, including C-F02.
-Not diagnosed. Two different reds on one row is an unexplained flake, so `folia` rows stay `experimental`. _folia 1.20.6 ·
+Not diagnosed. Two different reds on one row is an unexplained flake, so that row is not added. The four pinned rows are unaffected. _folia 1.20.6 ·
 M5 follow-up_
 
 ## Gotchas
@@ -88,8 +89,8 @@ M5 follow-up_
 
 ## Open limits
 - Rows 1.19.4 to 1.21.10 and the other 26.x builds are unpinned and unrun.
-- Each row has one full run. Promotion to `required` is not done: ADR-0015 needs a maintainer decision here, because the
-  allowlist entry above was added after a red run (smoke, 26.3). The four rows stay `experimental`.
+- Promoted to `required` 2026-11-08: each row has at least two full runs, and the C06 repeat on folia@26.3 and folia@1.21.11 was
+  10 of 10 with no failure (the allowlist entry above came from a red smoke run on 26.3, fixed and rerun green).
 - **M5 follow-up (ADR-0015):** no C06 repeat was run on Folia, so there is no repeat evidence for this platform, and
   folia@1.20.6 failed twice on different tests (above). No Folia row is promoted in this PR.
 - Cross-region teleports are not covered; reset and patch teleports are tested at the fixture spot only.
