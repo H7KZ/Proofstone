@@ -2,6 +2,7 @@ package dev.proofstone.core.junit;
 
 import dev.proofstone.api.Agent;
 import dev.proofstone.api.Client;
+import dev.proofstone.api.Clients;
 import dev.proofstone.api.Isolation;
 import dev.proofstone.api.Proofstone;
 import dev.proofstone.core.cell.Cell;
@@ -135,7 +136,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     @Override
     public boolean supportsParameter(ParameterContext parameter, ExtensionContext context) {
         Class<?> type = parameter.getParameter().getType();
-        return type == dev.proofstone.api.Cell.class || type == Agent.class || type == Client.class;
+        return type == dev.proofstone.api.Cell.class || type == Agent.class || type == Client.class
+                || type == Clients.class;
     }
 
     @Override
@@ -150,6 +152,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         }
         if (type == Agent.class) {
             return new HostAgent(state.host, state.patchedPlugins);
+        }
+        if (type == Clients.class) {
+            return state.clients;
         }
         if (state.client == null) {
             throw new ParameterResolutionException("the client joins before the test only when the test method "
@@ -168,7 +173,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // Before the join, so anything the join or the reset logs counts for this test.
         TestState state = new TestState(host, ErrorLogGuard.cursor(host));
         state.proxy = resource.proxy();
-        state.capabilities = CapabilityModel.cellCapabilities(cell.platform(), host.health().capabilities());
+        state.capabilities = CapabilityModel.cellCapabilities(cell.platform(), host.health().capabilities(), bridged);
+        // Extra clients join through the same driver and address as the test's own client (section 11).
+        state.clients = new TestClients(name -> connect(resource, name));
         context.getStore(NAMESPACE).put(STATE, state);
         // Capabilities come before conformance: a cell that lacks one is SKIPPED with its reason, and nothing else runs (T-M5-01).
         Optional<String> missing = CapabilityModel.missingReason(
@@ -189,7 +196,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // Before the join, so the snapshot is the server's state before this test's client arrives.
         state.gameRules = LeakDetector.snapshot(host);
         if (declaresClient(context)) {
-            state.client = joinClient(resource, context);
+            // A hash of the unique test id keeps the name stable for a test and different between tests.
+            String name = String.format("T%08x", context.getUniqueId().hashCode());
+            state.client = connect(resource, name);
             // After the join: reset needs the player online. It also teleports to the fixture spot.
             new HostPlayer(host, state.client.name()).reset();
         }
@@ -483,7 +492,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         }
     }
 
-    private SessionClient joinClient(HostResource resource, ExtensionContext context) {
+    /** Logs one client in under {@code name} through the cell's driver, at the address that driver reaches. */
+    private SessionClient connect(HostResource resource, String name) {
         ClientDriver driver = PRIMARY_DRIVER.equals(driverId) ? findDriver(driverId).orElseThrow(
                 () -> new ParameterResolutionException("no client driver " + driverId + " on the classpath"))
                 : resource.drivers().get(driverId);
@@ -502,8 +512,6 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             address = bridged ? "viaproxy" : PaperHost.NETWORK_ALIAS;
             port = bridged ? ViaProxyHost.PROXY_PORT : PaperHost.GAME_PORT;
         }
-        // A hash of the unique test id keeps the name stable for a test and different between tests.
-        String name = String.format("T%08x", context.getUniqueId().hashCode());
         ClientSession session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT));
         return new SessionClient(name, session);
     }

@@ -41,7 +41,7 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     PROTOCOL,
                     platform,
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    capabilities(platform));
+                    capabilities(platform, Bukkit.getOnlineMode()));
             EventProbes probes = new EventProbes(this, ticks);
             server = new AgentServer(config, health,
                     new BukkitGame(scheduler, probes, logs, ticks, "folia".equals(platform)));
@@ -54,11 +54,16 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
 
     /**
      * The tokens the agent answers for. {@code regions} is reported on Folia only: it confirms the cell holds
-     * FOLIA_REGIONS (docs/platforms/folia.md), and ticks.json carries per-region counters for it.
+     * FOLIA_REGIONS (docs/platforms/folia.md), and ticks.json carries per-region counters for it. {@code bedrock-prefix}
+     * is reported only offline: an online server authenticates the name with Mojang, so a prefixed login cannot succeed
+     * there (SIMULATED_BEDROCK, docs/platforms/paper.md). The pack still has to relax Paper's username validation.
      */
-    static List<String> capabilities(String platform) {
+    static List<String> capabilities(String platform, boolean onlineMode) {
         List<String> tokens = new ArrayList<>(Arrays.asList(
                 "command", "players", "config", "reload", "world", "events", "log", "ticks"));
+        if (!onlineMode) {
+            tokens.add("bedrock-prefix");
+        }
         if ("folia".equals(platform)) {
             tokens.add("regions");
         }

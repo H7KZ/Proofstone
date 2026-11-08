@@ -22,5 +22,13 @@ public enum Capability {
     NMS,
 
     /** Folia's regionised threading: there is no main thread, and each region owns its own data. */
-    FOLIA_REGIONS
+    FOLIA_REGIONS,
+
+    /**
+     * A Java client logs in under a prefixed name (such as {@code .Name}, through {@link Clients#create}), so a plugin's
+     * name-prefix Bedrock detection can run. This is a simulation, not a Bedrock client: it speaks the Java protocol and
+     * proves nothing about the Bedrock protocol (docs/platforms.md, Bedrock Edition). A cell holds it only where the
+     * prefixed login works.
+     */
+    SIMULATED_BEDROCK
 }

@@ -14,7 +14,8 @@
   `[enchantments={…}]`. The agent builds items through the Bukkit API, so tests never see that change.
 
 ## Capabilities
-`NMS`, `DATAPACKS`, `BUKKIT_EVENTS`, `CONSOLE`.
+`NMS`, `DATAPACKS`, `BUKKIT_EVENTS`, `CONSOLE`, `SIMULATED_BEDROCK`. The last is a Java client under a `.` prefixed name,
+not a Bedrock client (test-api spec section 11). The agent reports its token `bedrock-prefix` only on an offline server.
 
 ## Gotchas
 
@@ -122,6 +123,19 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
 - **Paper 1.12.2 runs Log4j asynchronously.** The forwarded copy of a JUL record arrives on a `Log4j2-TF` thread, so a
   per-thread match kept both copies. `LogBuffer` now matches by level, logger, message and time (2 s) across threads.
   _1.12.2 · [PR #42](https://github.com/H7KZ/Proofstone/pull/42), [7aec679](https://github.com/H7KZ/Proofstone/commit/7aec679)_
+
+#### Simulated Bedrock (T-M5-06)
+- **A `.` prefixed name logs in offline with no username setting (26.3).** `ONLINE_MODE=FALSE` is the only server setting
+  the prefixed login needs. `.BedrockBot` joined through `Clients.create`, and the plugin's `/bedrock-check` answered for
+  it, with no change to Paper's config. _26.3 · C-B01, 2026-11-08 (T-M5-06)_
+- **Through ViaProxy (1.21.11), the prefixed login stalls and never reaches the server.** The proxy logs no `[AUTH]` line
+  for `.BedrockBot`, the server logs no login, and the driver times out waiting for login-finished after
+  `ClientIntention` and `Hello`. The default `T<hex>` client joins through the same proxy in the same run. So a bridged
+  cell does not hold `SIMULATED_BEDROCK` (`CapabilityModel`), and C-B01 skips there with its reason. The cause is not
+  identified (ViaProxy 3.4.15, `--auth-method NONE`). The 1.8.8 to 1.12.2 bridged rows are unverified. _1.21.11 · C-B01, 2026-11-08 (T-M5-06)_
+- **The harness's prefixed client logs `moved too quickly!` on its first move.** It is named `.<Name>` by the test, not
+  `T<hex>`, so the Paper allowlist matches the prefixed form too (`ErrorLogGuard.Patterns.PAPER`). Only prefixed names
+  match; a plain player's warning still fails the test. _26.3 · C-B01, 2026-11-08_
 
 ### 26.3 and general observations (M1 and M2)
 - **`Bukkit.getOnlinePlayers()` changed its return type.** 1.8.8 returns `Player[]`; later APIs return a `Collection`.

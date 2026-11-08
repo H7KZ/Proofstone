@@ -30,6 +30,8 @@ final class TestState implements AutoCloseable {
     Set<dev.proofstone.api.Capability> capabilities = Set.of();
     /** Set when the cell lacks a capability the test requires: the skip reason. The body never runs then. */
     String skipped;
+    /** The {@link dev.proofstone.api.Clients} the test may use; it closes the clients they created. */
+    TestClients clients;
 
     TestState(PaperHost host, long logCursor) {
         this.host = host;
@@ -38,8 +40,15 @@ final class TestState implements AutoCloseable {
 
     @Override
     public void close() {
+        RuntimeException failure = null;
         if (client != null) {
             client.close();
+        }
+        if (clients != null) {
+            failure = clients.closeAll();
+        }
+        if (failure != null) {
+            throw failure;
         }
     }
 }

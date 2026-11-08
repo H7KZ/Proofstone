@@ -32,4 +32,5 @@ include(
     "examples:smoke",
     "examples:disenchantment-anvil",
     "examples:bad-tests",
+    "examples:bedrock-prefix",
 )

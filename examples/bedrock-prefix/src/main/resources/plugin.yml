@@ -1,0 +1,8 @@
+name: ProofstoneBedrockPrefix
+version: 1.0.0
+main: dev.proofstone.examples.bedrock.BedrockPrefixFixture
+api-version: 1.13
+commands:
+  bedrock-check:
+    description: Reports whether a player is seen as a Bedrock player by name prefix (test-only).
+    usage: /bedrock-check <name>

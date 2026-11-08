@@ -39,6 +39,16 @@ class ErrorLogGuardTest {
     }
 
     @Test
+    void aPrefixedHarnessClientsMoveWarningIsAllowedButAPlainPlayersIsNot() {
+        assertThat(ErrorLogGuard.describe(List.of(
+                record("WARN", ".BedrockBot moved too quickly! 9.5,-60.0,-0.5", null)), PAPER)).isNull();
+        // A prefixed name with a space or a long name is not a harness name: it still fails.
+        assertThat(ErrorLogGuard.describe(List.of(
+                record("WARN", ".Steve_Is_Far_Too_Long moved too quickly! 9.5,-60.0,-0.5", null)), PAPER))
+                .contains("moved too quickly");
+    }
+
+    @Test
     void anUnknownRecordFailsAndTheMessageCarriesItWithItsStackTrace() {
         String text = ErrorLogGuard.describe(List.of(
                 record("ERROR", "No key layers in MapLike[{}]", null),

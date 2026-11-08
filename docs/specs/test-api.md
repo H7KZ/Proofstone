@@ -262,3 +262,39 @@ class EventsE2E {
 - **Bad test.** `examples/bad-tests/.../requires/RequiresSkipsE2E` requires `FOLIA_REGIONS` on a Paper cell (its body
   fails if it runs) and requires held capabilities (it passes). `metaRequires` asserts the skip, its reason in
   `proofstone-report.json`, and the pass.
+
+## 11. `Clients` and the simulated Bedrock tier (T-M5-06, post-v0 additive)
+
+Added by T-M5-06 as an `api-change`: `Clients` is a new member of `dev.proofstone.api`, `Capability.SIMULATED_BEDROCK`
+is a new constant, and `api-baseline.txt` gains exactly those lines. No frozen v0 signature changed. This is the single-
+client slice of the `Clients` item in section 8.4: a test joins extra Java clients under names it chooses. Multi-player
+topologies stay in the backlog.
+
+```java
+@Proofstone(plugins = "build/bedrock-prefix-plugins/*.jar")
+@Matrix(platform = Platform.PAPER, versions = {"latest"})
+@Requires(Capability.SIMULATED_BEDROCK)
+class BedrockPathE2E {
+    @CellTest
+    void bedrockOnlyPath(Client client, Clients clients) {
+        Client bedrock = clients.create(".BedrockBot");
+        // ... drive the plugin's Bedrock-only branch with `bedrock` and assert on `client` ...
+    }
+}
+```
+
+- **What it is.** `clients.create(name)` logs a Java client in through the cell's driver (offline mode) and returns it
+  once it is in the play state. The name is 1 to 16 characters from `A-Z a-z 0-9 _`, optionally with one leading `.`. A
+  name that does not fit is an `IllegalArgumentException` before anything connects. The `.` prefix is the name-prefix
+  detection that Geyser and Floodgate use, so a plugin's Bedrock branch can run.
+- **What it is not.** It is a simulation over the Java protocol. No Bedrock client joins, and no test may say that a
+  plugin supports Bedrock because it passed here (docs/platforms.md, Bedrock Edition).
+- **Lifecycle.** Clients created by `Clients` are disconnected after the test, with the test's own client. Nothing is reset
+  for them: `reset` is for the test's `Client` only.
+- **Where a cell holds it.** `SIMULATED_BEDROCK` is declared by the Paper pack and held when the agent reports the token
+  `bedrock-prefix` (offline servers only) on a **native** cell. A bridged (ViaProxy) cell does not hold it: on
+  paper@1.21.11 the prefixed login stalled at the proxy and never reached the server (docs/platforms/paper.md, Gotchas).
+  Paper needs no username setting for the native login (verified on 26.3). Elsewhere `@Requires` skips with
+  `CAPABILITY_MISSING`, and the reason names the cell.
+- **Bad test.** None yet. Conformance scenario `C-B01` (`ConformanceBedrockPrefixTest`) asserts the example plugin's
+  detection on a prefixed client and on a normal one.

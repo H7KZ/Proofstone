@@ -276,17 +276,21 @@ class AgentContractIT {
 
     /**
      * The golden files record Paper's answers. A Folia server differs in exactly two places: its platform name, and the
-     * {@code regions} capability token (docs/platforms/folia.md). Those are applied to the expectation here, so every
-     * other field is still matched exactly. Folia's per-region ticks are checked by {@link #regionTicks()}.
+     * {@code regions} capability token (docs/platforms/folia.md). Every cell runs offline (ONLINE_MODE=FALSE), so each
+     * one also reports the {@code bedrock-prefix} token (SIMULATED_BEDROCK). Those are applied to the expectation here,
+     * so every other field is still matched exactly. Folia's per-region ticks are checked by {@link #regionTicks()}.
      */
     private JsonNode forPlatform(String name, JsonNode expected) {
-        if (!platform.equals("folia") || !name.equals("health/ok")) {
+        if (!name.equals("health/ok")) {
             return expected;
         }
         ObjectNode copy = expected.deepCopy();
         ObjectNode data = (ObjectNode) copy.path("body").path("data");
-        data.put("platform", "folia");
-        ((ArrayNode) data.get("capabilities")).add("regions");
+        ((ArrayNode) data.get("capabilities")).add("bedrock-prefix");
+        if (platform.equals("folia")) {
+            data.put("platform", "folia");
+            ((ArrayNode) data.get("capabilities")).add("regions");
+        }
         return copy;
     }
 
