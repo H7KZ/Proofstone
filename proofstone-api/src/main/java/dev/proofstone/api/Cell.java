@@ -20,6 +20,14 @@ public interface Cell {
     /**
      * The capabilities this cell holds: the ones its platform pack declares that the agent reports (test-api spec section
      * 10). A test's {@link Requires} is checked against this set before the body runs.
+     *
+     * <p>The default throws, so a custom {@code Cell} fails loudly on the first test that uses {@link Requires} instead of
+     * skipping or passing silently. The core implementation overrides it.
+     *
+     * @throws UnsupportedOperationException when the implementation does not declare its capabilities
      */
-    Set<Capability> capabilities();
+    default Set<Capability> capabilities() {
+        throw new UnsupportedOperationException(
+                "this Cell implementation does not declare its capabilities; override capabilities()");
+    }
 }

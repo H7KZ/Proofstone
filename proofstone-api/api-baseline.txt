@@ -16,9 +16,7 @@ public final dev.proofstone.api.BlockPos extends java.lang.Record
 public final dev.proofstone.api.Capability extends java.lang.Enum<dev.proofstone.api.Capability>
   field public static final dev.proofstone.api.Capability BUKKIT_EVENTS
   field public static final dev.proofstone.api.Capability CONSOLE
-  field public static final dev.proofstone.api.Capability DATAPACKS
   field public static final dev.proofstone.api.Capability FOLIA_REGIONS
-  field public static final dev.proofstone.api.Capability NMS
   field public static final dev.proofstone.api.Capability SIMULATED_BEDROCK
   method public static dev.proofstone.api.Capability dev.proofstone.api.Capability.valueOf(java.lang.String)
   method public static dev.proofstone.api.Capability[] dev.proofstone.api.Capability.values()
@@ -38,7 +36,7 @@ public abstract interface dev.proofstone.api.Cell
   method public abstract java.lang.String dev.proofstone.api.Cell.javaTag()
   method public abstract java.lang.String dev.proofstone.api.Cell.platform()
   method public abstract java.lang.String dev.proofstone.api.Cell.version()
-  method public abstract java.util.Set<dev.proofstone.api.Capability> dev.proofstone.api.Cell.capabilities()
+  method public default java.util.Set<dev.proofstone.api.Capability> dev.proofstone.api.Cell.capabilities()
 public abstract interface dev.proofstone.api.CellExpectation
   method public abstract void dev.proofstone.api.CellExpectation.check(dev.proofstone.api.Cell,dev.proofstone.api.Agent)
 public abstract interface dev.proofstone.api.CellTest implements java.lang.annotation.Annotation

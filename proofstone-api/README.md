@@ -18,7 +18,8 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
 - Per-cell expectations (T-M4-15, api-change, test-api spec §9): `@Expect` (class or method) with a `CellExpectation`,
   checked after the test body on each cell. Added after v0; the four new baseline lines are the only change.
 - Capabilities (T-M5-01, api-change, test-api spec section 10): `Capability` (an enum), `@Requires` (class or method) and
-  `Cell.capabilities()`. A cell without a required capability is skipped with its reason. The baseline gains only these members; no frozen v0 member changed.
+  `Cell.capabilities()`. A cell without a required capability is skipped with its reason. The baseline gains only these members; no frozen v0 member changed. The fix PR (`fix/m5-capability-api`) made
+  `Cell.capabilities()` a default method that throws, and removed `Capability.NMS` and `Capability.DATAPACKS` (no agent token).
 - Injected parameters: `Cell`, `Agent` (`command`, `capabilities`, `player`) and `Client` (`name`, `command`,
   `awaitMessage`, `position`, `awaitPosition`, `openBlock`, `inventory`).
 - Setup and views (T-M2-07): `PlayerHandle` and `PlayerState` (server oracle), `Window`, `Click`, `Item` (build),
