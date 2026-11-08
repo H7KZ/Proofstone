@@ -14,9 +14,9 @@ Each platform is at one of these status levels:
 | Platform | Pack | Agent | Host | Versions (target) | Milestone | Notes |
 |---|---|---|---|---|---|---|
 | Paper | `bukkit/paper` | Bukkit agent (Java 8 bytecode) | itzg `TYPE=PAPER` | 1.8.8 → newest | M1–M3 | Proven in the prototype (1.18.2, 1.21.11, 26.1.2, 26.3). |
-| Folia | `bukkit/folia` | Bukkit agent + region schedulers | itzg `TYPE=FOLIA` | 1.19.4 → newest | M5 | Prototype: plugin OK, RCON unusable. The agent is required. |
-| Purpur | `bukkit/purpur` | Bukkit agent | itzg `TYPE=PURPUR` (confirmed, T-M5-04) | 1.21.11 → 26.3 (rows so far; 1.14 → newest per Purpur API) | M5 | Paper fork. C01 to C08 pass on 1.21.11 and 26.3 (`docs/platforms/purpur.md`). Experimental rows. |
-| Spigot | `bukkit/spigot` | Bukkit agent | BuildTools image (`images/spigot-buildtools`), jar cached by SHA-256, `TYPE=CUSTOM` | 1.8.8 → newest | M5 | Slow to build, so each row is a manual per-row run (no schedule). `docs/platforms/spigot.md`. |
+| Folia | `bukkit/folia` | Bukkit agent + region schedulers | itzg `TYPE=FOLIA` | 1.19.4 → newest | M5 | **Experimental**: rows 1.21.11, 26.1.2, 26.2, 26.3. C01 to C08, C-F01, C-F02 passed once per row locally (`docs/platforms/folia.md`). The agent is required; RCON is unusable as an oracle. |
+| Purpur | `bukkit/purpur` | Bukkit agent | itzg `TYPE=PURPUR` (confirmed, T-M5-04) | 1.21.11 → 26.3 (rows so far; 1.14 → newest per Purpur API) | M5 | Paper fork. **Experimental**: rows 1.21.11 and 26.3. C01 to C08 passed once per row locally (`docs/platforms/purpur.md`); 1.14 to 1.20.x not run. |
+| Spigot | `bukkit/spigot` | Bukkit agent | BuildTools image (`images/spigot-buildtools`), jar cached by SHA-256, `TYPE=CUSTOM` | 1.8.8 → newest | M5 | Slow to build, so each row is a manual per-row run (no schedule). **Experimental**: rows 1.8.8, 1.21.11, 26.3. 1.21.11 C06 failed once, then passed (not explained). `docs/platforms/spigot.md`. |
 | Other Paper forks (Pufferfish, Leaves, …) | community packs | Bukkit agent | custom | — | M10 | Pack template plus conformance. |
 | Hybrids (Mohist, Arclight, …) | community packs | Bukkit agent + mod agent | custom | — | M10+ | Low priority. Behaviour differs a lot between them. |
 
@@ -58,4 +58,10 @@ Each supported platform gets `docs/platforms/<id>.md` with these sections:
 - **Capabilities**;
 - **Gotchas**, which agents append to as they learn.
 
-Seeded now: [paper](platforms/paper.md) and [folia](platforms/folia.md).
+Written so far: [paper](platforms/paper.md), [folia](platforms/folia.md), [purpur](platforms/purpur.md), [spigot](platforms/spigot.md). Bridged-row facts: [viaproxy](platforms/viaproxy.md).
+
+## Status evidence (M5, 2026-11-08)
+Each row rests on its own full local run (ADR-0015, one counted run per row). No row is promoted in M5. Paper rows keep
+their M3 `required` status. Folia, Purpur and Spigot rows stay `experimental`: one run each, and a red-then-green history
+(Purpur 26.3 and Folia 26.3 smoke: a log-guard allowlist entry added after a red run; Spigot 1.21.11 C06 red once). Whether
+that meets ADR-0015 is a maintainer decision.
