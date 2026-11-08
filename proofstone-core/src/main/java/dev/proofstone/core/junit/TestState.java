@@ -26,6 +26,10 @@ final class TestState implements AutoCloseable {
     AssertionError invalid;
     /** The leak detector's snapshot from before the test; {@code null} when the test never got that far. */
     List<String> gameRules;
+    /** What the cell holds, read from the agent before the test (test-api spec section 10). */
+    Set<dev.proofstone.api.Capability> capabilities = Set.of();
+    /** Set when the cell lacks a capability the test requires: the skip reason. The body never runs then. */
+    String skipped;
 
     TestState(PaperHost host, long logCursor) {
         this.host = host;

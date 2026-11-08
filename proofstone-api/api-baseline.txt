@@ -13,6 +13,14 @@ public final dev.proofstone.api.BlockPos extends java.lang.Record
   method public int dev.proofstone.api.BlockPos.x()
   method public int dev.proofstone.api.BlockPos.y()
   method public int dev.proofstone.api.BlockPos.z()
+public final dev.proofstone.api.Capability extends java.lang.Enum<dev.proofstone.api.Capability>
+  field public static final dev.proofstone.api.Capability BUKKIT_EVENTS
+  field public static final dev.proofstone.api.Capability CONSOLE
+  field public static final dev.proofstone.api.Capability DATAPACKS
+  field public static final dev.proofstone.api.Capability FOLIA_REGIONS
+  field public static final dev.proofstone.api.Capability NMS
+  method public static dev.proofstone.api.Capability dev.proofstone.api.Capability.valueOf(java.lang.String)
+  method public static dev.proofstone.api.Capability[] dev.proofstone.api.Capability.values()
 public final dev.proofstone.api.CapturedEvent extends java.lang.Record
   constructor public dev.proofstone.api.CapturedEvent(java.lang.String,long,java.lang.String,java.util.Map<java.lang.String, java.lang.Object>)
   method public final boolean dev.proofstone.api.CapturedEvent.equals(java.lang.Object)
@@ -29,6 +37,7 @@ public abstract interface dev.proofstone.api.Cell
   method public abstract java.lang.String dev.proofstone.api.Cell.javaTag()
   method public abstract java.lang.String dev.proofstone.api.Cell.platform()
   method public abstract java.lang.String dev.proofstone.api.Cell.version()
+  method public abstract java.util.Set<dev.proofstone.api.Capability> dev.proofstone.api.Cell.capabilities()
 public abstract interface dev.proofstone.api.CellExpectation
   method public abstract void dev.proofstone.api.CellExpectation.check(dev.proofstone.api.Cell,dev.proofstone.api.Agent)
 public abstract interface dev.proofstone.api.CellTest implements java.lang.annotation.Annotation
@@ -185,6 +194,8 @@ public final dev.proofstone.api.Position extends java.lang.Record
 public abstract interface dev.proofstone.api.Proofstone implements java.lang.annotation.Annotation
   method public abstract boolean dev.proofstone.api.Proofstone.acceptEula()
   method public abstract java.lang.String[] dev.proofstone.api.Proofstone.plugins()
+public abstract interface dev.proofstone.api.Requires implements java.lang.annotation.Annotation
+  method public abstract dev.proofstone.api.Capability[] dev.proofstone.api.Requires.value()
 public abstract interface dev.proofstone.api.Window implements java.lang.AutoCloseable
   method public abstract dev.proofstone.api.ItemView dev.proofstone.api.Window.awaitSlot(int,java.util.function.Predicate<dev.proofstone.api.ItemView>)
   method public abstract dev.proofstone.api.ItemView dev.proofstone.api.Window.cursor()

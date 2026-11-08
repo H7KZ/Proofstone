@@ -16,6 +16,9 @@ expected to produce one verdict, and `metaTest` asserts it:
   fail it with `LEAK` (self-tests section 4b).
 - `expect/ExpectFailsE2E` (T-M4-15) has one wrong per-cell `@Expect` (it claims a capability Paper never reports) and one
   holding one. The wrong one must report `FAIL` with the expectation's message (`metaExpect`); the holding one passes.
+- `requires/RequiresSkipsE2E` (T-M5-01) requires `FOLIA_REGIONS` on a Paper cell, so it must be `SKIPPED` with reason
+  `missing capability FOLIA_REGIONS on cell` (`metaRequires`, asserted in `proofstone-report.json`). Its body fails if it
+  runs. Its second test requires what Paper holds and must pass.
 
 ## Boundaries
 
@@ -36,9 +39,11 @@ Read <https://aka.ms/MinecraftEULA> first. The harness never accepts the EULA fo
 PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel
 ```
 
-`metaTest` runs the six bad tests, each in its own task (`metaVacuous`, `metaFlaky`, `metaDisagree`, `metaInvalid`,
-`metaLeak`, `metaExpect`), reads each task's JUnit XML under `build/test-results/<task>/`, and fails unless every run has
-`skipped="0"` and `errors="0"`, and every failure starts with the expected verdict. A skip or a missing report is red.
+`metaTest` runs the seven bad tests, each in its own task (`metaVacuous`, `metaFlaky`, `metaDisagree`, `metaInvalid`,
+`metaLeak`, `metaExpect`, `metaRequires`), reads each task's JUnit XML under `build/test-results/<task>/`, and fails unless
+every run has `skipped="0"` and `errors="0"`, and every failure starts with the expected verdict. A skip or a missing
+report is red. `metaRequires` is the one task that expects a skip: its skipped test must name the missing capability in
+the proofstone report.
 
 The individual switches still work on `test` for the first three, as documented before:
 

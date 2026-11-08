@@ -16,6 +16,7 @@ import dev.proofstone.core.verdict.Attempt;
 import dev.proofstone.core.verdict.CellResult;
 import dev.proofstone.core.verdict.ConformanceCache;
 import dev.proofstone.core.verdict.ConformanceResult;
+import dev.proofstone.core.verdict.SkipReason;
 import dev.proofstone.core.verdict.Verdict;
 import dev.proofstone.core.versions.VersionsCatalog;
 import java.lang.reflect.Method;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import org.opentest4j.TestAbortedException;
 import org.testcontainers.containers.Network;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -139,12 +141,12 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     @Override
     public Object resolveParameter(ParameterContext parameter, ExtensionContext context) {
         Class<?> type = parameter.getParameter().getType();
-        if (type == dev.proofstone.api.Cell.class) {
-            return new CellView(cell, bridged);
-        }
         TestState state = context.getStore(NAMESPACE).get(STATE, TestState.class);
         if (state == null) {
             throw new ParameterResolutionException("no test lifecycle state: the server did not start for this test");
+        }
+        if (type == dev.proofstone.api.Cell.class) {
+            return new CellView(cell, bridged, state.capabilities);
         }
         if (type == Agent.class) {
             return new HostAgent(state.host, state.patchedPlugins);
@@ -166,7 +168,16 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // Before the join, so anything the join or the reset logs counts for this test.
         TestState state = new TestState(host, ErrorLogGuard.cursor(host));
         state.proxy = resource.proxy();
+        state.capabilities = CapabilityModel.cellCapabilities(cell.platform(), host.health().capabilities());
         context.getStore(NAMESPACE).put(STATE, state);
+        // Capabilities come before conformance: a cell that lacks one is SKIPPED with its reason, and nothing else runs (T-M5-01).
+        Optional<String> missing = CapabilityModel.missingReason(
+                CapabilityModel.required(context.getRequiredTestClass(), context.getRequiredTestMethod()),
+                state.capabilities, cellId());
+        if (missing.isPresent()) {
+            state.skipped = missing.get();
+            throw new TestAbortedException(missing.get());
+        }
         // Conformance comes first (self-tests section 1): on a failed cell the test body never runs, and the test is INVALID.
         state.conformance = conformance(context, host);
         AssertionError invalid = VerdictGate.judgeInvalid(context.getRequiredTestMethod(), cellId(),
@@ -210,6 +221,12 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             }
             return;
         }
+        if (state.skipped != null) {
+            // A skip is a verdict of its own: nothing ran, so there is no log to check and no bundle to write (T-M5-01).
+            report(context, new CellResult(reportName(context), cellId(), Verdict.SKIPPED, state.skipped,
+                    SkipReason.CAPABILITY_MISSING, 1));
+            return;
+        }
         // Every step runs, whatever an earlier one did, and the first failure is the one reported. An INVALID test
         // already failed in beforeEach, so that failure is the first one.
         Throwable failure = state.invalid;
@@ -222,7 +239,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // read the server after the test's actions, so they run before the leak detector, and never change anything.
         if (failure == null && context.getExecutionException().isEmpty()) {
             failure = CellExpectations.check(context.getRequiredTestClass(), context.getRequiredTestMethod(),
-                    new CellView(cell, bridged), new HostAgent(state.host, state.patchedPlugins));
+                    new CellView(cell, bridged, state.capabilities), new HostAgent(state.host, state.patchedPlugins));
         }
         // The leak detector (robustness R6) judges a test that is otherwise green, so it never hides another failure.
         if (failure == null && state.gameRules != null) {

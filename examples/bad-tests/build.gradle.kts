@@ -83,8 +83,9 @@ tasks.test {
         exclude("**/differential/**")
     }
     // The invalid, leak and expect bad tests (T-M4-07, T-M4-15) fail on purpose in every run, so only metaTest runs them.
+    // The requires bad test (T-M5-01) skips on purpose, so only metaTest runs it too.
     if (!explicitTests) {
-        exclude("**/invalid/**", "**/leak/**", "**/expect/**")
+        exclude("**/invalid/**", "**/leak/**", "**/expect/**", "**/requires/**")
     }
 }
 
@@ -104,6 +105,7 @@ val badRuns = listOf(
     BadRun("metaInvalid", "**/invalid/**", "INVALID", mapOf("proofstone.injectConformanceFault" to "true")),
     BadRun("metaLeak", "**/leak/**", "LEAK", emptyMap()),
     BadRun("metaExpect", "**/expect/**", "FAIL", emptyMap()),
+    BadRun("metaRequires", "**/requires/**", "SKIPPED", emptyMap()),
 )
 
 // The task's own JUnit XML directory, and the expectation, as plain values: the metaTest action must not capture the
@@ -161,7 +163,8 @@ tasks.register("metaTest") {
             var verdictFailures = 0
             for (report in reports) {
                 val suite = factory.newDocumentBuilder().parse(report).documentElement
-                if (suite.getAttribute("skipped") != "0") {
+                // Only the SKIPPED task expects skips; its skipped test is checked below, against the report's reason.
+                if (verdict != "SKIPPED" && suite.getAttribute("skipped") != "0") {
                     problems += "$task: skipped=${suite.getAttribute("skipped")} in ${report.name} (a skip is not a pass)"
                 }
                 if (suite.getAttribute("errors") != "0") {
@@ -171,6 +174,10 @@ tasks.register("metaTest") {
                 for (index in 0 until cases.length) {
                     testCases++
                     val case = cases.item(index) as Element
+                    if (verdict == "SKIPPED" && case.getElementsByTagName("skipped").item(0) != null) {
+                        verdictFailures++
+                        continue
+                    }
                     val failure = case.getElementsByTagName("failure").item(0) as Element? ?: continue
                     // JUnit prefixes the message with the exception class; the verdict follows it.
                     val message = failure.getAttribute("message").replaceFirst(Regex("^[\\w.$]+: "), "")
@@ -191,6 +198,18 @@ tasks.register("metaTest") {
             }
             if (testCases == 0) {
                 problems += "$task: no test case ran"
+            }
+            if (verdict == "SKIPPED") {
+                // The skip must name the missing capability in the proofstone report, not only in JUnit's own XML.
+                val file = File(reportDirsByTask.getValue(task), "proofstone-report.json")
+                val rows = if (file.isFile) (groovy.json.JsonSlurper().parse(file) as Map<*, *>)["results"] as List<*> else emptyList<Any>()
+                val named = rows.filterIsInstance<Map<*, *>>().any { row ->
+                    row["verdict"] == "SKIPPED" && row["skipReason"] == "CAPABILITY_MISSING" &&
+                        (row["reason"] as String?)?.contains("missing capability FOLIA_REGIONS on cell") == true
+                }
+                if (!named) {
+                    problems += "$task: no SKIPPED report naming the missing capability FOLIA_REGIONS"
+                }
             }
             if (verdictFailures == 0) {
                 problems += "$task: no test produced $verdict"

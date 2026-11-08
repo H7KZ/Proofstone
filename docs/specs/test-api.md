@@ -167,7 +167,8 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 ### 8.3 Deviations from the sketches (the baseline wins)
 - `Click`: `NUMBER_1` to `NUMBER_9` and `Click.number(n)` replace `NUMBER_KEY(n)`, because an enum has no parameters.
 - `Agent.command(String)` returns the raw output as a `String`, not a `CommandResult`. Never assert on it.
-- `Cell` has no `capabilities()` or `driver()`; `Agent.capabilities()` is the capability list.
+- `Cell` has no `driver()`. `Cell.capabilities()` was added in T-M5-01 (section 10); `Agent.capabilities()` stays the raw
+  list the agent reports.
 - `Item` has no `repairCost` or `pdc` setter, and `ItemView.repairCost()` reads 0 from the agent, because the agent's
   `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only).
 - `Client.experienceLevel()` replaces `experience()` (it returns the level only) and throws until the server's first
@@ -192,8 +193,10 @@ These appear in the sketches and are **not** part of the contract. Each needs an
 - `Item.repairCost`, `Item.pdc`, and a real `ItemView.repairCost`.
 - `Clients` (multi-player) and `Topology` (proxies).
 - Test hygiene: the world fixture region reset and the leak detector (T-M2-08 left them out).
-- `Cell.capabilities()`, `Cell.driver()`, `@Requires` and `Capability`.
+- `Cell.driver()`.
 - Verdict reporting (`serverOnlyReasons` is its stand-in).
+
+`Cell.capabilities()`, `@Requires` and `Capability` moved out of this list in T-M5-01 (section 10).
 
 ## 9. Per-cell expectations and error patterns (T-M4-15, post-v0 additive)
 
@@ -228,3 +231,34 @@ public class SmokeE2E {
   Folia's thread-check patterns come with the Folia row (before M5).
 - **Bad test.** `examples/bad-tests/.../expect/ExpectFailsE2E` holds one wrong expectation (it must produce `FAIL`, asserted
   by `metaExpect` in `metaTest`) and one holding expectation (it must stay `PASS`).
+
+## 10. Capabilities and `@Requires` (T-M5-01, post-v0 additive)
+
+Added by T-M5-01 as an `api-change`: `Capability`, `Requires` and `Cell.capabilities()` are new members of
+`dev.proofstone.api`, and `api-baseline.txt` gains exactly those lines. No frozen v0 signature changed.
+
+```java
+@Requires(Capability.BUKKIT_EVENTS)            // on a class: every test in it
+class EventsE2E {
+    @CellTest
+    @Requires({Capability.CONSOLE, Capability.NMS})   // on a method: added to the class's requirements
+    void scenario(Cell cell, Agent agent) { ... }
+}
+```
+
+- **What a cell holds.** `Cell.capabilities()` is the set of capabilities that the cell's platform pack declares **and**
+  the agent reports. The agent's report is the token list of `GET /v1/health`. Two rules are in code
+  (`CapabilityModel`): a pack declares a fixed set (Paper: `NMS`, `DATAPACKS`, `BUKKIT_EVENTS`, `CONSOLE`), and a
+  declared capability is held only when its token is reported (`BUKKIT_EVENTS` = `events`, `CONSOLE` = `command`).
+  A platform with no pack declares nothing. Version strings never imply a capability.
+- **Where it runs.** After the server boots and before conformance, so the check reads the agent's report. It is judged
+  per cell and per test, from the class's and the method's `@Requires` together.
+- **Verdict.** A cell missing a required capability is `SKIPPED` with reason `CAPABILITY_MISSING` and the detail
+  `missing capability X on cell <platform>@<version>` (several names are joined by `, `). The test body, the conformance
+  verdict and the log check do not run, and no bundle is written. JUnit reports the test as skipped with the same message.
+  A skip is never a pass (AGENTS.md section 3).
+- **Gaps.** `NMS`, `DATAPACKS` and `FOLIA_REGIONS` have no agent token yet, so no cell holds them: a `@Requires` on one
+  skips every cell until the agent reports it. A later card adds the token, not a new rule.
+- **Bad test.** `examples/bad-tests/.../requires/RequiresSkipsE2E` requires `FOLIA_REGIONS` on a Paper cell (its body
+  fails if it runs) and requires held capabilities (it passes). `metaRequires` asserts the skip, its reason in
+  `proofstone-report.json`, and the pass.

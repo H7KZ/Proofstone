@@ -8,13 +8,14 @@ import dev.proofstone.api.CellExpectation;
 import dev.proofstone.api.Expect;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** The {@link Expect} rules of one cell (test-api spec section 9), without a server or JUnit. */
 class CellExpectationsTest {
 
     private static final Cell CELL = new CellView(
-            new dev.proofstone.core.cell.Cell("paper", "26.3", 1, "", "java25", null, "", "", List.of()), false);
+            new dev.proofstone.core.cell.Cell("paper", "26.3", 1, "", "java25", null, "", "", List.of()), false, Set.of());
 
     public static final class Holds implements CellExpectation {
         @Override
