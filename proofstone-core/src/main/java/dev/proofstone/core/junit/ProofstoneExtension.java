@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
@@ -103,7 +104,10 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         List<Cell> cells = planCells(type, matrices, selector, planner, scope, families);
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
-        return cells.stream().map(cell -> new CellInvocation(cell, config, isolation, catalog));
+        // The flake detector (self-tests section 4) runs every cell N times in a row; a plain run runs each cell once.
+        int repeats = FlakeDetector.repeats();
+        return cells.stream().flatMap(cell -> IntStream.rangeClosed(1, repeats)
+                .mapToObj(repetition -> new CellInvocation(cell, config, isolation, catalog, repetition, repeats)));
     }
 
     /**

@@ -41,9 +41,9 @@ tasks.test {
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
-    // The run-time cell selector, scope and control-run switch reach the test JVM from the Gradle command line
-    // (test-api spec section 1, self-tests section 2).
-    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun")) {
+    // The run-time cell selector, scope, control-run switch and flake-detector repeat count reach the test JVM from
+    // the Gradle command line (test-api spec section 1, self-tests sections 2 and 4).
+    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun", "proofstone.repeat")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
     }
     // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.
