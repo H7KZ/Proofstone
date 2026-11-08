@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same PR cancels the older run: Actions minutes are billed to the maintainer.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gates:
     runs-on: ubuntu-latest
@@ -46,8 +51,23 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # The check stays required, so the job always runs, but the slow part (Node + Renovate download) runs only
+      # when renovate.json changed. A skipped step reports success, not a hidden pass: the log says why.
+      - name: Did renovate.json change?
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] || ! git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- renovate.json; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "renovate.json unchanged against ${{ github.base_ref }}: validation skipped (it ran on the commit that last changed it)."
+          fi
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.changed.outputs.run == 'true'
         with:
           node-version: "26.3.0"
       - name: Validate renovate.json (pinned Renovate)
+        if: steps.changed.outputs.run == 'true'
         run: npx --yes --package renovate@44.171.1 -- renovate-config-validator --strict renovate.json
