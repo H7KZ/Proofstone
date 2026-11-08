@@ -13,7 +13,7 @@ Spec for the file format: [specs/versions-yml.md](specs/versions-yml.md). Decisi
 
 ## 2. Adding a new Minecraft or server version (automated)
 
-1. The `version-watch` workflow runs every 6 hours.
+1. (Removed 2026-11-08: the `version-watch` workflow was deleted with all CI.) Run `./gradlew updateVersions` locally to fill in new builds.
    - **Sources:**
      - the Paper and Folia fill APIs;
      - the Mojang version manifest;
@@ -28,7 +28,7 @@ Spec for the file format: [specs/versions-yml.md](specs/versions-yml.md). Decisi
      - the Java tag (from the rule table);
      - the protocol number;
      - `status: experimental`.
-2. CI on that PR runs **conformance** and the **example suites** for the new cells.
+2. Run **conformance** and the **example suites** for the new cells locally, each cell in its own invocation under `scripts/dockerlock.sh`.
 3. A maintainer, or an agent with `tier: haiku`, merges it. Experimental cells don't block.
 4. A row is promoted to `required` after a full per-row `./gradlew :conformance:run` (C01 to C08, only reasoned
    skips) is green locally, with the XML-based table recorded in the ROADMAP review or the PR. Nightly is manual-only
@@ -73,10 +73,9 @@ no run on them yet.
   Retired rows never run unless named.
 - **Local:** `-Dproofstone.cells=paper@1.21.11,folia@latest` (or `PROOFSTONE_CELLS`). It replaces the `@Matrix`
   versions of the platforms it names. Syntax and errors: test-api spec §1.
-- **CI:** `./gradlew printMatrix --scope=pr|nightly` prints the matrix JSON (`{"include": [...]}`) from the same
-  planner, and writes `build/ci/matrix-<scope>.json`. `.github/workflows/matrix.yml` reads it with `fromJSON` and runs
-  one job per cell, so a new row needs no workflow edit. A platform with a `TODO` pin is left out with its reason
-  printed; PR has no cell for a platform without a `required` row. None of these jobs is a required check.
+- **Matrix:** `./gradlew printMatrix --scope=pr|nightly` prints the matrix JSON (`{"include": [...]}`) from the same
+  planner and writes `build/ci/matrix-<scope>.json`. No workflow reads it any more (deleted 2026-11-08); use it to list the cells to run
+  locally. A platform with a `TODO` pin is left out with its reason.
 
 ## 5. Dependency bumps (Renovate)
 

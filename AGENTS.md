@@ -77,8 +77,9 @@ required status checks on `main`. Local runs are the only gate.
 
 - Run `bash scripts/gates.sh` before every PR (it is `./gradlew check docsCheck`, plus the pinned Renovate validation when
   `renovate.json` changed). Paste its summary into the PR. Never claim a gate passed without having run it.
-- `matrix`, `nightly`, `version-watch` stay `workflow_dispatch` only. Never trigger them, and never add `push`, `pull_request` or
-  `schedule` triggers without maintainer approval.
+- There are no workflows at all (`.github/workflows` was deleted 2026-11-08). Never add one, and never add `push`, `pull_request`
+  or `schedule` triggers, without maintainer approval. The nightly set is `:examples:bad-tests:metaTest` run locally. New versions come
+  from `./gradlew updateVersions` run locally (docs/versioning.md).
 - A PR merges with no checks reported. The verifier (docs/ai/workflow.md) is the second pair of eyes: it merges `origin/main`,
   re-runs `bash scripts/gates.sh` and the card's real-server tasks under `scripts/dockerlock.sh`, reads the XML, then merges.
 
