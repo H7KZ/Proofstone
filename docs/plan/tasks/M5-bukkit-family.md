@@ -77,8 +77,11 @@ M5 can run in parallel with M4 once M3 is done.
 - Let a thread-check line pass as a logged-error allowlist entry. The pattern is per pack (T-M4-15), and it is reviewed.
 
 **Acceptance.**
-- [ ] The golden contract tests pass on Folia `latest`.
-- [ ] No thread-check errors appear in the logs.
+- [x] The golden contract tests pass on Folia `latest`. Evidence: `folia@26.3` (latest, experimental), AgentContractIT
+  25 of 25, skipped 0, failures 0, errors 0 (2026-11-08). Health is matched with `platform: folia` and the `regions`
+  token added, and ticks drop the Folia-only `regions` field before matching (AgentContractIT `forPlatform`).
+- [x] No thread-check errors appear in the logs. Evidence: `no thread-check errors` passes on folia@26.3 (server log
+  holds no thread-check text; the only ERROR lines are `No key layers` and the harness's `Could not save bukkit.yml`).
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:integrationTest -Dproofstone.cells=folia@latest`

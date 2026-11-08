@@ -3,6 +3,7 @@ package dev.proofstone.agent.bukkit;
 import dev.proofstone.agent.game.Fields;
 import dev.proofstone.agent.game.Game;
 import dev.proofstone.agent.protocol.AgentException;
+import dev.proofstone.agent.scheduler.Affinity;
 import dev.proofstone.agent.scheduler.MainThread;
 import dev.proofstone.agent.scheduler.Scheduler;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.Locale;
 import java.util.Map;
 import org.bukkit.Bukkit;
@@ -43,28 +45,33 @@ public final class BukkitGame implements Game {
     private final LogBuffer logs;
     private final TickCounter ticks;
     private final PluginConfigs configs = new PluginConfigs();
+    private final Teleports teleports;
 
-    public BukkitGame(Scheduler scheduler, EventProbes probes, LogBuffer logs, TickCounter ticks) {
+    /** @param regional {@code true} on Folia, where a player's teleport must be the async form (Teleports) */
+    public BukkitGame(Scheduler scheduler, EventProbes probes, LogBuffer logs, TickCounter ticks, boolean regional) {
         this.scheduler = scheduler;
         this.probes = probes;
         this.logs = logs;
         this.ticks = ticks;
+        this.teleports = new Teleports(regional);
     }
 
     @Override
     public Map<String, Object> block(String world, int x, int y, int z, long timeoutMs) {
-        return MainThread.call(scheduler, () -> WorldAccess.block(world, x, y, z), timeoutMs);
+        return MainThread.call(scheduler, Affinity.block(world, x, y, z),
+                () -> WorldAccess.block(world, x, y, z), timeoutMs);
     }
 
     @Override
     public Map<String, Object> setBlock(String world, int x, int y, int z, Map<String, Object> write,
             long timeoutMs) {
-        return MainThread.call(scheduler, () -> WorldAccess.setBlock(world, x, y, z, write), timeoutMs);
+        return MainThread.call(scheduler, Affinity.block(world, x, y, z),
+                () -> WorldAccess.setBlock(world, x, y, z, write), timeoutMs);
     }
 
     @Override
     public String subscribe(String className, long timeoutMs) {
-        return MainThread.call(scheduler, () -> probes.subscribe(className), timeoutMs);
+        return MainThread.call(scheduler, Affinity.global(), () -> probes.subscribe(className), timeoutMs);
     }
 
     /** Reads the probe's buffer directly: it is synchronised, so the main thread is not needed. */
@@ -75,7 +82,7 @@ public final class BukkitGame implements Game {
 
     @Override
     public void unsubscribe(String probeId, long timeoutMs) {
-        MainThread.call(scheduler, () -> {
+        MainThread.call(scheduler, Affinity.global(), () -> {
             probes.unsubscribe(probeId);
             return null;
         }, timeoutMs);
@@ -90,6 +97,11 @@ public final class BukkitGame implements Game {
     public Map<String, Object> ticks(long timeoutMs) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("global", ticks.current());
+        // ticks.json: regions is present on Folia only (regionTicks is null elsewhere).
+        Map<String, Long> regions = scheduler.regionTicks();
+        if (regions != null) {
+            out.put("regions", regions);
+        }
         return out;
     }
 
@@ -103,7 +115,7 @@ public final class BukkitGame implements Game {
 
     @Override
     public String command(String command, long timeoutMs) {
-        return MainThread.call(scheduler, () -> {
+        return MainThread.call(scheduler, Affinity.global(), () -> {
             // The real console, not a custom sender: the server refuses to run vanilla commands for a sender it
             // cannot turn into a command source (docs/platforms/paper.md). Output is read from the log instead.
             LogCapture capture = LogCapture.start();
@@ -122,7 +134,7 @@ public final class BukkitGame implements Game {
 
     @Override
     public List<String> players(long timeoutMs) {
-        return MainThread.call(scheduler, () -> {
+        return MainThread.call(scheduler, Affinity.global(), () -> {
             List<String> names = new ArrayList<>();
             for (Player player : onlinePlayers()) {
                 names.add(player.getName());
@@ -133,13 +145,13 @@ public final class BukkitGame implements Game {
 
     @Override
     public Map<String, Object> player(String name, long timeoutMs) {
-        return MainThread.call(scheduler, () -> state(requirePlayer(name)), timeoutMs);
+        return MainThread.call(scheduler, Affinity.player(name), () -> state(requirePlayer(name)), timeoutMs);
     }
 
     /** Adds the item to the first empty storage slot. The item is built first, so a bad key changes nothing. */
     @Override
     public void give(String name, Map<String, Object> item, long timeoutMs) {
-        MainThread.call(scheduler, () -> {
+        MainThread.call(scheduler, Affinity.player(name), () -> {
             Player player = requirePlayer(name);
             ItemStack stack = ItemBuilder.build(item);
             PlayerInventory inventory = player.getInventory();
@@ -159,7 +171,7 @@ public final class BukkitGame implements Game {
      */
     @Override
     public void reset(String name, long timeoutMs) {
-        MainThread.call(scheduler, () -> {
+        CompletableFuture<Boolean> moved = MainThread.call(scheduler, Affinity.player(name), () -> {
             Player player = requirePlayer(name);
             player.closeInventory();
             PlayerInventory inventory = player.getInventory();
@@ -171,15 +183,15 @@ public final class BukkitGame implements Game {
             player.setExp(0f);
             player.setGameMode(GameMode.SURVIVAL);
             player.setHealth(player.getMaxHealth());
-            player.teleport(spawn());
-            return null;
+            return teleports.teleport(player, spawn());
         }, timeoutMs);
+        MainThread.await(moved, timeoutMs);
     }
 
     /** Validates every present field before applying any of them, so a bad field changes nothing. */
     @Override
     public void patch(String name, Map<String, Object> changes, long timeoutMs) {
-        MainThread.call(scheduler, () -> {
+        CompletableFuture<Boolean> moved = MainThread.call(scheduler, Affinity.player(name), () -> {
             Player player = requirePlayer(name);
             Fields.onlyFields(changes, PATCH_FIELDS, "patch");
             Integer level = Fields.integer(changes, "level");
@@ -203,24 +215,26 @@ public final class BukkitGame implements Game {
             if (gamemode != null) {
                 player.setGameMode(gamemode);
             }
+            CompletableFuture<Boolean> teleporting = CompletableFuture.completedFuture(true);
             if (location != null) {
-                player.teleport(location);
+                teleporting = teleports.teleport(player, location);
             }
             if (op != null) {
                 player.setOp(op);
             }
-            return null;
+            return teleporting;
         }, timeoutMs);
+        MainThread.await(moved, timeoutMs);
     }
 
     @Override
     public Object pluginConfig(String plugin, String path, long timeoutMs) {
-        return MainThread.call(scheduler, () -> configs.read(plugin, path), timeoutMs);
+        return MainThread.call(scheduler, Affinity.global(), () -> configs.read(plugin, path), timeoutMs);
     }
 
     @Override
     public void patchPluginConfig(String plugin, String path, Object value, long timeoutMs) {
-        MainThread.call(scheduler, () -> {
+        MainThread.call(scheduler, Affinity.global(), () -> {
             configs.patch(plugin, path, value);
             return null;
         }, timeoutMs);
@@ -228,7 +242,7 @@ public final class BukkitGame implements Game {
 
     @Override
     public void restorePluginConfig(String plugin, long timeoutMs) {
-        MainThread.call(scheduler, () -> {
+        MainThread.call(scheduler, Affinity.global(), () -> {
             configs.restore(plugin);
             return null;
         }, timeoutMs);
@@ -236,7 +250,7 @@ public final class BukkitGame implements Game {
 
     @Override
     public void reloadPlugin(String plugin, String hookCommand, long timeoutMs) {
-        MainThread.call(scheduler, () -> {
+        MainThread.call(scheduler, Affinity.global(), () -> {
             configs.reload(plugin, hookCommand);
             return null;
         }, timeoutMs);

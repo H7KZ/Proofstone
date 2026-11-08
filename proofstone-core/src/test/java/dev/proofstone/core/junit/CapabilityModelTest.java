@@ -43,7 +43,16 @@ class CapabilityModelTest {
 
     @Test
     void aPlatformWithNoPackDeclaresNothing() {
-        assertThat(CapabilityModel.cellCapabilities("folia", List.of("command", "events"))).isEmpty();
+        // Folia declares its pack capabilities since T-M5-02, so the platform with no pack entry is spigot here.
+        assertThat(CapabilityModel.cellCapabilities("spigot", List.of("command", "events", "regions"))).isEmpty();
+    }
+
+    @Test
+    void foliaHoldsFoliaRegionsOnlyWhenTheAgentReportsRegions() {
+        assertThat(CapabilityModel.cellCapabilities("folia", List.of("command", "events", "regions")))
+                .containsExactlyInAnyOrder(Capability.FOLIA_REGIONS, Capability.BUKKIT_EVENTS, Capability.CONSOLE);
+        assertThat(CapabilityModel.cellCapabilities("folia", List.of("command", "events")))
+                .containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.CONSOLE);
     }
 
     @Test

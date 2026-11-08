@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.proofstone.core.await.Await;
 import dev.proofstone.core.cell.Cell;
 import dev.proofstone.core.cell.CellPlanner;
@@ -33,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -60,6 +63,8 @@ class AgentContractIT {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Path ROOT = Path.of(System.getProperty("proofstone.repoRoot"));
     private static final Path GOLDEN = ROOT.resolve("proofstone-protocol/golden");
+    /** The platforms whose agent this test replays, in the order their cells run (the agent is one jar for all). */
+    static final List<String> BUKKIT_FAMILY = List.of("paper", "folia");
     private static final String PLAYER = "Alex";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration JOIN_TIMEOUT = Duration.ofSeconds(60);
@@ -101,6 +106,8 @@ class AgentContractIT {
             "players/open-anvil");
 
     private final HttpClient http = HttpClient.newHttpClient();
+    /** The platform of the cell that booted last; the golden files were recorded on Paper. */
+    private String platform = "paper";
     private VersionsCatalog catalog;
     private PaperHost host;
     private ViaProxyHost proxy;
@@ -119,16 +126,28 @@ class AgentContractIT {
             setting = System.getenv("PROOFSTONE_CELLS");
         }
         CellSelector selector = CellSelector.parse(setting, "-Dproofstone.cells or PROOFSTONE_CELLS");
-        List<String> versions = selector.isSet() ? selector.versions("paper") : List.of("latest");
-        if (versions.isEmpty()) {
-            throw new IllegalStateException("-Dproofstone.cells does not name paper, the platform of the agent "
-                    + "contract test: " + setting);
+        if (!selector.isSet()) {
+            return new CellPlanner(catalog).plan("paper", List.of("latest"));
         }
-        return new CellPlanner(catalog).plan("paper", versions);
+        // Every Bukkit-family platform the selector names runs here, in the order of BUKKIT_FAMILY. A selector that
+        // names none of them is an error, never a silent fall back to the newest row (a class that runs nothing is
+        // no pass).
+        List<Cell> cells = new ArrayList<>();
+        for (String platform : BUKKIT_FAMILY) {
+            if (selector.selects(platform)) {
+                cells.addAll(new CellPlanner(catalog).plan(platform, selector.versions(platform)));
+            }
+        }
+        if (cells.isEmpty()) {
+            throw new IllegalStateException("-Dproofstone.cells names no Bukkit-family platform " + BUKKIT_FAMILY
+                    + ", the platforms of the agent contract test: " + setting);
+        }
+        return cells;
     }
 
     private void bootPaper(Cell cell) {
         assumeTrue(Eula.accepted(), "Minecraft EULA not accepted: set " + Eula.VARIABLE + "=true");
+        platform = cell.platform();
         // The fixture plugin (platforms/bukkit/fixture) carries the config.yml the config cases read and patch.
         Path fixture = Path.of(System.getProperty("proofstone.fixtureJar"));
         PaperHostOptions options = PaperHostOptions.of(Path.of(System.getProperty("proofstone.agentJar")), true)
@@ -195,12 +214,16 @@ class AgentContractIT {
     Stream<DynamicNode> goldenCases() {
         return selectedCells().stream().map(cell -> {
             String label = cell.platform() + "@" + cell.mc();
+            Stream<DynamicNode> foliaOnly = "folia".equals(cell.platform())
+                    ? Stream.of(dynamicTest("folia regions", this::regionTicks),
+                            dynamicTest("no thread-check errors", this::noThreadCheckErrors))
+                    : Stream.empty();
             Stream<DynamicNode> children = Stream.concat(
                     Stream.concat(
                             Stream.of(dynamicTest("boot " + label, () -> bootPaper(cell))),
                             CASES.stream().map(name -> dynamicTest(name, () -> replay(name)))),
                     // Not a golden case: the key of a renamed item is the same on every version (T-M3-06).
-                    Stream.of(dynamicTest("renamed item keys", this::renamedItemKeys)));
+                    Stream.concat(Stream.of(dynamicTest("renamed item keys", this::renamedItemKeys)), foliaOnly));
             return dynamicContainer(label, children.onClose(this::stopPaper));
         });
     }
@@ -242,9 +265,73 @@ class AgentContractIT {
         assertThat(actual.status()).as(name + " status; body was " + actual.body())
                 .isEqualTo(expected.get("status").asInt());
         String actualBody = name.equals("log/read") ? onlyFixtureRecords(actual.body()) : actual.body();
-        assertThat(GoldenMatcher.mismatches(expected.get("body").toString(), actualBody))
+        if (name.startsWith("ticks/")) {
+            actualBody = withoutRegions(actualBody);
+        }
+        JsonNode golden = forPlatform(name, expected);
+        assertThat(GoldenMatcher.mismatches(golden.get("body").toString(), actualBody))
                 .as(name + " differs from its golden response; body was " + actual.body())
                 .isEmpty();
+    }
+
+    /**
+     * The golden files record Paper's answers. A Folia server differs in exactly two places: its platform name, and the
+     * {@code regions} capability token (docs/platforms/folia.md). Those are applied to the expectation here, so every
+     * other field is still matched exactly. Folia's per-region ticks are checked by {@link #regionTicks()}.
+     */
+    private JsonNode forPlatform(String name, JsonNode expected) {
+        if (!platform.equals("folia") || !name.equals("health/ok")) {
+            return expected;
+        }
+        ObjectNode copy = expected.deepCopy();
+        ObjectNode data = (ObjectNode) copy.path("body").path("data");
+        data.put("platform", "folia");
+        ((ArrayNode) data.get("capabilities")).add("regions");
+        return copy;
+    }
+
+    /** ticks.json carries {@code regions} on Folia only; the golden {@code ticks/*} cases hold the global counter. */
+    private static String withoutRegions(String body) throws IOException {
+        JsonNode reply = JSON.readTree(body);
+        if (reply.path("data").has("regions")) {
+            ((ObjectNode) reply.get("data")).remove("regions");
+        }
+        return JSON.writeValueAsString(reply);
+    }
+
+    /**
+     * Folia's per-region tick counters (ticks.json, {@code regions}). By this case the world cases have run, so at least
+     * one chunk region has a counter, and two more global ticks must advance every region's counter.
+     */
+    private void regionTicks() throws Exception {
+        assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
+        JsonNode before = JSON.readTree(send("GET", "/v1/ticks", true, null).body()).path("data");
+        assertThat(before.has("regions")).as("ticks has no regions on folia: " + before).isTrue();
+        assertThat(before.path("regions").size()).as("no region has a counter: " + before).isPositive();
+        Reply awaited = send("POST", "/v1/ticks/await", true, "{\"n\":2}");
+        assertThat(awaited.status()).as("await 2 ticks; body was " + awaited.body()).isEqualTo(200);
+        JsonNode after = JSON.readTree(send("GET", "/v1/ticks", true, null).body()).path("data");
+        before.path("regions").fieldNames().forEachRemaining(key -> assertThat(after.path("regions").path(key).asLong())
+                .as("region " + key + " did not tick: before " + before + " after " + after)
+                .isGreaterThanOrEqualTo(before.path("regions").path(key).asLong() + 1));
+    }
+
+    /**
+     * Folia's thread checks stay on (docs/platforms/folia.md). After every case the server log must hold no thread-check
+     * message, and every ERROR line must be the vanilla noise the Paper allowlist already names, so nothing unknown is
+     * skipped (AGENTS.md section 3).
+     */
+    private void noThreadCheckErrors() {
+        assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
+        String log = host.logs().all();
+        for (String marker : List.of("main thread check", "owning region thread", "off-thread", "Must use teleportAsync")) {
+            assertThat(log).as("server log holds a thread-check message: " + marker).doesNotContain(marker);
+        }
+        List<String> errors = log.lines().filter(line -> line.contains(" ERROR]")).toList();
+        assertThat(errors).as("ERROR lines other than the vanilla noise").allMatch(
+                // The two known startup lines: vanilla's flat-world noise, and the harness's bukkit.yml copy that the
+                // server cannot save (docs/platforms/paper.md, Gotchas). Anything else fails.
+                line -> line.contains("No key layers in MapLike") || line.contains("Could not save bukkit.yml"));
     }
 
     /**

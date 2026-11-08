@@ -1,6 +1,7 @@
 package dev.proofstone.agent.bukkit;
 
 import dev.proofstone.agent.protocol.AgentException;
+import dev.proofstone.agent.scheduler.Scheduler;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -8,12 +9,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.Plugin;
 
 /**
- * Counts server ticks with a one-tick repeating task (spec §2). {@link #await(long, long)} waits on the HTTP
- * thread for a future that the tick task completes, so the main thread never blocks and nothing sleeps.
+ * Counts global server ticks with a one-tick repeating task (spec §2). {@link #await(long, long)} waits on the HTTP
+ * thread for a future that the tick task completes, so the main thread never blocks and nothing sleeps. The task is
+ * started through the scheduler, so on Folia it runs on the global region, not the Bukkit main-thread scheduler.
  */
 final class TickCounter {
 
@@ -21,14 +21,9 @@ final class TickCounter {
     private long global;
 
     /** Starts the repeating task. Call once, from the plugin's enable. */
-    static TickCounter start(Plugin plugin) {
+    static TickCounter start(Scheduler scheduler) {
         TickCounter counter = new TickCounter();
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-            @Override
-            public void run() {
-                counter.tick();
-            }
-        }, 1L, 1L);
+        scheduler.repeatGlobally(counter::tick);
         return counter;
     }
 
