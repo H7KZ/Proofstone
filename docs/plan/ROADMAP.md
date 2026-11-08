@@ -330,7 +330,9 @@ M5 can run in parallel with M4 once M3 is done.
      `experimental` until purpur@26.3 C06 is diagnosed or shown flake-free over N repeats.
   2. **`Cell.capabilities()` is an abstract method on a frozen interface.** Source-breaking for external implementers. Decide
      whether to make it a default method. Recommendation: default method, in an `api-change` PR, before M6 publishes to Maven Central.
+  *Resolved (fix/m5-capability-api): default method, throws unless overridden.*
   3. **Capability tokens NMS and DATAPACKS have no agent token.** They are declared but cannot be reported by the agent.
+  *Resolved: removed, re-add with an agent token when a test needs it: M6 NMS uses the per-cell `expect` hook, M7 DATAPACKS_VANILLA.*
   4. **Prefixed Bedrock login stalls at ViaProxy on bridged cells.** Cause unknown. C-B01 runs native only (Paper 26.3).
   5. **Unrun rows**: Purpur 1.14 to 1.20.x and Folia 1.19.4 to 1.21.10. Not run; not claimed.
   6. **Nightly schedule**: still `workflow_dispatch` only. The repository variable `PROOFSTONE_ACCEPT_EULA` and the first manual

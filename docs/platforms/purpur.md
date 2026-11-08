@@ -20,8 +20,7 @@ Status: **experimental** (rows 1.21.11 and 26.3 in `versions.yml`). C01 to C08 p
   from the harness.
 
 ## Capabilities
-`BUKKIT_EVENTS`, `CONSOLE`. Not `NMS` or `DATAPACKS`: they were not verified on Purpur, so Purpur declares only what
-its conformance run showed. `FOLIA_REGIONS` is not declared, so C-F01 and C-F02 skip on Purpur with
+`BUKKIT_EVENTS`, `CONSOLE`. Purpur declares only what its conformance run showed. `FOLIA_REGIONS` is not declared, so C-F01 and C-F02 skip on Purpur with
 `missing capability FOLIA_REGIONS on cell purpur@<v>`. `SIMULATED_BEDROCK` is not declared either (C-B01 skips on
 purpur@26.3 with its reason, verified in T-M5-06).
 
@@ -52,4 +51,4 @@ second one, after the allowlist entry above.
 - Each row has one counted run. Promotion to `required` is not done: ADR-0015 needs a maintainer decision, because the
   26.3 pass came after an allowlist change that followed a red run. Both rows stay `experimental`.
 - Boot-time ERROR lines on Purpur are not checked (see Gotchas).
-- `NMS`, `DATAPACKS` and `SIMULATED_BEDROCK` are not verified on Purpur.
+- `SIMULATED_BEDROCK` is not verified on Purpur.

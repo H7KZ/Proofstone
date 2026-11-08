@@ -23,13 +23,12 @@ final class CapabilityModel {
      */
     private static final Map<String, Set<Capability>> DECLARED = Map.of(
             "folia", Set.of(Capability.FOLIA_REGIONS, Capability.BUKKIT_EVENTS, Capability.CONSOLE),
-            // Purpur declares only what its conformance run verified (docs/platforms/purpur.md), not Paper's NMS.
+            // Purpur declares only what its conformance run verified (docs/platforms/purpur.md).
             "purpur", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE),
             // Spigot declares only what its conformance run verified (docs/platforms/spigot.md), like Purpur.
             "spigot", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE),
             // Paper's offline login accepts a '.' prefixed name with no setting changed (docs/platforms/paper.md, verified).
-            "paper", Set.of(Capability.NMS, Capability.DATAPACKS, Capability.BUKKIT_EVENTS, Capability.CONSOLE,
-                    Capability.SIMULATED_BEDROCK));
+            "paper", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE, Capability.SIMULATED_BEDROCK));
 
     /**
      * The agent's report token that confirms a declared capability (docs/platforms/paper.md and folia.md, Gotchas). A

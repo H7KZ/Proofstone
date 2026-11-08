@@ -7,7 +7,7 @@ Use these terms exactly, in code, docs, issues and PRs. `docsCheck` warns on kno
 | **Agent** | The in-server component (a plugin, mod or script pack) that the harness installs next to the jar under test. It performs setup and reads server truth through the wire protocol. It never interferes with *act*. | helper plugin, test plugin |
 | **Act phase** | The part of a test where only the **client** interacts (opens, clicks, chats). The agent may only observe. | — |
 | **Bridged cell** | A cell where the driver's protocol differs from the server's, so ViaProxy translates between them. | proxied cell |
-| **Capability** | A feature a cell does or doesn't offer, such as `FOLIA_REGIONS`, `BEDROCK_CLIENT`, `NMS`, `PROXY_TOPOLOGY` or `DATAPACKS`. Tests declare the capabilities they require. | feature flag |
+| **Capability** | A feature a cell does or doesn't offer, such as `FOLIA_REGIONS`, `BUKKIT_EVENTS`, `CONSOLE` or `SIMULATED_BEDROCK`. Tests declare the capabilities they require. | feature flag |
 | **Cell** | One concrete environment that a test runs in: platform × version × Java × driver × topology. | env, config |
 | **Client** | A connected fake player, as tests see it. It is backed by a *driver*. | bot (fine in prose, but the API name is `Client`) |
 | **Conformance suite** | The harness self-tests for one platform pack. They check known vanilla behaviour, such as the vanilla anvil or a chest move, on every cell **before** plugin tests run. A failing conformance cell marks plugin results on that cell as *invalid*, not as failed. | smoke tests |

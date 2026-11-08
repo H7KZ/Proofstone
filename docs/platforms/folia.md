@@ -30,8 +30,7 @@ passed once per row (T-M5-03, fix round). See [platforms.md](../platforms.md).
 
 ## Capabilities
 `FOLIA_REGIONS`, `BUKKIT_EVENTS`, `CONSOLE`, but not every vanilla command (see Gotchas). `CapabilityModel` maps the
-`regions` token to `FOLIA_REGIONS`. Folia does not declare `SIMULATED_BEDROCK` (not run). `NMS` and `DATAPACKS` are
-not declared (not verified).
+`regions` token to `FOLIA_REGIONS`. Folia does not declare `SIMULATED_BEDROCK` (not run).
 
 ## Conformance (T-M5-02, T-M5-03)
 Per-row runs, one `dockerlock` invocation each, read from the JUnit XML: `skipped=0 failures=0 errors=0`, no reasoned skips.

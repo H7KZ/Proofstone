@@ -241,14 +241,14 @@ Added by T-M5-01 as an `api-change`: `Capability`, `Requires` and `Cell.capabili
 @Requires(Capability.BUKKIT_EVENTS)            // on a class: every test in it
 class EventsE2E {
     @CellTest
-    @Requires({Capability.CONSOLE, Capability.NMS})   // on a method: added to the class's requirements
+    @Requires({Capability.CONSOLE, Capability.FOLIA_REGIONS})   // on a method: added to the class's requirements
     void scenario(Cell cell, Agent agent) { ... }
 }
 ```
 
 - **What a cell holds.** `Cell.capabilities()` is the set of capabilities that the cell's platform pack declares **and**
   the agent reports. The agent's report is the token list of `GET /v1/health`. Two rules are in code
-  (`CapabilityModel`): a pack declares a fixed set (Paper: `NMS`, `DATAPACKS`, `BUKKIT_EVENTS`, `CONSOLE`), and a
+  (`CapabilityModel`): a pack declares a fixed set (Paper: `BUKKIT_EVENTS`, `CONSOLE`, `SIMULATED_BEDROCK`), and a
   declared capability is held only when its token is reported (`BUKKIT_EVENTS` = `events`, `CONSOLE` = `command`).
   A platform with no pack declares nothing. Version strings never imply a capability.
 - **Where it runs.** After the server boots and before conformance, so the check reads the agent's report. It is judged
@@ -257,8 +257,13 @@ class EventsE2E {
   `missing capability X on cell <platform>@<version>` (several names are joined by `, `). The test body, the conformance
   verdict and the log check do not run, and no bundle is written. JUnit reports the test as skipped with the same message.
   A skip is never a pass (AGENTS.md section 3).
-- **Gaps.** `NMS`, `DATAPACKS` and `FOLIA_REGIONS` have no agent token yet, so no cell holds them: a `@Requires` on one
-  skips every cell until the agent reports it. A later card adds the token, not a new rule.
+- **Removed.** `NMS` and `DATAPACKS` were declared with no agent token, so a `@Requires` on either skipped every cell.
+  The fix PR (`fix/m5-capability-api`, api-change, M5 review decision 4) removed both. A capability is re-added only together
+  with the agent token that reports it: NMS checks belong in the per-cell `expect` hook (section 9), and `DATAPACKS_VANILLA`
+  is an M7 item.
+- **`Cell.capabilities()` is a default method (fix PR, M5 review decision 2).** It throws
+  `UnsupportedOperationException` unless overridden, so a custom `Cell` that is used with `@Requires` fails loudly. The core
+  `CellView` overrides it. Source-compatible for existing implementers; the baseline line changes from abstract to default.
 - **Bad test.** `examples/bad-tests/.../requires/RequiresSkipsE2E` requires `FOLIA_REGIONS` on a Paper cell (its body
   fails if it runs) and requires held capabilities (it passes). `metaRequires` asserts the skip, its reason in
   `proofstone-report.json`, and the pass.

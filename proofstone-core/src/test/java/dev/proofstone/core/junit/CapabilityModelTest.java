@@ -18,20 +18,20 @@ class CapabilityModelTest {
         void plain() {
         }
 
-        @Requires(Capability.NMS)
-        void methodNeedsNms() {
+        @Requires(Capability.FOLIA_REGIONS)
+        void methodNeedsFolia() {
         }
     }
 
     static class MethodOnly {
-        @Requires({Capability.CONSOLE, Capability.DATAPACKS})
+        @Requires({Capability.CONSOLE, Capability.FOLIA_REGIONS})
         void needsTwo() {
         }
     }
 
     @Test
     void aCellHoldsOnlyWhatItsPackDeclaresAndTheAgentReports() {
-        // Paper declares NMS, DATAPACKS, BUKKIT_EVENTS and CONSOLE; the agent confirms only the tokens events and command.
+        // Paper declares BUKKIT_EVENTS, CONSOLE and SIMULATED_BEDROCK; the agent confirms only the tokens events and command.
         assertThat(CapabilityModel.cellCapabilities("paper", List.of("command", "players", "events", "ticks")))
                 .containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.CONSOLE);
     }
@@ -95,11 +95,11 @@ class CapabilityModelTest {
     @Test
     void theClassAndTheMethodRequirementsAreAddedTogether() throws NoSuchMethodException {
         Method plain = ClassNeedsEvents.class.getDeclaredMethod("plain");
-        Method needsNms = ClassNeedsEvents.class.getDeclaredMethod("methodNeedsNms");
+        Method needsFolia = ClassNeedsEvents.class.getDeclaredMethod("methodNeedsFolia");
         assertThat(CapabilityModel.required(ClassNeedsEvents.class, plain))
                 .containsExactly(Capability.BUKKIT_EVENTS);
-        assertThat(CapabilityModel.required(ClassNeedsEvents.class, needsNms))
-                .containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.NMS);
+        assertThat(CapabilityModel.required(ClassNeedsEvents.class, needsFolia))
+                .containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.FOLIA_REGIONS);
     }
 
     @Test
@@ -113,9 +113,9 @@ class CapabilityModelTest {
         Set<Capability> required = CapabilityModel.required(MethodOnly.class,
                 MethodOnly.class.getDeclaredMethod("needsTwo"));
         assertThat(CapabilityModel.missingReason(required, Set.of(Capability.CONSOLE), "paper@26.3"))
-                .contains("missing capability DATAPACKS on cell paper@26.3");
+                .contains("missing capability FOLIA_REGIONS on cell paper@26.3");
         assertThat(CapabilityModel.missingReason(required, Set.of(), "paper@26.3"))
-                .contains("missing capability CONSOLE, DATAPACKS on cell paper@26.3");
+                .contains("missing capability CONSOLE, FOLIA_REGIONS on cell paper@26.3");
     }
 
     @Test

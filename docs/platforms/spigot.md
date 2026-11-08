@@ -23,7 +23,7 @@ conformance table below.
 - No Spigot-specific API. The agent runs on the Bukkit API like Paper.
 
 ## Capabilities
-`BUKKIT_EVENTS`, `CONSOLE`. Not `NMS` or `DATAPACKS` (not verified on Spigot). `FOLIA_REGIONS` is not declared, so C-F01
+`BUKKIT_EVENTS`, `CONSOLE`. `FOLIA_REGIONS` is not declared, so C-F01
 and C-F02 skip on spigot with `missing capability FOLIA_REGIONS on cell spigot@<v>`.
 
 ## Gotchas
@@ -78,4 +78,4 @@ Per-row runs, one `dockerlock` invocation each. `skipped` and `failures` read fr
 - Each row has one counted full run. Promotion to `required` is not done: ADR-0015 needs a maintainer decision (C06 red
   once on 1.21.11).
 - Build times for 1.21.11 and 26.3 were not measured.
-- No `SIMULATED_BEDROCK`, `NMS` or `DATAPACKS` run on Spigot.
+- No `SIMULATED_BEDROCK` run on Spigot.
