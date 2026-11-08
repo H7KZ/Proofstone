@@ -37,10 +37,27 @@ final class ErrorLogGuard {
                 Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
                 List.of());
 
+        /**
+         * Folia (docs/platforms/folia.md, Gotchas), reviewed on its own, not copied from PAPER. A thread-check failure is
+         * an error, never allowlisted (T-M4-15): Folia's TickThread logs "Thread failed main thread check" whenever
+         * data is touched off its region thread, and that is a harness or plugin bug. The allowlist holds only noise
+         * that a reviewed Folia run showed and the vanilla server also produces.
+         */
+        static final Patterns FOLIA = new Patterns("folia", Map.of(
+                // Observed on folia@26.3 in :conformance:smoke (T-M5-03): "T94d99d12 moved too quickly! -1.5,-60.0,2.5".
+                // Same anti-cheat WARN as Paper: the reset teleportAsync races the client's first movement packets. Only
+                // the harness's own clients ("T" and 8 hex digits, CellInvocation.joinClient); any other player, or a
+                // plugin's own message, still fails the test. The boot ERRORs (No key layers, bukkit.yml) are logged
+                // before the test window and are not allowed here.
+                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                List.of(Pattern.compile("Thread failed main thread check"),
+                        Pattern.compile("Must use teleportAsync while in region threading")));
+
         /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
         static Patterns of(String platform) {
             return switch (platform) {
                 case "paper" -> PAPER;
+                case "folia" -> FOLIA;
                 default -> throw new IllegalStateException("no log patterns for platform " + platform
                         + ": its platform pack must supply its own list (robustness R9)");
             };

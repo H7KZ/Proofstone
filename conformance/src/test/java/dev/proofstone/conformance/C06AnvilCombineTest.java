@@ -23,6 +23,7 @@ import java.util.Map;
  */
 @Proofstone
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
+@Matrix(platform = Platform.FOLIA, versions = {"latest"})
 class C06AnvilCombineTest {
 
     private static final int START_LEVEL = 30;

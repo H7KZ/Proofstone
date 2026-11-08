@@ -23,6 +23,7 @@ import java.util.function.Predicate;
  */
 @Proofstone
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
+@Matrix(platform = Platform.FOLIA, versions = {"latest"})
 class C08ShiftClickCraftTest {
 
     private static final int BOTTOM_ROW_FIRST_SLOT = 7;

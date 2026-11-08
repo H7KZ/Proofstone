@@ -51,6 +51,17 @@ class ProofstoneExtensionPlanTest {
         assertThat(plan(Declared.class, "paper@1.20.4")).extracting(Cell::mc).containsExactly("1.20.4");
     }
 
+    @Matrix(platform = Platform.PAPER, versions = {"1.10.2"})
+    @Matrix(platform = Platform.FOLIA, versions = {"1.21.11"})
+    static class PaperAndFolia {
+    }
+
+    @Test
+    void aPlatformSpecificClassThatAlsoDeclaresPaperPlansOneCellForAPaperSelection() throws IOException {
+        // The Folia-only tests (C-F01, C-F02) declare Paper too and skip there through @Requires, so paper@... plans a cell.
+        assertThat(plan(PaperAndFolia.class, "paper@1.20.4")).extracting(Cell::platform).containsExactly("paper");
+    }
+
     @Test
     void selectorNamingOnlyAnotherPlatformFailsTheClassByNameAndSelector() throws IOException {
         assertThatThrownBy(() -> plan(Declared.class, "folia@latest"))

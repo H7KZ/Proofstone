@@ -18,6 +18,7 @@ import java.util.Map;
  */
 @Proofstone
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
+@Matrix(platform = Platform.FOLIA, versions = {"latest"})
 class C03GiveRoundTripTest {
 
     @CellTest

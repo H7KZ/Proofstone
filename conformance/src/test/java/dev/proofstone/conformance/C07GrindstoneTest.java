@@ -27,6 +27,7 @@ import java.util.Map;
  */
 @Proofstone
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
+@Matrix(platform = Platform.FOLIA, versions = {"latest"})
 class C07GrindstoneTest {
 
     private static final Map<String, Integer> SHARPNESS_FIVE = Map.of("minecraft:sharpness", 5);

@@ -105,7 +105,7 @@ M5 can run in parallel with M4 once M3 is done.
 - Copy the Paper pack's allowlist without reviewing it.
 
 **Acceptance.**
-- [ ] C01–C08, C-F01 and C-F02 pass on every Folia row.
+- [x] C01–C08, C-F01 and C-F02 pass on every Folia row. (2026-11-08, `:conformance:run -Dproofstone.cells=folia@<v>`, one dockerlock run per row, JUnit XML skipped=0 failures=0 errors=0 on all 10 suites: 1.21.11 and 26.1.2 and 26.2 bridged, 26.3 native.)
 
 **Verify.**
 `./gradlew :conformance:run -Dproofstone.cells=folia@all`

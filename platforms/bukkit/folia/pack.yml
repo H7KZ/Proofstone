@@ -1,0 +1,21 @@
+# Folia platform pack (T-M5-03). Reviewed line by line for Folia, not copied from the Paper pack.
+# The enforced copy of the log patterns is ErrorLogGuard.Patterns.FOLIA (proofstone-core); keep the two in step.
+id: folia
+family: bukkit
+host:
+  image: itzg/minecraft-server   # digests per Java tag in versions.yml (platforms.folia.host)
+  type: FOLIA
+  build-env: PAPER_BUILD         # itzg hands it to start-deployPaper with PAPER_PROJECT=folia
+capabilities:                    # declared; a cell holds one only when the agent reports its token
+  FOLIA_REGIONS: regions
+  BUKKIT_EVENTS: events
+  CONSOLE: command
+log-patterns:
+  errors:                        # a match fails the test, even if an allowlist entry also matches
+    - pattern: "Thread failed main thread check"
+      why: Folia TickThread check: data touched off its region thread. Harness or plugin bug, never noise.
+    - pattern: "Must use teleportAsync while in region threading"
+      why: Player.teleport on a region thread. The agent uses teleportAsync (docs/platforms/folia.md).
+  allowlist:                     # only noise that a reviewed Folia run showed; each entry says why
+    - pattern: "^T[0-9a-f]{8} moved too quickly! "
+      why: Reset teleportAsync races the harness client's first move packets (seen on folia@26.3 smoke). Harness clients only.

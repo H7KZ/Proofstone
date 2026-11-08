@@ -157,6 +157,7 @@ public abstract interface dev.proofstone.api.Matrix implements java.lang.annotat
   method public abstract dev.proofstone.api.Platform dev.proofstone.api.Matrix.platform()
   method public abstract java.lang.String[] dev.proofstone.api.Matrix.versions()
 public final dev.proofstone.api.Platform extends java.lang.Enum<dev.proofstone.api.Platform>
+  field public static final dev.proofstone.api.Platform FOLIA
   field public static final dev.proofstone.api.Platform PAPER
   method public static dev.proofstone.api.Platform dev.proofstone.api.Platform.valueOf(java.lang.String)
   method public static dev.proofstone.api.Platform[] dev.proofstone.api.Platform.values()
