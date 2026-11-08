@@ -1,7 +1,7 @@
 # Spigot
 
-Status: **experimental** (rows 1.8.8, 1.21.11 and 26.3 in `versions.yml`). See [platforms.md](../platforms.md) and the
-conformance table below.
+Status: **required** (rows 1.8.8, 1.21.11 and 26.3 in `versions.yml`, promoted by ADR-0015 in the M5 follow-up). See
+[platforms.md](../platforms.md) and the conformance table below.
 
 ## Host and builder
 - **Not downloaded.** Spigot is built from source by SpigotMC BuildTools for each row's `--rev` (the Minecraft version,
@@ -72,10 +72,22 @@ Per-row runs, one `dockerlock` invocation each. `skipped` and `failures` read fr
   among the platforms it covers. 1.21.11 C06 is the only red result recorded (one failure, then a pass; verifier repeat
   5 of 5).
 
+## Evidence for `required` (M5 follow-up, 2026-11-08, ADR-0015)
+Full `:conformance:run -Dproofstone.cells=<row>` runs, one Docker invocation each, XML read per run:
+
+| Row | Bridged | Full runs passed | C06 repeat (`-Dproofstone.repeat=10 --tests '*C06*'`) | C01 to C08 | Skip reasons |
+|---|---|---|---|---|---|
+| spigot 1.8.8 | yes | 3 (T-M5-05 twice with the cache cleared, M5 review) | not run on 1.8.8 | all pass | C07 (no grindstone before 1.14), C-F01, C-F02 capability, C-B01 capability |
+| spigot 1.21.11 | yes | 2 (M5 review, this PR) plus T-M5-05 red then C06 alone green | 10 of 10 passed | all pass | C-F01, C-F02, C-B01 capability |
+| spigot 26.3 | no | 2 (T-M5-05, M5 review) | not run on 26.3 (same platform repeat as 1.21.11) | all pass | C-F01, C-F02, C-B01 capability |
+
+Honest notes: spigot 1.21.11 has one red full run on record (T-M5-05, C06 `DISAGREE: present in the inventory`), which is
+not explained. The C06 repeat is 10 of 10, and the earlier verifier repeat was 5 of 5, so the failure did not come back.
+Promoting it is an ADR-0015 reading (the repeat is the flake gate), and the maintainer can overrule it.
+
 ## Open limits
 - Spigot versions other than the three pinned rows are not pinned and not run.
-- 1.21.11 C06 is not explained. The row stays `experimental`, so the failure is not hidden by a `required` claim.
-- Each row has one counted full run. Promotion to `required` is not done: ADR-0015 needs a maintainer decision (C06 red
-  once on 1.21.11).
+- 1.21.11 C06: one red full run, not explained. No C06 failure in any later run: 6 passes before this PR, and 11 in this
+  PR (10 repeat runs and 1 full run).
 - Build times for 1.21.11 and 26.3 were not measured.
 - No `SIMULATED_BEDROCK` run on Spigot.

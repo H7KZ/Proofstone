@@ -345,3 +345,68 @@ M5 can run in parallel with M4 once M3 is done.
   onward unchanged. Total to v0.1 is about 16 weeks as a sum of the estimates.
 - **M6 cards refined** (`tasks/M6-dogfood-release.md`, "What M1 to M5 produced"). T-M4-10, T-M4-12 are open and block the
   0.1 release claim; T-M4-13 and T-M4-14 are open and can wait. M6 was not started.
+
+## M5 follow-up evidence (`fix/m5-evidence-promotion`, 2026-11-08)
+Maintainer-approved follow-up to the M5 review. Same local rules: real servers, EULA in the command environment only,
+one Docker invocation per row, JUnit XML read per run (`skipped`, `failures`, `errors`), no test weakened, no retry
+counted as a pass.
+
+**A. C06 flake measurement** (`:conformance:run -Dproofstone.cells=<row> -Dproofstone.repeat=10 --tests '*C06AnvilCombineTest*'`,
+one repeat of 10 per row, boot shared by the repeats):
+
+| Row | Repeats | Result | Earlier red on record |
+|---|---|---|---|
+| `purpur@26.3` (native) | 10 | 10 passed | M5 review first run: `ClientDriverException: timed out joining ... after PT30S` (the join; `McplDriver.connect`, last state JOINING). Not diagnosed. Not reproduced in 10 repeats. |
+| `spigot@1.21.11` (bridged) | 10 | 10 passed | T-M5-05 first run: `DISAGREE: present in the inventory` after 10119 ms. Not diagnosed. Not reproduced in 10 repeats, or in the 6 earlier passes. |
+| `folia` | 0 | not run | folia@1.20.6 full runs: join stall (C-F02) once, C07 cursor assertion once. See below. |
+
+**B. Older rows.** `updateVersions` adds only versions newer than a platform's newest row, so both older rows were pinned
+by hand with the same checks (md5 from the Purpur API, fill sha256, protocol from the jar's `version.json`, Java from the
+java-rules table; `lintVersions validateVersions` clean).
+- `purpur@1.20.6` (build 2233, bridged, java21): **added and promoted.** Two full runs, both green.
+- `folia@1.20.6` (build 6, channel ALPHA, bridged, java21): **not added.** Two full runs, both red, on different tests:
+  run 1 C-F02 join timeout (no login, nothing at ViaProxy); run 2 C07 `Expecting value to be true but was false`
+  (the bare sword on the cursor). Recorded in `docs/platforms/folia.md`.
+
+**C. ViaProxy prefixed-login stall.** Time-boxed. `cli --help` on the pinned image has no username or Bedrock option,
+and the image bundles ViaBedrock. Not reproduced: a run needs C-B01 on a bridged cell, which the capability model does
+not allow. No fix. `SIMULATED_BEDROCK` stays native-only. Recorded in `docs/platforms/viaproxy.md` (Gotchas).
+
+**D. Promotions (ADR-0015).** Rule: full per-row run green with C01 to C08 all run, two independent green runs, no
+unexplained flake in the platform's C06 repeat.
+
+| Row | Bridged | Green full runs | C06 repeat | C01 to C08 | Skip reasons | Promoted |
+|---|---|---|---|---|---|---|
+| purpur 1.20.6 | yes | 2 (this PR) | on purpur@26.3: 10/10 | all pass | C-F01, C-F02, C-B01 (capability) | yes |
+| purpur 1.21.11 | yes | 2 (T-M5-04, M5 review) | 10/10 (platform) | all pass | C-F01, C-F02, C-B01 (capability) | yes |
+| purpur 26.3 | no | 2 (T-M5-04, this PR) + M5 review red then green | 10/10 | all pass | C-F01, C-F02, C-B01 (capability) | yes (see note) |
+| spigot 1.8.8 | yes | 3 (T-M5-05 x2, M5 review) | 10/10 (platform) | all pass | C07 (no grindstone before 1.14), C-F01, C-F02, C-B01 | yes |
+| spigot 1.21.11 | yes | 2 (M5 review, this PR) + T-M5-05 red | 10/10 | all pass | C-F01, C-F02, C-B01 (capability) | yes (see note) |
+| spigot 26.3 | no | 2 (T-M5-05, M5 review) | 10/10 (platform) | all pass | C-F01, C-F02, C-B01 (capability) | yes |
+| folia 1.21.11, 26.1.2, 26.2, 26.3 | 1.21.11, 26.1.2, 26.2 yes; 26.3 no | 1 each (M5 review) | none on folia | all pass | C-B01 (capability) | **no**: no folia C06 repeat, and folia 1.20.6 red twice |
+| folia 1.20.6 | yes | 0 (2 red) | — | — | — | not added |
+
+Notes, so the reader can judge the two marked rows:
+- purpur 26.3: the M5 review's first run was red (join timeout), and the C06 rerun was green. The promotion relies on the
+  10/10 repeat and two green full runs. The original red is not explained.
+- spigot 1.21.11: one red full run (T-M5-05) is not explained. The promotion relies on 10/10 repeats and two green full
+  runs. A maintainer may read ADR-0015 differently.
+
+**Full-run XML this PR.** `purpur@26.3`: 10 suites, all `skipped` 0 or 1 (reasoned capability skips), `failures=0`,
+`errors=0`. `spigot@1.21.11`: same. The new `purpur@1.20.6` runs: the same shape. `folia@1.20.6` run 2: 1 `failures=1`
+(C07) and run 1: 1 `failures=1` (C-F02). Bundle paths for the red runs are under `conformance/build/proofstone/`.
+
+**`printMatrix --scope=pr`**: plans **17 cells** (was 11): paper 11 (unchanged), purpur 3 (1.20.6, 1.21.11, 26.3),
+spigot 3 (1.8.8, 1.21.11, 26.3), folia 0.
+
+**Open items, after this follow-up** (the M5 review's numbering):
+1. ADR-0015 promotion: **partly resolved.** Purpur (3 rows) and Spigot (3 rows) promoted. Folia (4 rows) still
+   `experimental` (no Folia C06 repeat, and folia 1.20.6 red twice). Folia needs a repeat run and the 1.20.6 join and
+   C07 reds explained or shown to be flake before any Folia promotion.
+2. `Cell.capabilities()` default method: resolved in the M5 review (PR #73). No change here.
+3. NMS and DATAPACKS tokens: resolved in the M5 review. No change here.
+4. Prefixed Bedrock login through ViaProxy: **still open.** Investigated, not reproduced, no fix (see C above).
+5. Unrun rows: **partly resolved.** Purpur 1.20.6 added and run. Folia 1.20.6 tried and not added. Still unrun: Purpur
+   1.14 to 1.19.x; Folia 1.19.4 to 1.21.10 (1.20.6 included, see above).
+6. Nightly schedule: **open**, untouched here.
+7. CI cost (PR #68): **open**, untouched here.
