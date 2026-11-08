@@ -239,6 +239,12 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   It stores the downloaded server jar as `/data/paper-*.jar`, which `PaperHost` hashes against the pin.
 - **The client inventory from the driver lists empty slots as `air x0` items**, so "empty" means all items `isEmpty()`,
   not an empty list. The agent's `inventory` omits empty slots.
+- **Console replies differ by row, and the harness compares them as they are** (T-M4-07). `list` prints "There are N of
+  a max of M players online" on 26.x and "There are N/M players online" on 1.8.8, so the conformance check matches
+  "players online" only. A bare `gamerule <name>` query prints "Gamerule <name> is currently set to: <value>" (26.x).
+  The leak detector's snapshot reads these back raw, so a changed rule shows as a changed reply.
+- **A failed repeat's own failure is the one JUnit reports, and the flake verdict rides on it as a suppressed
+  exception** (T-M4-07). The FLAKY message is in the XML body under `Suppressed:`, not in the `message` attribute.
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:

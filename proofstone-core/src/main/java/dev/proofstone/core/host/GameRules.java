@@ -30,6 +30,11 @@ final class GameRules {
                 "gamerule doMobSpawning false");
     }
 
+    /** The rule names the deterministic world sets, in the cell's naming: the leak detector reads these back. */
+    static List<String> names(String mc) {
+        return commands(mc).stream().map(command -> command.split(" ")[1]).toList();
+    }
+
     /** The rule that {@code commands} sets to 0 first; tests read it back to prove the effect. */
     static String randomTickSpeed(String mc) {
         return usesSnakeCase(mc) ? "random_tick_speed" : "randomTickSpeed";

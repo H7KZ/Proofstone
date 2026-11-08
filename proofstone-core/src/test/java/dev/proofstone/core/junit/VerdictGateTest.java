@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.proofstone.api.ControlRun;
+import dev.proofstone.core.verdict.ConformanceResult;
 import java.lang.reflect.Method;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +39,7 @@ class VerdictGateTest {
 
     @Test
     void aPassInAControlRunIsVacuous() throws NoSuchMethodException {
-        AssertionError failure = VerdictGate.judgePass(method("plain"), CELL, true);
+        AssertionError failure = VerdictGate.judgePass(method("plain"), CELL, true, ConformanceResult.pass(CELL));
 
         assertThat(failure).isNotNull();
         assertThat(failure.getMessage()).startsWith("VACUOUS Samples.plain on paper@1.8.8");
@@ -45,18 +47,44 @@ class VerdictGateTest {
 
     @Test
     void aPassInANormalRunIsPass() throws NoSuchMethodException {
-        assertThat(VerdictGate.judgePass(method("plain"), CELL, false)).isNull();
+        assertThat(VerdictGate.judgePass(method("plain"), CELL, false, ConformanceResult.pass(CELL))).isNull();
     }
 
     @Test
     void anExpectedPassInAControlRunIsNotVacuous() throws NoSuchMethodException {
-        assertThat(VerdictGate.judgePass(method("expectedPass"), CELL, true)).isNull();
+        assertThat(VerdictGate.judgePass(method("expectedPass"), CELL, true, ConformanceResult.pass(CELL))).isNull();
     }
 
     @Test
     void aBlankControlRunReasonIsAnErrorNotAPass() throws NoSuchMethodException {
-        assertThatThrownBy(() -> VerdictGate.judgePass(method("blankReason"), CELL, true))
+        assertThatThrownBy(() -> VerdictGate.judgePass(method("blankReason"), CELL, true,
+                ConformanceResult.pass(CELL)))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("needs a reason");
+    }
+
+    @Test
+    void aFailedCellConformanceMakesThePassingTestInvalid() throws NoSuchMethodException {
+        ConformanceResult broken = new ConformanceResult(CELL, false, "list did not print");
+
+        AssertionError failure = VerdictGate.judgeInvalid(method("plain"), CELL, broken);
+
+        assertThat(failure).isNotNull();
+        assertThat(failure.getMessage()).startsWith("INVALID Samples.plain on paper@1.8.8")
+                .contains("list did not print");
+        assertThat(VerdictGate.judgeInvalid(method("plain"), CELL, ConformanceResult.pass(CELL))).isNull();
+    }
+
+    @Test
+    void aChangedServerRuleIsALeakNamingTheRule() throws NoSuchMethodException {
+        List<String> before = List.of("random_tick_speed: 0");
+        List<String> after = List.of("random_tick_speed: 3");
+
+        AssertionError failure = VerdictGate.judgeLeak(method("plain"), CELL, before, after);
+
+        assertThat(failure).isNotNull();
+        assertThat(failure.getMessage()).startsWith("LEAK Samples.plain on paper@1.8.8")
+                .contains("random_tick_speed: 0 -> random_tick_speed: 3");
+        assertThat(VerdictGate.judgeLeak(method("plain"), CELL, before, before)).isNull();
     }
 
     @Test

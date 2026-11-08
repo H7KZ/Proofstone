@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.proofstone.core.verdict.Attempt;
+import dev.proofstone.core.verdict.ConformanceResult;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -83,7 +84,7 @@ class FlakeDetectorTest {
     void aChangeOfVerdictAcrossTheRunsIsFlaky() throws NoSuchMethodException {
         List<Attempt> runs = List.of(Attempt.pass(), Attempt.fail("draw 2 failed"), Attempt.pass());
 
-        AssertionError failure = VerdictGate.judgeRepeats(plain(), CELL, false, runs);
+        AssertionError failure = VerdictGate.judgeRepeats(plain(), CELL, false, runs, ConformanceResult.pass(CELL));
 
         assertThat(failure).isNotNull();
         assertThat(failure.getMessage()).startsWith("FLAKY Samples.plain on paper@1.8.8 over 3 runs")
@@ -94,21 +95,21 @@ class FlakeDetectorTest {
     void theRunsAgreeingIsPass() throws NoSuchMethodException {
         List<Attempt> runs = List.of(Attempt.pass(), Attempt.pass(), Attempt.pass());
 
-        assertThat(VerdictGate.judgeRepeats(plain(), CELL, false, runs)).isNull();
+        assertThat(VerdictGate.judgeRepeats(plain(), CELL, false, runs, ConformanceResult.pass(CELL))).isNull();
     }
 
     @Test
     void everyRunFailingIsNotReportedAgainBecauseJUnitAlreadyReportsEachRun() throws NoSuchMethodException {
         List<Attempt> runs = List.of(Attempt.fail("a"), Attempt.fail("b"), Attempt.fail("c"));
 
-        assertThat(VerdictGate.judgeRepeats(plain(), CELL, false, runs)).isNull();
+        assertThat(VerdictGate.judgeRepeats(plain(), CELL, false, runs, ConformanceResult.pass(CELL))).isNull();
     }
 
     @Test
     void allRunsPassingInAControlRunIsVacuous() throws NoSuchMethodException {
         List<Attempt> runs = List.of(Attempt.pass(), Attempt.pass(), Attempt.pass());
 
-        AssertionError failure = VerdictGate.judgeRepeats(plain(), CELL, true, runs);
+        AssertionError failure = VerdictGate.judgeRepeats(plain(), CELL, true, runs, ConformanceResult.pass(CELL));
 
         assertThat(failure).isNotNull();
         assertThat(failure.getMessage()).startsWith("VACUOUS Samples.plain on paper@1.8.8 over 3 runs");
@@ -119,7 +120,7 @@ class FlakeDetectorTest {
         // VerdictEngine precedence: FLAKY before VACUOUS, so a control run whose runs differ reports the flake.
         List<Attempt> runs = List.of(Attempt.pass(), Attempt.fail("draw 2 failed"), Attempt.pass());
 
-        AssertionError failure = VerdictGate.judgeRepeats(plain(), CELL, true, runs);
+        AssertionError failure = VerdictGate.judgeRepeats(plain(), CELL, true, runs, ConformanceResult.pass(CELL));
 
         assertThat(failure).isNotNull();
         assertThat(failure.getMessage()).startsWith("FLAKY Samples.plain");

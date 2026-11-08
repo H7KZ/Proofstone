@@ -2,6 +2,8 @@ package dev.proofstone.core.junit;
 
 import dev.proofstone.core.host.PaperHost;
 import dev.proofstone.core.host.ViaProxyHost;
+import dev.proofstone.core.verdict.ConformanceResult;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,6 +20,12 @@ final class TestState implements AutoCloseable {
     final Set<String> patchedPlugins = ConcurrentHashMap.newKeySet();
     /** {@code null} when the test method takes no {@code Client}. */
     SessionClient client;
+    /** The cell's conformance result, read before the test; a failed one makes the test INVALID. */
+    ConformanceResult conformance;
+    /** Set when the cell's conformance failed: the INVALID failure that {@code beforeEach} threw. */
+    AssertionError invalid;
+    /** The leak detector's snapshot from before the test; {@code null} when the test never got that far. */
+    List<String> gameRules;
 
     TestState(PaperHost host, long logCursor) {
         this.host = host;
