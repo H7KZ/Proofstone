@@ -27,8 +27,18 @@ server's ping, speaks the server's own protocol, and the bridged cell never goes
 | `command` | `command` (no slash) | `null` |
 | `state` | none | `position` (`[x,y,z]` or `null`), `experienceLevel` (or `null` before the first sync) |
 | `close` | none | `null` |
+| `inventory` | none | the player inventory (window 0) as last synced, even while a container is open |
+| `window` | none | the open container (`id`, `type`, `title`, `stateId`, `slots`, `cursor`), or the inventory when none is open |
+| `click` | `slot`, `button`, `mode` | `null`; the server answers with a sync (a newer `stateId`) |
+| `closeWindow` | none | `null` |
+| `rename` | `name` | `null`; sets the anvil rename box (`name_item`) |
+| `useBlock` | `x`, `y`, `z` | `null` once Mineflayer has activated the block |
 
-Notifications from the sidecar: `chat` (`text`, `system`), `disconnect` (`reason`), `error` (`message`).
+A stack is `{itemId, type, count, enchants, storedEnchants, name, lore, damage, repairCost}`. Enchantments are
+`{name: level}` with minecraft-data names; `name` is plain text, or `null`.
+
+Notifications from the sidecar: `chat` (`text`, `system`), `disconnect` (`reason`), `error` (`message`),
+`windowOpen` (`id`, `type`), `windowClose` (`id`).
 
 ## Gotchas
 
@@ -40,5 +50,16 @@ Notifications from the sidecar: `chat` (`text`, `system`), `disconnect` (`reason
   ViaProxy's.
 - **A stopped server ends the session.** The bot reports `socketClosed` as the reason, and the Java side fails pending
   waits with `disconnected while waiting`.
-- **Not done in this slice.** Windows, blocks, inventory and item parsing are not implemented (T-M4-05b). They fail
-  loudly. The C03 to C06 acceptance is therefore not met by this PR.
+- **Mineflayer's `clickWindow` predicts the result locally.** It runs `window.acceptClick` on its own copy, so the
+  sidecar sends `window_click` itself with no changed slots and an empty cursor. The server answers with a resync, and
+  the driver awaits the newer `stateId`. _26.1.2 and 1.21.11 (bridged) · T-M4-05b_
+- **`windowClose` can carry `null`.** Mineflayer emits it for a window it never tracked; reading `.id` crashed the
+  sidecar, which the Java side saw only as a dropped socket (close code 1006). The sidecar's output goes to the test log
+  now. _26.1.2 · T-M4-05b_
+- **`stored_enchantments` is not read by prismarine-item.** Its `enchants` getter reads only the `enchantments`
+  component. The sidecar reads both, as `{enchantments: [{id, level}]}`, and maps each registry id to its name with
+  minecraft-data. _26.1.2 · T-M4-05b_
+- **Custom names and lore are NBT-typed components.** The sidecar unwraps `{type, value}` before it reads the text
+  children, or the name comes out empty and the rename scenario never sees it. _26.1.2 and 1.21.11 · T-M4-05b_
+- **Mineflayer's window state id is private.** The sidecar tracks it from `window_items` and `set_slot`, the same two
+  packets Mineflayer uses. _26.1.2 · T-M4-05b_

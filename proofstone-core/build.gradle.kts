@@ -14,7 +14,8 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.json.schema.validator)
-    implementation(libs.testcontainers)
+    // Public: the driver SPI binds a driver to the cell network (ClientDriver.onNetwork).
+    api(libs.testcontainers)
 }
 
 tasks.test {

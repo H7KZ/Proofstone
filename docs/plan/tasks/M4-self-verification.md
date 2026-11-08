@@ -125,8 +125,8 @@ the bundle.
 **Goal.** An independent reference driver for differential runs.
 
 **Part 1 of 2 (split, maintainer accepted).** Windows, blocks, inventory and item parsing moved to T-M4-05b.
-Part 1 covers join, chat, replies and disconnect on 26.1.2 (native) and 1.21.11 (bridged). The acceptance below
-stays unticked until T-M4-05b lands.
+Part 1 covers join, chat, replies and disconnect on 26.1.2 (native) and 1.21.11 (bridged). Acceptance ticked
+after T-M4-05b (PR #53) landed the windows, blocks and items.
 
 **Do.**
 - Build a Node image with pinned `mineflayer` and `minecraft-data`. The SPI is exposed over WebSocket
@@ -140,7 +140,7 @@ stays unticked until T-M4-05b lands.
 - Use it as a primary driver.
 
 **Acceptance.**
-- [ ] C02–C06 pass on the reference driver on 1.21.11 and 26.1.x.
+- [x] C02–C06 pass on the reference driver on 1.21.11 and 26.1.x.
 
 **Verify.**
 `./gradlew :drivers:mineflayer-ref:integrationTest`
@@ -166,8 +166,8 @@ stays unticked until T-M4-05b lands.
 - Change the protocol version or the native row.
 
 **Acceptance.**
-- [ ] C02–C06 pass on the reference driver on 1.21.11 and 26.1.x.
-- [ ] `MineflayerRefDriverIT` XML shows `skipped="0" failures="0" errors="0"`.
+- [x] C02–C06 pass on the reference driver on 1.21.11 and 26.1.x.
+- [x] `MineflayerRefDriverIT` XML shows `skipped="0" failures="0" errors="0"`.
 
 **Verify.**
 `./gradlew :drivers:mineflayer-ref:integrationTest`
