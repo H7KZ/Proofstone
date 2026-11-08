@@ -14,7 +14,7 @@ conformance, golden files and the verdict engine exist.
 | **M2** | Windows and the dual oracle (done, reviewed in T-M2-99) | The Disenchantment anvil scenario passes natively on the newest Paper version with a dual-oracle assertion and an event probe. Conformance C01–C06 pass. The test API is frozen (v0). | 11 | 5 / 6 / 0 | 2 (took about 1 day of agent time, see the M2 review) |
 | **M3** | Version span (done, reviewed in T-M3-99) | ViaProxy bridging works. Every Paper row from 1.8.8 to the newest passes C01–C08. `version-watch` opens PRs automatically. | 9 | 5 / 4 / 0 | 2.5 (was 2; T-M3-02 grew, see the M2 review; it took about one day of agent time, see the M3 review) |
 | **M4** | Self-verification (exit demonstrated, done, reviewed in T-M4-99; gap cards T-M4-10 to 15 open) | Control run, differential run (mineflayer-ref), flake detector and repro bundles all work. Verdicts `VACUOUS`, `DISAGREE` and `FLAKY` are demonstrated on purpose-built bad tests. | 9 | 4 / 4 / 1 | 2.5 (was 2; more Docker runs and a new Node driver, see the M3 review). Actual: about 15 h wall for PRs #46 to #58 (see the M4 review) |
-| **M5** | Bukkit family complete | Folia (regions), Purpur and Spigot (BuildTools cache) pass conformance. Capability model done. Bedrock-prefix simulation works. | 8 | 5 / 3 / 0 | 3 (was 2; no Folia row has booted yet, see the M3 review) |
+| **M5** | Bukkit family complete (exit demonstrated, done, reviewed in T-M5-99) | Folia (regions), Purpur and Spigot (BuildTools cache) pass conformance. Capability model done. Bedrock-prefix simulation works. | 8 | 5 / 3 / 0 | 3 (was 2; no Folia row had booted, see the M3 review). Actual: about 7 h wall for PRs #62 to #69 and about 75 min of Docker runs for the review (see the M5 review) |
 | **M6** | Dogfood and 0.1 release | Disenchantment's full suite runs on Proofstone in its CI. Maven and Gradle example projects work. Published to Maven Central and GHCR. GitHub Action published. Licence decided. Mutation check passes. | 9 | 6 / 2 / 1 | 2 |
 | **M7** | Proxies | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | epic | refine first (Sonnet) | 2 |
 | **M8** | Mods and data | Fabric and NeoForge agents, multi-version via Stonecutter, plus data pack and resource-pack tests. | epic | refine first (Sonnet/Opus) | 4 |
@@ -23,7 +23,7 @@ conformance, golden files and the verdict engine exist.
 
 **Cards M0–M6:** 66 in total. 40 are Haiku cards (61%), 24 Sonnet and 2 Opus (T-M3-02 moved from Haiku to Sonnet at T-M2-99).
 
-**Total to v0.1 (M0–M6): about 15.5 focused weeks** (sum of the estimates, M5 run after M4; was 14). Full ecosystem (M7–M10): about 10+ more weeks.
+**Total to v0.1 (M0–M6): about 16 focused weeks** (sum of the estimates, M5 run after M4; was 15.5 before the M5 review, see the M5 review). Full ecosystem (M7–M10): about 10+ more weeks.
 These are estimates, and they will be re-estimated at the end of each milestone (card `T-Mx-99`).
 
 ## Milestone rules
@@ -274,3 +274,72 @@ M5 can run in parallel with M4 once M3 is done.
 - **M5 cards refined** (`tasks/M5-bukkit-family.md`, "What M1 to M4 produced"). The next milestone is M5, not M6, so the
   card's "refine the M6 cards" wording is a typo for M5. The M6 cards are refined in the M5 review (T-M5-99), as the roadmap
   rules say. M6 was not started.
+
+## M5 review (T-M5-99)
+- **Exit criterion: met, with one recorded flake.** Folia (4 rows), Purpur (2 rows) and Spigot (3 rows) pass C01 to C08.
+  The capability model is done (T-M5-01). Bedrock-prefix simulation works on **native Paper only** (`paper@26.3`). Purpur and
+  Spigot 26.3 are native but do not declare `SIMULATED_BEDROCK`, so C-B01 skips there with the reason.
+  Evidence (local, real servers, JDK 21, EULA in the command environment only, every Docker run through
+  `scripts/dockerlock.sh --no-parallel --max-workers=1`, one invocation per cell). XML read per suite: `skipped` and `failures`
+  counted, skip reasons read from the XML.
+- **Gates** (all `BUILD SUCCESSFUL`):
+  - `./gradlew check docsCheck`: `docsCheck: 0 errors, 356 warning(s)`.
+  - `:conformance:smoke`: `ConformanceSmokeTest` 8 tests, 0 skipped, 0 failures, 0 errors.
+  - `:examples:bad-tests:metaTest`: "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, LEAK, FAIL,
+    SKIPPED)". Its task XML holds 14 tests with 7 failures and 1 skip **by design** (the bad tests fail on purpose; the meta
+    assertions pass). Not a red gate.
+  - `:platforms:bukkit:agent:integrationTest` 23/23. `:drivers:mcpl:integrationTest` 5/5. `:proofstone-core:integrationTest` 4/4.
+  - `:examples:smoke:test` 13/13. `:examples:disenchantment-anvil:test` 1/1.
+- **Per-cell conformance** (one `:conformance:run -Dproofstone.cells=<cell>` per row; the run-level XML, all `errors="0"`):
+
+  | Row | Bridged | Tests | Failures | Skips (reason) |
+  |---|---|---|---|---|
+  | `folia@1.21.11` | yes | 11 | 0 | 1 (C-B01: missing SIMULATED_BEDROCK) |
+  | `folia@26.1.2` | yes | 11 | 0 | 1 (C-B01) |
+  | `folia@26.2` | yes | 11 | 0 | 1 (C-B01) |
+  | `folia@26.3` | no (native) | 11 | 0 | 1 (C-B01) |
+  | `purpur@latest` (26.3) | no (native) | 11 | 0 first run, 1 red then green (see flake) | 3 (C-B01, C-F01, C-F02: capability) |
+  | `purpur@1.21.11` | yes | 11 | 0 | 3 (capability) |
+  | `spigot@1.21.11` | yes | 11 | 0 | 3 (capability) |
+  | `spigot@1.8.8` | yes | 11 | 0 | 4 (C07 reasoned: no grindstone before 1.14; 3 capability) |
+  | `spigot@26.3` | no (native) | 11 | 0 | 3 (capability) |
+  | `paper@26.3` (regression) | no (native) | 11 | 0 | 2 (C-F01, C-F02: FOLIA_REGIONS) |
+  | `C-B01` on `paper@26.3` (`--tests`) | no (native) | 1 | 0 | 0 (PASS) |
+
+  The Folia rows ran C-F01 and C-F02 and passed them (no capability skip). Bridged per the card: `folia@1.21.11`,
+  `folia@26.1.2`, `folia@26.2`; native: `folia@26.3`.
+- **Flake (finding, not a pass)**: `purpur@latest` (resolves to 26.3) first run failed `C06AnvilCombineTest`:
+  `ClientDriverException`, `timed out joining ... after PT30S` (`Await`). Rerun, same command, alone: passed (rc 0,
+  0 failures). One red, one green on the same row: recorded as flaky. Not retried by the harness. Root cause not diagnosed.
+  Same family as the M3 join flake (M3 review, item 8) and the spigot@1.21.11 C06 red in `docs/platforms.md`.
+- **Bugs only real runs found** (full list in `docs/platforms/folia.md`, `purpur.md`, `spigot.md`):
+  - Folia `TickCounter` used the Bukkit scheduler and had to move to the region scheduler (T-M5-02).
+  - On Folia, `PlayerTeleportEvent` is not fired by `tp` or reset, so C-F02 uses a gamemode change instead (T-M5-03).
+  - Folia logs `moved too quickly` as WARN in the test window: each pack needs its own narrow allowlist (T-M4-15).
+  - Spigot 1.8.8 BuildTools jar is not byte-reproducible: Maven writes a build-time line into `pom.properties`. Fixed with
+    `JarDigest` (content digest, minus that line) (T-M5-05).
+  - Prefixed Bedrock login stalls at ViaProxy on bridged cells. Cause unknown. Not a claim of Bedrock support.
+- **Deviations from the cards**:
+  - The Spigot 1.8.8 and 26.3 rows were built from source by BuildTools; first-build time is about 3 to 5 min each (T-M5-05).
+  - `SIMULATED_BEDROCK` is declared by the Paper pack only. The T-M5-06 acceptance is met on `paper@26.3`; the card's
+    "native cells" reading is therefore Paper only, not every native row.
+  - `ConformanceSmokeTest` has 8 test methods in the XML, not the 2 the M4 review listed. Not investigated here.
+- **Open items (maintainer decisions)**:
+  1. **ADR-0015: promote Folia, Purpur and Spigot rows from `experimental` to `required`?** The rows pass once each here, and
+     purpur@26.3 has one red run. The current `docs/platforms.md` status evidence says "not promoted". Recommendation: keep
+     `experimental` until purpur@26.3 C06 is diagnosed or shown flake-free over N repeats.
+  2. **`Cell.capabilities()` is an abstract method on a frozen interface.** Source-breaking for external implementers. Decide
+     whether to make it a default method. Recommendation: default method, in an `api-change` PR, before M6 publishes to Maven Central.
+  3. **Capability tokens NMS and DATAPACKS have no agent token.** They are declared but cannot be reported by the agent.
+  4. **Prefixed Bedrock login stalls at ViaProxy on bridged cells.** Cause unknown. C-B01 runs native only (Paper 26.3).
+  5. **Unrun rows**: Purpur 1.14 to 1.20.x and Folia 1.19.4 to 1.21.10. Not run; not claimed.
+  6. **Nightly schedule**: still `workflow_dispatch` only. The repository variable `PROOFSTONE_ACCEPT_EULA` and the first manual
+     nightly run remain undone by the maintainer (M4 review).
+  7. **CI cost (PR #68)**: `gates` and `renovate-validate` are the only PR checks. Option: drop `gates` from required checks
+     and rely on local gate evidence. Decision open.
+- **Re-estimate.** M5 was estimated at 3 weeks. Merged PRs #62 to #69 spanned about 7 h wall clock (12:21 to 19:10 UTC
+  on 2026-11-08), and the review's Docker runs took about 75 min. M6 goes from 2 to 2.5 weeks: T-M4-10 and T-M4-12 block the
+  release claim (see M6 refinement below), and the Maven Central and Disenchantment CI steps depend on external accounts. M7
+  onward unchanged. Total to v0.1 is about 16 weeks as a sum of the estimates.
+- **M6 cards refined** (`tasks/M6-dogfood-release.md`, "What M1 to M5 produced"). T-M4-10, T-M4-12 are open and block the
+  0.1 release claim; T-M4-13 and T-M4-14 are open and can wait. M6 was not started.

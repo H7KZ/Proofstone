@@ -157,7 +157,9 @@ M5 can run in parallel with M4 once M3 is done.
 - Redistribute the Spigot jars.
 
 **Acceptance.**
-- [ ] C01–C08 pass on Spigot 1.8.8, 1.21.11 and the newest version.
+- [x] C01–C08 pass on Spigot 1.8.8, 1.21.11 and the newest version. (T-M5-99, 2026-11-08, one invocation per row, XML
+  `skipped` reasons only: 1.8.8 C07 is a reasoned skip, no grindstone before 1.14; `spigot@26.3` and `spigot@1.21.11` pass
+  C01–C08 with only the capability skips. Evidence in ROADMAP "M5 review (T-M5-99)".)
 
 **Verify.**
 `./gradlew :conformance:run -Dproofstone.cells=spigot@1.21.11`
@@ -182,7 +184,10 @@ M5 can run in parallel with M4 once M3 is done.
 - Claim real Bedrock support anywhere.
 
 **Acceptance.**
-- [ ] A fixture plugin's prefix-based detection sees the client as Bedrock.
+- [x] A fixture plugin's prefix-based detection sees the client as Bedrock. (T-M5-99, 2026-11-08: `:conformance:run
+  -Dproofstone.cells=paper@26.3 --tests *ConformanceBedrockPrefixTest*` BUILD SUCCESSFUL, 1 test, skipped 0, failures 0.
+  Native Paper only: `SIMULATED_BEDROCK` is declared by the Paper pack alone, so the same test skips with the reason
+  `missing capability SIMULATED_BEDROCK` on purpur@26.3, spigot@26.3 and every bridged row.)
 
 **Verify.**
 `./gradlew :conformance:run --tests C-B01`
@@ -232,7 +237,7 @@ M5 can run in parallel with M4 once M3 is done.
 - Start M7.
 
 **Acceptance.**
-- [ ] The exit criterion is demonstrated.
+- [x] The exit criterion is demonstrated, with one recorded flake (purpur@26.3 C06, red then green on rerun). See ROADMAP "M5 review (T-M5-99)".
 
 **Verify.**
 `./gradlew :conformance:run -Dproofstone.cells=folia@<v>` for each Folia row, then `purpur@latest` and `spigot@1.21.11`,
