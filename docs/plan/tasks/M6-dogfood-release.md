@@ -8,6 +8,24 @@
 - The licence is decided.
 - The mutation check passes.
 
+## What M1 to M5 produced (refined in T-M5-99)
+
+- Cell selector `-Dproofstone.cells=<cell>` for every real-server run. Paper rows 1.8.8 to 26.3 are `required` (ADR-0015).
+  Folia (4 rows), Purpur (2 rows) and Spigot (3 rows) are `experimental`; each passes C01 to C08 once in the M5 review,
+  with one flake (purpur@26.3 C06, red then green).
+- Capability model: `@Requires` skips with a reason. `SIMULATED_BEDROCK` is declared by the Paper pack only. The NMS and
+  DATAPACKS tokens have no agent token yet.
+- Self-tests (M4): control run, repeat run, differential run (`mineflayer-ref`, 26.1.2 only) and `metaTest` with the bad
+  tests. The verdict report and repro bundles exist.
+- Open before the 0.1 release claim: T-M4-10 (per-cell conformance, INVALID on window and inventory breaks) and T-M4-12
+  (real agent snapshot in bundles, wider leak detector), per the M4 review. T-M4-13 and T-M4-14 are open and can wait.
+  T-M4-11 and T-M4-15 are done (PRs #60, #61).
+- Risks for M6: the purpur@26.3 C06 flake; the prefixed-Bedrock ViaProxy stall (C-B01 runs native only); `Cell.capabilities()`
+  is an abstract method on a frozen interface (decide before T-M6-01 publishes to Maven Central).
+- T-M6-05 (Disenchantment's Bedrock-prefix chest-menu scenario) can run only on `paper@26.3` today.
+- T-M6-04 example projects: use `paper@26.3` for the native run. Folia and Spigot rows only after promotion (ADR-0015) or a
+  maintainer decision.
+
 ### T-M6-01 · Maven Central publishing pipeline
 - tier: haiku
 - depends: T-M4-99
