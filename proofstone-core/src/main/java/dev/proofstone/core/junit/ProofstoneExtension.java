@@ -113,12 +113,17 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                     + " cannot be combined: run the differential once, or the flake detector on its own");
         }
         List<TestTemplateInvocationContext> invocations = new ArrayList<>();
+        boolean runnable = false;
         for (Cell cell : cells) {
             if (differential && !referenceNative(cell)) {
-                System.err.println("PROOFSTONE NOT DIFFERENTIAL (not run, not a pass): " + cell.platform() + "@"
-                        + cell.mc() + " is not the reference driver's native row");
+                // Listed as a JUnit skip with its reason, so it is never mistaken for a pass (T-M4-11).
+                String reason = "NOT DIFFERENTIAL: " + cell.platform() + "@" + cell.mc()
+                        + " is not the reference driver's native row";
+                System.err.println("PROOFSTONE " + reason + " (not run, not a pass)");
+                invocations.add(new NotRunInvocation(cell.platform() + "@" + cell.mc(), reason));
                 continue;
             }
+            runnable = true;
             for (String driverId : CellInvocation.driversFor(differential)) {
                 for (int repetition = 1; repetition <= repeats; repetition++) {
                     invocations.add(new CellInvocation(cell, config, isolation, catalog, driverId, repetition,
@@ -126,7 +131,7 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                 }
             }
         }
-        if (invocations.isEmpty()) {
+        if (!runnable) {
             throw new IllegalStateException(type.getName() + " has no cell for a differential run: the reference driver "
                     + DifferentialRun.REFERENCE + " must be native on a selected cell. Select its row, for example "
                     + "-Dproofstone.cells=paper@26.1.2.");

@@ -230,12 +230,14 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         DifferentialRun.Disagreement disagreement = null;
         if (differential) {
             List<String> transcript = state.client == null ? List.of() : state.client.transcript();
-            disagreement = DifferentialRun.arrive(differentialKey(context),
-                    new DifferentialRun.Evidence(driverId, observations, transcript));
+            String test = context.getRequiredTestClass().getSimpleName() + "."
+                    + context.getRequiredTestMethod().getName();
+            DifferentialRun.Evidence evidence = new DifferentialRun.Evidence(driverId, observations, transcript);
+            // Failed on its own, and still paired: the other driver's run then compares against this one's evidence.
+            failure = combine(failure, DifferentialRun.unobserved(test, cellId(), evidence));
+            disagreement = DifferentialRun.arrive(differentialKey(context), evidence);
             if (disagreement != null) {
-                AssertionError verdict = DifferentialRun.failure(
-                        context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName(),
-                        cellId(), disagreement, state.conformance);
+                AssertionError verdict = DifferentialRun.failure(test, cellId(), disagreement, state.conformance);
                 failure = failure == null ? verdict : combine(verdict, failure);
             }
         }

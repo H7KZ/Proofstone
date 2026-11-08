@@ -97,6 +97,17 @@ class DifferentialRunTest {
     }
 
     @Test
+    void aRunThatObservedNothingFailsSoItCannotPassByComparingNothing() {
+        // Both runs empty would compare equal; the run itself must fail (T-M4-11, robustness X3).
+        AssertionError failure = DifferentialRun.unobserved("Test.method", CELL, evidence("mcpl"));
+
+        assertThat(failure).isNotNull();
+        assertThat(failure.getMessage()).startsWith("FAIL Test.method on paper@26.1.2")
+                .contains("mcpl run recorded no client observation").contains("DualAssert");
+        assertThat(DifferentialRun.unobserved("Test.method", CELL, evidence("mcpl", "a"))).isNull();
+    }
+
+    @Test
     void aMismatchNamesTheFirstDifferingPointAndBothDrivers() {
         DifferentialRun.Disagreement disagreement = DifferentialRun.compare(
                 evidence("mcpl", "a", "b", "c"), evidence("mineflayer-ref", "a", "X", "c"));

@@ -184,6 +184,20 @@ final class DifferentialRun {
         return compare(waiting, evidence);
     }
 
+    /**
+     * A differential run must observe the client at least once. A test with no {@code DualAssert} compares nothing, so
+     * two empty lists would agree for no reason (self-tests section 3, robustness X3).
+     *
+     * @return the failure of a run that recorded no client observation, otherwise {@code null}
+     */
+    static AssertionError unobserved(String test, String cell, Evidence evidence) {
+        if (!evidence.observations().isEmpty()) {
+            return null;
+        }
+        return new AssertionError("FAIL " + test + " on " + cell + ": the " + evidence.driver()
+                + " run recorded no client observation, so the differential run compared nothing; add a DualAssert");
+    }
+
     /** The failure of a disagreeing test: its verdict from the engine, then the first point that differs. */
     static AssertionError failure(String test, String cell, Disagreement disagreement,
             ConformanceResult conformance) {
