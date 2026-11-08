@@ -49,3 +49,9 @@
 - **Stronger model for everything.** Rejected: the cost is too high for routine cards and docs.
 - **Haiku only on `tier: haiku` cards** (ADR-0010). Rejected: this restriction is what forces the sonnet
   usage that the limits cannot pay for.
+
+## Update 2026-11-08: CI removed
+
+The maintainer removed `ci.yml` and the required status checks (`gates`, `renovate-validate`) from branch protection, to stop all
+billed Actions minutes. Point 5 above no longer holds: there is no PR workflow. The local gate is `scripts/gates.sh`
+(AGENTS.md section 4). `matrix`, `nightly` and `version-watch` remain manual-only.
