@@ -24,7 +24,7 @@ public final class MineflayerRefDriver implements ClientDriver {
 
     /**
      * The native row: Mineflayer 4.39.0 speaks protocol 775, which versions.yml lists as row 26.1.2
-     * (drivers.mineflayer-ref max-native 26.1). Core bridges any other row, because it compares this string with
+     * (drivers.mineflayer-ref max-native 26.1.2). Core bridges any other row, because it compares this string with
      * the row's Minecraft version.
      */
     static final String PROTOCOL_VERSION = "26.1.2";

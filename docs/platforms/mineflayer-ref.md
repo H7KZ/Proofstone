@@ -13,7 +13,13 @@ Checked before choosing the acceptance cells, from the pinned npm install of `mi
   matches ADR-0004 (a 26.3 server refused it).
 - So the native row is **26.1.2** (protocol 775). Every row with an older protocol, for example **1.21.11** (774), is
   bridged through ViaProxy, and the sidecar talks to ViaProxy rather than to the server.
-- `versions.yml` `drivers.mineflayer-ref.max-native: "26.1"` is confirmed.
+- `versions.yml` `drivers.mineflayer-ref.max-native` is **`"26.1.2"`** (corrected from `"26.1"` in T-M4-11: `max-native` is
+  compared with a cell's full Minecraft version, and `26.1` matches no row). The driver's protocol is `26.1.2`.
+
+**Coverage (T-M4-11).** Native (no bridge, and the only row a differential run covers): `paper@26.1.2`. Bridged through
+ViaProxy (a single-driver run only, no differential): every other Paper row, for example `1.21.11`. Widening the
+differential coverage to another row changes the design and needs an ADR challenge. Rows that are not native appear as
+JUnit skips with `NOT DIFFERENTIAL` in a differential run, never as passes.
 
 The sidecar forces the protocol with `version: "26.1"` in `createBot`. Without it, Mineflayer takes the version from the
 server's ping, speaks the server's own protocol, and the bridged cell never goes through ViaProxy.

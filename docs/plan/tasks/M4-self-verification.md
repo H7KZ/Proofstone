@@ -345,9 +345,9 @@ check the bundle files and the report.
 - Change the comparison list in `DifferentialRun.canonicalItem`.
 
 **Acceptance.**
-- [ ] A test with no dual assertion fails under `-Dproofstone.differential=true` (unit test, plus a meta run if one is added).
-- [ ] A non-native row appears as a skipped testcase in the XML.
-- [ ] `lintVersions` and `validateVersions` pass with the corrected value.
+- [x] A test with no dual assertion fails under `-Dproofstone.differential=true` (unit test, plus a meta run if one is added). Evidence: `DifferentialRunTest.aRunThatObservedNothingFailsSoItCannotPassByComparingNothing` (unit, `./gradlew check`, 0 failures); no meta run added.
+- [x] A non-native row appears as a skipped testcase in the XML. Evidence: `NotRunInvocationTest` (unit) and a real-server run, see the PR body (`paper@26.3 (not run)` skipped with `NOT DIFFERENTIAL` reason).
+- [x] `lintVersions` and `validateVersions` pass with the corrected value. Evidence: `./gradlew check docsCheck` BUILD SUCCESSFUL (lintVersions in the run).
 
 **Verify.**
 `./gradlew check docsCheck`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.
