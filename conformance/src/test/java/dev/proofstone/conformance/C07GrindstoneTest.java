@@ -29,6 +29,7 @@ import java.util.Map;
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Matrix(platform = Platform.PURPUR, versions = {"latest"})
+@Matrix(platform = Platform.SPIGOT, versions = {"latest"})
 class C07GrindstoneTest {
 
     private static final Map<String, Integer> SHARPNESS_FIVE = Map.of("minecraft:sharpness", 5);

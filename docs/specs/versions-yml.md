@@ -21,7 +21,7 @@ platforms:
     rows:
       - mc: "1.21.11"                      # Minecraft version (string; 26.x style accepted)
         build: 132                         # platform build number
-        sha256: "…"                        # server jar checksum
+        sha256: "…"                        # server jar checksum; spigot: JarDigest content digest (see below)
         java: java21                       # optional override of java-rules
         protocol: 774                      # optional; filled by automation
         status: required | experimental | retired
@@ -29,6 +29,10 @@ platforms:
         observed: "free text"              # last notable observation
         notes: "free text"
 ```
+
+Built platforms (spigot, T-M5-05): a BuildTools jar differs between builds in Maven's build-time comment in
+`pom.properties`, so a spigot row's `sha256` is a content digest, SHA-256 over every jar entry name and content with that
+comment line removed (`JarDigest`, [spigot.md](../platforms/spigot.md)). It is strict: any other change fails the cell.
 
 Validation rules, enforced in `check`:
 - `mc` values are unique within a platform.

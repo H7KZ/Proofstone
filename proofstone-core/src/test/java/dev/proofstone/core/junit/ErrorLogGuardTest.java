@@ -82,8 +82,9 @@ class ErrorLogGuardTest {
     void aPackWithoutItsOwnListFailsLoudly() {
         assertThat(Patterns.of("paper")).isSameAs(PAPER);
         assertThat(Patterns.of("folia")).isSameAs(Patterns.FOLIA);
-        // Spigot has no list until T-M5-05. Folia got its own in T-M5-03, so it no longer stands in for "unknown".
-        assertThatThrownBy(() -> Patterns.of("spigot")).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("spigot").hasMessageContaining("its own list");
+        assertThat(Patterns.of("spigot")).isSameAs(Patterns.SPIGOT);
+        // A platform with no pack list still fails loudly, so an unknown id never gets Paper's allowlist.
+        assertThatThrownBy(() -> Patterns.of("velocity")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("velocity").hasMessageContaining("its own list");
     }
 }

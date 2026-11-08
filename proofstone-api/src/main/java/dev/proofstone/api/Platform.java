@@ -8,5 +8,8 @@ public enum Platform {
     FOLIA,
 
     /** Purpur, a Paper fork with its own config and gameplay extras (docs/platforms/purpur.md). */
-    PURPUR
+    PURPUR,
+
+    /** Spigot, built from source by BuildTools and cached by SHA-256 (docs/platforms/spigot.md). */
+    SPIGOT
 }

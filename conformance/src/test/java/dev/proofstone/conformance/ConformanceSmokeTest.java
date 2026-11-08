@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 @Matrix(platform = Platform.PAPER, versions = {"latest"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Matrix(platform = Platform.PURPUR, versions = {"latest"})
+@Matrix(platform = Platform.SPIGOT, versions = {"latest"})
 class ConformanceSmokeTest {
 
     /**
@@ -27,7 +28,7 @@ class ConformanceSmokeTest {
      */
     @CellTest
     void c01AgentHealthAnswersAndTheProtocolMatches(Cell cell, Agent agent) {
-        assertThat(cell.platform()).isIn("paper", "folia", "purpur");
+        assertThat(cell.platform()).isIn("paper", "folia", "purpur", "spigot");
         assertThat(agent.capabilities()).isNotEmpty();
     }
 

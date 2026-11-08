@@ -1,0 +1,17 @@
+# Spigot platform pack (T-M5-05). Reviewed line by line for Spigot, not copied from the Paper, Folia or Purpur pack.
+# The enforced copy of the log patterns is ErrorLogGuard.Patterns.SPIGOT (proofstone-core); keep the two in step.
+id: spigot
+family: bukkit
+host:
+  image: itzg/minecraft-server   # digests per Java tag in versions.yml (platforms.spigot.host)
+  type: CUSTOM                   # the jar is built by BuildTools, not downloaded: itzg runs it as CUSTOM_SERVER
+  build-env: none                # no build number: the rev is the Minecraft version (SpigotServerJar)
+  builder: images/spigot-buildtools   # BuildTools for each row's --rev, cached by SHA-256 (versions.yml platforms.spigot.builder)
+capabilities:                    # declared; a cell holds one only when the agent reports its token
+  BUKKIT_EVENTS: events
+  CONSOLE: command
+log-patterns:
+  errors: []                     # no Spigot error pattern observed yet (docs/platforms/spigot.md, Gotchas)
+  allowlist:                     # only noise that a reviewed Spigot run showed; each entry says why
+    - pattern: "^T[0-9a-f]{8} moved too quickly! "
+      why: Reset teleport races the harness client's first move packets (seen on spigot@26.3, :conformance:smoke). Harness clients only.
