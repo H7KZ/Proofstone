@@ -1,5 +1,6 @@
 package dev.proofstone.build.docs;
 
+import dev.proofstone.build.action.ActionCheck;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +45,7 @@ public final class DocsCheck {
         List<Path> java = files(root, ".java");
         List<String> errors = new ArrayList<>(checkLinks(markdown));
         errors.addAll(checkCards(root.resolve("docs/plan/tasks")));
+        errors.addAll(ActionCheck.check(root));
         List<String> warnings = avoidedTerms(root, markdown, java);
         return new Report(errors, warnings);
     }

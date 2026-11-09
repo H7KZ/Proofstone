@@ -1,0 +1,137 @@
+# Composite action: runs Proofstone real-server suites in a consumer's job (T-M6-03, docs/versioning.md section 4).
+# This file is an action definition, not a workflow: no triggers live here, and the consumer's own workflow calls it.
+# Third-party actions are pinned to full commit SHAs (the release tag they came from is in the comment).
+name: "Proofstone"
+description: "Runs Proofstone real-server e2e cells (PR or nightly scope) and uploads JUnit XML and repro bundles."
+inputs:
+  scope:
+    description: "Matrix scope for printMatrix: pr or nightly."
+    required: true
+  cells:
+    description: "Comma-separated cell ids (for example paper@26.3), or all for every cell in the scope."
+    required: false
+    default: "all"
+  build-tool:
+    description: "Build tool of the consumer project: gradle or maven."
+    required: true
+  project-dir:
+    description: "Directory of the consumer project, relative to the workspace. Holds its gradlew or pom.xml."
+    required: false
+    default: "."
+  test-task:
+    description: "Gradle task that runs the suite, or Maven goals and profiles (for example verify -Pe2e)."
+    required: false
+    default: "e2eTest"
+  proofstone-root:
+    description: "Proofstone checkout whose printMatrix task plans the cells. Empty means the checkout this action lives in."
+    required: false
+    default: ""
+  java-version:
+    description: "JDK for the build tool and the test JVM (ADR-0004: the e2e suite runs on Java 21)."
+    required: false
+    default: "21"
+  proofstone-accept-eula:
+    description: "Must be the string true. Forwarded to the test step as PROOFSTONE_ACCEPT_EULA. There is no default."
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Check inputs and EULA
+      shell: bash
+      env:
+        PROOFSTONE_SCOPE: ${{ inputs.scope }}
+        PROOFSTONE_BUILD_TOOL: ${{ inputs.build-tool }}
+        PROOFSTONE_ACCEPT_EULA: ${{ inputs.proofstone-accept-eula }}
+      run: |
+        set -euo pipefail
+        case "$PROOFSTONE_SCOPE" in pr|nightly) ;; *) echo "::error::scope must be pr or nightly, got '$PROOFSTONE_SCOPE'"; exit 1 ;; esac
+        case "$PROOFSTONE_BUILD_TOOL" in gradle|maven) ;; *) echo "::error::build-tool must be gradle or maven, got '$PROOFSTONE_BUILD_TOOL'"; exit 1 ;; esac
+        if [ "$PROOFSTONE_ACCEPT_EULA" != "true" ]; then
+          echo "::error::proofstone-accept-eula must be 'true'. The action never accepts the Minecraft EULA for you (https://aka.ms/MinecraftEULA)."
+          exit 1
+        fi
+
+    - name: Resolve Proofstone root and cache keys
+      id: resolve
+      shell: bash
+      env:
+        INPUT_ROOT: ${{ inputs.proofstone-root }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        root="${INPUT_ROOT:-$ACTION_PATH/../../..}"
+        root="$(cd "$root" && pwd)"
+        if [ ! -f "$root/versions.yml" ] || [ ! -f "$root/gradlew" ]; then
+          echo "::error::proofstone-root '$root' has no versions.yml and gradlew. Point proofstone-root at a Proofstone checkout."
+          exit 1
+        fi
+        echo "root=$root" >> "$GITHUB_OUTPUT"
+        echo "versions=$(sha256sum "$root/versions.yml" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+    - name: Set up JDK
+      uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Cache Gradle
+      if: inputs.build-tool == 'gradle'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: proofstone-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+        restore-keys: |
+          proofstone-gradle-${{ runner.os }}-
+
+    - name: Cache Maven
+      if: inputs.build-tool == 'maven'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.m2/repository
+        key: proofstone-maven-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          proofstone-maven-${{ runner.os }}-
+
+    - name: Cache Spigot server jars
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        # BuildTools jars, keyed by their content digest (docs/platforms/spigot.md). Paper and the other itzg server
+        # jars are downloaded inside the container at run time, so they are not cached here.
+        path: ${{ inputs.project-dir }}/build/proofstone/spigot-cache
+        key: proofstone-spigot-${{ runner.os }}-${{ steps.resolve.outputs.versions }}
+        restore-keys: |
+          proofstone-spigot-${{ runner.os }}-
+
+    - name: Plan cells and run them one at a time
+      shell: bash
+      env:
+        PROOFSTONE_ROOT: ${{ steps.resolve.outputs.root }}
+        PROOFSTONE_SCOPE: ${{ inputs.scope }}
+        PROOFSTONE_CELLS: ${{ inputs.cells }}
+        PROOFSTONE_BUILD_TOOL: ${{ inputs.build-tool }}
+        PROOFSTONE_PROJECT_DIR: ${{ inputs.project-dir }}
+        PROOFSTONE_TEST_TASK: ${{ inputs.test-task }}
+        PROOFSTONE_RESULTS_DIR: ${{ runner.temp }}/proofstone-junit
+        PROOFSTONE_ACCEPT_EULA: ${{ inputs.proofstone-accept-eula }}
+      run: bash "${{ github.action_path }}/run-cells.sh"
+
+    - name: Upload JUnit XML
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: proofstone-junit-${{ inputs.scope }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/proofstone-junit
+        if-no-files-found: error
+        retention-days: 30
+
+    - name: Upload repro bundles
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: proofstone-repro-${{ inputs.scope }}-${{ github.run_attempt }}
+        path: ${{ inputs.project-dir }}/build/proofstone
+        # A green run writes no bundle, so a missing folder is not an error here. A red run always writes one.
+        if-no-files-found: ignore
+        retention-days: 30

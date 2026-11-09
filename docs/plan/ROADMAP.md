@@ -424,3 +424,9 @@ Open findings, not passes. Each needs a maintainer call or a diagnosis before M6
    folia, purpur and spigot with this WARN (`ErrorLogGuard.java:109`). Not reproduced single-cell on spigot@26.3 on main or on the
    PR branch. Not caused by PR #80 (the PR does not touch ErrorLogGuard or the `PSConf` client name). Unexplained. The guard
    allow-list covers `T`-prefixed and `.`-prefixed harness clients, not `PSConf`. Gotcha in `docs/platforms/folia.md`.
+3. **Gradle example `paper@26.3` flakes (T-M6-03 selfcheck, PR #85). Unexplained; blocks the "examples are green" release claim.**
+   Action path (`scripts/action-selfcheck.sh`): 4 runs, 2 red. Author run: `coalOnTheRightMakesNothing` join timeout. Verifier run 2:
+   `ironAndGoldOnTheAnvilMakeOneDiamond` join timeout. Both `ClientDriverException: timed out joining ... after PT30S (no server reply)`.
+   Plain gradle control (same cell and flags, no action layer): 5 runs, 1 red. Both tests `java.lang.AssertionError at
+   VerdictGate.java:150`, no message printed. The verdict text (INVALID, DISAGREE or LEAK) is not recoverable: the XML was overwritten
+   by a later run and the bundle holds no verdict text. The plain path is red too, so the action layer is not the cause.
