@@ -16,7 +16,7 @@ comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/proxy-s
   `26.1-R0.1-SNAPSHOT`), sha256 `1d9dbc31b57b22a37553f160ac1b61762717e9e4a6a1341f3dd27a1f6f2671fd`, 24,524,184 bytes.
   The image downloads it with `TYPE=BUNGEECORD`, `BUNGEE_JOB_ID=2111` to `/server/BungeeCord-2111.jar`; the spike
   script checks the sha256 in the container and fails on a mismatch. It matched in every run. A build number is
-  stable on Jenkins, but the job could prune old builds; T-M7-02 should decide whether to cache the jar.
+  stable on Jenkins, but the job could prune old builds; Decided in [ADR-0016](../adr/0016-topology-cells.md) §2: no host-side cache in M7; a pruned build fails loudly at download and is fixed by a row update.
 - **Image env the spike sets:** `ENABLE_RCON=false` (otherwise the image downloads the bungee-rcon plugin from
   GitHub), `SKIP_DOWNLOAD_DEFAULTS=true`.
 - **Config file:** `config.yml`, copied into `/server/` with `docker cp` before start. The jar extracts its modules

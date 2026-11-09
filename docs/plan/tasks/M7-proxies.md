@@ -137,7 +137,7 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 **Goal.** Add the wire contract for proxies, so the agents and the core build against the same schemas.
 
 **Do.**
-- Add `GET /v1/proxy/servers` (name, address, online state, player count), and the player's current server and previous server on the proxy's `GET /v1/players/{name}` reply (an additive optional field, `null` on a backend). Add `POST /v1/proxy/servers/{name}/connect` only if T-M7-02 says an agent-side switch is needed; the default is the client-side `/server` command.
+- Add `GET /v1/proxy/servers` (name, address, online state, player count), and the player's current server and previous server on the proxy's `GET /v1/players/{name}` reply (an additive optional field, `null` on a backend). Do not add `POST /v1/proxy/servers/{name}/connect`: ADR-0016 §5 keeps the switch client-side (`/server`).
 - Add the schema, the golden request and reply files, and the error case (`SERVER_NOT_FOUND`, 404). Bump the protocol minor version as spec §4 says, and update the golden files.
 - Keep `health` reporting the proxy platform id and the proxy version in the existing fields.
 
@@ -247,7 +247,7 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 **Goal.** Start a proxy container and N Paper backends together, forwarding configured, with every file copied in and every pin from `versions.yml`.
 
 **Do.**
-- Add `TopologyHost` (and a `ProxyHost` for the proxy container) next to `PaperHost` and `ViaProxyHost`. It starts the backends first, then the proxy, on one network with aliases (`server-lobby`, `proxy`), copies in the proxy jar (cached by sha256 like the Paper jar), the agent, the generated forwarding secret and the proxy and backend config files, and waits readiness by log line and agent `health` for each container.
+- Add `TopologyHost` (and a `ProxyHost` for the proxy container) next to `PaperHost` and `ViaProxyHost`. It starts the backends first, then the proxy, on one network with aliases (`server-lobby`, `proxy`), has the image download the proxy jar by pinned build and checks its sha256 in the container before start, as for Paper rows (ADR-0016 §2), copies in the agent, the generated forwarding secret and the proxy and backend config files, and waits readiness by log line and agent `health` for each container.
 - Generate the forwarding secret per cell (`SecureRandom`, like the agent token). It is written only inside containers and never to the bundle, a log or the report; a unit test greps the bundle for it.
 - Forwarding settings per proxy and backend, exactly as T-M7-01 documented them, set through copied files, never bind mounts. Backend `online-mode` is set explicitly on every row.
 - On a join timeout, extend the T-M6-14 server's-view output with the proxy log tail and the backend log tail, and name the hop (client to proxy, or proxy to backend) in the message.
@@ -305,7 +305,7 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 
 **Do.**
 - Make `McplSession` handle a second configuration and join sequence on a live connection (and the respawn path for pre-1.20.2 backends if the T-M7-01 rows use one). State goes PLAY, then (re)configuration, then PLAY again, with an await helper that completes only when the new join is seen.
-- Add `ClientSession.awaitServerSwitch(...)`, based on `Await`, with an explicit timeout. No sleeps.
+- Add `ClientSession.awaitServerSwitch(...)`, based on `Await`, with an explicit timeout. No sleeps. Velocity's command rate limit is a harness setting (`command-rate-limit = 0`, ADR-0016 §5), rendered by T-M7-07; a `/server` that reaches a backend instead is a loud red quoting the backend's reply.
 - Keep window, inventory and position views consistent: they must reset to the new server's state, never keep stale slots (the server is authoritative, client-driver spec §2).
 - Unit-test the state machine with a scripted packet sequence, then the real path: a Velocity topology, one client, `/server survival` and back, twice.
 

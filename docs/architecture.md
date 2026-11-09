@@ -5,6 +5,7 @@ Related ADRs: [0001](adr/0001-java-junit5-public-api.md) (Java test API),
 [0003](adr/0003-dual-oracle.md) (dual oracle),
 [0004](adr/0004-client-driver-latest-protocol-plus-viaproxy.md) (driver),
 [0005](adr/0005-containers-testcontainers-no-bind-mounts.md) (containers),
+[0016](adr/0016-topology-cells.md) (topology cells),
 [0008](adr/0008-versions-yml-single-source-of-truth.md) (versions.yml),
 [0009](adr/0009-gradle-monorepo.md) (build).
 
@@ -89,6 +90,14 @@ The `PlatformPack` SPI (Java) consists of:
 
 Agent families share the **wire protocol**, so core code doesn't care which platform is on the other side.
 
+**Proxy packs (M7, [ADR-0016](adr/0016-topology-cells.md)).** `velocity` and `bungee` are proxy packs. A proxy pack
+supplies the proxy host (`itzg/mc-proxy`, by digest per Java tag), the proxy agent, the proxy config renderer for its one
+forwarding mode (Velocity `modern`, BungeeCord `legacy`), the matching backend settings, and its log allowlist. Proxy rows
+live under `proxies` in `versions.yml` (schema 3), paired with backend rows. A **topology cell** is one proxy row plus a
+backend row set (N named backends on one backend row), with the identity `<proxy>@<version>+<backend>@<mc>`, for example
+`velocity@4.3.1+paper@26.3`. Backends keep their own pack (Paper with the Bukkit agent), unchanged. Waterfall has no pack
+(end-of-life; its newest build rejects the newest client).
+
 ### 2.4 Client drivers (L3b)
 - SPI: `ClientDriver`, which provides `connect(name, endpoint)` and returns a `ClientSession` with
   `chat`, `command`, `awaitMessage`, `useBlock`, `openWindow`, `click(slot, button, mode)`,
@@ -142,6 +151,24 @@ plan cells ─► pull pinned images ─► start topology (server [+proxy] [+Vi
 Isolation:
 - **Default is `PER_CLASS`:** one server per class per cell, reset between tests.
 - **`PER_TEST`:** a new server for each test, for tests that change the world destructively.
+
+### 3.1 Topology cells ([ADR-0016](adr/0016-topology-cells.md))
+
+```
+plan topology cell ─► start backends (each: server + Bukkit agent, alias server-<name>)
+   ─► start proxy (proxy agent, alias proxy; forwarding secret generated per cell, copied in from memory)
+   ─► wait readiness on every container (log line + agent /v1/health)
+   ─► CONFORMANCE P01..P05 (cached per cell per run) ── fail ─► all tests on the topology cell = INVALID
+   ─► for each test: client joins via the proxy, awaited on the proxy agent and the default backend's agent
+        reset on the backend the player is on; leak baseline on every backend
+        ACT (client only; transferTo = /server <name>)  →  ASSERT (client, proxy agent, backend agents)
+        log guard per container  →  restore configs on every backend  →  disconnect, await proxy lists no player
+   ─► reports + one bundle with a log per container ─► stop every container
+```
+
+- `PER_CLASS` keeps one topology (proxy and all backends) per class per cell; `PER_TEST` starts a new one per test.
+- Only the proxy's game port is published. Backends are reachable on the cell network only.
+- A join timeout names the T-M6-14 stage and the hop: client to proxy, or proxy to backend `<name>`.
 
 ## 4. Planned repository layout
 
