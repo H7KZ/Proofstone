@@ -60,7 +60,7 @@ RULES LEARNED IN M6 (keep):
 - Real-server runs: `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew <task> --no-parallel --max-workers=1`, one cell
   per invocation. Do not nest dockerlock (scripts such as `release-images.sh` take the lock themselves). Read the XML:
   skipped, failures and errors must be 0 except reasoned skips (list them).
-- Flake family, all `join-timeout` (`timed out joining ... after PT30S`): 3 of 61 plain Gradle runs on paper@26.3 (1 of 15, then
+- Flake family, all `join-timeout` (`timed out joining ... after PT30S`): 3 of 61 Gradle-example runs on paper@26.3 (2 of 46 unstressed, 1 of 15 under an artificial stressor) (1 of 15, then
   2 of 46 in T-M6-10), 2 of 4 earlier action-path runs, one purpur@26.3 C06 red, one metaExpect INVALID. Cause unknown. Bounded,
   not explained. T-M6-14 names the stalled handshake stage. Until then, a join timeout is a finding, not a harness pass.
 - A red run is a finding. Copy its XML, bundle and container log aside BEFORE the next run overwrites them, name its verdict type,
