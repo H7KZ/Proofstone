@@ -104,7 +104,15 @@ class AgentContractIT {
      * {@link #everyGoldenCaseIsReplayed()} still fails for any case in neither list.
      */
     static final List<String> PENDING = List.of(
-            "players/open-anvil");
+            "players/open-anvil",
+            // Proxy-family golden files (T-M7-03). A Bukkit agent never serves them: the Velocity and BungeeCord agents
+            // replay them in their own contract tests (T-M7-05, T-M7-06).
+            "health/proxy-ok",
+            "proxy/servers",
+            "proxy/server-get",
+            "proxy/server-not-found",
+            "players/proxy-first-join",
+            "players/proxy-switched");
 
     private final HttpClient http = HttpClient.newHttpClient();
     /** The platform of the cell that booted last; the golden files were recorded on Paper. */
