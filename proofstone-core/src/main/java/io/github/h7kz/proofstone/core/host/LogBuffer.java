@@ -25,6 +25,16 @@ public final class LogBuffer {
         return String.join("\n", lines.subList(Math.max(0, lines.size() - count), lines.size()));
     }
 
+    /** How many lines there are now; a mark for {@link #since}. */
+    public synchronized int size() {
+        return lines.size();
+    }
+
+    /** The lines added after {@code mark}, a value of {@link #size}. */
+    public synchronized List<String> since(int mark) {
+        return List.copyOf(lines.subList(Math.min(mark, lines.size()), lines.size()));
+    }
+
     public synchronized String all() {
         return String.join("\n", lines);
     }

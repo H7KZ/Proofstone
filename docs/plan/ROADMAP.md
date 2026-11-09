@@ -464,9 +464,19 @@ Open findings, not passes. Each needs a maintainer call or a diagnosis before M6
      the process starts). Container logs are snapshots taken every 2 s before the harness removes the container. Four pass runs
      (12, 26, 27, 28) have no join time because the container was removed before the snapshot. The watcher race that caused it
      is fixed in the script; the no-stress loop ran before that fix, its verdicts do not depend on it.
-   - **Harness bug candidate (not fixed; proposed card):** a join whose server never answers the hello waits the full PT30S and
-     reports only `timed out`. A card should log the server's packet view at the join (login start, protocol version) and name
-     the reason in the INVALID message. No timeout was changed.
+   - **Harness gap, closed by T-M6-14 (2026-11-09):** a join whose server never answers the hello waited the full PT30S and
+     reported only `timed out`. Now `JoinTimeoutException` names the stalled stage (`stalled at LOGIN_START_SENT_NO_REPLY (...)`),
+     the protocol offered and the last packet received, and the harness appends `server login start seen: yes|no`, prints
+     `PROOFSTONE JOIN STALL` with the server log tail, and writes `join-stall.txt` into the bundle. The message keeps the
+     `timed out joining` prefix, so `scripts/flake-loop.sh` still classifies it as `join-timeout`. No timeout was changed, no
+     retry added, and naming the stage is not a cause.
+   - **T-M6-14 evidence:** unit tests for stage classification (15 cases) and the server view (4), plus two loopback tests
+     with the real MCProtocolLib client: a listener that accepts TCP and goes silent gives `LOGIN_START_SENT_NO_REPLY`, one that
+     sends only a compression packet gives `COMPRESSION_SET_NO_LOGIN_SUCCESS`. Real server: `scripts/flake-loop.sh 30`,
+     `:examples:gradle-paper-plugin:e2eTest`, paper@26.3, no stress: **30 pass, 0 red** (tests 2, skipped 0, failures 0, errors
+     0 in each). So no real-server stall was caught in the new format, and the cause is still unexplained. Evidence:
+     `build/flake-t-m6-14/summary.tsv` in the T-M6-14 worktree. Running tally of the plain path: 3 red of 91 runs, all before
+     this change.
 
 ## M6 review (T-M6-99)
 

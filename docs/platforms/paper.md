@@ -281,6 +281,13 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   red was `timed out joining ... after PT30S`: the client sent `ClientIntentionPacket` and `ServerboundHelloPacket` and got no
   reply. The server log shows `Done`, then no join. Reds: 1 of 30 without stress, 1 of 15 with a bounded CPU and memory
   stressor. Boot time (about 23 s) did not predict them. Cause unknown; see ROADMAP "M6 pre-release findings" item 3.
+- **A join timeout now names its stalled stage and the server's view** (T-M6-14). `JoinTimeoutException` says `stalled at
+  <STAGE>` (from the packets the client really sent and received), the protocol offered and the last packet received. The
+  harness adds `server login start seen: yes|no`: yes when a server log line since the join began names the player. On
+  paper@26.3 the first line a login writes is `UUID of player <name> is <uuid>`, then `System chat: <name> joined the game`
+  and `<name>[/ip:port] logged in with entity id N` (seen in the passing runs of the 30-run loop). `join-stall.txt` in the
+  repro bundle holds the view. This explains nothing yet: 30 runs of `scripts/flake-loop.sh` had no join timeout, so no
+  real-server stall has been classified. The first one that does is the evidence for ROADMAP item 3.
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 
