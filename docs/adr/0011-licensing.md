@@ -1,7 +1,19 @@
 # ADR-0011: Licensing
 
-- Status: **Proposed**. The maintainer must decide before the first public release (card T-M6-06).
-- Date: 2026-11-03
+- Status: **Accepted**.
+- Licence: **Apache-2.0**
+- Date: 2026-11-03 (proposed). Accepted 2026-11-09.
+- Source: maintainer, "do it all" after reading the proposal below (T-M6-06).
+
+## Decision
+
+- **Apache-2.0** for all Proofstone code, with the `LICENSE` file at the repository root, unmodified.
+- **NOTICE** file at the repository root (Proofstone copyright line and third-party pointers).
+- **DCO sign-off** on contributions (`Signed-off-by:` on each commit). Summary in [CONTRIBUTING.md](../../CONTRIBUTING.md). No CLA.
+- Publish metadata: the POM licence is set from this ADR by `build-logic/src/main/kotlin/proofstone.publish.gradle.kts`,
+  and only while the Status line above says Accepted.
+- Not changed by this decision: no binaries are redistributed, ViaProxy stays a separate container, and the Minecraft
+  EULA is accepted only by explicit opt-in.
 
 ## Context
 - Dependencies:
@@ -21,13 +33,15 @@
   `PROOFSTONE_ACCEPT_EULA=true`).
 
 ## Open
-- Apache-2.0 or MIT?
-- Is a CLA or DCO needed for community packs? The proposal is DCO: a lightweight sign-off.
+- ~~Apache-2.0 or MIT?~~ Answered 2026-11-09: Apache-2.0 (see Decision).
+- ~~Is a CLA or DCO needed for community packs?~~ Answered 2026-11-09: DCO.
+- Lawyer review of the points below before the first public release (still open).
 
 ## Proposal for the maintainer (T-M6-99, 2026-11-09)
 
-Prepared for the decision. **Not decided.** Status stays Proposed. No `LICENSE` file is added. This section is an
-engineering comparison, not legal advice. Have a lawyer check any point that matters for a release.
+Prepared for the decision. The maintainer accepted the recommendation on 2026-11-09 (see Decision). The text below
+is kept as the record of the trade-off. This section is an engineering comparison, not legal advice. Have a lawyer
+check any point that matters for a release.
 
 ### Facts from the repository
 
@@ -42,7 +56,7 @@ engineering comparison, not legal advice. Have a lawyer check any point that mat
 - Test-only dependencies: JUnit 5 (EPL-2.0), Testcontainers (MIT), MCProtocolLib (MIT), Mineflayer (MIT). None is shaded
   into a published artefact (to be re-checked in T-M6-01 before the first publish).
 - Trademark: the name avoids "Minecraft" (ADR-0012).
-- `CONTRIBUTING.md` says "Licence and sign-off: pending" (line 11). No `LICENSE`, `NOTICE` or DCO text exists yet.
+- At proposal time, `CONTRIBUTING.md` said "Licence and sign-off: pending" and no `LICENSE`, `NOTICE` or DCO text existed.
 - `docs/release.md` requires the POM licence entry, and refuses `--publish` until ADR-0011 is Accepted.
 
 ### Apache-2.0 vs MIT
@@ -86,4 +100,6 @@ the maintainer must:
 - add `LICENSE` (and `NOTICE` if chosen), and update `CONTRIBUTING.md` with the DCO text;
 - change Status to Accepted and record the date.
 
-Until then, nothing is published and no licence is granted to anyone, which is the state now.
+Done on 2026-11-09 (T-M6-06): Apache-2.0 chosen, `LICENSE` and `NOTICE` added, DCO in `CONTRIBUTING.md`, Status
+set to Accepted, and the POM licence set from this ADR. Publishing still needs the namespace check (ADR-0012) and the
+steps in `docs/release.md`.

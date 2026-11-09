@@ -16,9 +16,23 @@ plugins {
 
 val libs = the<VersionCatalogsExtension>().named("libs")
 
-// The licence is the maintainer's decision (ADR-0011, still Proposed). While this is null the POM carries a TODO, and
-// scripts/release-maven.sh refuses --publish. Set it only together with ADR-0011 becoming Accepted.
-val decidedLicence: Pair<String, String>? = null
+// The licence comes from ADR-0011, never from this file (T-M6-06). The POM names it only while that ADR's Status line
+// says Accepted. Otherwise the POM carries a TODO and scripts/release-maven.sh refuses --publish.
+// The map gives the POM name and URL for each licence identifier an accepted ADR may name.
+val knownLicences = mapOf(
+    "Apache-2.0" to Pair("Apache License, Version 2.0", "https://www.apache.org/licenses/LICENSE-2.0.txt"),
+)
+val adrText = providers
+    .fileContents(rootProject.layout.projectDirectory.file("docs/adr/0011-licensing.md"))
+    .asText.get()
+val adrAccepted = Regex("""(?m)^- Status: \*\*Accepted\*\*""").containsMatchIn(adrText)
+val adrLicence = Regex("""(?m)^- Licence: \*\*([^*]+)\*\*""").find(adrText)?.groupValues?.get(1)?.trim()
+val decidedLicence: Pair<String, String>? = if (!adrAccepted) {
+    null
+} else {
+    adrLicence?.let { knownLicences[it] }
+        ?: throw GradleException("ADR-0011 is Accepted but its 'Licence:' line ('$adrLicence') is not in knownLicences.")
+}
 
 group = "io.github.h7kz.proofstone"
 version = libs.findVersion("proofstone").get().requiredVersion
