@@ -10,6 +10,15 @@ archunit = "1.5.1"
 mcprotocollib = "26.3-2"
 shadow = "9.6.1"
 json-schema-validator = "1.5.9"
+# Proofstone's own version, published to mavenLocal only (T-M6-04). Examples depend on it; nothing is published remotely.
+proofstone = "0.1.0-local"
+# Compile-only API of the example Paper plugin (T-M6-04). Build 244 is the paper@26.3 row of versions.yml. Stable release
+# on repo.papermc.io, not a snapshot. Paper 26.3 classes are Java 25 bytecode.
+paper = "26.3.build.244-stable"
+# The Paper API's own types refer to Adventure (the version of the adventure-bom that paper-api 26.3 imports). Compile only.
+adventure = "5.2.0"
+# Guava as the paper-api 26.3 POM declares it. Compile only: Paper's own types refer to it. Not the test guava above.
+paper-guava = "33.6.0-jre"
 # Bukkit agent (T-M1-03). 1.8.8 is published only as a snapshot; this timestamped build is frozen and
 # sha256 bc50bbc4d8226d75d0d75460828567b4580841d5987cae5c1d89b321f8ffc071 (spigot-api jar).
 spigot = "1.8.8-R0.1-20160221.082514-43"
@@ -32,6 +41,9 @@ json-schema-validator = { module = "com.networknt:json-schema-validator", versio
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 mcprotocollib-protocol = { module = "org.geysermc.mcprotocollib:protocol", version.ref = "mcprotocollib" }
 spigot-api = { module = "org.spigotmc:spigot-api", version.ref = "spigot" }
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
+adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
+paper-guava = { module = "com.google.guava:guava", version.ref = "paper-guava" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 commons-lang = { module = "commons-lang:commons-lang", version.ref = "commons-lang" }
 
