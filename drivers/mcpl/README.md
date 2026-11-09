@@ -14,7 +14,7 @@ The primary client driver (ADR-0004): a Java client on MCProtocolLib that speaks
 
 ## Public surface
 
-- `io.github.h7kz.proofstone.driver.mcpl.McplDriver`: `ClientDriver` with id `mcpl`; `connect(ConnectSpec)` returns a `ClientSession` in the play state, or throws `ClientDriverException` with the reason (kick, refusal, connect timeout).
+- `io.github.h7kz.proofstone.driver.mcpl.McplDriver`: `ClientDriver` with id `mcpl`; `connect(ConnectSpec)` returns a `ClientSession` in the play state, or throws `ClientDriverException` with the reason (kick, refusal) or `JoinTimeoutException` (connect timeout) whose message names the stalled handshake stage (T-M6-14).
 - Sessions offer `useBlock(BlockPos, Face)` (look packet, then use-item-on with main hand and a sequence number), `awaitWindow(Duration)` returning a `WindowSession` (type as a namespaced id such as `minecraft:generic_9x3`, id, `stateId`, all synced slots as `SlotStack` registry id plus amount, cursor), and `inventory()` for window 0. Clicking arrives in T-M2-05.
 - Windows from a session (and `inventory()`) also implement `io.github.h7kz.proofstone.core.driver.ItemViews`: `itemViews()` and `cursorView()` parse the slots on demand into `ItemView` (type, amount, enchants, stored enchants, plain-text custom name, lore, damage, repair cost, custom data). Enchantment ids are named from the registry the server sends in the configuration phase; item ids from the bundled `items-<protocol>.txt` (the server's own registry report, regenerated per protocol pin, see `docs/platforms/paper.md`). An id that cannot be named is an error. `ItemView`, `Click` and `BlockPos` are public API types in `proofstone-api` (T-M2-07), which this module depends on.
 - Sessions offer `chat`, `command`, `awaitMessage(Pattern, Duration)` over a buffer of system and player chat as plain text, and `transcript()` of timestamped packet names.
@@ -22,7 +22,7 @@ The primary client driver (ADR-0004): a Java client on MCProtocolLib that speaks
 ## How to test
 
 ```bash
-./gradlew :drivers:mcpl:test                      # no Docker: flattening, refused connection, connect timeout
+./gradlew :drivers:mcpl:test                      # no Docker: flattening, refused connection, connect timeout and its stage (loopback listeners)
 PROOFSTONE_ACCEPT_EULA=true ./gradlew :drivers:mcpl:integrationTest   # Docker: boots Paper with the agent, joins
 ```
 

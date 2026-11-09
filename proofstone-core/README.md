@@ -24,6 +24,7 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
 
 - `io.github.h7kz.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).
 - `io.github.h7kz.proofstone.core.await.AwaitTimeoutException`: thrown on timeout, carries description, elapsed time and last observations.
+- `io.github.h7kz.proofstone.core.driver.JoinTimeoutException`: a `ClientDriverException` for a join that timed out; carries the player, stalled stage, protocol offered and last packet received (T-M6-14).
 - `io.github.h7kz.proofstone.core.host.PaperHost`: `start(cell, options)` boots one pinned Paper container, copies the agent and artefacts into `/plugins`, awaits `Done (` plus agent health, and returns it ready. `command(String)` runs a setup command through the agent; `health()`, `logs()` and `close()`.
 - `PaperHost.gameHost()` and `gamePort()`: where a client driver joins. `agentToken()`: the bearer token for the agent
   (harness code only, never logged). `PaperHostOptions.withDebugPorts(true)` publishes the agent port for host-side tests

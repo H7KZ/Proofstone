@@ -6,6 +6,8 @@ import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
+import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import java.util.List;
 import org.geysermc.mcprotocollib.network.factory.ClientNetworkSessionFactory;
 import org.geysermc.mcprotocollib.network.session.ClientNetworkSession;
 import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
@@ -47,8 +49,12 @@ public final class McplDriver implements ClientDriver {
                     spec.connectTimeout());
         } catch (AwaitTimeoutException e) {
             session.close();
-            throw new ClientDriverException("timed out joining " + where + " after " + spec.connectTimeout()
-                    + "; transcript: " + session.transcript(), e);
+            // The stage comes from what the client saw (T-M6-14); the harness adds the server's side.
+            List<String> transcript = session.transcript();
+            JoinDiagnosis diagnosis = JoinDiagnosis.classify(transcript);
+            throw new JoinTimeoutException(diagnosis.message(where, spec.connectTimeout().toString(), transcript), e,
+                    spec.username(), diagnosis.stage().name(), diagnosis.protocolOffered(),
+                    diagnosis.lastReceived());
         }
         if (session.state() == McplSession.State.DISCONNECTED) {
             session.close();

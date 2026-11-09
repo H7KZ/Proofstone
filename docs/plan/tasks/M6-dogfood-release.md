@@ -471,9 +471,9 @@ must say which handshake step the server never answered.
 - Change the PT30S timeout, add a retry, or treat a logged reason as a fix. Explaining the cause is a separate card.
 
 **Acceptance.**
-- [ ] A join timeout's INVALID message names the stalled handshake stage. Evidence: unit test and a real-server red or a 30-run loop with no red.
-- [ ] The server's view is written to the bundle. Evidence: bundle file list in the PR.
-- [ ] ROADMAP "M6 pre-release findings" item 3 updated with the new evidence.
+- [x] A join timeout's INVALID message names the stalled handshake stage. Evidence: `JoinDiagnosisTest` (15), `JoinStallTest` (4), two loopback tests in `McplDriverTest`, and a 30-run loop on paper@26.3 with 30 pass, 0 red (no real-server stall occurred to classify).
+- [x] The server's view is written to the bundle (`join-stall.txt`, tested in `BundleWriterTest`). Evidence: bundle file list in the PR.
+- [x] ROADMAP "M6 pre-release findings" item 3 updated with the new evidence.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`, then `scripts/flake-loop.sh` on `:examples:gradle-paper-plugin:e2eTest`, `paper@26.3`, under `scripts/dockerlock.sh`.
