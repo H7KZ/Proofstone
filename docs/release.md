@@ -36,13 +36,30 @@ PROOFSTONE_RELEASE_CONFIRM=yes-publish bash scripts/release-maven.sh --publish
 
 `--publish` refuses, with the reason, unless all of these hold:
 1. `PROOFSTONE_RELEASE_CONFIRM=yes-publish` is set in the command environment.
-2. ADR-0011 is **Accepted**, and the licence is set in `build-logic/src/main/kotlin/proofstone.publish.gradle.kts`.
+2. A mutation check passed for HEAD (see below): `build/release/mutation-check.env` has `status=PASS`, `head` is HEAD,
+   `dirty=false`, and it is less than 24 hours old.
+3. ADR-0011 is **Accepted**, and the licence is set in `build-logic/src/main/kotlin/proofstone.publish.gradle.kts`.
    Set both together. While the POM licence is a TODO, the script refuses.
-3. The version is a release version (not `*-local`).
-4. The git tree is clean.
-5. An annotated tag `v<version>` points at HEAD. The maintainer creates it after the release PR merges.
-6. The signing and portal credentials below are set.
-7. Every artefact check in the dry run passes, with no TODO left in the POM.
+4. The version is a release version (not `*-local`).
+5. The git tree is clean.
+6. An annotated tag `v<version>` points at HEAD. The maintainer creates it after the release PR merges.
+7. The signing and portal credentials below are set.
+8. Every artefact check in the dry run passes, with no TODO left in the POM.
+
+## Mutation check (T-M6-07, local, before every publish)
+
+```bash
+bash scripts/release-mutation-check.sh                         # needs Docker; one real-server run at a time
+bash scripts/release-mutation-check.sh --allow-missing=maven   # only while the Maven example does not exist
+```
+
+- Reads each example's injected bugs from the `bugs:` block of its `src/main/resources/config.yml`.
+- Runs a baseline (no bug, must PASS), then one run per bug (must FAIL, by assertion failures only). Each run goes through
+  `scripts/dockerlock.sh` with `-Dproofstone.cells=paper@26.3`. The verdicts come from the JUnit XML.
+- An example whose project is missing, or that has no runner, is **NOT RUN** and makes the status `INCOMPLETE`, which
+  exits non-zero. Only `--allow-missing=<example>` turns that into a pass, and it is never a default.
+- Writes `build/release/mutation-check.env`. `--publish` refuses unless it says `status=PASS` for the current HEAD.
+  Any new commit needs a new run.
 
 Then the script builds `build/central-bundle-<version>.zip` and uploads it to the Central Portal as a
 `USER_MANAGED` deployment. The script never releases the deployment. Check it at

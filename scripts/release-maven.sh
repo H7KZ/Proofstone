@@ -2,7 +2,8 @@
 # Maven Central release for Proofstone (T-M6-01, ADR-0012, docs/release.md). Local only: no CI, no workflow.
 #   --dry-run (default): publishToMavenLocal + stage every artefact in build/central-staging + check the artefacts,
 #                        signatures (when a signing key is in the environment) and POM completeness. Uploads nothing.
-#   --publish:           refuses unless every precondition holds, then uploads the staged bundle to the Central Portal
+#   --publish:           refuses unless every precondition holds (first: a PASS from scripts/release-mutation-check.sh for
+#                        this HEAD, T-M6-07), then uploads the staged bundle to the Central Portal
 #                        as a USER_MANAGED deployment. The maintainer releases it in the portal UI. Never tags, never pushes.
 # Secrets come from the environment only. This script prints their names, never their values.
 # Usage: bash scripts/release-maven.sh [--dry-run|--publish]
@@ -28,10 +29,30 @@ STAGING=build/central-staging
 VERSION=$(sed -n 's/^proofstone = "\(.*\)"$/\1/p' gradle/libs.versions.toml)
 [[ -n "$VERSION" ]] || die "cannot read the proofstone version from gradle/libs.versions.toml"
 
+# T-M6-07: publish needs a passing mutation check for this exact commit. The check writes the result file; this reads it.
+MUTATION_RESULT=build/release/mutation-check.env
+mutation_gate() {
+  [[ -s "$MUTATION_RESULT" ]] || die "refusing. No mutation-check result. Run: bash scripts/release-mutation-check.sh (T-M6-07)."
+  local status head dirty gen now
+  status=$(sed -n 's/^status=//p' "$MUTATION_RESULT")
+  head=$(sed -n 's/^head=//p' "$MUTATION_RESULT")
+  dirty=$(sed -n 's/^dirty=//p' "$MUTATION_RESULT")
+  gen=$(sed -n 's/^generated_epoch=//p' "$MUTATION_RESULT")
+  now=$(date +%s)
+  [[ "$status" == PASS ]] || die "refusing. Mutation check status is '${status:-unknown}', not PASS ($MUTATION_RESULT)."
+  [[ "$head" == "$(git rev-parse HEAD)" ]] || die "refusing. Mutation check ran on ${head:0:12}, not on HEAD. Re-run it."
+  [[ "$dirty" == false ]] || die "refusing. Mutation check ran on a dirty tree. Re-run it on a clean commit."
+  if ! [[ "$gen" =~ ^[0-9]+$ ]] || ((now - gen > 86400)); then
+    die "refusing. Mutation check result is older than 24 hours. Re-run it."
+  fi
+  echo "mutation-check: PASS for ${head:0:12} (allowed missing: $(sed -n 's/^allowed_missing=//p' "$MUTATION_RESULT"))"
+}
+
 if [[ "$MODE" == publish ]]; then
   # Every refusal names its reason. None of these checks can be bypassed by a flag.
   [[ "${PROOFSTONE_RELEASE_CONFIRM:-}" == "yes-publish" ]] \
     || die "refusing. Set PROOFSTONE_RELEASE_CONFIRM=yes-publish in the command environment (never in a file)."
+  mutation_gate
   grep -q '^- Status: \*\*Accepted\*\*' docs/adr/0011-licensing.md \
     || die "refusing. ADR-0011 (licence) is not Accepted. The maintainer decides the licence first (T-M6-06)."
   case "$VERSION" in
