@@ -84,6 +84,7 @@ class AgentContractIT {
             "players/empty-inventory",
             "players/give-enchanted-sword",
             "players/read-after-give",
+            "snapshot/read",
             "events/poll",
             "world/block-get",
             "world/block-put",

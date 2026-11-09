@@ -98,6 +98,10 @@ public final class AgentServer {
         if (path.startsWith(PLAYERS_PREFIX)) {
             return player(exchange, method, path.substring(PLAYERS_PREFIX.length()));
         }
+        if ("/v1/snapshot".equals(path)) {
+            requireMethod(method, "GET");
+            return game.snapshot(DEFAULT_TIMEOUT_MS);
+        }
         if (ObservationRoutes.handles(path)) {
             return observation.dispatch(exchange, method, path);
         }

@@ -10,16 +10,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
@@ -29,6 +34,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.Plugin;
 
 /**
  * Reads and changes game state through the Bukkit 1.8.8 API. Every call runs on the main thread (via
@@ -39,6 +45,8 @@ public final class BukkitGame implements Game {
     private static final int ARMOUR_FIRST_SLOT = 36;
     private static final int ARMOUR_SLOTS = 4;
     private static final List<String> PATCH_FIELDS = Arrays.asList("level", "exp", "gamemode", "location", "op");
+    private static final Comparator<Player> BY_NAME = Comparator.comparing(Player::getName);
+    private static final Comparator<Plugin> PLUGIN_BY_NAME = Comparator.comparing(Plugin::getName);
 
     private final Scheduler scheduler;
     private final EventProbes probes;
@@ -254,6 +262,58 @@ public final class BukkitGame implements Game {
             configs.reload(plugin, hookCommand);
             return null;
         }, timeoutMs);
+    }
+
+    /**
+     * Read-only, so nothing here changes the server (AGENTS.md section 3). Players and plugins are sorted by name, so
+     * two dumps of the same state are equal. Each player is read the way {@link #player} reads it.
+     */
+    @Override
+    public Map<String, Object> snapshot(long timeoutMs) {
+        return MainThread.call(scheduler, Affinity.global(), () -> {
+            List<Player> players = new ArrayList<>(onlinePlayers());
+            Collections.sort(players, BY_NAME);
+            List<Object> playerStates = new ArrayList<>();
+            for (Player player : players) {
+                playerStates.add(state(player));
+            }
+            Plugin[] loaded = Bukkit.getPluginManager().getPlugins();
+            List<Plugin> plugins = new ArrayList<>(Arrays.asList(loaded));
+            Collections.sort(plugins, PLUGIN_BY_NAME);
+            List<Object> pluginStates = new ArrayList<>();
+            for (Plugin plugin : plugins) {
+                pluginStates.add(pluginState(plugin));
+            }
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("players", playerStates);
+            out.put("plugins", pluginStates);
+            return out;
+        }, timeoutMs);
+    }
+
+    /**
+     * snapshot.json#/$defs/plugin. The config is the leaf values by dotted path, as they are now. Defaults count: a key
+     * the plugin never wrote to config.yml still reads its jar default, and {@code getValues} would leave it out.
+     */
+    private static Map<String, Object> pluginState(Plugin plugin) {
+        FileConfiguration config = plugin.getConfig();
+        Set<String> keys = new TreeSet<>(config.getKeys(true));
+        if (config.getDefaults() != null) {
+            keys.addAll(config.getDefaults().getKeys(true));
+        }
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (String key : keys) {
+            Object value = config.get(key);
+            if (value != null && !(value instanceof ConfigurationSection)) {
+                values.put(key, PluginConfigs.plain(value));
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("name", plugin.getName());
+        out.put("version", plugin.getDescription().getVersion());
+        out.put("enabled", plugin.isEnabled());
+        out.put("config", values);
+        return out;
     }
 
     private static Player requirePlayer(String name) {

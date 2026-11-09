@@ -77,6 +77,13 @@ class GoldenContractTest {
         replay("players/read-after-give");
     }
 
+    /** The snapshot after the give: Alex still holds the sword, and the fixture config is still the default. */
+    @Test
+    void snapshotMatchesTheGoldenCaseAfterTheGive() throws IOException {
+        replay("players/give-enchanted-sword");
+        replay("snapshot/read");
+    }
+
     /** The observation cases in replay order: the probe must be subscribed before its poll (golden/README.md). */
     @Test
     void observationCasesMatchTheGoldenFiles() throws IOException {

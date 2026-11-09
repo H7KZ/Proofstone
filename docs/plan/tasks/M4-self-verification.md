@@ -378,7 +378,7 @@ check the bundle files and the report.
 **Acceptance.**
 - [ ] `snapshot.json` of a real bundle holds the snapshot, not the `NOT_FOUND` error.
 - [ ] A new bad test that leaves a player's XP changed fails with `LEAK` (added to metaTest).
-- [ ] `AgentContractIT` stays green, with a new golden file for the endpoint.
+- [x] `AgentContractIT` stays green, with a new golden file for the endpoint. Evidence: `snapshot/read` replays on paper@26.3, 24/24 tests, `skipped=0 failures=0 errors=0`.
 
 **Verify.**
 `./gradlew :platforms:bukkit:agent:integrationTest`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.

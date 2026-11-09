@@ -282,6 +282,26 @@ final class FakeGame implements Game {
         }
     }
 
+    /** Alex with whatever was given last, and the two plugins of the golden fixture (golden/snapshot). */
+    @Override
+    public Map<String, Object> snapshot(long timeoutMs) {
+        lastTimeoutMs = timeoutMs;
+        Map<String, Object> agent = new LinkedHashMap<>();
+        agent.put("name", "ProofstoneAgent");
+        agent.put("version", "0.1.0");
+        agent.put("enabled", true);
+        agent.put("config", Collections.emptyMap());
+        Map<String, Object> fixture = new LinkedHashMap<>();
+        fixture.put("name", FIXTURE_PLUGIN);
+        fixture.put("version", "1.0");
+        fixture.put("enabled", true);
+        fixture.put("config", new LinkedHashMap<>(config));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("players", new ArrayList<Object>(Collections.singletonList(player("Alex", timeoutMs))));
+        out.put("plugins", new ArrayList<Object>(Arrays.asList(agent, fixture)));
+        return out;
+    }
+
     static List<String> capabilities() {
         return Arrays.asList("command", "players", "config", "reload", "world", "events", "log", "ticks");
     }

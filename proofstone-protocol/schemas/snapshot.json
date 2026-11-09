@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/snapshot.json",
+  "title": "Full-state dump (GET /v1/snapshot)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. Deterministic: players and plugins sorted by name, no timestamps, never the agent token.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["players", "plugins"],
+  "properties": {
+    "players": { "type": "array", "items": { "$ref": "player-state.json" } },
+    "plugins": { "type": "array", "items": { "$ref": "#/$defs/plugin" } }
+  },
+  "$defs": {
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "enabled", "config"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "config": { "type": "object" }
+      }
+    }
+  }
+}
