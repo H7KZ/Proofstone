@@ -1,0 +1,5 @@
+name: ProofstoneAgent
+main: io.github.h7kz.proofstone.agent.bungee.ProofstoneAgentPlugin
+version: 0.1.0
+author: Proofstone
+description: Test harness agent for Proofstone (observe only). Installed by the harness, never by users.

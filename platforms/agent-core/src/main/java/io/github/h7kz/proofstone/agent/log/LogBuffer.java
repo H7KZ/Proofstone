@@ -40,6 +40,8 @@ public final class LogBuffer {
     private final Deque<Pending> pendingJul = new ArrayDeque<>();
     private final Deque<Pending> pendingLog4j = new ArrayDeque<>();
     private volatile Log4jTap tap;
+    /** The JUL logger the handler sits on: the root logger, unless {@link #attachTo(Logger)} chose another. */
+    private Logger attachedTo = Logger.getLogger("");
     /** Sequence number of the next record. The buffer holds the records with sequence [total - size, total). */
     private long total;
 
@@ -72,8 +74,20 @@ public final class LogBuffer {
         return buffer;
     }
 
+    /**
+     * Attaches to one JUL logger and its children, and to nothing else. For a server whose own logger has no parent, so the
+     * root logger never sees its records or its plugins' (BungeeCord: {@code BungeeLogger} is built with a null parent and
+     * every plugin logger parents to it). It has no Log4j2, so there is no twin to match.
+     */
+    public static LogBuffer attachTo(Logger target) {
+        LogBuffer buffer = new LogBuffer();
+        buffer.attachedTo = target;
+        target.addHandler(buffer.handler);
+        return buffer;
+    }
+
     public void detach() {
-        Logger.getLogger("").removeHandler(handler);
+        attachedTo.removeHandler(handler);
         Log4jTap installed = tap;
         if (installed != null) {
             installed.remove();

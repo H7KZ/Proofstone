@@ -41,6 +41,21 @@ velocity-host-image = "itzg/mc-proxy"
 velocity-host-digest = "sha256:8efdaa9d990f4c509f21b7ced003dd959060777784422fd72fdd537d613c1813"
 velocity-build = "45"
 velocity-jar-sha256 = "0844bcabdcdb4f5b875906fd4c3365bc1bb76918e42bc595ed88ad195258dd75"
+# BungeeCord agent (T-M7-06). Compile-only API: 1.21-R0.4 is the newest release on Maven Central (the pinned row, build 2111,
+# reports 26.1-R0.1-SNAPSHOT, which is not published as a release and cannot be pinned). Its POM names only Central artefacts.
+bungee-api = "1.21-R0.4"
+# BungeeCord's resolver classes are `provided` in the API POM, so they are absent from a plain classpath. PluginManager
+# builds a LibraryLoader from them, and the unit tests construct a real PluginManager, so they are test-only dependencies
+# at the versions that POM declares.
+bungee-maven-resolver-provider = "3.9.6"
+bungee-resolver = "1.9.18"
+# The pins the BungeeCord real-server test boots (ADR-0016 section 2), here until the schema 3 `proxies` key exists (T-M7-08).
+# Image: itzg/mc-proxy release 2026.11.1, java21 tag, index digest. Jar: build 2111 from Jenkins (job BungeeCord, which
+# publishes md5 only), so the sha256 is computed from the download and checked in the container before the test runs.
+bungee-host-image = "itzg/mc-proxy"
+bungee-host-digest = "sha256:4e6901b4640a913ef6d8470de887b89ff6d19702e410edfbccdbdbce4b54159f"
+bungee-build = "2111"
+bungee-jar-sha256 = "1d9dbc31b57b22a37553f160ac1b61762717e9e4a6a1341f3dd27a1f6f2671fd"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -65,6 +80,10 @@ velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "vel
 velocity-guice = { module = "com.google.inject:guice", version.ref = "velocity-guice" }
 velocity-slf4j = { module = "org.slf4j:slf4j-api", version.ref = "velocity-slf4j" }
 velocity-brigadier = { module = "com.mojang:brigadier", version.ref = "velocity-brigadier" }
+bungee-api = { module = "net.md-5:bungeecord-api", version.ref = "bungee-api" }
+bungee-maven-resolver-provider = { module = "org.apache.maven:maven-resolver-provider", version.ref = "bungee-maven-resolver-provider" }
+bungee-resolver-connector-basic = { module = "org.apache.maven.resolver:maven-resolver-connector-basic", version.ref = "bungee-resolver" }
+bungee-resolver-transport-http = { module = "org.apache.maven.resolver:maven-resolver-transport-http", version.ref = "bungee-resolver" }
 adventure-text-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
 adventure-text-serializer-plain = { module = "net.kyori:adventure-text-serializer-plain", version.ref = "adventure" }
 

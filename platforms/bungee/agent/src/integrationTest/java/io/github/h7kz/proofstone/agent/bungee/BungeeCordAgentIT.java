@@ -1,0 +1,379 @@
+package io.github.h7kz.proofstone.agent.bungee;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.h7kz.proofstone.core.await.Await;
+import io.github.h7kz.proofstone.protocol.testing.GoldenMatcher;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
+
+/**
+ * The BungeeCord agent in a real BungeeCord (T-M7-06): boots BungeeCord build 2111 from the pinned {@code itzg/mc-proxy}
+ * image (java21 tag) with the shaded agent jar, then calls {@code health}, {@code proxy/servers}, {@code command} and
+ * {@code log}. No backend runs, so every configured server is unreachable. {@code players} and {@code events} with a
+ * joined player are NOT claimed here: they need a backend and belong to T-M7-11.
+ *
+ * <p>Everything the container holds is copied in (ADR-0005, no bind mount). The BungeeCord jar is downloaded by the image
+ * from the pinned Jenkins build and its sha256 is checked in the container before any test runs (Jenkins publishes md5
+ * only, so the pin is a sha256 computed from the download, ADR-0016 section 2). The agent token is generated here, in
+ * memory; BungeeCord has no forwarding secret. The agent port is published for this test only. The proxy is not a
+ * Minecraft server, so the EULA variable is not needed.
+ *
+ * <p>Waterfall is not run here: it is out of scope (ADR-0016 section 4).
+ */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class BungeeCordAgentIT {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final Path ROOT = Path.of(System.getProperty("proofstone.repoRoot"));
+    private static final Path GOLDEN = ROOT.resolve("proofstone-protocol/golden");
+    private static final String IMAGE = System.getProperty("proofstone.bungee.image");
+    private static final String BUILD = System.getProperty("proofstone.bungee.build");
+    private static final String JAR_SHA256 = System.getProperty("proofstone.bungee.sha256");
+    private static final Path AGENT_JAR = Path.of(System.getProperty("proofstone.agentJar"));
+    private static final int AGENT_PORT = 25580;
+    private static final Duration BOOT_TIMEOUT = Duration.ofMinutes(3);
+    private static final Duration AGENT_TIMEOUT = Duration.ofSeconds(30);
+
+    private final HttpClient http = HttpClient.newHttpClient();
+    private final String token = randomHex(24);
+    private GenericContainer<?> container;
+
+    @BeforeAll
+    void boot() {
+        assertThat(AGENT_JAR).as("agent jar (build it with :platforms:bungee:agent:shadowJar)").isRegularFile();
+        container = new GenericContainer<>(DockerImageName.parse(IMAGE))
+                .withEnv("TYPE", "BUNGEECORD")
+                .withEnv("BUNGEE_JOB_ID", BUILD)
+                // The image would otherwise download the bungee-rcon plugin and fetch default configs from GitHub
+                // (ADR-0016 section 2).
+                .withEnv("ENABLE_RCON", "false")
+                .withEnv("SKIP_DOWNLOAD_DEFAULTS", "true")
+                .withEnv("PROOFSTONE_AGENT_TOKEN", token)
+                .withEnv("PROOFSTONE_AGENT_PORT", Integer.toString(AGENT_PORT))
+                .withCopyToContainer(Transferable.of(configYml()), "/server/config.yml")
+                .withCopyFileToContainer(MountableFile.forHostPath(AGENT_JAR), "/server/plugins/proofstone-agent.jar")
+                .withExposedPorts(AGENT_PORT);
+        try {
+            container.start();
+            await("the BungeeCord log shows \"Listening on\"", BOOT_TIMEOUT, () -> {
+                requireRunning();
+                return container.getLogs().contains("Listening on");
+            });
+            await("agent /v1/health OK", AGENT_TIMEOUT, () -> {
+                requireRunning();
+                return call("GET", "/v1/health", null, true).statusCode() == 200;
+            });
+            verifyPins();
+        } catch (RuntimeException | AssertionError e) {
+            String tail = tail();
+            shutdown();
+            throw new IllegalStateException("BungeeCord did not become ready: " + e.getMessage()
+                    + "\n--- proxy log tail ---\n" + tail, e);
+        }
+    }
+
+    @AfterAll
+    void shutdown() {
+        if (container != null) {
+            saveLog();
+            container.stop();
+            container = null;
+        }
+    }
+
+    /**
+     * A proxy with two unreachable servers and the harness defaults of ADR-0016 section 5. Legacy forwarding, the only
+     * mode BungeeCord has. The throttle is off because every test client comes from one address.
+     */
+    private static String configYml() {
+        return """
+                online_mode: false
+                ip_forward: true
+                enforce_secure_profile: false
+                connection_throttle: -1
+                connection_throttle_limit: 3
+                server_connect_timeout: 5000
+                timeout: 30000
+                log_pings: false
+                servers:
+                  lobby:
+                    motd: lobby
+                    address: 127.0.0.1:25565
+                    restricted: false
+                  survival:
+                    motd: survival
+                    address: 127.0.0.1:25566
+                    restricted: false
+                permissions:
+                  default:
+                  - bungeecord.command.server
+                  - bungeecord.command.list
+                listeners:
+                - host: 0.0.0.0:25577
+                  query_port: 25577
+                  query_enabled: false
+                  motd: proofstone agent test
+                  max_players: 20
+                  tab_list: GLOBAL_PING
+                  tab_size: 60
+                  forced_hosts: {}
+                  ping_passthrough: false
+                  priorities:
+                  - lobby
+                  bind_local_address: true
+                  force_default_server: false
+                  proxy_protocol: false
+                """;
+    }
+
+    /** The pins must be what actually runs (ADR-0016 section 2): the jar matches its sha256, on the pinned Java. */
+    private void verifyPins() {
+        String sums = exec("sh", "-c", "sha256sum /server/BungeeCord-" + BUILD + ".jar");
+        assertThat(sums).as("proxy jar sha256").contains(JAR_SHA256);
+        assertThat(exec("java", "-version")).as("host java").contains("21");
+    }
+
+    // The golden cases the proxy can answer without a backend or a player.
+
+    @Test
+    void healthMatchesTheProxyGolden() throws IOException {
+        JsonNode golden = golden("health/proxy-ok");
+        // The agent answers for more tokens than the golden's minimum (command, log). Compare the rest by shape.
+        JsonNode actual = JSON.readTree(call("GET", "/v1/health", null, true).body()).get("data");
+        List<String> tokens = new ArrayList<>();
+        actual.get("capabilities").forEach(token -> tokens.add(token.asText()));
+        List<String> required = new ArrayList<>();
+        golden.get("body").get("data").get("capabilities").forEach(token -> required.add(token.asText()));
+        assertThat(tokens).containsAll(required).doesNotContain("events");
+        ObjectNode data = (ObjectNode) golden.get("body").get("data");
+        // The golden is recorded for Velocity: this agent's own platform id is bungeecord (spec section 2).
+        data.put("platform", "bungeecord");
+        ArrayNode capabilities = data.putArray("capabilities");
+        tokens.forEach(capabilities::add);
+        assertMatches("health/proxy-ok", golden, call("GET", "/v1/health", null, true));
+        assertThat(actual.get("platform").asText()).isEqualTo("bungeecord");
+        // BungeeCord's version string names the Jenkins build that was downloaded.
+        assertThat(actual.get("mcVersion").asText()).contains(BUILD).contains("BungeeCord");
+    }
+
+    @Test
+    void aMissingTokenMatchesTheUnauthorisedGolden() throws IOException {
+        JsonNode golden = golden("health/unauthorised");
+        assertMatches("health/unauthorised", golden, call("GET", "/v1/health", null, false));
+    }
+
+    @Test
+    void commandRunsOnTheProxyAndReturnsItsOutput() throws IOException {
+        // The golden's "version" is a Paper command. BungeeCord's is "bungee"; the reply shape is the same.
+        JsonNode golden = golden("command/reply");
+        HttpResponse<String> reply = call("POST", "/v1/command", "{\"command\":\"bungee\",\"timeoutMs\":5000}", true);
+        assertMatches("command/reply", golden, reply);
+        assertThat(JSON.readTree(reply.body()).get("data").get("raw").asText()).contains("BungeeCord");
+    }
+
+    @Test
+    void aCommandWithOutputOfItsOwnReturnsItAsPlainText() throws IOException {
+        // BungeeCord's glist prints the servers that have players, then the total: with nobody online, only the total.
+        // The reply carries no colour codes. (The multi-line join is covered by the unit test against the real dispatch.)
+        HttpResponse<String> reply = call("POST", "/v1/command", "{\"command\":\"glist\",\"timeoutMs\":5000}", true);
+        assertThat(reply.statusCode()).isEqualTo(200);
+        String raw = JSON.readTree(reply.body()).get("data").get("raw").asText();
+        assertThat(raw).isEqualTo("Total players online: 0");
+    }
+
+    @Test
+    void anUnknownCommandIsAnErrorNotAnEmptyReply() throws IOException {
+        HttpResponse<String> reply = call("POST", "/v1/command",
+                "{\"command\":\"proofstone-no-such-command\",\"timeoutMs\":5000}", true);
+        assertThat(reply.statusCode()).isEqualTo(400);
+        assertThat(JSON.readTree(reply.body()).get("error").get("code").asText()).isEqualTo("INVALID_REQUEST");
+    }
+
+    @Test
+    void serversMatchTheGoldenForABackendThatIsDown() throws IOException {
+        // The golden was recorded with both backends up (online true, one player on lobby). Nothing runs behind this
+        // proxy, so the same shape must report online false and no players: the ping is the proxy's own.
+        JsonNode golden = golden("proxy/servers");
+        for (JsonNode server : golden.get("body").get("data").get("servers")) {
+            ((ObjectNode) server).put("online", false).put("players", 0);
+        }
+        HttpResponse<String> reply = call("GET", "/v1/proxy/servers", null, true);
+        assertMatches("proxy/servers", golden, reply);
+        JsonNode servers = JSON.readTree(reply.body()).get("data").get("servers");
+        assertThat(servers.get(0).get("address").asText()).isEqualTo("127.0.0.1:25565");
+        assertThat(servers.get(1).get("address").asText()).isEqualTo("127.0.0.1:25566");
+    }
+
+    @Test
+    void oneServerMatchesTheGoldenForABackendThatIsDown() throws IOException {
+        JsonNode golden = golden("proxy/server-get");
+        ((ObjectNode) golden.get("body").get("data")).put("online", false);
+        assertMatches("proxy/server-get", golden, call("GET", "/v1/proxy/servers/survival", null, true));
+    }
+
+    @Test
+    void anUnknownServerMatchesTheGolden() throws IOException {
+        assertMatches("proxy/server-not-found", golden("proxy/server-not-found"),
+                call("GET", "/v1/proxy/servers/ghost", null, true));
+    }
+
+    @Test
+    void anEmptyProxyHasNoPlayersAndAnUnknownPlayerMatchesTheGolden() throws IOException {
+        // No client joins in this test, so this checks the empty proxy only. A joined player's proxy state is T-M7-11.
+        JsonNode list = JSON.readTree(call("GET", "/v1/players", null, true).body()).get("data").get("players");
+        assertThat(list).isEmpty();
+        assertMatches("players/not-found", golden("players/not-found"), call("GET", "/v1/players/Nobody", null, true));
+    }
+
+    @Test
+    void theLogHoldsBungeeCordsOwnLinesWithTheProtocolShape() throws IOException {
+        HttpResponse<String> reply = call("GET", "/v1/log?since=0&minLevel=INFO", null, true);
+        assertThat(reply.statusCode()).isEqualTo(200);
+        JsonNode data = JSON.readTree(reply.body()).get("data");
+        JsonNode records = data.get("records");
+        // The agent attaches while BungeeCord enables its plugins, so the start-up lines that follow are in the buffer.
+        assertThat(records).as("log records").isNotEmpty();
+        boolean sawListening = false;
+        for (JsonNode record : records) {
+            String thrown = record.get("thrown").isNull() ? "null" : "\"<string>\"";
+            String expected = "{\"time\":\"<time>\",\"level\":" + record.get("level") + ",\"logger\":\"<string>\","
+                    + "\"message\":\"<string>\",\"thrown\":" + thrown + "}";
+            assertThat(GoldenMatcher.mismatches(expected, record.toString())).as(record.toString()).isEmpty();
+            sawListening |= record.get("message").asText().startsWith("Listening on");
+        }
+        assertThat(sawListening).as("BungeeCord's own \"Listening on\" line was captured").isTrue();
+        assertThat(data.get("next").asLong()).isGreaterThanOrEqualTo(records.size());
+        // The command the earlier tests ran is not logged by BungeeCord (log_commands is off), and the records keep their
+        // order and are not doubled: no message repeats at the same index of the sequence.
+        List<String> messages = new ArrayList<>();
+        records.forEach(record -> messages.add(record.get("time").asText() + record.get("message").asText()));
+        assertThat(messages).as("each record once").doesNotHaveDuplicates();
+        // A floor above INFO leaves out the INFO lines: the level filter works on real records.
+        JsonNode errors = JSON.readTree(call("GET", "/v1/log?since=0&minLevel=ERROR", null, true).body())
+                .get("data").get("records");
+        assertThat(errors.size()).isLessThan(records.size());
+    }
+
+    @Test
+    void theAgentLoadedWithoutAWarningFromBungeeCord() {
+        String log = container.getLogs();
+        assertThat(log).contains("Enabled plugin ProofstoneAgent version 0.1.0");
+        assertThat(log).contains("Proofstone agent listening on port " + AGENT_PORT);
+        assertThat(log).as("no error or warning names the agent")
+                .doesNotContainPattern("(?i)(SEVERE|WARN|ERROR)[^\\n]*(proofstone|ProofstoneAgent)");
+        assertThat(log).as("the agent must register no command").doesNotContain("Registered command");
+    }
+
+    @Test
+    void gameStateEndpointsAnswerNotFound() throws IOException {
+        HttpResponse<String> reply = call("GET", "/v1/ticks", null, true);
+        assertThat(reply.statusCode()).isEqualTo(404);
+        assertThat(JSON.readTree(reply.body()).get("error").get("code").asText()).isEqualTo("NOT_FOUND");
+    }
+
+    // Helpers.
+
+    private void assertMatches(String name, JsonNode expected, HttpResponse<String> actual) {
+        assertThat(actual.statusCode()).as(name + " status").isEqualTo(expected.get("status").asInt());
+        assertThat(GoldenMatcher.mismatches(expected.get("body").toString(), actual.body()))
+                .as(name + " against the golden").isEmpty();
+    }
+
+    private JsonNode golden(String name) throws IOException {
+        JsonNode request = JSON.readTree(GOLDEN.resolve(name + ".request.json").toFile());
+        JsonNode response = JSON.readTree(GOLDEN.resolve(name + ".response.json").toFile());
+        assertThat(request.has("method")).isTrue();
+        return response;
+    }
+
+    private HttpResponse<String> call(String method, String path, String body, boolean auth) {
+        HttpRequest.Builder request = HttpRequest
+                .newBuilder(URI.create("http://" + container.getHost() + ":" + container.getMappedPort(AGENT_PORT) + path))
+                .timeout(Duration.ofSeconds(20))
+                .header("X-Proofstone-Request-Id", UUID.randomUUID().toString());
+        if (auth) {
+            request.header("Authorization", "Bearer " + token);
+        }
+        request.method(method, body == null
+                ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
+        try {
+            return http.send(request.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted", e);
+        }
+    }
+
+    private static void await(String what, Duration timeout, java.util.function.Supplier<Boolean> probe) {
+        Await.until(what, probe, Boolean::booleanValue, timeout);
+    }
+
+    private void requireRunning() {
+        if (!container.isRunning()) {
+            throw new IllegalStateException("container exited");
+        }
+    }
+
+    private String exec(String... command) {
+        try {
+            var result = container.execInContainer(command);
+            return result.getStdout() + result.getStderr();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted", e);
+        }
+    }
+
+    private String tail() {
+        String[] lines = container.getLogs().split("\n");
+        int from = Math.max(0, lines.length - 80);
+        return String.join("\n", java.util.Arrays.copyOfRange(lines, from, lines.length));
+    }
+
+    /** Keeps the proxy log next to the other build output, so a red run leaves its evidence. */
+    private void saveLog() {
+        try {
+            Path dir = AGENT_JAR.getParent().getParent().resolve("bungee-it");
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve("proxy.log"), container.getLogs());
+        } catch (IOException | RuntimeException e) {
+            System.err.println("could not save the proxy log: " + e);
+        }
+    }
+
+    private static String randomHex(int bytes) {
+        byte[] random = new byte[bytes];
+        new SecureRandom().nextBytes(random);
+        return HexFormat.of().formatHex(random);
+    }
+}

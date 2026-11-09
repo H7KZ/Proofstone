@@ -1,6 +1,6 @@
 # BungeeCord
 
-Status: **spike** (T-M7-01, 2026-11-09). Nothing is pinned in `versions.yml` yet and no agent exists. Every fact below
+Status: **spike** (T-M7-01, 2026-11-09), plus the agent notes of T-M7-06. Nothing is pinned in `versions.yml` yet. Every fact below
 comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/proxy-spike.sh` or
 `scripts/spike/proxy-protocol-probe.sh`, unless it says otherwise. See [platforms.md](../platforms.md) and
 [velocity.md](velocity.md) for the shared topology.
@@ -75,11 +75,61 @@ both shapes. The mcpl driver stayed connected through all 20 switches with no ch
 disconnected`.
 
 ## Agent notes
-None yet. No proxy agent exists (T-M7-06). The image runs the proxy on Java 21; whether a Java 8 agent is still the
-right target is for T-M7-02 and T-M7-06.
+The BungeeCord agent is `platforms/bungee/agent` (T-M7-06; [module README](../../platforms/bungee/agent/README.md)). Facts from
+building it and from three green real-server runs against build 2111 (`BungeeCordAgentIT`, 2026-11-10; one earlier run of the
+same test was red on a wrong guess about `glist` output, see below):
+- **The agent is Java 8 bytecode and runs on the java21 image.** The API it compiles against, `bungeecord-api` 1.21-R0.4
+  (Maven Central, class major 52), is the newest release; build 2111 reports API `26.1-R0.1-SNAPSHOT`, which is not published as a
+  release. The agent uses only API present in both. The JVM floor question left open by the spike is settled for the agent: Java 8
+  bytecode, like the Bukkit agent.
+- **The real version string** is `git:BungeeCord-Proxy:26.1-R0.1-SNAPSHOT:55e1b0b:2111` (`ProxyServer.getVersion()`), which the
+  agent reports as `mcVersion`. It carries the Jenkins build number, so a test can check the row it runs.
+- **Plugin discovery:** a hand-written `bungee.yml` (`name`, `main`, `version`, `author`) in the jar is enough; no `libraries`, so
+  nothing is downloaded. BungeeCord logged `Loaded plugin ProofstoneAgent version 0.1.0 by Proofstone`, then
+  `[ProofstoneAgent] Proofstone agent listening on port 25580`, then `Enabled plugin ProofstoneAgent ...`, all before
+  `Listening on /0.0.0.0:25577`. The proxy's own modules (`cmd_find`, `cmd_server`, ...) load as plugins of their own, in the same
+  log lines.
+- **`Plugin()` needs BungeeCord's class loader.** The no-argument constructor throws `Plugin requires PluginClassloader` anywhere else,
+  and the protected `Plugin(ProxyServer, PluginDescription)` constructor (meant for tests) does not set the proxy: both fields
+  come from the package-private `init`, which the unit tests call by reflection. The mock proxy in the tests subclasses the abstract
+  `ProxyServer` and uses the real `PluginManager` (its four-argument constructor is public) and `EventBus`.
+- **Priority runs the other way from Bukkit.** On BungeeCord the number is the order: `LOWEST` (-64) runs first and `HIGHEST` (64) runs
+  last and has the final word. The card says "lowest priority"; the observe-only meaning is "the last to run", which is `HIGHEST`
+  here, the counterpart of Bukkit's `MONITOR` and Velocity's `PostOrder.LAST`. Every handler the agent registers is at `HIGHEST`
+  and `ObserveOnlyTest` reads that back from the real event bus' registrations.
+- **A command's output is collected by the agent's own sender.** `PluginManager.dispatchCommand(sender, line)` with a sender that
+  implements `CommandSender` (name `CONSOLE`, every permission, not a `ProxiedPlayer`) and collects `sendMessage` text, colour
+  codes dropped. `dispatchCommand` returns `false` only for an unknown command, which is the agent's `400 INVALID_REQUEST`; a
+  refusal or a failure is the command's own output. It also asks `ProxyServer.getConfig().isLogCommands()` (seen in the API's
+  bytecode and by the mock proxy failing without it), so a proxy with `log_commands: true` would probably log the harness's
+  commands; that was not run. The real replies the test checks: `bungee` prints a line that names BungeeCord; `glist` with nobody online
+  prints exactly `Total players online: 0` (the per-server lines appear only for servers that have players).
+- **`proxy/servers` `online` is a live `ServerInfo.ping`**, not a cached result. A refused connection calls back with an error at
+  once, so a proxy whose backends are down answers `online: false` quickly.
+- **Log capture is on `ProxyServer.getLogger()`, not the JUL root logger.** BungeeCord's `BungeeLogger` is built as a `Logger`
+  with a null parent, and each plugin's logger parents to it, so a root handler cannot see its records (read from BungeeCord's
+  source and modelled in the unit tests; not shown against the real proxy by a failing root handler). `LogBuffer.attachTo` takes
+  the one logger. The real run captured BungeeCord's own `Listening on /0.0.0.0:25577` line, with no duplicates, and no Log4j2 twin
+  exists to match. A record that third-party code logs on the root logger is not captured.
+- **`events` is not claimed.** The probes work on the mock with the real event bus; no real BungeeCord has fired a player event
+  through them (the test has no backend). A probe cannot attach to an arbitrary class by name, because BungeeCord finds
+  handlers by scanning a listener for annotated methods: the agent has a handler for each of eleven events and any other class is
+  a `400`. `previousServer` likewise comes from `ServerSwitchEvent#getFrom` handlers that only the mock has driven. Both wait for
+  T-M7-11, which needs a backend. `players` is in the capability list (the golden health case requires it) and is checked on the empty
+  proxy only.
+- **Observe only:** every handler is `EventPriority.HIGHEST`, no command is registered, no event is cancelled or changed, no intent is
+  registered. `ObserveOnlyTest` checks it against the real command registry and event bus and against the compiled classes.
+- **Harness config the test used:** `online_mode: false`, `ip_forward: true`, `connection_throttle: -1` as ADR-0016 section 5 says,
+  `log_pings: false`, `config.yml` copied into `/server` with `withCopyToContainer` (no bind mount), the agent port published to the
+  host for the test only. The image downloads `BungeeCord-2111.jar` (sha256 checked in the container) with `ENABLE_RCON=false` and
+  `SKIP_DOWNLOAD_DEFAULTS=true`; the whole test, container boot included, takes about 9 seconds with the image cached.
+- **The one red run was a wrong test expectation, not a product or flake fault.** The first run of `BungeeCordAgentIT` expected
+  `glist` to list `lobby` and `survival`; BungeeCord printed only `Total players online: 0`. The expectation was corrected to
+  what BungeeCord does and the three acceptance invocations were run afterwards; the red run is kept in the PR evidence.
+- **Waterfall:** not run, not a row (ADR-0016 section 4).
 
 ## Capabilities
-None declared. Not a row yet.
+None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `log` and `proxy` in `health` (`events` after T-M7-11).
 
 ## Gotchas
 - **The default `config.yml` has `max_players: 1`** on the listener, and `connection_throttle: 4000` with

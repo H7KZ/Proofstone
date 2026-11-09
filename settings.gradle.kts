@@ -46,6 +46,7 @@ include(
     "platforms:agent-core",
     "platforms:bukkit:agent",
     "platforms:bukkit:fixture",
+    "platforms:bungee:agent",
     "platforms:velocity:agent",
     "examples:smoke",
     "examples:disenchantment-anvil",
