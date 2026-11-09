@@ -277,6 +277,10 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   same run, which starts the same kind of server, passed. Not reproduced (one run only). Bundle:
   `build/proofstone/paper@26.3/AnvilMechanicE2E.coalOnTheRightMakesNothing/`. Same symptom family as the unexplained join
   timeouts in the M6 card.
+- **Join timeouts on paper@26.3 are measured, not fixed** (T-M6-10, 2026-11-09, `scripts/flake-loop.sh`, 45 runs). Each
+  red was `timed out joining ... after PT30S`: the client sent `ClientIntentionPacket` and `ServerboundHelloPacket` and got no
+  reply. The server log shows `Done`, then no join. Reds: 1 of 30 without stress, 1 of 15 with a bounded CPU and memory
+  stressor. Boot time (about 23 s) did not predict them. Cause unknown; see ROADMAP "M6 pre-release findings" item 3.
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 

@@ -328,9 +328,9 @@ the Gradle example `VerdictGate.java:150` red and the `PSConf moved too quickly`
 - Count a rerun as a pass.
 
 **Acceptance.**
-- [ ] At least 30 runs recorded with per-run evidence kept (paths in the PR).
-- [ ] Every red has its verdict type named from the kept XML or bundle.
-- [ ] The contention hypothesis is confirmed or rejected with numbers, or marked unresolved.
+- [x] At least 30 runs recorded with per-run evidence kept (paths in the PR). Evidence: 30 no-stress runs in `build/flake/nostress/run-NN/` and 15 stress runs in `build/flake/stress/run-NN/` (XML, bundles, gradle.log, container logs, host samples), plus 1 smoke pass in `build/flake/smoke/`. Four no-stress pass runs (12, 26, 27, 28) lack a join time (watcher race, fixed in the script). Summary table in ROADMAP "M6 pre-release findings" item 3.
+- [x] Every red has its verdict type named from the kept XML or bundle. Evidence: no-stress run 29 (`INVALID`, `join-timeout`, conformance client `PSConf`) and stress run 8 (`join-timeout`, plugin test client), both from `test-results/*.xml` and `proofstone/paper@26.3/*/server.log`.
+- [x] The contention hypothesis is confirmed or rejected with numbers, or marked unresolved. Marked **unresolved**: stress raised boot and join times (+2.6 s and +3.2 s) but 1 of 15 stress runs red against 1 of 30 no-stress runs does not separate the two conditions.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:gradle-paper-plugin:e2eTest --no-parallel --max-workers=1`, repeated.
