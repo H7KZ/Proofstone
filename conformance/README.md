@@ -20,7 +20,7 @@ itself against real vanilla behaviour, on the newest Paper row:
 C09 to C12 (events, config, log, reset) are not written yet. The per-cell check runs C03 to C08 on every cell in the
 bad-tests and user suites (T-M4-10b); docs/specs/self-tests.md section 1 gives the reasons C09 to C12 are deferred.
 
-The C03 to C08 scenarios and their fixture live in `proofstone-core` (`dev.proofstone.core.conformance`, T-M4-10a),
+The C03 to C08 scenarios and their fixture live in `proofstone-core` (`io.github.h7kz.proofstone.core.conformance`, T-M4-10a),
 so the per-cell check can run the same code. The classes here are thin JUnit wrappers: they add the `@Proofstone` matrix
 and, for C07, the 1.14 skip.
 

@@ -4,7 +4,7 @@ This page lists the API a test can use **today**: the frozen v0 contract in
 [`proofstone-api/api-baseline.txt`](../../proofstone-api/api-baseline.txt) and [docs/specs/test-api.md](../specs/test-api.md).
 Everything else in the spec's sketches is not available yet. Do not use it.
 
-The shape to copy is [`AnvilMechanicE2E.java`](../../examples/gradle-paper-plugin/src/e2eTest/java/dev/proofstone/examples/gradle/AnvilMechanicE2E.java).
+The shape to copy is [`AnvilMechanicE2E.java`](../../examples/gradle-paper-plugin/src/e2eTest/java/io/github/h7kz/proofstone/examples/gradle/AnvilMechanicE2E.java).
 
 ## Anatomy of a test class
 

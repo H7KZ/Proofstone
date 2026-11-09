@@ -138,7 +138,7 @@ missing, Docker unavailable, EULA not accepted, or the cell was not selected.
 ## 8. The v0 contract (frozen at T-M2-99)
 
 **Rule.** The sketches in sections 1 to 6 describe the target API. The v0 contract is exactly what
-`proofstone-api/api-baseline.txt` lists (every public member of `dev.proofstone.api`). `ApiSurfaceTest` fails on any
+`proofstone-api/api-baseline.txt` lists (every public member of `io.github.h7kz.proofstone.api`). `ApiSurfaceTest` fails on any
 difference, so adding, removing or changing a member needs a card marked `api-change`, a regenerated baseline
 (`./gradlew :proofstone-api:test -Dproofstone.updateApiBaseline=true`) and a reviewed diff. There is no separate version
 constant: the baseline file plus this status line are the v0 marker. A card that breaks v0 must say so and bump to v1.
@@ -154,7 +154,7 @@ constant: the baseline file plus this status line are the v0 marker. A card that
 
 ### 8.2 Experimental: in the baseline, but allowed to change in a v0.x step
 Every item here is marked in the Javadoc or this list, and a change still needs a reviewed baseline diff.
-- `dev.proofstone.api.spi.OracleWaiter` and its records: a service provider interface for `proofstone-core`, not for
+- `io.github.h7kz.proofstone.api.spi.OracleWaiter` and its records: a service provider interface for `proofstone-core`, not for
   test authors.
 - `DualAssert.serverOnlyReasons()` and `ServerOnly.reason()`: a stop-gap until reports exist (M4).
 - Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`,
@@ -200,7 +200,7 @@ These appear in the sketches and are **not** part of the contract. Each needs an
 
 ## 9. Per-cell expectations and error patterns (T-M4-15, post-v0 additive)
 
-Added by T-M4-15 as an `api-change`: `CellExpectation` and `Expect` are new members of `dev.proofstone.api`, and
+Added by T-M4-15 as an `api-change`: `CellExpectation` and `Expect` are new members of `io.github.h7kz.proofstone.api`, and
 `api-baseline.txt` gains exactly those four lines. No frozen v0 signature changed.
 
 ```java
@@ -235,7 +235,7 @@ public class SmokeE2E {
 ## 10. Capabilities and `@Requires` (T-M5-01, post-v0 additive)
 
 Added by T-M5-01 as an `api-change`: `Capability`, `Requires` and `Cell.capabilities()` are new members of
-`dev.proofstone.api`, and `api-baseline.txt` gains exactly those lines. No frozen v0 signature changed.
+`io.github.h7kz.proofstone.api`, and `api-baseline.txt` gains exactly those lines. No frozen v0 signature changed.
 
 ```java
 @Requires(Capability.BUKKIT_EVENTS)            // on a class: every test in it
@@ -270,7 +270,7 @@ class EventsE2E {
 
 ## 11. `Clients` and the simulated Bedrock tier (T-M5-06, post-v0 additive)
 
-Added by T-M5-06 as an `api-change`: `Clients` is a new member of `dev.proofstone.api`, `Capability.SIMULATED_BEDROCK`
+Added by T-M5-06 as an `api-change`: `Clients` is a new member of `io.github.h7kz.proofstone.api`, `Capability.SIMULATED_BEDROCK`
 is a new constant, and `api-baseline.txt` gains exactly those lines. No frozen v0 signature changed. This is the single-
 client slice of the `Clients` item in section 8.4: a test joins extra Java clients under names it chooses. Multi-player
 topologies stay in the backlog.

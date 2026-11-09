@@ -77,7 +77,7 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   so the agent reported `platform: spigot` and `health/ok` failed. 1.12.2 has the Paper class. _1.8.8 ·
   [PR #42](https://github.com/H7KZ/Proofstone/pull/42), [3a427e0](https://github.com/H7KZ/Proofstone/commit/3a427e0)_
 - **The plugin logger name differs by version.** A plugin's records have the logger `proofstone-fixture` on 26.3 and 1.12.2,
-  and the class name `dev.proofstone.fixture.FixturePlugin` on 1.8.8. The golden says only `<string>`; the contract test
+  and the class name `io.github.h7kz.proofstone.fixture.FixturePlugin` on 1.8.8. The golden says only `<string>`; the contract test
   picks the fixture record by message. _1.8.8, 1.12.2, 26.3 · [PR #42](https://github.com/H7KZ/Proofstone/pull/42),
   [39c1295](https://github.com/H7KZ/Proofstone/commit/39c1295)_
 - **`NamespacedKey` exists in 1.12, but nothing keyed with it does.** `Enchantment.getKey`, `getByKey` and `Material.getKey`

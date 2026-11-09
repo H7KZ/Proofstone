@@ -11,7 +11,7 @@ setup writes: give, reset and PATCH.
   (ADR-0002).
 - Java 8 bytecode, checked by `verifyBytecode`, so it loads on 1.8.8 servers. Use only the Bukkit 1.8.8 API
   or reflection behind a capability guard.
-- Bundles only `jackson-databind`, relocated to `dev.proofstone.shaded.jackson`. No other runtime libraries.
+- Bundles only `jackson-databind`, relocated to `io.github.h7kz.proofstone.shaded.jackson`. No other runtime libraries.
 - The protocol types here are Java 8 plain classes. They do not depend on `proofstone-protocol`'s Java 17
   records.
 - Refuses to serve without `PROOFSTONE_AGENT_TOKEN`. Logs SEVERE and leaves the HTTP server down.
@@ -46,20 +46,20 @@ setup writes: give, reset and PATCH.
 - Error codes: `UNAUTHORIZED` 401, `PLAYER_NOT_FOUND` 404, `INVALID_REQUEST` 400, `UNKNOWN_KEY` 400,
   `TIMEOUT` 504, `NOT_FOUND` 404, `METHOD_NOT_ALLOWED` 405, `INVENTORY_FULL` 409, `INTERNAL` 500. The last five
   are additions within v1, not yet in the spec table.
-- `dev.proofstone.agent.protocol`: `Health`, `ProtocolError`, `Envelope<T>`, `AgentException`.
-- `dev.proofstone.agent.game.Game`: the state seam (reads and writes). Implemented by
-  `dev.proofstone.agent.bukkit.BukkitGame`; `game.Fields` checks request bodies.
+- `io.github.h7kz.proofstone.agent.protocol`: `Health`, `ProtocolError`, `Envelope<T>`, `AgentException`.
+- `io.github.h7kz.proofstone.agent.game.Game`: the state seam (reads and writes). Implemented by
+  `io.github.h7kz.proofstone.agent.bukkit.BukkitGame`; `game.Fields` checks request bodies.
 - Key resolution (`bukkit.Keys`): from 1.13 the server's own key (`Material.getKey`, `Enchantment.getByKey`, by
   reflection). Before 1.13 (no `org.bukkit.block.data.BlockData`) the legacy tables in `LegacyNames` and `LegacyBlocks`,
-  loaded from `src/main/resources/dev/proofstone/agent/bukkit/legacy-*.csv`: renamed materials (`GOLD_SWORD` is
+  loaded from `src/main/resources/io/github/h7kz/proofstone/agent/bukkit/legacy-*.csv`: renamed materials (`GOLD_SWORD` is
   `golden_sword`), enchantments and block states (data values). A legacy name used as a key is `UNKNOWN_KEY` on every
   version. Verified by the golden replay on Paper 1.8.8, 1.12.2 and 26.3 (T-M3-06). Known gaps: items and blocks that
   differ only by data value (wool colours, stone variants), and block states other than `facing`. `plugin.yml` sets
   `api-version: 1.13` so a 1.13+ server does not run the agent in legacy material mode.
 - PDC is not served: an item field `pdc` is `INVALID_REQUEST` on every version.
-- `dev.proofstone.agent.scheduler`: `Scheduler` (main-thread hand-off, Folia comes in M5) and `MainThread.call`,
+- `io.github.h7kz.proofstone.agent.scheduler`: `Scheduler` (main-thread hand-off, Folia comes in M5) and `MainThread.call`,
   which waits for a result with the request timeout.
-- Platform detection: `dev.proofstone.agent.platform.PlatformDetector`.
+- Platform detection: `io.github.h7kz.proofstone.agent.platform.PlatformDetector`.
 
 ## How to test
 - `./gradlew :platforms:bukkit:agent:test`: auth, config, platform probes, the envelope over real HTTP,

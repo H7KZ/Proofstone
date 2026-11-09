@@ -1,6 +1,6 @@
 name: ProofstoneAgent
 version: 0.1.0
-main: dev.proofstone.agent.bukkit.ProofstoneAgentPlugin
+main: io.github.h7kz.proofstone.agent.bukkit.ProofstoneAgentPlugin
 folia-supported: true
 load: STARTUP
 # Servers before 1.13 ignore this key. From 1.13 a plugin without it runs in legacy material mode, where DIAMOND_SWORD

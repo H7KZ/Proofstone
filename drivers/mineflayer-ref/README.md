@@ -20,7 +20,7 @@ answers JSON-RPC 2.0. Its protocol and the protocol finding are in [mineflayer-r
 
 ## Public surface
 
-- `dev.proofstone.driver.mineflayer.MineflayerRefDriver(URI sidecar)`: `ClientDriver` with id `mineflayer-ref` and
+- `io.github.h7kz.proofstone.driver.mineflayer.MineflayerRefDriver(URI sidecar)`: `ClientDriver` with id `mineflayer-ref` and
   protocol `26.1.2` (the native row). `sidecar` is the WebSocket address as the test JVM sees it.
 - `connect(ConnectSpec)`: `host` and `port` are as the sidecar sees them, on the cell network (the server alias
   `server:25565`, or `viaproxy:25568` on a bridged cell).

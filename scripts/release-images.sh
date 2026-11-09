@@ -108,7 +108,7 @@ LABELS=(
   --label "org.opencontainers.image.revision=$GIT_SHA"
   --label "org.opencontainers.image.version=$VERSION"
   --label "org.opencontainers.image.created=$GIT_CREATED"
-  --label "dev.proofstone.dirty=$DIRTY"
+  --label "io.github.h7kz.proofstone.dirty=$DIRTY"
 )
 
 # Local image names for a dry run. The push retags the same build to the GHCR name.
@@ -118,7 +118,7 @@ SB_CTX=$(ctx_hash images/spigot-buildtools)
 
 echo "== build mineflayer-ref -> $MF_LOCAL"
 docker_locked build -f images/mineflayer-ref/Dockerfile -t "$MF_LOCAL" \
-  "${LABELS[@]}" --label "dev.proofstone.context=$MF_CTX" --label "dev.proofstone.mineflayer=$MF_LIB_VERSION" images/mineflayer-ref
+  "${LABELS[@]}" --label "io.github.h7kz.proofstone.context=$MF_CTX" --label "io.github.h7kz.proofstone.mineflayer=$MF_LIB_VERSION" images/mineflayer-ref
 MF_ID=$(docker image inspect -f '{{.Id}}' "$MF_LOCAL")
 
 SB_IDS=""
@@ -128,7 +128,7 @@ for tag in $JAVA_TAGS; do
   echo "== build spigot-buildtools ($tag, BuildTools $BT_BUILD) -> $local_tag"
   docker_locked build -f images/spigot-buildtools/Dockerfile -t "$local_tag" \
     --build-arg "JDK_IMAGE=$jdk" --build-arg "BUILDTOOLS_BUILD=$BT_BUILD" --build-arg "BUILDTOOLS_SHA256=$BT_SHA" \
-    "${LABELS[@]}" --label "dev.proofstone.context=$SB_CTX" --label "dev.proofstone.buildtools=$BT_BUILD" \
+    "${LABELS[@]}" --label "io.github.h7kz.proofstone.context=$SB_CTX" --label "io.github.h7kz.proofstone.buildtools=$BT_BUILD" \
     images/spigot-buildtools
   SB_IDS="$SB_IDS spigot-buildtools:$tag=$(docker image inspect -f '{{.Id}}' "$local_tag")"
 done

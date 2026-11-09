@@ -1,7 +1,7 @@
 // The `integrationTest` convention (T-M1-07): a source set and task for tests that need Docker. It is not part
 // of `check`. Modules such as proofstone-core and the agents apply it next to their base Java plugin.
 // Decision: ADR-0005 (real containers, no bind mounts).
-import dev.proofstone.build.arch.HardRules
+import io.github.h7kz.proofstone.build.arch.HardRules
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.SourceSetContainer

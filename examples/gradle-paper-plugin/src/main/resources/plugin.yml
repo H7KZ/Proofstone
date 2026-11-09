@@ -1,4 +1,4 @@
 name: AnvilMechanic
 version: 1.0.0
-main: dev.proofstone.examples.gradle.AnvilMechanic
+main: io.github.h7kz.proofstone.examples.gradle.AnvilMechanic
 api-version: 1.13

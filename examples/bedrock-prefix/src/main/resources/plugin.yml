@@ -1,6 +1,6 @@
 name: ProofstoneBedrockPrefix
 version: 1.0.0
-main: dev.proofstone.examples.bedrock.BedrockPrefixFixture
+main: io.github.h7kz.proofstone.examples.bedrock.BedrockPrefixFixture
 api-version: 1.13
 commands:
   bedrock-check:

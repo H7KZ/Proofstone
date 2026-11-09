@@ -360,3 +360,51 @@ the Gradle example `VerdictGate.java:150` red and the `PSConf moved too quickly`
 
 **Verify.**
 `mvn -f examples/maven-paper-plugin verify -Pe2e` and `bash scripts/release-mutation-check.sh`.
+
+### T-M6-12 · Rename packages `dev.proofstone` to `io.github.h7kz.proofstone`
+- tier: haiku
+- depends: T-M6-06
+- modules: all modules with Java sources, build-logic, examples, platforms/bukkit, proofstone-api, scripts, docs
+- adrs: 0012
+- specs: specs/test-api.md §8 (API v0 frozen), specs/agent-protocol.md (wire unchanged)
+- test-first: no
+
+**Goal.** The maintainer does not own `proofstone.dev` (decided 2026-11-09), so the ADR-0012 default namespace
+`io.github.h7kz.proofstone.*` applies. The rename is mechanical and happens before the first publish, while nothing is
+published under the old name.
+
+**Do.**
+- Move every `dev/proofstone` package directory with `git mv` so history follows. Rename the three `META-INF/services` files
+  whose names are `dev.proofstone.*`.
+- Rewrite every `dev.proofstone` and `dev/proofstone` occurrence in live Java, Kotlin, Gradle, XML, YAML, JSON, properties,
+  service, golden and doc files. This includes the plugin descriptor `main:` lines, the shading relocation
+  `dev.proofstone.shaded.jackson`, ArchUnit rules, build-logic, examples, scripts, and the Docker label keys in
+  `scripts/release-images.sh`.
+- Regenerate `proofstone-api/api-baseline.txt` with `-Dproofstone.updateApiBaseline=true`. The diff must be package-name only:
+  a sed-normalised comparison with the old file must be identical. The PR carries the `api-change` label.
+- Update ADR-0012 to say the default namespace is in force, dated 2026-11-09.
+- Leave `docs/research` (read-only), ADR text that records history, and historical ROADMAP and card text unchanged.
+
+**Don't.**
+- Change the wire protocol. The protocol version and golden files stay as they are, except where a class or package name
+  appears in them.
+- Change the Maven groupId (already `io.github.h7kz.proofstone`) or any public API signature.
+- Raise the agent's bytecode target above Java 8.
+
+**Acceptance.**
+- [x] No `dev.proofstone` or `dev/proofstone` remains outside `docs/research` and historical ADR and ROADMAP text. (Evidence: final grep in the PR; remaining hits are ADR-0011, ADR-0012 history, NEXT-SESSION-M7 prompt, ROADMAP, and M0 to M3 cards.)
+- [x] `api-baseline.txt` differs from the old file only by the package name. (Evidence: after sed-normalising, the line set is identical. The dump is sorted, and `io.github` sorts after `int`, so the line order changed too. Flagged in the PR.)
+- [x] `bash scripts/gates.sh --max-workers=1` passes. (Evidence: `gates: OK`, `BUILD SUCCESSFUL`, log in PR.)
+- [x] `:platforms:bukkit:agent:integrationTest` is 24/24 on the real server. (Evidence: `TEST-...AgentContractIT.xml` tests=24 skipped=0 failures=0 errors=0.)
+- [x] `:conformance:smoke` passes on `paper@26.3`. (Evidence: `ConformanceSmokeTest` tests=2, 0 skip/fail/err.)
+- [x] `:examples:bad-tests:metaTest` gives all eight verdicts with no selector. (Evidence: log line "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED)".)
+- [x] `:examples:gradle-paper-plugin:e2eTest` passes on `paper@26.3`. (Evidence: `AnvilMechanicE2E` tests=2, 0 skip/fail/err.)
+- [x] `bash scripts/release-maven.sh --dry-run` shows groupId `io.github.h7kz.proofstone`. (Evidence: `DRY RUN OK`; staged POM groupId `io.github.h7kz.proofstone`.)
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`, then, one run at a time under `scripts/dockerlock.sh`, `:platforms:bukkit:agent:integrationTest`,
+`:conformance:smoke` on `paper@26.3`, `:examples:bad-tests:metaTest`, `:examples:gradle-paper-plugin:e2eTest` on `paper@26.3`,
+then `bash scripts/release-maven.sh --dry-run`.
+
+**Diff size.** This is a pure mechanical rename. The 400-changed-line rule in AGENTS.md section 2.4 does not apply.
+The PR body says so.

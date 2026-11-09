@@ -1,6 +1,6 @@
 // Host-side modules: Java 17 toolchain, warnings are errors, JUnit 5 platform, hard-rule checks.
 // Decision: ADR-0001 (Java + JUnit 5), ADR-0006 (pinned versions from the catalog).
-import dev.proofstone.build.arch.HardRules
+import io.github.h7kz.proofstone.build.arch.HardRules
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.kotlin.dsl.the
