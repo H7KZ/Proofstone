@@ -480,9 +480,9 @@ Next step: keep the XML of every red run (this run's loop copies it aside; reuse
 |---|---|---|---|
 | 1 | Disenchantment's full suite runs in Disenchantment's CI | NOT MET | T-M6-05 is in another repo. No CI exists here. Unverified |
 | 2 | Maven and Gradle example projects work | NOT MET | Maven example missing (mvn not installed). Gradle green 10 of 10 this run, but flake 1 red of 15 unexplained |
-| 3 | Artefacts published to Maven Central and GHCR | NOT MET | Nothing published, by design (licence undecided). Correct state, not a failure |
+| 3 | Artefacts published to Maven Central and GHCR | NOT MET | Nothing published, by design (namespace not verified, ADR-0012). Correct state, not a failure |
 | 4 | GitHub Action published | NOT MET | Local only (`integrations/github-action`). Action self-check was red earlier |
-| 5 | Licence decided | NOT MET | ADR-0011 Proposed. Proposal section added, no decision |
+| 5 | Licence decided | MET | ADR-0011 Accepted 2026-11-09: Apache-2.0, DCO, NOTICE (T-M6-06). Nothing published yet |
 | 6 | Mutation check passes | NOT MET | PASS only with `--allow-missing` (Maven). Without it INCOMPLETE. Also needs a clean-tree run at the release HEAD |
 
 "In CI" is impossible: no CI, no workflows (maintainer decision 2026-11-08).
@@ -492,7 +492,7 @@ Next step: keep the XML of every red run (this run's loop copies it aside; reuse
 - T-M4-10 (per-cell conformance) and T-M4-12 (real snapshot in bundles, wider leak detector): merged in PRs #77 to #86 per the brief.
 - T-M6-01 Maven publishing pipeline (dry run only), T-M6-02 GHCR scripts (dry run only; no push), T-M6-03 GitHub Action (local),
   T-M6-04 Gradle example only, T-M6-07 mutation check (local), T-M6-08 quickstart docs.
-- T-M6-06 licence: proposal only. T-M6-05: other repo.
+- T-M6-06 licence: Accepted 2026-11-09 (Apache-2.0, DCO, NOTICE). T-M6-05: other repo.
 
 ### Unverified
 
@@ -503,7 +503,7 @@ Next step: keep the XML of every red run (this run's loop copies it aside; reuse
 
 ### Decisions needed from the maintainer
 
-1. Licence: Apache-2.0 vs MIT. Recommendation in ADR-0011 "Proposal for the maintainer" (Apache-2.0, DCO, NOTICE). Not decided.
+1. Licence: **decided** 2026-11-09, Apache-2.0 + DCO + NOTICE (ADR-0011, T-M6-06).
 2. Maven: install mvn, or drop the Maven example from 0.1.0.
 3. spigot-buildtools image: keep it unpushed (it bundles BuildTools.jar), or decide otherwise.
 4. XP-LEAK bad test (T-M4-12 deviation, "M6 pre-release findings" item 1): fixture player, or compare own client.
@@ -528,7 +528,7 @@ Not fixed, open: the namespace question (item 7).
 
 | # | Decision | State | Recommendation |
 |---|---|---|---|
-| 1 | Licence | **Maintainer** | Apache-2.0 + DCO + NOTICE (patent grant, Central-friendly). See ADR-0011 proposal. Then T-M6-06 is a 10-minute PR. |
+| 1 | Licence | Decided 2026-11-09 | Apache-2.0 + DCO + NOTICE (T-M6-06, ADR-0011 Accepted). |
 | 2 | Maven | **Maintainer** (install) | Install Apache Maven, then run T-M6-11. Maven is a stated target audience (ADR-0001, ADR-0009); dropping it removes half of the release claim. |
 | 3 | spigot-buildtools push | Decided | Keep unpushed (bundles BuildTools.jar). Only mineflayer-ref is pushed. |
 | 4 | XP-LEAK bad test | Decided | Accept the documented deviation for 0.1; add a persistent fixture player post-0.1 (M7+ gives a proxy-persistent player anyway). |

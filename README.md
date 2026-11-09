@@ -64,4 +64,5 @@ trademark. ([ADR-0012](docs/adr/0012-name.md))
 
 ## Licence
 
-Not chosen yet. See [ADR-0011](docs/adr/0011-licensing.md). Until a licence is chosen, all rights are reserved.
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Contributions use a DCO sign-off, see
+[CONTRIBUTING.md](CONTRIBUTING.md). Decision record: [ADR-0011](docs/adr/0011-licensing.md).

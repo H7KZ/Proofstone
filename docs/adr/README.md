@@ -16,7 +16,7 @@ that were rejected. **Accepted ADRs are not re-decided inside a task.** To chall
 | [0008](0008-versions-yml-single-source-of-truth.md) | `versions.yml` is the single source of truth for the matrix | Accepted |
 | [0009](0009-gradle-monorepo.md) | Gradle monorepo; artefacts usable from Maven and Gradle | Accepted |
 | [0010](0010-ai-first-maintenance-model-tiering.md) | AI-first maintenance with model tiering | Accepted |
-| [0011](0011-licensing.md) | Licensing | **Proposed** (owner decides) |
+| [0011](0011-licensing.md) | Licensing: Apache-2.0, DCO, NOTICE | Accepted (2026-11-09) |
 | [0012](0012-name.md) | Project name: Proofstone | Accepted |
 | [0013](0013-host-digest-per-java-tag.md) | Host image digest is pinned per Java tag (amends 0008) | Accepted |
 | [0014](0014-haiku-first-and-minimal-ci.md) | Haiku-first execution and minimal CI (amends 0010) | Accepted |

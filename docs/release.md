@@ -38,8 +38,8 @@ PROOFSTONE_RELEASE_CONFIRM=yes-publish bash scripts/release-maven.sh --publish
 1. `PROOFSTONE_RELEASE_CONFIRM=yes-publish` is set in the command environment.
 2. A mutation check passed for HEAD (see below): `build/release/mutation-check.env` has `status=PASS`, `head` is HEAD,
    `dirty=false`, and it is less than 24 hours old.
-3. ADR-0011 is **Accepted**, and the licence is set in `build-logic/src/main/kotlin/proofstone.publish.gradle.kts`.
-   Set both together. While the POM licence is a TODO, the script refuses.
+3. ADR-0011 is **Accepted**, and its `Licence:` line names the licence. `proofstone.publish.gradle.kts` reads both and sets
+   the POM licence only while the status is Accepted. Otherwise the POM licence is a TODO and the script refuses.
 4. The version is a release version (not `*-local`).
 5. The git tree is clean.
 6. An annotated tag `v<version>` points at HEAD. The maintainer creates it after the release PR merges.
@@ -82,8 +82,8 @@ Keep the values in a password manager. Set them per command, for example
 ## Before the first release (manual, maintainer)
 
 1. **Namespace.** Verify `io.github.h7kz` on the Central Portal, as described in ADR-0012 ("Maven Central namespace").
-2. **Licence.** Decide ADR-0011 (T-M6-06). Then update the ADR status and `decidedLicence` in
-   `proofstone.publish.gradle.kts` in the same PR.
+2. **Licence.** Done (T-M6-06): Apache-2.0, ADR-0011 Accepted, `LICENSE` and `NOTICE` at the root. Changing it means a new
+   ADR-0011 status and a new `Licence:` line, not an edit in the publish plugin.
 3. **Signing key.** Create a PGP key and publish its public part to a key server. Keep the private key in a password manager.
 4. **Portal token.** Generate a user token on the Central Portal and keep it in a password manager.
 5. **Release PR.** Set the release version, run `bash scripts/gates.sh --max-workers=1`, then the dry run, merge, and tag

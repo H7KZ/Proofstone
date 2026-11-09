@@ -31,11 +31,11 @@ a wrong view of the world alone. See [vision](vision.md).
 
 ## Not in 0.1.0
 
-- Maven Central and GHCR artefacts: not published. Requires the licence decision (ADR-0011) and namespace verification
-  (ADR-0012).
+- Maven Central and GHCR artefacts: not published. Requires namespace verification (ADR-0012). The licence is decided
+  (ADR-0011, Apache-2.0).
 - GitHub Action: local only (`integrations/github-action`), not published.
 - Disenchantment's own suite on Proofstone: runs in another repository (T-M6-05), not verified here.
-- Licence: not decided. No `LICENSE` file yet.
+- Licence: Apache-2.0 (ADR-0011). `LICENSE` and `NOTICE` at the repository root.
 - Proxies (Velocity, BungeeCord), mods (Fabric, NeoForge) and Bedrock beyond the prefixed simulation: later milestones.
 
 ## Install
@@ -46,6 +46,6 @@ recorded in the M6 review.
 
 ## Acknowledgements and licence
 
-Licence to be decided by the maintainer (ADR-0011). Third-party components: MCProtocolLib (MIT), Mineflayer (MIT),
+Proofstone is licensed under the Apache License 2.0 (see `LICENSE` and `NOTICE`; decision in ADR-0011). Third-party components: MCProtocolLib (MIT), Mineflayer (MIT),
 Testcontainers (MIT), JUnit 5 (EPL-2.0), Jackson (Apache-2.0, shaded into the agent), ViaProxy (GPL-3.0, separate container,
 not redistributed).

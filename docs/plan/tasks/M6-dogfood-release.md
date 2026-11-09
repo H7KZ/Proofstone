@@ -181,11 +181,12 @@ The Disenchantment CI run link.
 - Decide without the maintainer.
 
 **Acceptance.**
-- [ ] The LICENSE file exists.
-- [ ] ADR-0011 is Accepted.
+- [x] The LICENSE file exists. Evidence: `LICENSE` at the root, byte-identical to the Apache-2.0 text in
+  `jackson-core-2.22.4.jar` (META-INF/LICENSE, 11358 bytes, MD5 3B83EF96387F14655FC854DDC3C6BD57).
+- [x] ADR-0011 is Accepted. Evidence: `docs/adr/0011-licensing.md` Status line, 2026-11-09.
 
 **Verify.**
-Review.
+Review. Plus `bash scripts/release-maven.sh --dry-run` shows no licence warning.
 
 ### T-M6-07 · Mutation check in the release pipeline
 - tier: sonnet
