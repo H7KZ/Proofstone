@@ -78,6 +78,24 @@ public interface Game {
     void reloadPlugin(String plugin, String hookCommand, long timeoutMs);
 
     /**
+     * The backends a proxy knows, sorted by name, each `{name, address, online, players}` (proxy.json). Proxy agents
+     * only (protocol 1.2): a backend agent leaves this default, which is a 404 {@code NOT_FOUND}.
+     */
+    default List<Map<String, Object>> proxyServers(long timeoutMs) {
+        throw notAProxy();
+    }
+
+    /** One backend as {@link #proxyServers} lists it. Throws {@code SERVER_NOT_FOUND} for an unknown name. */
+    default Map<String, Object> proxyServer(String name, long timeoutMs) {
+        throw notAProxy();
+    }
+
+    /** The error of a proxy endpoint on an agent that is not a proxy. */
+    static AgentException notAProxy() {
+        return new AgentException(404, "NOT_FOUND", "this agent is not a proxy and has no /v1/proxy endpoints", null);
+    }
+
+    /**
      * The full-state dump (snapshot.json): every online player's {@code PlayerState} and every loaded plugin's name,
      * version, enabled flag and config values, both sorted by name. Read on the server thread in one pass.
      */

@@ -17,10 +17,15 @@ dependencyResolutionManagement {
             forRepository { mavenLocal() }
             filter { includeGroup("io.github.h7kz.proofstone") }
         }
-        // Paper's API for the example plugin (T-M6-04). A stable release, pinned in the catalog; only this group comes from here.
+        // Paper's API for the example plugin (T-M6-04), Velocity's API for the Velocity agent (T-M7-05) and Mojang's
+        // brigadier, which Velocity's command types name. Stable releases pinned in the catalog; only these groups come from here.
         exclusiveContent {
             forRepository { maven("https://repo.papermc.io/repository/maven-public/") }
-            filter { includeGroup("io.papermc.paper") }
+            filter {
+                includeGroup("io.papermc.paper")
+                includeGroup("com.velocitypowered")
+                includeGroup("com.mojang")
+            }
         }
         // MCProtocolLib is published only here (ADR-0004).
         maven("https://repo.opencollab.dev/main/")
@@ -41,6 +46,7 @@ include(
     "platforms:agent-core",
     "platforms:bukkit:agent",
     "platforms:bukkit:fixture",
+    "platforms:velocity:agent",
     "examples:smoke",
     "examples:disenchantment-anvil",
     "examples:bad-tests",

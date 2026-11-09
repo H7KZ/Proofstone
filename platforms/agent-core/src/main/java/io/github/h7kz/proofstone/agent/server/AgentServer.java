@@ -45,12 +45,14 @@ public final class AgentServer {
     private final Health health;
     private final Game game;
     private final ObservationRoutes observation;
+    private final ProxyRoutes proxy;
 
     public AgentServer(AgentConfig config, Health health, Game game) throws IOException {
         this.server = HttpServer.create(new InetSocketAddress("0.0.0.0", config.port()), 0);
         this.health = health;
         this.game = game;
         this.observation = new ObservationRoutes(game);
+        this.proxy = new ProxyRoutes(game);
         server.createContext("/v1/", this::handle).getFilters().add(new BearerFilter(config.token()));
     }
 
@@ -104,6 +106,9 @@ public final class AgentServer {
         }
         if (ObservationRoutes.handles(path)) {
             return observation.dispatch(exchange, method, path);
+        }
+        if (ProxyRoutes.handles(path)) {
+            return proxy.dispatch(exchange, method, path);
         }
         if (path.startsWith(PLUGINS_PREFIX)) {
             return PluginRoutes.dispatch(game, exchange, method, path.substring(PLUGINS_PREFIX.length()));

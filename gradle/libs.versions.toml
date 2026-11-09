@@ -26,6 +26,21 @@ spigot = "1.8.8-R0.1-20160221.082514-43"
 # are the versions the 1.8.8 POM declares.
 guava = "17.0"
 commons-lang = "2.6"
+# Velocity agent (T-M7-05). Compile-only API of the pinned Velocity row (docs/platforms/velocity.md): 4.3.1, a stable release
+# on repo.papermc.io; its jar is sha256 c0c662e9a563a4530894a81c7c2cf0b8f149d24ad6263725bb6c92c20d8e8dd3 and Java 25
+# bytecode. The agent compiles against it with isTransitive = false, so the types its POM names are pinned one by one below
+# at the versions that POM declares (velocity-brigadier is SNAPSHOT-only, so Mojang's brigadier stands in, compile and test only).
+velocity-api = "4.3.1"
+velocity-guice = "7.0.0"
+velocity-slf4j = "2.0.20"
+velocity-brigadier = "1.0.500"
+# The pins the Velocity real-server test boots (ADR-0016 section 2). They live here, not in versions.yml, until the schema 3
+# `proxies` key exists (T-M7-08), which then takes them over. Image: itzg/mc-proxy release 2026.11.1, java25 tag, index digest.
+# Jar: Velocity 4.3.1 build 45 from the Paper fill API (sha256 below, checked in the container before the test runs).
+velocity-host-image = "itzg/mc-proxy"
+velocity-host-digest = "sha256:8efdaa9d990f4c509f21b7ced003dd959060777784422fd72fdd537d613c1813"
+velocity-build = "45"
+velocity-jar-sha256 = "0844bcabdcdb4f5b875906fd4c3365bc1bb76918e42bc595ed88ad195258dd75"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -46,6 +61,12 @@ adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" 
 paper-guava = { module = "com.google.guava:guava", version.ref = "paper-guava" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 commons-lang = { module = "commons-lang:commons-lang", version.ref = "commons-lang" }
+velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "velocity-api" }
+velocity-guice = { module = "com.google.inject:guice", version.ref = "velocity-guice" }
+velocity-slf4j = { module = "org.slf4j:slf4j-api", version.ref = "velocity-slf4j" }
+velocity-brigadier = { module = "com.mojang:brigadier", version.ref = "velocity-brigadier" }
+adventure-text-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
+adventure-text-serializer-plain = { module = "net.kyori:adventure-text-serializer-plain", version.ref = "adventure" }
 
 # Build-logic only. Not on any runtime classpath.
 shadow-gradle-plugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadow" }
