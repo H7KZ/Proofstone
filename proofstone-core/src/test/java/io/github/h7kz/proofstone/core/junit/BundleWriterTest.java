@@ -26,6 +26,10 @@ class BundleWriterTest {
     Path tmp;
 
     private static BundleWriter.Contents contents(String leakyLog, String viaproxyLog) {
+        return contents(leakyLog, viaproxyLog, null);
+    }
+
+    private static BundleWriter.Contents contents(String leakyLog, String viaproxyLog, String joinStall) {
         return new BundleWriter.Contents(
                 leakyLog,
                 viaproxyLog,
@@ -35,7 +39,19 @@ class BundleWriterTest {
                 "{\"error\":\"not found\"}\n",
                 "{\"os\":\"Windows 11\",\"docker\":\"29.9.2\",\"viaproxy\":{\"digest\":\"sha256:46ee\"}}\n",
                 "bash scripts/dockerlock.sh ./gradlew :examples:smoke:test\n",
+                joinStall,
                 TOKEN);
+    }
+
+    @Test
+    void aJoinStallIsWrittenAndRedactedAndAbsentWhenNoJoinStalled() throws IOException {
+        Path with = BundleWriter.write(tmp.resolve("with"),
+                contents("log", null, "join stall\nserver log tail at the timeout:\nagent " + TOKEN + "\n"));
+        Path without = BundleWriter.write(tmp.resolve("without"), contents("log", null));
+
+        assertThat(Files.readString(with.resolve("join-stall.txt"))).contains("join stall")
+                .contains(BundleWriter.REDACTED).doesNotContain(TOKEN);
+        assertThat(Files.exists(without.resolve("join-stall.txt"))).isFalse();
     }
 
     @Test
@@ -114,7 +130,8 @@ class BundleWriterTest {
     @Test
     void theWriterRefusesToWriteWithoutTheTokenToRedact() {
         assertThatThrownBy(() -> BundleWriter.write(tmp.resolve("bundle"),
-                new BundleWriter.Contents("log", null, List.of(), List.of(), CELL, "{}", "{}", "", " ")))
+                new BundleWriter.Contents("log", null, List.of(), List.of(), CELL, "{}", "{}", "", null,
+                        " ")))
                 .isInstanceOf(IllegalStateException.class);
     }
 

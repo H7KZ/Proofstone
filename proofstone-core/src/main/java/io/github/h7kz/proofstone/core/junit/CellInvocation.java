@@ -9,6 +9,7 @@ import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
+import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.host.PaperHost;
 import io.github.h7kz.proofstone.core.host.LeakDetector;
 import io.github.h7kz.proofstone.core.host.PaperHostOptions;
@@ -88,6 +89,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private final int repetition;
     /** N of the flake detector (self-tests section 4), or 1 when the detector is off. */
     private final int repeats;
+    /** The server's view of this run's join timeout, for the bundle; {@code null} when no join stalled (T-M6-14). */
+    private volatile String joinStall;
 
     CellInvocation(Cell cell, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog, String driverId,
             int repetition, int repeats) {
@@ -279,7 +282,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (repeats > 1 || failure != null || context.getExecutionException().isPresent()) {
             try {
                 Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0, driverId,
-                        differential, catalog);
+                        differential, catalog, joinStall);
                 if (disagreement != null) {
                     DifferentialRun.writeEvidence(bundle, disagreement, state.host.agentToken());
                 }
@@ -317,7 +320,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 outcome = Attempt.fail(detail(leak));
                 try {
                     Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0, driverId,
-                            differential, catalog);
+                            differential, catalog, joinStall);
                     System.err.println("PROOFSTONE BUNDLE: " + bundle);
                 } catch (RuntimeException e) {
                     failure = combine(failure, new IllegalStateException("cannot write the repro bundle", e));
@@ -531,8 +534,35 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             address = bridged ? "viaproxy" : PaperHost.NETWORK_ALIAS;
             port = bridged ? ViaProxyHost.PROXY_PORT : PaperHost.GAME_PORT;
         }
-        ClientSession session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT));
+        // Marks, so a timeout reports only what the logs said since this join began (T-M6-14).
+        int serverMark = resource.host().logs().size();
+        int proxyMark = resource.proxy() == null ? 0 : resource.proxy().logs().size();
+        ClientSession session;
+        try {
+            session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT));
+        } catch (JoinTimeoutException e) {
+            throw reportStall(resource, e, serverMark, proxyMark);
+        }
         return new SessionClient(name, session);
+    }
+
+    /**
+     * Logs the server's view of a join that timed out, keeps it for the bundle, and returns the timeout with the
+     * server's side in its message. It explains nothing and fixes nothing: the timeout and the failure stay as they
+     * were (T-M6-14, ADR-0003).
+     */
+    private JoinTimeoutException reportStall(HostResource resource, JoinTimeoutException e, int serverMark,
+            int proxyMark) {
+        List<String> during = new ArrayList<>(resource.host().logs().since(serverMark));
+        String source = "server log";
+        if (resource.proxy() != null) {
+            during.addAll(resource.proxy().logs().since(proxyMark));
+            source = "server and ViaProxy logs";
+        }
+        JoinStall stall = JoinStall.of(e, source, during, resource.host().logTail());
+        System.err.println("PROOFSTONE JOIN STALL on " + cellId() + ":\n" + stall.report());
+        joinStall = stall.report();
+        return e.withSuffix(stall.suffix());
     }
 
     private static ViaProxyHost requireProxy(HostResource resource) {

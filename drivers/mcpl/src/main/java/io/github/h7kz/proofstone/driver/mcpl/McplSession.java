@@ -27,7 +27,10 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TranslatableComponent;
 import org.geysermc.mcprotocollib.network.Session;
+import org.geysermc.mcprotocollib.network.event.session.ConnectedEvent;
 import org.geysermc.mcprotocollib.network.event.session.DisconnectedEvent;
+import org.geysermc.mcprotocollib.network.event.session.PacketErrorEvent;
+import org.geysermc.mcprotocollib.protocol.packet.handshake.serverbound.ClientIntentionPacket;
 import org.geysermc.mcprotocollib.network.event.session.SessionAdapter;
 import org.geysermc.mcprotocollib.network.event.session.SessionListener;
 import org.geysermc.mcprotocollib.network.packet.Packet;
@@ -110,8 +113,20 @@ final class McplSession implements ClientSession {
             }
 
             @Override
+            public void connected(ConnectedEvent event) {
+                record("connected");
+            }
+
+            @Override
             public void packetSent(Session session, Packet packet) {
-                record("-> " + packet.getClass().getSimpleName());
+                // The offered protocol is what a version mismatch would show first (T-M6-14).
+                record("-> " + packet.getClass().getSimpleName() + (packet instanceof ClientIntentionPacket intention
+                        ? " protocol=" + intention.getProtocolVersion() : ""));
+            }
+
+            @Override
+            public void packetError(PacketErrorEvent event) {
+                record("packet error: " + event.getCause());
             }
 
             @Override

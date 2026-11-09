@@ -41,10 +41,12 @@ final class BundleWriter {
 
     /**
      * Everything a bundle holds. {@code viaproxyLog} is {@code null} for an unbridged cell. {@code host} is the rendered
-     * host.json: OS, Java, Docker server version and the pins of the run.
+     * host.json: OS, Java, Docker server version and the pins of the run. {@code joinStall} is the server's view of a
+     * join that timed out (T-M6-14), {@code null} when no join stalled.
      */
     record Contents(String serverLog, String viaproxyLog, List<String> agentTranscript,
-            List<String> driverTranscript, Cell cell, String snapshot, String host, String rerun, String secret) {
+            List<String> driverTranscript, Cell cell, String snapshot, String host, String rerun, String joinStall,
+            String secret) {
     }
 
     private BundleWriter() {
@@ -60,7 +62,7 @@ final class BundleWriter {
      * @param differential whether this run is one half of a differential run
      */
     static Path capture(ExtensionContext context, Cell cell, TestState state, int repetition, String driverId,
-            boolean differential, VersionsCatalog catalog) {
+            boolean differential, VersionsCatalog catalog, String joinStall) {
         String test = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
         if (repetition > 0) {
             test += ".r" + repetition;
@@ -79,6 +81,7 @@ final class BundleWriter {
                 snapshot(state.host),
                 hostInfo(catalog, driverId, state.proxy != null),
                 rerun(context, cell),
+                joinStall,
                 state.host.agentToken()));
     }
 
@@ -99,6 +102,9 @@ final class BundleWriter {
         files.put("snapshot.json", contents.snapshot() + "\n");
         files.put("host.json", contents.host() + "\n");
         files.put("rerun.txt", contents.rerun());
+        if (contents.joinStall() != null) {
+            files.put("join-stall.txt", contents.joinStall());
+        }
         deleteTree(dir);
         try {
             Files.createDirectories(dir);

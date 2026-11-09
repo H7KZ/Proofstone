@@ -44,13 +44,31 @@ Every test on one cell gets one verdict. Only `PASS` and a `SKIPPED` with an all
 
 ## Join timeout: `timed out joining`
 
-- **Seen:** `ClientDriverException: timed out joining ... after PT30S (no server reply)`, with the driver transcript in the message.
+- **Seen:** `JoinTimeoutException` (a `ClientDriverException`): `timed out joining ... after PT30S; stalled at <STAGE> (...);
+  protocol offered: <n>; last packet received: <packet>; transcript: [...]; server login start seen: yes|no (...)`.
+  The stage is read from the packets the client sent and received (`ClientIntentionPacket`, `ServerboundHelloPacket`, then
+  whatever the server sent back), for example:
+  - `LOGIN_START_SENT_NO_REPLY`: handshake and login start sent, and the server sent nothing. The shape of every plain
+    `paper@26.3` red on record.
+  - `COMPRESSION_SET_NO_LOGIN_SUCCESS`, `ENCRYPTION_REQUESTED_NO_LOGIN_SUCCESS`: the server answered, then stopped before login
+    success (encryption means an online-mode server).
+  - `CONFIGURATION_STALLED`, `PLAY_NO_JOIN_PACKET`: login worked, then the server stopped sending.
+  - `NO_TCP_CONNECTION`, `CONNECTED_NO_HANDSHAKE`, `HANDSHAKE_SENT_NO_LOGIN_START`: the client side never got that far.
+  - `UNKNOWN`: the server sent a packet no step expects; the packet is named.
+
+  "Server login start seen" is `yes` when a server log line written since the join began names the player, `no` when none
+  does. It is evidence of where the stall is, not a cause. The harness also prints `PROOFSTONE JOIN STALL` to stderr and writes
+  `join-stall.txt` (client stage, protocol offered, last packet, server lines naming the player, server log tail at the
+  timeout) into the repro bundle.
+  Earlier, the same message read `timed out joining ... after PT30S (no server reply)` with only the transcript.
   Observed cases:
   - the Gradle example on `paper@26.3`, once in each of two runs (different tests; both red), out of 4 runs through the action path;
   - `purpur@26.3`, C06, once; not reproduced in 10 repeats;
   - `folia@1.20.6` (bridged), one plain join stall with no server login and no ViaProxy connection line. Seen once.
-- **Cause:** not known. The server did not answer the login.
-- **What to do:** open the repro bundle. Check `server.log` for the login, and `driver-transcript.jsonl` for the last packets.
+- **Cause:** not known. The stage says which step the server never answered, not why. Naming it is not a fix, and the timeout
+  is unchanged (PT30S).
+- **What to do:** open the repro bundle. Read `join-stall.txt` first, then `server.log` for the login and
+  `driver-transcript.jsonl` for the last packets.
   Run the same test alone on the same cell. A pass after a timeout is a flake. Report it with the bundle. Do not add a
   sleep or a retry.
 
