@@ -408,3 +408,72 @@ then `bash scripts/release-maven.sh --dry-run`.
 
 **Diff size.** This is a pure mechanical rename. The 400-changed-line rule in AGENTS.md section 2.4 does not apply.
 The PR body says so.
+
+### T-M6-13 · Pre-M7 readiness: re-run the release checks and rewrite the M7 prompt
+- tier: haiku
+- depends: T-M6-12, T-M6-11, T-M6-10
+- modules: docs, scripts (no code change)
+- adrs: 0011, 0012, 0014
+- specs: specs/self-tests.md §5
+- test-first: no
+
+**Goal.** Re-run every local release gate at one commit, record the result in the ROADMAP "M6 review addendum", and hand the
+next session an accurate M7 prompt. No code or test changes.
+
+**Do.**
+- Run, one at a time and under `scripts/dockerlock.sh`: `bash scripts/gates.sh --max-workers=1`, `:conformance:smoke` on
+  `paper@26.3`, `:conformance:run -Dproofstone.cells=paper@26.1.2`, `:examples:bad-tests:metaTest` (no selector), then
+  `bash scripts/release-mutation-check.sh` (no `--allow-missing`) on the committed clean tree.
+- Run the quickstarts (`docs/user/quickstart-gradle.md`, `docs/user/quickstart-maven.md`) command by command, as a check that
+  each command exists and is correct. Fix doc errors.
+- Run `bash scripts/release-maven.sh --dry-run`, and confirm that `--publish`, `release-images.sh --push` and
+  `--write-digests` each refuse with the release environment cleared.
+- Update ROADMAP, `docs/release-notes-0.1.0-DRAFT.md` (still DRAFT) and `docs/plan/NEXT-SESSION-M7-PROMPT.md`.
+
+**Don't.**
+- Publish, push to any registry, set `PROOFSTONE_RELEASE_CONFIRM`, tag, add a workflow, or touch the `ohlidame-*` containers.
+- Retry a red run, raise a timeout, or count a rerun as a pass. A red run's XML is kept aside before the next run.
+
+**Acceptance.**
+- [x] `bash scripts/gates.sh --max-workers=1` exits 0. (Evidence: `gates: OK` in the T-M6-13 log, exit 0; re-run before the PR, see PR body.)
+- [x] `:conformance:smoke` on `paper@26.3`: `ConformanceSmokeTest` tests=2 skipped=0 failures=0 errors=0.
+- [x] `:conformance:run` on `paper@26.1.2`: failures=0, errors=0. 3 reasoned skips: `missing capability FOLIA_REGIONS` (2) and `missing capability SIMULATED_BEDROCK` (1).
+- [x] `:examples:bad-tests:metaTest` (no selector): BUILD SUCCESSFUL, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED)".
+- [x] Quickstart Gradle: `e2eTest` paper@26.3 tests=2 skipped=0 failures=0 errors=0; `double-output` and `accept-any-right` both red on assertions (`AnvilMechanicE2E.java:42`, `:60`), not join timeouts.
+- [x] Quickstart Maven: `verify -Pe2e` paper@26.3 tests=2 skipped=0 failures=0 errors=0; both bugs red with the table's messages (`one iron and one gold make one diamond`, `coal is not an accepted right input`).
+- [x] `bash scripts/release-mutation-check.sh` (no flag): `mutation-check: PASS (head 4df12c8, cell paper@26.3, killed 4, dirty false)`, `allowed_missing` empty.
+- [x] `release-maven.sh --dry-run`: DRY RUN OK, nothing uploaded, signatures NOT CHECKED (no key set).
+- [x] `release-maven.sh --publish`, `release-images.sh --push`, `release-images.sh --write-digests`: each refused with the release environment cleared.
+- [x] No `.github/workflows`, no tags, LICENSE and NOTICE present, no secret pattern in tracked files, `git status` clean after the runs. No join timeout and no `PSConf moved too quickly` in any run log of this card.
+- [x] Live `dev.proofstone` leftovers fixed: ADR-0011 jackson package. Historical text left as written (ADR-0012, ROADMAP, M0 to M3 cards).
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`, then the real-server runs above, then `bash scripts/release-mutation-check.sh`.
+
+### T-M6-14 · Log the server's view at join and name it in INVALID (flake follow-up)
+- tier: sonnet
+- depends: T-M6-10
+- modules: proofstone-core, docs/user/troubleshooting.md, docs/platforms
+- adrs: 0003, 0010
+- specs: specs/self-tests.md §3
+- test-first: yes
+
+**Goal.** The 3 plain-path join timeouts on record (`paper@26.3`, `timed out joining ... after PT30S`) have no cause. The next one
+must say which handshake step the server never answered.
+
+**Do.**
+- On a join timeout, log the server's view: login start seen (yes or no), protocol version offered, last packet received,
+  and the server log tail at that moment.
+- Put the stage that stalled in the INVALID message, in place of the bare `timed out`.
+- Test the message composition in unit tests, then the real-server path with `scripts/flake-loop.sh` (30 runs, XML kept aside).
+
+**Don't.**
+- Change the PT30S timeout, add a retry, or treat a logged reason as a fix. Explaining the cause is a separate card.
+
+**Acceptance.**
+- [ ] A join timeout's INVALID message names the stalled handshake stage. Evidence: unit test and a real-server red or a 30-run loop with no red.
+- [ ] The server's view is written to the bundle. Evidence: bundle file list in the PR.
+- [ ] ROADMAP "M6 pre-release findings" item 3 updated with the new evidence.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`, then `scripts/flake-loop.sh` on `:examples:gradle-paper-plugin:e2eTest`, `paper@26.3`, under `scripts/dockerlock.sh`.

@@ -1,7 +1,7 @@
 # Quickstart: Maven
 
-**Status: the verified path is the Maven example inside this repository.** Every command below was run on the maintainer's
-Windows machine (Git Bash) at the commit that adds this page. Running your own Maven project outside the repository is not
+**Status: the verified path is the Maven example inside this repository.** Steps 2 to 6 were run as written on the maintainer's
+Windows machine (Git Bash) on 2026-11-09 at commit `4df12c8` (T-M6-13). Step 1 was not re-run. Running your own Maven project outside the repository is not
 verified (see [Limits](#limits-not-verified)). Nothing is published yet, so Proofstone is used from `mavenLocal`.
 
 The example is [`examples/maven-paper-plugin`](../../examples/maven-paper-plugin/README.md): the same anvil plugin as the
