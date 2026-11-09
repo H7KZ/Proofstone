@@ -24,8 +24,8 @@ final class TestState implements AutoCloseable {
     ConformanceResult conformance;
     /** Set when the cell's conformance failed: the INVALID failure that {@code beforeEach} threw. */
     AssertionError invalid;
-    /** The leak detector's snapshot from before the test; {@code null} when the test never got that far. */
-    List<String> gameRules;
+    /** The leak detector's baseline, from before the test's client joins; {@code null} when the test never got that far. */
+    List<String> baseline;
     /** What the cell holds, read from the agent before the test (test-api spec section 10). */
     Set<dev.proofstone.api.Capability> capabilities = Set.of();
     /** Set when the cell lacks a capability the test requires: the skip reason. The body never runs then. */
