@@ -39,7 +39,7 @@ public final class VelocityAgent implements AutoCloseable {
     public static VelocityAgent start(ProxyServer proxy, Object plugin, Logger logger, String agentVersion,
             Map<String, String> env) throws IOException {
         AgentConfig config = AgentConfig.fromEnvironment(env);
-        LogBuffer logs = LogBuffer.attach();
+        LogBuffer logs = LogBuffer.attachPreferringLog4j();
         PreviousServers previous = null;
         VelocityEventProbes probes = null;
         try {

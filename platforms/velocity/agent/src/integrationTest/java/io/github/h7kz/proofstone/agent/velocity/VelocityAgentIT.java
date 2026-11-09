@@ -240,6 +240,8 @@ class VelocityAgentIT {
         }
         assertThat(sawDone).as("Velocity's own \"Done (\" line was captured").isTrue();
         assertThat(data.get("next").asLong()).isGreaterThanOrEqualTo(records.size());
+        // Velocity's Log4j bridge refuses a JUL handler with a WARN of its own (run A showed it), so the agent must not add one.
+        assertThat(container.getLogs()).as("the agent must not add a JUL handler").doesNotContain("addHandler");
         // A floor above INFO leaves out the INFO lines: the level filter works on real records.
         JsonNode errors = JSON.readTree(call("GET", "/v1/log?since=0&minLevel=ERROR", null, true).body())
                 .get("data").get("records");

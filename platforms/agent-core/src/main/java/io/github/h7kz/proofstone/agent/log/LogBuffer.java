@@ -55,6 +55,23 @@ public final class LogBuffer {
         return buffer;
     }
 
+    /**
+     * Attaches to Log4j2 alone when the server has it, and to the JUL root logger only when it does not. A server whose
+     * Log4j2 bridges JUL (Velocity) already delivers every JUL record to the Log4j side, so a JUL handler would see each
+     * record twice, and the bridge refuses {@code addHandler} with a WARN of its own in the server log. Bukkit servers keep
+     * {@link #attach()}: their twin matching needs both sides (class comment).
+     */
+    public static LogBuffer attachPreferringLog4j() {
+        LogBuffer buffer = new LogBuffer();
+        try {
+            buffer.tap = Log4jTap.install(buffer.tapName, buffer::addLog4j);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            buffer.tap = null;
+            Logger.getLogger("").addHandler(buffer.handler);
+        }
+        return buffer;
+    }
+
     public void detach() {
         Logger.getLogger("").removeHandler(handler);
         Log4jTap installed = tap;
