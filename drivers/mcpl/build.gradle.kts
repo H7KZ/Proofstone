@@ -1,6 +1,7 @@
 plugins {
     id("proofstone.java-host")
     id("proofstone.integration-test")
+    id("proofstone.publish")
 }
 
 dependencies {
