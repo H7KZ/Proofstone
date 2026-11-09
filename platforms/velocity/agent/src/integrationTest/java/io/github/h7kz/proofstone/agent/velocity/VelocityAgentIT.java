@@ -170,10 +170,10 @@ class VelocityAgentIT {
 
     @Test
     void commandRunsOnTheProxyAndReturnsItsOutput() throws IOException {
-        // The golden's "version" is a Paper command. Velocity's is "velocity version"; the reply shape is the same.
+        // The golden's "version" is a Paper command. Velocity's is "velocity info"; the reply shape is the same.
         JsonNode golden = golden("command/reply");
         HttpResponse<String> reply = call("POST", "/v1/command",
-                "{\"command\":\"velocity version\",\"timeoutMs\":5000}", true);
+                "{\"command\":\"velocity info\",\"timeoutMs\":5000}", true);
         assertMatches("command/reply", golden, reply);
         assertThat(JSON.readTree(reply.body()).get("data").get("raw").asText()).contains("Velocity").contains(VERSION);
     }
