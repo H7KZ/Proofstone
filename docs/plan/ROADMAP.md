@@ -519,8 +519,28 @@ Original estimate 2 weeks. Remaining: Maven example (about 2 days, needs mvn), s
 runs and a diagnosis), release dry run on a clean tree, Disenchantment CI (external), licence decision (maintainer time).
 Re-estimate **3 weeks** from now, most of it waiting on the maintainer and on Docker runs.
 
+### M6 decisions: recommendations and state (2026-11-09 audit)
+
+Audit of origin/main a11ced9 (PRs #77 to #87) found 7 gaps. Fixed in PR #88 (T-M6-09): the publish gate accepted a
+mutation result made with `--allow-missing` (now refused), the bad tests ignored `-Dproofstone.cells` (forwarded; pinned
+tasks refuse a wrong cell), and wrong doc claims (JDK 17, 21 and 26 roles, bad-test count, bundle path, dead Maven link).
+Not fixed, open: the namespace question (item 7).
+
+| # | Decision | State | Recommendation |
+|---|---|---|---|
+| 1 | Licence | **Maintainer** | Apache-2.0 + DCO + NOTICE (patent grant, Central-friendly). See ADR-0011 proposal. Then T-M6-06 is a 10-minute PR. |
+| 2 | Maven | **Maintainer** (install) | Install Apache Maven, then run T-M6-11. Maven is a stated target audience (ADR-0001, ADR-0009); dropping it removes half of the release claim. |
+| 3 | spigot-buildtools push | Decided | Keep unpushed (bundles BuildTools.jar). Only mineflayer-ref is pushed. |
+| 4 | XP-LEAK bad test | Decided | Accept the documented deviation for 0.1; add a persistent fixture player post-0.1 (M7+ gives a proxy-persistent player anyway). |
+| 5 | Flakes | Decided | Diagnose before any 0.1 claim: card T-M6-10. Does not block starting M7 design cards, blocks M7 real-server acceptance claims that depend on join. |
+| 6 | T-M4-13, T-M4-14 | Decided | Defer past 0.1. |
+| 7 | Namespace | **Maintainer** | If you do not own `proofstone.dev`, rename `dev.proofstone.*` to `io.github.h7kz.proofstone.*` before the first publish (269 files, mechanical, free now, breaking later). If you own it, change ADR-0012 to say so. Decide before M7 adds more packages. |
+| 8 | Workflow | Decided | Keep local scripts only. Revisit a tag-triggered release workflow after 0.1. |
+| 9 | metaTest selector | Done | PR #88. |
+
+What only you can do: items 1, 2 (install), 7, the Central namespace verification (ADR-0012), and any publish or tag.
+
 ### M7 next-session prompt
 
-> Start M7 (Proxies, Velocity and BungeeCord). First read AGENTS.md, docs/plan/ROADMAP.md (M6 review, T-M6-99), docs/adr/0011
-> and docs/adr/README.md. Do not start M7 cards until the M6 decisions list is answered. Refine the M7 epic into cards
-> (Sonnet) and stop for approval. Run `bash scripts/gates.sh --max-workers=1` before any PR. One Docker run at a time.
+The full, current prompt is `docs/plan/NEXT-SESSION-M7-PROMPT.md` (updated after the 2026-11-09 audit). The earlier short prompt
+that stood here is superseded.
