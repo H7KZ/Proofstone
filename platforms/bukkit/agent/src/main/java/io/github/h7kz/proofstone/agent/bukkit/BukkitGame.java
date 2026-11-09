@@ -2,6 +2,7 @@ package io.github.h7kz.proofstone.agent.bukkit;
 
 import io.github.h7kz.proofstone.agent.game.Fields;
 import io.github.h7kz.proofstone.agent.game.Game;
+import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
 import io.github.h7kz.proofstone.agent.scheduler.Affinity;
 import io.github.h7kz.proofstone.agent.scheduler.MainThread;

@@ -1,4 +1,4 @@
-package io.github.h7kz.proofstone.agent.bukkit;
+package io.github.h7kz.proofstone.agent.log;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -10,7 +10,7 @@ import java.util.function.Consumer;
  * no Log4j2 core; callers decide what a missing Log4j means for them. Each event is handed on as an opaque object,
  * read with the accessors below.
  */
-final class Log4jTap {
+public final class Log4jTap {
 
     private final String name;
     private final Object root;
@@ -35,7 +35,7 @@ final class Log4jTap {
     }
 
     /** Adds an appender named {@code name} that calls {@code sink} for every event, on the logging thread. */
-    static Log4jTap install(String name, Consumer<Object> sink) throws ReflectiveOperationException {
+    public static Log4jTap install(String name, Consumer<Object> sink) throws ReflectiveOperationException {
         Class<?> appender = Class.forName("org.apache.logging.log4j.core.Appender");
         Class<?> event = Class.forName("org.apache.logging.log4j.core.LogEvent");
         Class<?> state = Class.forName("org.apache.logging.log4j.core.LifeCycle$State");
@@ -74,7 +74,7 @@ final class Log4jTap {
     }
 
     /** Best effort: the appender only ever records events into buffers that are discarded with it. */
-    void remove() {
+    public void remove() {
         try {
             root.getClass().getMethod("removeAppender", String.class).invoke(root, name);
         } catch (ReflectiveOperationException | RuntimeException e) {
@@ -82,31 +82,31 @@ final class Log4jTap {
         }
     }
 
-    String thread(Object event) throws ReflectiveOperationException {
+    public String thread(Object event) throws ReflectiveOperationException {
         return (String) threadName.invoke(event);
     }
 
     /** The formatted message, or {@code null} when the event has none. */
-    String text(Object event) throws ReflectiveOperationException {
+    public String text(Object event) throws ReflectiveOperationException {
         Object text = formatted.invoke(message.invoke(event));
         return text == null ? null : text.toString();
     }
 
     /** The Log4j level name, such as {@code WARN}. */
-    String level(Object event) throws ReflectiveOperationException {
+    public String level(Object event) throws ReflectiveOperationException {
         return String.valueOf(level.invoke(event));
     }
 
-    String logger(Object event) throws ReflectiveOperationException {
+    public String logger(Object event) throws ReflectiveOperationException {
         Object value = loggerName.invoke(event);
         return value == null ? "" : value.toString();
     }
 
-    Throwable thrown(Object event) throws ReflectiveOperationException {
+    public Throwable thrown(Object event) throws ReflectiveOperationException {
         return (Throwable) thrown.invoke(event);
     }
 
-    long millis(Object event) throws ReflectiveOperationException {
+    public long millis(Object event) throws ReflectiveOperationException {
         return (Long) millis.invoke(event);
     }
 }

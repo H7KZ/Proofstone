@@ -1,5 +1,6 @@
 package io.github.h7kz.proofstone.agent.bukkit;
 
+import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.platform.MinecraftVersion;
 import io.github.h7kz.proofstone.agent.platform.PlatformDetector;
 import io.github.h7kz.proofstone.agent.protocol.Health;

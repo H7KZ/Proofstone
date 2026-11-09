@@ -1,5 +1,6 @@
 package io.github.h7kz.proofstone.agent.bukkit;
 
+import io.github.h7kz.proofstone.agent.log.Log4jTap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;

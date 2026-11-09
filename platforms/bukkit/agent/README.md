@@ -15,6 +15,8 @@ setup writes: give, reset and PATCH.
 - The protocol types here are Java 8 plain classes. They do not depend on `proofstone-protocol`'s Java 17
   records.
 - Refuses to serve without `PROOFSTONE_AGENT_TOKEN`. Logs SEVERE and leaves the HTTP server down.
+- The envelope, auth, HTTP server, `game.Game` and `LogBuffer` live in [`platforms:agent-core`](../../agent-core/README.md)
+  (T-M7-04) and are shaded into this jar. Package names did not change.
 - `server.AgentServer` does HTTP, auth, bodies and envelopes only. Game state comes through `game.Game`.
   `BukkitGame` is the only class that touches Bukkit state.
 
