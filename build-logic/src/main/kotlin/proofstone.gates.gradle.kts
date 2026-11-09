@@ -1,11 +1,11 @@
 // Gate tasks from AGENTS.md §4. Applied once, to the root project.
 // `check` runs each module's `check` (which runs archTest), the lintVersions scan and the build-logic tests.
-import dev.proofstone.build.docs.DocsCheck
-import dev.proofstone.build.lint.VersionLint
-import dev.proofstone.build.matrix.PrintMatrix
-import dev.proofstone.build.versions.HttpVersionSource
-import dev.proofstone.build.versions.VersionsUpdater
-import dev.proofstone.build.versions.VersionsValidator
+import io.github.h7kz.proofstone.build.docs.DocsCheck
+import io.github.h7kz.proofstone.build.lint.VersionLint
+import io.github.h7kz.proofstone.build.matrix.PrintMatrix
+import io.github.h7kz.proofstone.build.versions.HttpVersionSource
+import io.github.h7kz.proofstone.build.versions.VersionsUpdater
+import io.github.h7kz.proofstone.build.versions.VersionsValidator
 import org.gradle.api.GradleException
 
 plugins {
@@ -82,7 +82,7 @@ tasks.named("check") {
 tasks.register<PrintMatrix>("printMatrix") {
     group = "verification"
     description = "Prints the CI matrix JSON for --scope=pr|nightly from versions.yml (T-M3-07)."
-    mainClass.set("dev.proofstone.core.cell.CiMatrix")
+    mainClass.set("io.github.h7kz.proofstone.core.cell.CiMatrix")
     classpath(printMatrixClasspath)
     // Read at execution, so the --scope option is known. Copies to locals so the lambda does not capture the script.
     val repo = rootDir

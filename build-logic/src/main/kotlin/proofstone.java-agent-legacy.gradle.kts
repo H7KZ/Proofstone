@@ -1,5 +1,5 @@
 // In-server agents (Paper, Folia, Spigot, Purpur). They run on old JVMs, so the bytecode is Java 8.
-// Everything the agent bundles is shaded into dev.proofstone.shaded.* (AGENTS.md §3, ADR-0007).
+// Everything the agent bundles is shaded into io.github.h7kz.proofstone.shaded.* (AGENTS.md §3, ADR-0007).
 // Module build files add their own relocate rules.
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.SourceSetContainer

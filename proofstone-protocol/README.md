@@ -20,7 +20,7 @@ Golden request and response pairs for v1 are in `golden/` (T-M1-02). Their forma
 
 ## Public surface
 
-Records in `dev.proofstone.protocol`, one per schema object:
+Records in `io.github.h7kz.proofstone.protocol`, one per schema object:
 
 - `Envelope<T>(ok, data, error)`, `ProtocolError(code, message, detail)`
 - `Health(agentVersion, protocol, platform, mcVersion, capabilities)`
@@ -39,7 +39,7 @@ serialiser must write the `class` key.
 Decision (T-M2-01): no Java 8 twins for the new types. The agent does not use them until T-M2-02 and T-M2-03,
 and those cards add only what they use.
 
-Test fixtures in `dev.proofstone.protocol.testing` (`java-test-fixtures`, not on the main classpath):
+Test fixtures in `io.github.h7kz.proofstone.protocol.testing` (`java-test-fixtures`, not on the main classpath):
 
 - `GoldenMatcher.mismatches(expected, actual)` returns one message per difference, each with a JSON path. It
   understands the placeholders in `golden/README.md`. `GoldenMatcher.concrete(json)` replaces them with samples

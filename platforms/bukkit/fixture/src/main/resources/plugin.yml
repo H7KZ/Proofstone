@@ -1,6 +1,6 @@
 name: proofstone-fixture
 version: 0.1.0
-main: dev.proofstone.fixture.FixturePlugin
+main: io.github.h7kz.proofstone.fixture.FixturePlugin
 # Folia refuses a plugin that does not declare it (docs/platforms/folia.md).
 folia-supported: true
 commands:

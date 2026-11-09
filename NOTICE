@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (see the LICENSE file). Decision:
 
 Third-party components
 - Jackson (jackson-core, jackson-databind, Apache-2.0) is shaded into the Bukkit agent as
-  dev.proofstone.shaded.jackson. Its upstream LICENSE and NOTICE texts must travel with that jar.
+  io.github.h7kz.proofstone.shaded.jackson. Its upstream LICENSE and NOTICE texts must travel with that jar.
 - Other dependencies are either test-only or not redistributed. Their licences are listed in
   docs/adr/0011-licensing.md and docs/release-notes-0.1.0-DRAFT.md.
 - ViaProxy (GPL-3.0) runs only as a separate, unmodified container image. It is not redistributed.

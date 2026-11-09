@@ -77,5 +77,5 @@ tasks.named<Test>("integrationTest") {
 
 // AGENTS.md §3: bundled libraries are relocated so they never clash with the server's own copies.
 tasks.withType<ShadowJar>().configureEach {
-    relocate("com.fasterxml.jackson", "dev.proofstone.shaded.jackson")
+    relocate("com.fasterxml.jackson", "io.github.h7kz.proofstone.shaded.jackson")
 }
