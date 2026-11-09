@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/proxy.json",
+  "title": "Proxy server entry (GET /v1/proxy/servers/{name})",
+  "description": "Spec: docs/specs/agent-protocol.md §2. Added in protocol 1.2 (T-M7-03), additive. The root is one backend server as the proxy knows it. $defs/servers is the reply of GET /v1/proxy/servers. $defs/player is the reply of GET /v1/players/{name} on a proxy agent, which has no inventory or location: previousServer is null until the player has switched (ADR-0016 section 6).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "address", "online", "players"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "address": { "type": "string", "minLength": 1 },
+    "online": { "type": "boolean" },
+    "players": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "servers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["servers"],
+      "properties": {
+        "servers": { "type": "array", "items": { "$ref": "proxy.json" } }
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "uuid", "proxy"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+        "proxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["server", "previousServer"],
+          "properties": {
+            "server": { "type": "string", "minLength": 1 },
+            "previousServer": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] }
+          }
+        }
+      }
+    }
+  }
+}

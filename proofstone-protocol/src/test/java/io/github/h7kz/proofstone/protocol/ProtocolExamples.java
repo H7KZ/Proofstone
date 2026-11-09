@@ -7,7 +7,16 @@ package io.github.h7kz.proofstone.protocol;
 final class ProtocolExamples {
 
     static final String HEALTH = """
-        {"agentVersion":"0.1.0","protocol":"1.1","platform":"paper","mcVersion":"1.21.11","capabilities":["command","players"]}""";
+        {"agentVersion":"0.1.0","protocol":"1.2","platform":"paper","mcVersion":"1.21.11","capabilities":["command","players"]}""";
+
+    static final String PROXY_SERVER = """
+        {"name":"lobby","address":"server-lobby:25565","online":true,"players":1}""";
+
+    static final String PROXY_SERVERS = """
+        {"servers":[{"name":"lobby","address":"server-lobby:25565","online":true,"players":1},{"name":"survival","address":"server-survival:25565","online":false,"players":0}]}""";
+
+    static final String PROXY_PLAYER = """
+        {"name":"Alex","uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","proxy":{"server":"survival","previousServer":"lobby"}}""";
 
     static final String ERROR = """
         {"code":"UNKNOWN_KEY","message":"unknown material","detail":{"key":"minecraft:foo"}}""";

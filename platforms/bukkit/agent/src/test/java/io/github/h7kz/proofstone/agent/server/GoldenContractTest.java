@@ -32,7 +32,7 @@ class GoldenContractTest {
 
     @BeforeEach
     void start() throws IOException {
-        Health health = new Health("0.1.0", "1.1", "paper", "1.8.8", FakeGame.capabilities());
+        Health health = new Health("0.1.0", "1.2", "paper", "1.8.8", FakeGame.capabilities());
         game = new FakeGame();
         server = new AgentServer(new AgentConfig(TOKEN, 0), health, game);
         server.start();

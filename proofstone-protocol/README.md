@@ -31,6 +31,9 @@ Records in `io.github.h7kz.proofstone.protocol`, one per schema object:
   `ConfigEntry(path, value)` (config.json); `Ticks(global, regions)` (ticks.json);
   `EventSubscribe(className)`, `EventPage(events, next)`, `ProbeEvent(className, tick, thread, fields)` (event.json);
   `LogRecord(time, level, logger, message, thrown)`, `LogPage(records, next)` (log-record.json).
+- Protocol 1.2 (T-M7-03): `ProxyServer(name, address, online, players)`, `ProxyServers(servers)`,
+  `ProxyPlayer(name, uuid, proxy)` with `ProxyPlayer.Position(server, previousServer)` (proxy.json). Not a `PlayerState`:
+  a proxy has no inventory or location.
 
 Decision (T-M2-01): the Java field `className` maps to JSON key `class`, which Java reserves. The round-trip test
 skips `EventSubscribe` and `ProbeEvent`, so those two are checked by schema and golden tests only. The agent
