@@ -302,3 +302,60 @@ tests must honour the cell selector, and the docs and card evidence must claim o
 **Verify.**
 `bash scripts/release-gate-test.sh`, then `bash scripts/gates.sh --max-workers=1`, then
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest -Dproofstone.cells=paper@26.3 --no-parallel --max-workers=1`.
+
+### T-M6-10 · Diagnose the join-timeout and Gradle-example flake (M6 audit)
+- tier: sonnet
+- depends: T-M6-09
+- modules: proofstone-core, examples/gradle-paper-plugin, docs/platforms
+- adrs: 0003, 0010
+- specs: specs/self-tests.md §3
+- test-first: no
+
+**Goal.** Explain, or bound, the intermittent reds on record: join timeouts (`purpur@26.3` C06, Gradle example twice, `metaExpect`),
+the Gradle example `VerdictGate.java:150` red and the `PSConf moved too quickly` ErrorLogGuard hit (ROADMAP "M6 pre-release findings").
+
+**Do.**
+- Run the Gradle example on `paper@26.3` at least 30 times, one run at a time through `scripts/dockerlock.sh`, copying each run's
+  XML, bundle and container log aside **before** the next run overwrites them (the `scripts/release-mutation-check.sh` loop pattern).
+- Record per run: verdict, boot time, join time, host CPU and memory, and `docker ps` (other containers on the host).
+- Run the same loop once with Docker Desktop otherwise idle and once with another project's containers busy, to test the
+  resource-contention hypothesis.
+- Write the result in ROADMAP "M6 pre-release findings": red count, cause if shown, or "bounded at N of M, cause unknown".
+
+**Don't.**
+- Add a retry or raise a timeout to make runs green. A timeout change needs its own measurement and an ADR note.
+- Count a rerun as a pass.
+
+**Acceptance.**
+- [ ] At least 30 runs recorded with per-run evidence kept (paths in the PR).
+- [ ] Every red has its verdict type named from the kept XML or bundle.
+- [ ] The contention hypothesis is confirmed or rejected with numbers, or marked unresolved.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:gradle-paper-plugin:e2eTest --no-parallel --max-workers=1`, repeated.
+
+### T-M6-11 · Maven example project (blocked on mvn)
+- tier: haiku
+- depends: T-M6-09
+- modules: examples/maven-paper-plugin, docs/user
+- adrs: 0001, 0009
+- specs: specs/test-api.md
+- test-first: no
+
+**Goal.** The Maven half of T-M6-04, so the mutation check no longer needs `--allow-missing`.
+
+**Do.**
+- Needs Apache Maven on the machine (the maintainer installs it; agents must not download it unasked).
+- Mirror `examples/gradle-paper-plugin`: same anvil mechanic and two toggleable bugs, failsafe with `*E2E.java`, Proofstone from `mavenLocal`.
+- Register it in `scripts/release-mutation-check.sh`'s single toggle list and in `docs/user/quickstart-maven.md` (only what was run).
+
+**Don't.**
+- Document Maven steps that were not run. Depend on unpublished remote snapshots.
+
+**Acceptance.**
+- [ ] `mvn -f examples/maven-paper-plugin verify -Pe2e` is green on `paper@26.3` (XML evidence).
+- [ ] Each injected bug makes it fail.
+- [ ] `bash scripts/release-mutation-check.sh` (no `--allow-missing`) reports a complete PASS.
+
+**Verify.**
+`mvn -f examples/maven-paper-plugin verify -Pe2e` and `bash scripts/release-mutation-check.sh`.
