@@ -72,6 +72,38 @@ Keep the values in a password manager. Set them per command, for example
 5. **Release PR.** Set the release version, run `bash scripts/gates.sh --max-workers=1`, then the dry run, merge, and tag
    `v<version>` (annotated) on the merged commit.
 
+## Container images (GHCR, T-M6-02)
+
+Script: `scripts/release-images.sh`. Same rules as the Maven script: local only, no workflow, no tag.
+
+```bash
+bash scripts/release-images.sh --dry-run          # default: builds both images locally, prints image ids, pushes nothing
+PROOFSTONE_RELEASE_CONFIRM=yes-push GHCR_USERNAME=... GHCR_TOKEN=... bash scripts/release-images.sh --push
+bash scripts/release-images.sh --write-digests    # writes the pushed digest into versions.yml, prints the diff
+```
+
+- **Dry run** builds `images/mineflayer-ref` and `images/spigot-buildtools` (one image per Java tag in
+  `platforms.spigot.builder.jdk`) under `scripts/dockerlock.sh`. The local image ids are not registry digests and differ between
+  rebuilds (timestamps), so they cannot pin anything.
+- **Push** refuses unless `PROOFSTONE_RELEASE_CONFIRM=yes-push`, `GHCR_USERNAME` and `GHCR_TOKEN` are set, the version is not
+  `*-local` and the git tree is clean. It pushes `ghcr.io/h7kz/proofstone-mineflayer-ref:<version>-ctx<hash>`, where the hash is
+  the git blob hash of the build inputs. It never pushes `latest` or any other mutable tag. The login uses a throwaway
+  `DOCKER_CONFIG` that is deleted on exit, so the maintainer's docker credentials are not read or written.
+- **spigot-buildtools is not pushed.** Its Dockerfile says it is never pushed (it bundles BuildTools.jar). Changing that is a
+  maintainer decision.
+- **Write digests** refuses unless `build/release-images/pushed.env` came from a real `--push` for this version. It edits only
+  the `mineflayer-ref` row in `versions.yml` (`image`, `digest`), so the PR diff is small.
+
+Environment (names only, never commit values):
+
+| Name | Used for |
+|---|---|
+| `GHCR_USERNAME` | GitHub user for the GHCR login (`docker login ghcr.io`) |
+| `GHCR_TOKEN` | Token with `write:packages` (classic) or packages write (fine-grained) |
+| `PROOFSTONE_RELEASE_CONFIRM` | Must be `yes-push` for `--push` |
+
+Unverified: pulling by digest (acceptance of T-M6-02). Nothing has been pushed yet.
+
 ## Gotchas
 
 - Gradle writes `.asc` files with CRLF on Windows. The script strips the carriage return before checking the header.

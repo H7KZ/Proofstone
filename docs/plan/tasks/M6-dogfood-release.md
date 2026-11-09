@@ -75,7 +75,7 @@
 - Push mutable tags that the runtime depends on.
 
 **Acceptance.**
-- [ ] The images can be pulled by digest.
+- [ ] The images can be pulled by digest. **UNVERIFIED**: no image has been pushed. Local tooling only (`scripts/release-images.sh`, docs/release.md): dry run builds both images and prints ids, `--push` refuses without `PROOFSTONE_RELEASE_CONFIRM=yes-push` and GHCR env, `--write-digests` refuses without a pushed digest. spigot-buildtools is not pushed (its Dockerfile forbids it): open question for the maintainer.
 
 **Verify.**
 The CI run link.
