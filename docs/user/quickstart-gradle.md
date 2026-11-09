@@ -11,8 +11,13 @@ server.
 ## Before you start
 
 - **Docker** is running. Every real-server run starts containers.
-- **JDK 21 and JDK 26** are installed. `settings.gradle.kts` has no toolchain resolver, so Gradle does not download them.
-  The plugin compiles on JDK 26 at release 25; the e2e suite runs on JDK 21.
+- **JDKs, found by Gradle toolchains.** `settings.gradle.kts` has no toolchain resolver, so Gradle does not download them.
+  - **JDK 21** runs the harness and the e2e suites (`conformance`, `drivers/mcpl`, `examples/bad-tests`, and the example's
+    `e2eTest` launcher and compiler).
+  - **JDK 17** builds the host-side modules (`proofstone.java-host`).
+  - **JDK 26** compiles the Paper example plugin only (`release 25`). Nothing else needs it.
+  - **What was verified (M6 audit):** a harness real-server run needs JDK 21 and 17. `./gradlew check` needs all three
+    (17, 21 and 26). A `check` run without JDK 26 is untested.
 - **A Bash shell.** `scripts/dockerlock.sh` is a Bash script. On Windows use Git Bash (the maintainer's setup).
 - **The Minecraft EULA.** Read <https://aka.ms/MinecraftEULA>. Proofstone never accepts it for you. You accept it per
   command with an environment variable (step 3). Never write it to a file or commit it.
@@ -57,6 +62,9 @@ The result is in `examples/gradle-paper-plugin/build/test-results/e2eTest/*.xml`
 suite shows:
 
 - `tests="2"`, `skipped="0"`, `failures="0"`, `errors="0"`.
+
+A red run writes its repro bundle to `build/proofstone/<platform>@<mc>/<TestClass>.<method>/`, under the example's project
+directory. The bundle holds `rerun.txt` with the exact Gradle command. Bundles are local and never committed.
 
 A skipped test is not a pass. If the EULA variable is missing, the tests are reported as
 `PROOFSTONE SKIPPED (not a pass): Minecraft EULA not accepted ...` and the XML shows skips. Fix the cause in

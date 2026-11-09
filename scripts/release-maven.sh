@@ -29,23 +29,15 @@ STAGING=build/central-staging
 VERSION=$(sed -n 's/^proofstone = "\(.*\)"$/\1/p' gradle/libs.versions.toml)
 [[ -n "$VERSION" ]] || die "cannot read the proofstone version from gradle/libs.versions.toml"
 
-# T-M6-07: publish needs a passing mutation check for this exact commit. The check writes the result file; this reads it.
+# T-M6-07: publish needs a complete PASS for this exact commit. The check writes the result file; the gate
+# (scripts/lib/mutation-gate.sh, T-M6-09) decides. A run with --allow-missing is never publishable.
 MUTATION_RESULT=build/release/mutation-check.env
+# shellcheck source=lib/mutation-gate.sh
+source scripts/lib/mutation-gate.sh
 mutation_gate() {
-  [[ -s "$MUTATION_RESULT" ]] || die "refusing. No mutation-check result. Run: bash scripts/release-mutation-check.sh (T-M6-07)."
-  local status head dirty gen now
-  status=$(sed -n 's/^status=//p' "$MUTATION_RESULT")
-  head=$(sed -n 's/^head=//p' "$MUTATION_RESULT")
-  dirty=$(sed -n 's/^dirty=//p' "$MUTATION_RESULT")
-  gen=$(sed -n 's/^generated_epoch=//p' "$MUTATION_RESULT")
-  now=$(date +%s)
-  [[ "$status" == PASS ]] || die "refusing. Mutation check status is '${status:-unknown}', not PASS ($MUTATION_RESULT)."
-  [[ "$head" == "$(git rev-parse HEAD)" ]] || die "refusing. Mutation check ran on ${head:0:12}, not on HEAD. Re-run it."
-  [[ "$dirty" == false ]] || die "refusing. Mutation check ran on a dirty tree. Re-run it on a clean commit."
-  if ! [[ "$gen" =~ ^[0-9]+$ ]] || ((now - gen > 86400)); then
-    die "refusing. Mutation check result is older than 24 hours. Re-run it."
-  fi
-  echo "mutation-check: PASS for ${head:0:12} (allowed missing: $(sed -n 's/^allowed_missing=//p' "$MUTATION_RESULT"))"
+  mutation_gate_check "$MUTATION_RESULT" "$(git rev-parse HEAD)" "$(date +%s)" \
+    || die "refusing. The mutation-check result is not a complete PASS for HEAD (reason above). Re-run: bash scripts/release-mutation-check.sh, without --allow-missing (T-M6-07)."
+  echo "mutation-check: complete PASS for $(git rev-parse --short=12 HEAD) ($MUTATION_RESULT)"
 }
 
 if [[ "$MODE" == publish ]]; then

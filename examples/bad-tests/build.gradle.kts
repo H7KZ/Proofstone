@@ -41,7 +41,17 @@ val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
 
 val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
 
-/** What every run of a bad test needs: the test classes, the fixture, the agent jar and the repo root. */
+/** Copies each named `-D` property from the Gradle command line into the test JVM, when it is set there. */
+fun Test.forwardCommandLineProperties(names: List<String>) {
+    for (name in names) {
+        providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
+    }
+}
+
+/**
+ * What every run of a bad test needs: the test classes, the fixture, the agent jar and the repo root. The cell selector
+ * and the scope reach every run (T-M6-09), so `-Dproofstone.cells=<cell>` picks the cell for all of them.
+ */
 fun Test.badTestSetup() {
     // A Test task made by hand gets no test classes from the java plugin, so they are set here (as conformance does).
     testClassesDirs = sourceSets["test"].output.classesDirs
@@ -52,6 +62,18 @@ fun Test.badTestSetup() {
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
+    forwardCommandLineProperties(listOf("proofstone.cells", "proofstone.scope"))
+    // A differential run needs an explicit native cell: the reference driver has one row (paper@26.1.2). Refuse before
+    // any Docker run starts, rather than let the run pick a cell that the reference driver cannot drive.
+    doFirst {
+        val props = (this as Test).systemProperties
+        if (props["proofstone.differential"] == "true" && props["proofstone.cells"] == null) {
+            throw GradleException(
+                "A differential run needs an explicit native cell. Add -Dproofstone.cells=paper@26.1.2 " +
+                    "(the reference driver's row, examples/bad-tests/README.md).",
+            )
+        }
+    }
     // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.
     outputs.upToDateWhen { false }
     testLogging {
@@ -62,13 +84,12 @@ fun Test.badTestSetup() {
 
 tasks.test {
     badTestSetup()
-    // The run-time cell selector, scope, control-run, flake-detector repeat count and differential switches reach the
-    // test JVM from the Gradle command line (test-api spec section 1, self-tests sections 2, 3 and 4).
+    // The control-run, flake-detector repeat count and differential switches reach the test JVM from the Gradle command
+    // line (self-tests sections 2, 3 and 4). The cell selector and scope come from badTestSetup, as for every run.
     // injectConformanceFault is forwarded too, so the rerun.txt of an INVALID bundle reproduces from the command line.
-    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun", "proofstone.repeat",
-            "proofstone.differential", "proofstone.injectConformanceFault")) {
-        providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
-    }
+    forwardCommandLineProperties(
+        listOf("proofstone.controlRun", "proofstone.repeat", "proofstone.differential", "proofstone.injectConformanceFault"),
+    )
     // The differential bad test (T-M4-06) only means something in a differential run, where its reference driver is
     // faulted. A differential run runs only that package (the other bad tests have no cell on the native row), and
     // every other run leaves it out, so it never shows up in a normal bad-tests suite.

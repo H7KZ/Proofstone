@@ -52,7 +52,7 @@
 - Publish anything before T-M6-06 (licence) is merged.
 
 **Acceptance.**
-- [x] A dry-run publish to staging succeeds. (Evidence: `bash scripts/release-maven.sh --dry-run` exits 0, unsigned and signed with a throwaway key; see docs/release.md.)
+- [x] A dry-run publish to staging succeeds. (Evidence: author-reported, not re-verified. The author ran `bash scripts/release-maven.sh --dry-run`, which exited 0, unsigned, and signed with a throwaway key. The verifier could not confirm the signatures. See docs/release.md. Reproduce with `bash scripts/release-maven.sh --dry-run`, which uploads nothing.)
 
 **Verify.**
 `./gradlew publishToMavenLocal`, then the staging dry run.
@@ -205,7 +205,7 @@ Review.
 - Skip mutations to make a release pass.
 
 **Acceptance.**
-- [x] A surviving mutation demonstrably blocks the release, tested by temporarily disabling a bug. (Evidence, local: with `double-output` disabled in an uncommitted edit, `scripts/release-mutation-check.sh` printed SURVIVED and exited 1, and `release-maven.sh --publish` refused with "Mutation check status is 'FAIL'". The clean run on the commit 1591d77 printed PASS: baseline PASS, both bugs KILLED, `maven-paper-plugin` NOT RUN allowed via `--allow-missing`. Publish then passed the mutation gate and stopped on ADR-0011, as expected.)
+- [x] A surviving mutation demonstrably blocks the release, tested by temporarily disabling a bug. (Evidence: author-reported, not re-verified. The author reported that, with `double-output` disabled in an uncommitted edit, `bash scripts/release-mutation-check.sh` printed SURVIVED and exited 1. Reproduce: disable one `bugs:` toggle in an example's `config.yml`, run `bash scripts/release-mutation-check.sh`, and read its table; it must print SURVIVED and exit 1. Restore the toggle afterwards. The author also reported a clean run on commit 1591d77 with `maven-paper-plugin` NOT RUN allowed by `--allow-missing`. Since T-M6-09 the publish gate refuses any result with `allowed_missing` set, so that result cannot be published. The file `build/release/mutation-check.env` is untracked and is not evidence on its own.)
 
 **Verify.**
 The CI run link.
@@ -258,3 +258,45 @@ The recorded run-through.
 
 **Verify.**
 The links to the gate, nightly and mutation-check runs.
+
+### T-M6-09 · Release hygiene fixes (M6 audit)
+- tier: haiku
+- depends: T-M6-99
+- modules: scripts, examples/bad-tests, docs/user, docs/plan
+- adrs: 0003, 0012
+- specs: specs/self-tests.md §5
+- test-first: yes
+
+**Goal.** Close the release-hygiene findings of the M6 audit: an unfinished mutation check must not be publishable, the bad
+tests must honour the cell selector, and the docs and card evidence must claim only what was verified.
+
+**Do.**
+- Move the mutation-check gate of `scripts/release-maven.sh` into `scripts/lib/mutation-gate.sh`. It accepts only a complete
+  PASS for HEAD: `allowed_missing` empty, `dirty=false`, a matching `head`, every key present, and no older than 24 hours.
+  Test it with fixture result files in `scripts/release-gate-test.sh` (run by `scripts/gates.sh`), never by publishing.
+- `examples/bad-tests/build.gradle.kts`: forward `-Dproofstone.cells` (and `proofstone.scope`) to every `meta*` bad-test run.
+  A differential run without `-Dproofstone.cells` fails with a message that names the cell to pass.
+- `examples/bad-tests/README.md`: list all eight bad tests (including `metaInvalidWindow`) and the differential command with
+  `-Dproofstone.cells=paper@26.1.2`.
+- `docs/user/quickstart-gradle.md`: state the JDKs that were verified per task, and fix the bundle path to
+  `build/proofstone/<platform>@<mc>/<TestClass>.<method>/`.
+- `docs/user/quickstart-maven.md`: do not name the missing `examples/maven-paper-plugin/` directory.
+- T-M6-01 and T-M6-07 evidence: T-M6-01 is "author-reported, not re-verified"; T-M6-07 points to a reproducible command, not
+  to the untracked `build/release/mutation-check.env`.
+
+**Don't.**
+- Publish, upload, tag or push anything. Run `--publish` never.
+- Weaken a bad test, a verdict expectation or a metaTest assertion. Change the injected bugs.
+- Add a workflow.
+
+**Acceptance.**
+- [x] Gate test: a complete PASS is accepted; an `allowed_missing` PASS, a dirty result, a wrong HEAD, INCOMPLETE and FAIL are refused. (Evidence: `bash scripts/release-gate-test.sh` 9 passed, 0 failed, fixtures only; within `scripts/gates.sh`, `gates: OK`.)
+- [x] `release-maven.sh --publish` reaches the mutation gate only through `mutation_gate_check`. (Evidence: `scripts/release-maven.sh` calls the lib; `--publish` was never run.)
+- [ ] `metaTest` with `-Dproofstone.cells=paper@26.3` runs only `paper@26.3`, and all eight verdicts are the expected ones. **NOT MET.** Only paper@26.3 ran (every row in the log is paper@26.3). metaTest red, 3 of 8 off: `metaDisagree` cannot run on paper@26.3 (needs `-Dproofstone.cells=paper@26.1.2`, now refused with a clear error); `metaInvalidWindow` produced no INVALID (both window tests PASSED on paper@26.3); `metaExpect` got INVALID from conformance join timeouts, not FAIL. Not fixed here: a verdict-expectation change would weaken the test. Needs an owner decision. Run: `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest -Dproofstone.cells=paper@26.3 --no-parallel --max-workers=1`, log under the scratchpad.
+- [x] A differential run without `-Dproofstone.cells` fails with a clear message. (Evidence: `./gradlew :examples:bad-tests:test -Dproofstone.differential=true` failed in doFirst with "A differential run needs an explicit native cell. Add -Dproofstone.cells=paper@26.1.2"; no server started.)
+- [x] The quickstart JDK statements say exactly what was verified; the Maven page names no missing path. (Evidence: `docs/user/quickstart-gradle.md` JDK section; `quickstart-maven.md` no longer names `examples/maven-paper-plugin/`.)
+- [x] T-M6-01 and T-M6-07 evidence is reworded as above. (Evidence: both lines in this card, now "author-reported, not re-verified" with reproducible commands.)
+
+**Verify.**
+`bash scripts/release-gate-test.sh`, then `bash scripts/gates.sh --max-workers=1`, then
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest -Dproofstone.cells=paper@26.3 --no-parallel --max-workers=1`.

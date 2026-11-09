@@ -68,7 +68,7 @@ Each layer may depend only on the layers below it. Plugin authors touch **only L
   - `VACUOUS` (passed in the control run);
   - `FLAKY` (the verdict changed across repeats);
   - `DISAGREE` (the drivers disagreed in a differential run).
-- **Repro bundles** are written to `build/proofstone/<cell>/<test>/`.
+- **Repro bundles** are written to `build/proofstone/<platform>@<mc>/<TestClass>.<method>/`.
 - **Reports:** JUnit XML plus `proofstone-report.json`, which is machine-readable for agents and CI.
 
 ### 2.3 Platform packs (L3a)
