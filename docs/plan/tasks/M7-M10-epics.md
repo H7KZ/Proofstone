@@ -4,6 +4,9 @@ These are not executable cards yet. Each epic is refined by its milestone-review
 session turns it into `T-Mx-NN` cards in the standard format, in a file `Mx-<name>.md`.
 
 ## M7: Proxies (Velocity, BungeeCord)
+
+**Refined into cards on 2026-11-09: see [M7-proxies.md](M7-proxies.md) (awaiting maintainer approval).** The text below is the original epic.
+
 - **Topology:** a proxy container plus N backend Paper containers, each with the Bukkit agent. Clients
   connect to the proxy. Velocity uses modern forwarding and BungeeCord uses legacy forwarding.
 - **Proxy agents:** a Velocity plugin and a Bungee plugin that implement the protocol subset
