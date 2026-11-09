@@ -80,6 +80,10 @@ M5 follow-up_
   selection plans a cell and reports a capability skip with its reason (zero cells stays a loud error). _paper, purpur_
 - **Any other boot ERROR on a new Folia row is invisible to the log guard** (it runs only inside the test window). Read the
   server log by hand after a new row boots.
+- **Intermittent `PSConf moved too quickly!` WARN fails c02 in a full smoke run.** One full run failed c02 on folia, purpur and
+  spigot @26.3 with this WARN, which the log guard counts as an error. Not reproduced by a single-cell run of spigot@26.3 on
+  main or on the PR branch. Unexplained. The guard allow-list covers `T`-prefixed and `.`-prefixed clients only, not `PSConf`.
+  Finding in the M6 pre-release list in `docs/plan/ROADMAP.md`. _26.3_
 
 ### Prototype notes (1.21.11, RCON only)
 - `/data` does **not exist** on Folia; the server replies "Unknown or incomplete command".

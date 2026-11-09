@@ -410,3 +410,17 @@ spigot 3 (1.8.8, 1.21.11, 26.3), folia 0.
    1.14 to 1.19.x; Folia 1.19.4 to 1.21.10 (1.20.6 included, see above).
 6. Nightly schedule: **open**, untouched here.
 7. CI cost (PR #68): **open**, untouched here.
+
+## M6 pre-release findings (T-M4-12b verification, 2026-11-09)
+
+Open findings, not passes. Each needs a maintainer call or a diagnosis before M6 release.
+
+1. **T-M4-12 XP-LEAK bad test not added (deviation).** The card's bad test (a test leaves a player's XP changed, expect `LEAK`)
+   is not reachable through the public API. Cleanup disconnects the test client before the after-snapshot, and no path changes
+   another player, a plugin config or an enabled flag. Options: (a) a persistent fixture player online before the baseline,
+   which a test can change; (b) compare the test's own client before cleanup, which false-positives legitimate tests that give
+   items. Maintainer call. Recorded in the T-M4-12 card and PR #80.
+2. **Intermittent ErrorLogGuard WARN `PSConf moved too quickly!` on c02.** One full 4-platform `@26.3` smoke run failed c02 on
+   folia, purpur and spigot with this WARN (`ErrorLogGuard.java:109`). Not reproduced single-cell on spigot@26.3 on main or on the
+   PR branch. Not caused by PR #80 (the PR does not touch ErrorLogGuard or the `PSConf` client name). Unexplained. The guard
+   allow-list covers `T`-prefixed and `.`-prefixed harness clients, not `PSConf`. Gotcha in `docs/platforms/folia.md`.
