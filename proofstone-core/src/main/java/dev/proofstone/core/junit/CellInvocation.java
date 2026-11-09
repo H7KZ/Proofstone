@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.Set;
 import org.opentest4j.TestAbortedException;
 import org.testcontainers.containers.Network;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -165,9 +166,6 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        if (differential) {
-            DifferentialRun.begin();
-        }
         HostResource resource = resource(context);
         PaperHost host = resource.host();
         // Before the join, so anything the join or the reset logs counts for this test.
@@ -186,12 +184,16 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             throw new TestAbortedException(missing.get());
         }
         // Conformance comes first (self-tests section 1): on a failed cell the test body never runs, and the test is INVALID.
-        state.conformance = conformance(context, host);
+        state.conformance = conformance(context, resource, state.capabilities);
         AssertionError invalid = VerdictGate.judgeInvalid(context.getRequiredTestMethod(), cellId(),
                 state.conformance);
         if (invalid != null) {
             state.invalid = invalid;
             throw invalid;
+        }
+        // After conformance: its scenarios use the same client oracle, and their observations are not the test's.
+        if (differential) {
+            DifferentialRun.begin();
         }
         // Before the join, so the snapshot is the server's state before this test's client arrives.
         state.gameRules = LeakDetector.snapshot(host);
@@ -342,10 +344,13 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * The cell's conformance result, run once per cell per run and cached in the root store (self-tests section 1). A
      * failure of the run itself, rather than a failed scenario, is an error and is not cached.
      */
-    private ConformanceResult conformance(ExtensionContext context, PaperHost host) {
+    private ConformanceResult conformance(ExtensionContext context, HostResource resource,
+            Set<dev.proofstone.api.Capability> capabilities) {
         ConformanceCache cache = context.getRoot().getStore(NAMESPACE)
                 .getOrComputeIfAbsent(CONFORMANCE, key -> new ConformanceCache(), ConformanceCache.class);
-        return cache.get(cellId(), () -> CellConformance.run(cellId(), host));
+        // The per-cell check joins its own client through this invocation's driver (T-M4-10b).
+        return cache.get(cellId(), () -> CellConformance.run(cellId(), resource.host(),
+                new CellView(cell, bridged, capabilities), name -> connect(resource, name)));
     }
 
     /** The two runs of one test on one cell share this key, so the second one finds the first one's evidence. */

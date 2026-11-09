@@ -18,6 +18,9 @@ import org.junit.jupiter.api.Assertions;
  */
 public final class C04ChestMove {
 
+    private static final String CHEST_TYPE = "minecraft:generic_9x3";
+    /** What the window fault expects instead: a chest the vanilla server never opens (T-M4-10b). */
+    private static final String FAULT_CHEST_TYPE = "minecraft:generic_9x2";
     private static final int SLOT_A = 0;
     private static final int SLOT_B = 13;
 
@@ -26,11 +29,19 @@ public final class C04ChestMove {
 
     /** Runs the scenario on a joined client. Throws an {@link AssertionError} when an oracle disagrees. */
     public static void run(Cell cell, Agent agent, Client client) {
+        run(cell, agent, client, false);
+    }
+
+    /**
+     * @param windowFault {@code true} is the conformance-breaking override of the per-cell check (T-M4-10b): the
+     *     scenario expects a chest type the server never opens, so the cell fails and its tests are INVALID
+     */
+    public static void run(Cell cell, Agent agent, Client client, boolean windowFault) {
         PlayerHandle player = ConformanceFixture.stand(agent, client);
         player.give(Item.of("diamond_sword").enchant("sharpness", 5));
 
         try (Window chest = client.openBlock(ConformanceFixture.CHEST)) {
-            Assertions.assertEquals("minecraft:generic_9x3", chest.type(), "chest window type");
+            Assertions.assertEquals(windowFault ? FAULT_CHEST_TYPE : CHEST_TYPE, chest.type(), "chest window type");
             chest.moveFromInventory(ConformanceFixture.sword(), SLOT_A);
             chest.awaitSlot(SLOT_A, ConformanceFixture.sword());
 

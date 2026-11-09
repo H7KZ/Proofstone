@@ -98,6 +98,20 @@ What the numbers say:
 - The 11-row Paper matrix (ADR-0015) is not part of the nightly set. Running every row costs about 40 s of boot each
   plus the bridge, and no self-test needs more than two cells.
 
+**Per-cell conformance (T-M4-10b).** The per-cell check now joins one client and runs C03 on every cell, and C04 to C08
+on every bridged cell, once per cell per run (`ConformanceCache`). Measured from the `PROOFSTONE CONFORMANCE` log lines
+(wall time of each scenario, the join and disconnect excluded from the rows and included in the cell total), with the
+`list` check before them, on 2026-11-09, Windows and Docker Desktop, one Docker lock, one Gradle run per row:
+
+| Cell | Scenarios run | Per-scenario (ms) | Cell total (ms) | Added to each cell's first test |
+|---|---|---|---|---|
+| paper@26.3 (native) | C03 | 1461 to 1689 | 2954 to 3171 | about 3 s |
+| paper@26.1.2 (bridged) | C03 to C08 | C03 1449 to 1582, C04 848 to 1096, C05 945 to 950, C06 1098 to 1151, C07 998 to 999, C08 999 to 1001 | 8197 to 8671 | about 8 s |
+
+The cost is paid once per cell per run, not per test. A full `metaTest` with its 7 bad-test tasks took 5m 1s locally (with
+the window bad test added). The check adds no boot. Its one extra cost is the join and the scenario time, so a cell's
+first test is about 3 s slower on native and about 8 s slower on bridged rows.
+
 **Overlap inside one locked run.** The five bad-test tasks ran concurrently, although the command had `--no-parallel`
 and `gradle.properties` sets `org.gradle.parallel=true`. The XML suite start times are 10:22:20.67 to 10:22:20.78 UTC,
 within 0.11 s. The testcase times add up to about 240 s, and the whole Gradle run took 76 s. Parallel Testcontainers
