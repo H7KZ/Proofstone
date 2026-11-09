@@ -12,6 +12,8 @@ expected to produce one verdict, and `metaTest` asserts it:
   driver is faulted (`proofstone.injectDriverFault`), so a differential run must report it as `DISAGREE`.
 - `invalid/InvalidConformanceE2E` (T-M4-07) has a passing body, but the cell's conformance is broken on purpose
   (`proofstone.injectConformanceFault`), so it must report `INVALID` and its body must not run.
+- `invalid/window/WindowConformanceInvalidE2E` has passing bodies, but the cell's window is broken on purpose
+  (`proofstone.injectConformanceFault=window`), so every test on it must report `INVALID` (`metaInvalidWindow`).
 - `leak/LeakE2E` (T-M4-07) changes the world's `random_tick_speed` and leaves it changed, so the leak detector must
   fail it with `LEAK` (self-tests section 4b).
 - `expect/ExpectFailsE2E` (T-M4-15) has one wrong per-cell `@Expect` (it claims a capability Paper never reports) and one
@@ -22,8 +24,9 @@ expected to produce one verdict, and `metaTest` asserts it:
 
 ## Boundaries
 
-- Must stay out of user-facing suites. These tests exist to fail in the expected way, not to be green. `invalid` and
-  `leak` are excluded from `test` in every run; only `metaTest` runs them, each in its own Gradle task with its switch.
+- Must stay out of user-facing suites. These tests exist to fail in the expected way, not to be green. `invalid`, `leak`,
+  `expect` and `requires` are excluded from `test` in every run; only `metaTest` runs them, each in its own Gradle task
+  with its switch.
 - Not part of `check`: its tests boot a real server, so they need Docker.
 - Contains no framework code, only a test project that uses the public API and the verdict switch.
 
@@ -39,8 +42,8 @@ Read <https://aka.ms/MinecraftEULA> first. The harness never accepts the EULA fo
 PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel
 ```
 
-`metaTest` runs the seven bad tests, each in its own task (`metaVacuous`, `metaFlaky`, `metaDisagree`, `metaInvalid`,
-`metaLeak`, `metaExpect`, `metaRequires`), reads each task's JUnit XML under `build/test-results/<task>/`, and fails unless
+`metaTest` runs the eight bad tests, each in its own task (`metaVacuous`, `metaFlaky`, `metaDisagree`, `metaInvalid`,
+`metaInvalidWindow`, `metaLeak`, `metaExpect`, `metaRequires`), reads each task's JUnit XML under `build/test-results/<task>/`, and fails unless
 every run has `skipped="0"` and `errors="0"`, and every failure starts with the expected verdict. A skip or a missing
 report is red. `metaRequires` is the one task that expects a skip: its skipped test must name the missing capability in
 the proofstone report.
@@ -51,8 +54,34 @@ The individual switches still work on `test` for the first three, as documented 
 PROOFSTONE_ACCEPT_EULA=true ./gradlew :examples:bad-tests:test
 PROOFSTONE_ACCEPT_EULA=true ./gradlew :examples:bad-tests:test -Dproofstone.controlRun=true
 PROOFSTONE_ACCEPT_EULA=true ./gradlew :examples:bad-tests:test -Dproofstone.repeat=5
-PROOFSTONE_ACCEPT_EULA=true ./gradlew :examples:bad-tests:test -Dproofstone.differential=true
+PROOFSTONE_ACCEPT_EULA=true ./gradlew :examples:bad-tests:test -Dproofstone.differential=true -Dproofstone.cells=paper@26.1.2
 ```
+
+The cell selector (`-Dproofstone.cells=<platform>@<mc>`) and `-Dproofstone.scope` reach every run, `test` and each `meta*`
+task alike. The selector is subject to the cell pins below. A differential run (`-Dproofstone.differential=true`) needs the
+native cell it runs on, `-Dproofstone.cells=paper@26.1.2`: without it the run stops before any server starts.
+
+### Cell pins
+
+The selector replaces each test's `@Matrix`, so a selector can move a test to a cell where its verdict means something else.
+Tests whose `@Matrix` names one version are pinned to it. Without a selector a pinned task runs its pin. A selector that names any
+other cell is refused in that task's `doFirst`, before any server starts. The refusal names the task and the supported cell
+(`scripts/bad-tests-pin-check.sh`, run by `scripts/gates.sh`).
+
+| Task | Test | `@Matrix` | Supported cells |
+|---|---|---|---|
+| `metaVacuous` | `VacuousE2E` | `latest` | any Paper cell |
+| `metaFlaky` | `FlakyE2E` | `latest` | any Paper cell |
+| `metaDisagree` | `differential/DriverFaultDisagreeE2E` | `26.1.2` | `paper@26.1.2` only |
+| `metaInvalid` | `invalid/InvalidConformanceE2E` | `latest` | any Paper cell |
+| `metaInvalidWindow` | `invalid/window/WindowConformanceInvalidE2E` | `26.1.2` | `paper@26.1.2` only |
+| `metaLeak` | `leak/LeakE2E` | `26.1.2` | `paper@26.1.2` only |
+| `metaExpect` | `expect/ExpectFailsE2E` | `latest` | any Paper cell |
+| `metaRequires` | `requires/RequiresSkipsE2E` | `latest` | any Paper cell |
+
+`-Dproofstone.cells=paper@26.3` on `metaTest` is therefore refused at `metaInvalidWindow`, `metaDisagree` and `metaLeak`. Run
+the cell-agnostic tasks on another cell by name, for example `:examples:bad-tests:metaVacuous -Dproofstone.cells=paper@26.3`.
+`metaTest` without a selector is the full check.
 
 The first run is green: the vacuous test passes with its plugin, and the flaky test passes on its first draw. The
 control run is expected to fail with `VACUOUS` on `VacuousE2E`. The repeat run is expected to fail with `FLAKY` on

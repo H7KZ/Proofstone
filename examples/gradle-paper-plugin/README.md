@@ -25,7 +25,7 @@ The plugin carries two injected bugs, both off by default, so the suite can prov
   remote repository. Remote snapshots are never used.
 - The agent jar (`platforms/bukkit/agent/build/libs/agent-all.jar`) is a plugin, not a library. It is built from this
   repository, not taken from mavenLocal (not published anywhere, T-M6-01 decides that).
-- Needs a JDK 26 and a JDK 21 on the machine (toolchains: plugin compile and the e2e suite).
+- Needs a JDK 26 (plugin compile only) and a JDK 21 (e2e suite) on the machine, as Gradle toolchains. Host modules also need 17.
 - The e2e suite needs Docker. It is not part of `check`.
 - The plugin under test is test-only. It is never shipped.
 - The test reads the cell pins from the repository's `versions.yml`, through `proofstone.repoRoot`.

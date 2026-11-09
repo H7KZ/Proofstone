@@ -74,7 +74,7 @@ Until these are explained, the claim "the examples are green" is not established
 
 ## Repro bundles
 
-Every result other than `PASS` writes a bundle under the test project's `build/proofstone/<cell>/<test>/`. Bundles are local.
+Every result other than `PASS` writes a bundle under the test project's `build/proofstone/<platform>@<mc>/<TestClass>.<method>/`. Bundles are local.
 They are never committed.
 
 | File | Holds |

@@ -41,8 +41,18 @@ val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
 
 val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
 
-/** What every run of a bad test needs: the test classes, the fixture, the agent jar and the repo root. */
-fun Test.badTestSetup() {
+/** Copies each named `-D` property from the Gradle command line into the test JVM, when it is set there. */
+fun Test.forwardCommandLineProperties(names: List<String>) {
+    for (name in names) {
+        providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
+    }
+}
+
+/**
+ * What every run of a bad test needs: the test classes, the fixture, the agent jar and the repo root. The cell selector
+ * and the scope reach every run (T-M6-09), so `-Dproofstone.cells=<cell>` picks the cell for all of them.
+ */
+fun Test.badTestSetup(pinnedCell: String? = null) {
     // A Test task made by hand gets no test classes from the java plugin, so they are set here (as conformance does).
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
@@ -52,6 +62,33 @@ fun Test.badTestSetup() {
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
+    forwardCommandLineProperties(listOf("proofstone.cells", "proofstone.scope"))
+    // A bad test whose @Matrix names one version is pinned to that cell (the selector replaces @Matrix, so a run on
+    // any other cell would be a different test with a different verdict). With no selector it runs its pin; a selector
+    // naming any other cell is refused in doFirst, before any server starts (T-M6-09).
+    if (pinnedCell != null && providers.systemProperty("proofstone.cells").orNull == null) {
+        systemProperty("proofstone.cells", pinnedCell)
+    }
+    // A differential run needs an explicit native cell: the reference driver has one row (paper@26.1.2). Refuse before
+    // any Docker run starts, rather than let the run pick a cell that the reference driver cannot drive.
+    doFirst {
+        val task = this as Test
+        val props = task.systemProperties
+        val selected = props["proofstone.cells"]?.toString()
+        if (pinnedCell != null && selected != null && selected.split(",").map { it.trim() }.any { it != pinnedCell }) {
+            throw GradleException(
+                "${task.name} cannot run on -Dproofstone.cells=$selected. Its @Matrix pins it to $pinnedCell, and no " +
+                    "other cell gives its verdict. Supported cells: $pinnedCell. Run it with -Dproofstone.cells=$pinnedCell " +
+                    "or without the selector (examples/bad-tests/README.md).",
+            )
+        }
+        if (props["proofstone.differential"] == "true" && selected == null) {
+            throw GradleException(
+                "A differential run needs an explicit native cell. Add -Dproofstone.cells=paper@26.1.2 " +
+                    "(the reference driver's row, examples/bad-tests/README.md).",
+            )
+        }
+    }
     // The result depends on Docker, so always run when asked. A skipped test shows its reason, never a pass.
     outputs.upToDateWhen { false }
     testLogging {
@@ -62,13 +99,12 @@ fun Test.badTestSetup() {
 
 tasks.test {
     badTestSetup()
-    // The run-time cell selector, scope, control-run, flake-detector repeat count and differential switches reach the
-    // test JVM from the Gradle command line (test-api spec section 1, self-tests sections 2, 3 and 4).
+    // The control-run, flake-detector repeat count and differential switches reach the test JVM from the Gradle command
+    // line (self-tests sections 2, 3 and 4). The cell selector and scope come from badTestSetup, as for every run.
     // injectConformanceFault is forwarded too, so the rerun.txt of an INVALID bundle reproduces from the command line.
-    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.controlRun", "proofstone.repeat",
-            "proofstone.differential", "proofstone.injectConformanceFault")) {
-        providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
-    }
+    forwardCommandLineProperties(
+        listOf("proofstone.controlRun", "proofstone.repeat", "proofstone.differential", "proofstone.injectConformanceFault"),
+    )
     // The differential bad test (T-M4-06) only means something in a differential run, where its reference driver is
     // faulted. A differential run runs only that package (the other bad tests have no cell on the native row), and
     // every other run leaves it out, so it never shows up in a normal bad-tests suite.
@@ -93,7 +129,13 @@ tasks.test {
  * One bad test on its own: the class pattern, the verdict its failure must start with, and the switches that make it
  * produce that verdict. Each run is a separate Test task, so the switches never leak into another run.
  */
-data class BadRun(val task: String, val include: String, val verdict: String, val switches: Map<String, String>)
+/**
+ * [pin] is the one cell the test's @Matrix names, or null for the rolling row (any paper cell). The pinned tests are the ones
+ * whose verdict depends on their cell: the differential driver (26.1.2 only), the window fault and the leak test.
+ */
+data class BadRun(
+    val task: String, val include: String, val verdict: String, val switches: Map<String, String>, val pin: String? = null,
+)
 
 val badRuns = listOf(
     BadRun("metaVacuous", "**/VacuousE2E*", "VACUOUS", mapOf("proofstone.controlRun" to "true")),
@@ -101,13 +143,15 @@ val badRuns = listOf(
     BadRun(
         "metaDisagree", "**/differential/DriverFaultDisagreeE2E*", "DISAGREE",
         mapOf("proofstone.differential" to "true", "proofstone.injectDriverFault" to "true"),
+        pin = "paper@26.1.2",
     ),
     BadRun("metaInvalid", "**/invalid/InvalidConformanceE2E*", "INVALID", mapOf("proofstone.injectConformanceFault" to "true")),
     BadRun(
         "metaInvalidWindow", "**/invalid/window/**", "INVALID",
         mapOf("proofstone.injectConformanceFault" to "window"),
+        pin = "paper@26.1.2",
     ),
-    BadRun("metaLeak", "**/leak/**", "LEAK", emptyMap()),
+    BadRun("metaLeak", "**/leak/**", "LEAK", emptyMap(), pin = "paper@26.1.2"),
     BadRun("metaExpect", "**/expect/**", "FAIL", emptyMap()),
     BadRun("metaRequires", "**/requires/**", "SKIPPED", emptyMap()),
 )
@@ -121,7 +165,7 @@ val badRunExpectations: List<Pair<String, String>> = badRuns.map { run -> run.ta
 
 badRuns.forEach { run ->
     tasks.register<Test>(run.task) {
-        badTestSetup()
+        badTestSetup(run.pin)
         group = "verification"
         description = "Runs the bad test that must produce ${run.verdict}. Part of metaTest; not a user suite."
         include(run.include)
