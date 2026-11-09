@@ -10,7 +10,7 @@ java-rules:                                # first match wins
   - { range: ">=1.20.5 <26", image: java21 }
 drivers:
   mcpl:           { library: "<g:a>", version: "<pinned>", protocol: "<mc version>" }
-  mineflayer-ref: { library: "mineflayer", version: "<pinned>", max-native: "<mc version>" }
+  mineflayer-ref: { library: "mineflayer", version: "<pinned>", max-native: "<mc version>", image: "<repo>", digest: "sha256:…" }  # image and digest optional, written by release-images.sh --write-digests (T-M6-02)
   viaproxy:       { image: "<repo>", digest: "sha256:…" }
 platforms:
   <platform-id>:
