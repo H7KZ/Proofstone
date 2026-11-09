@@ -442,7 +442,31 @@ Open findings, not passes. Each needs a maintainer call or a diagnosis before M6
    2026-11-09: `docker ps -a` showed `ohlidame-redis`, `ohlidame-mysql` and `ohlidame-mailpit` running (not Proofstone's, 21 hours up),
    all others exited. A 20-second `docker stats` sample during the default-cells run showed them idle (CPU under 3%, mysql about
    0.6 GiB of an 11.68 GiB limit). The sampler saw no Proofstone container, so contention during the Paper cell is **not measured**.
-   Next: record `docker stats` for the whole cell start, with the `ohlidame-*` containers stopped and started, on one red-prone cell.
+   **T-M6-10 result (2026-11-09, `scripts/flake-loop.sh`, `:examples:gradle-paper-plugin:e2eTest` on paper@26.3, one run at a
+   time under `dockerlock`, no retries). Evidence paths (local, not committed): `build/flake/nostress/`, `build/flake/stress/`,
+   `build/flake/smoke/` (in the T-M6-10 worktree).**
+
+   | Condition | Runs | Red | Boot mean (s) | Join mean (s) | Wall mean (s) | Host free RAM mean (GiB) |
+   |---|---|---|---|---|---|---|
+   | no stress (`ohlidame-*` idle) | 30 (+1 smoke, pass) | 1 (run 29) | 23.4 | 25.6 | 36 | 4.0 |
+   | `proofstone-stress`, 10 CPU, 5.84 GiB | 15 | 1 (run 8) | 26.0 | 28.8 | 44 | 2.6 |
+
+   - **Verdict type of each red, from the kept XML and bundle:** both `join-timeout` (`timed out joining ... after PT30S`).
+     Run 29 is `INVALID`: the conformance client `PSConf` could not join, `server.log` shows `Done` and then no join.
+     Stress run 8 is a plugin test client (`Te...`) that timed out; `server.log` shows `PSConf joined` at +3 s and no join for
+     the test client. In both, the client sent `ClientIntentionPacket` and `ServerboundHelloPacket` and got no server reply
+     within PT30S. No `DISAGREE`, `LEAK`, `VACUOUS` or `ERRLOG` verdict appeared.
+   - **Cause: not shown. Bounded at 2 of 46 runs (1 per condition), cause unknown.**
+   - **Contention hypothesis: unresolved.** Stress slowed boot (+2.6 s) and join (+3.2 s) and cut free RAM from 4.0 to 2.6 GiB,
+     but the red count (1 of 30 against 1 of 15) cannot separate the two conditions. Boot time does not predict the reds:
+     the two red runs booted in 22.9 s and 25.4 s, inside the normal range.
+   - **Measurement limits:** boot and join are taken from the first Docker log line of the server container (about 1 s before
+     the process starts). Container logs are snapshots taken every 2 s before the harness removes the container. Four pass runs
+     (12, 26, 27, 28) have no join time because the container was removed before the snapshot. The watcher race that caused it
+     is fixed in the script; the no-stress loop ran before that fix, its verdicts do not depend on it.
+   - **Harness bug candidate (not fixed; proposed card):** a join whose server never answers the hello waits the full PT30S and
+     reports only `timed out`. A card should log the server's packet view at the join (login start, protocol version) and name
+     the reason in the INVALID message. No timeout was changed.
 
 ## M6 review (T-M6-99)
 
@@ -473,6 +497,9 @@ Running total for paper@26.3, plain gradle path: earlier 1 red of 5 (T-M6-03 rev
 Action path (earlier): 2 red of 4. The verdict type of the earlier reds (INVALID/DISAGREE/LEAK/VACUOUS) is **not recoverable**:
 the XML was overwritten before anyone read it. Do not claim a root cause.
 Next step: keep the XML of every red run (this run's loop copies it aside; reuse that pattern).
+T-M6-10 (2026-11-09, ROADMAP "M6 pre-release findings" item 3): 45 more runs, 2 red (both `join-timeout`, verdict types named
+from the kept XML and bundles), plus 1 smoke pass. Combined with the 15 plain runs above: 3 red of 61 plain-path runs, all join
+timeouts. Cause unknown; contention unresolved (see item 3).
 
 ### Exit criterion (six items of T-M6-99 / the M6 goal)
 
