@@ -52,7 +52,7 @@
 - Publish anything before T-M6-06 (licence) is merged.
 
 **Acceptance.**
-- [ ] A dry-run publish to staging succeeds.
+- [x] A dry-run publish to staging succeeds. (Evidence: `bash scripts/release-maven.sh --dry-run` exits 0, unsigned and signed with a throwaway key; see docs/release.md.)
 
 **Verify.**
 `./gradlew publishToMavenLocal`, then the staging dry run.

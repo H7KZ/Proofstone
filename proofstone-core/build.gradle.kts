@@ -4,6 +4,8 @@ plugins {
     id("proofstone.integration-test")
 }
 
+description = "Proofstone core: cell runner, JUnit extension, driver SPI and the verdict machinery."
+
 dependencies {
     // The driver SPI exposes api types (Click, BlockPos, ItemView), so drivers see them through core.
     api(project(":proofstone-api"))
