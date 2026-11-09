@@ -45,3 +45,54 @@ Validation rules, enforced in `check`:
 
 A cell takes the digest of its row's Java tag (`java` override, else the first matching `java-rules` entry). A tag
 with no digest is an error that names the tag and the row, never a fallback to another tag.
+
+## Schema 3: proxies (additive, ADR-0016)
+
+Decision: [ADR-0016](../adr/0016-topology-cells.md). Schema 3 adds one optional top-level key, `proxies`, next to
+`platforms`. Nothing in schema 2 changes meaning: a schema 2 file is a valid schema 3 file, the `platforms` section is
+read exactly as before, and the single-server cells it plans (and their `printMatrix` lines) stay identical. The
+values below are the T-M7-01 spike pins; the file gains them in T-M7-08, not before.
+
+```yaml
+schema: 3
+proxies:
+  velocity:
+    host:
+      image: "itzg/mc-proxy"
+      digests:                             # per Java tag, as ADR-0013
+        java25: "sha256:8efdaa9d990f4c509f21b7ced003dd959060777784422fd72fdd537d613c1813"
+    forwarding: modern                     # one mode per proxy platform in M7: modern | legacy
+    rows:
+      - version: "4.3.1"                   # the proxy's own version (string)
+        build: 45                          # the build the image downloads
+        sha256: "0844bcab…"                # jar checksum, checked in the container before start
+        java: java25                       # REQUIRED: java-rules are keyed on Minecraft versions, not proxies
+        status: experimental               # required | experimental | retired
+        backends:                          # the backend rows this proxy row is paired with
+          - { platform: paper, mc: "26.3", status: experimental }
+        observed: "free text"
+        notes: "free text"
+  bungeecord:
+    host: { image: "itzg/mc-proxy", digests: { java21: "sha256:4e6901b4…" } }
+    forwarding: legacy
+    rows:
+      - { version: "2111", build: 2111, sha256: "1d9dbc31…", java: java21, status: experimental,
+          backends: [ { platform: paper, mc: "26.3", status: experimental } ] }
+```
+
+- **Topology cell:** one entry of a row's `backends`, written `<proxy>@<version>+<platform>@<mc>`
+  (`velocity@4.3.1+paper@26.3`). Its status is the weakest of the proxy row, the pairing and the backend row
+  (`retired` < `experimental` < `required`). `pr` scope plans the `required` ones, `nightly` also the `experimental`
+  ones, as for single-server rows. `latest` on either half resolves as it does for that platform; the resolved pairing
+  must be listed, or the selector is an error.
+- **BungeeCord** has no release version, so `version` is the Jenkins build number as a string. Jenkins publishes no
+  sha256: the pin is computed from the download.
+
+Validation rules for `proxies`, enforced in `check` (T-M7-08):
+- A proxy id is not also a `platforms` id. `version` values are unique within a proxy.
+- `java` is present on every row, and `host.digests` has a key for it. A `required` row has a real digest, no `TODO`.
+- Every `backends` entry names an existing `platforms` row, and no pairing is listed twice.
+- A `required` pairing needs a `required` proxy row and a `required` backend row.
+- A pairing is native only: the backend row's protocol equals the driver's (`drivers.mcpl.protocol`). A bridged
+  topology is refused (ADR-0016 section 3).
+- `forwarding` is one of `modern` or `legacy`, and the proxy supports it (BungeeCord: `legacy` only).

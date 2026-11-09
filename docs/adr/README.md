@@ -21,5 +21,6 @@ that were rejected. **Accepted ADRs are not re-decided inside a task.** To chall
 | [0013](0013-host-digest-per-java-tag.md) | Host image digest is pinned per Java tag (amends 0008) | Accepted |
 | [0014](0014-haiku-first-and-minimal-ci.md) | Haiku-first execution and minimal CI (amends 0010) | Accepted |
 | [0015](0015-local-evidence-row-promotion.md) | Row promotion to `required` on local per-row evidence (amends 0008) | Accepted |
+| [0016](0016-topology-cells.md) | Topology cells: one proxy row plus a backend row set | Accepted (2026-11-09) |
 
 Template: [0000-template.md](0000-template.md).

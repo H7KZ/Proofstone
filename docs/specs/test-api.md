@@ -55,7 +55,7 @@ void scenario(Cell cell, Agent agent, Client client) { ... }
 | `Agent` | per invocation | server oracle plus setup (§3) |
 | `Client` | fresh per test | client oracle plus actions (§4). A unique name per test, offline mode. |
 | `Clients` | per test | `clients.create("Alice")` for multi-player tests |
-| `Topology` | per invocation | multi-server cells (proxy and backends): `topology.server("lobby").agent()` |
+| `Topology` | per invocation | topology cells (proxy and backends): `topology.server("lobby")` and `topology.proxy()` return an `Agent`; `client.transferTo("survival")` is a server switch ([ADR-0016](../adr/0016-topology-cells.md), T-M7-10) |
 
 ## 3. `Agent` (server oracle and setup)
 
