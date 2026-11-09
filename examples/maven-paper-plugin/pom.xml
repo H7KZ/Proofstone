@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven twin of examples/gradle-paper-plugin (T-M6-11). A minimal Paper plugin with an anvil mechanic and two injected
+  bugs, and its real-server suite (src/test/java, *E2E.java) run by failsafe under the e2e profile. Proofstone comes from
+  mavenLocal, never from a remote repository (README). Every version is pinned here; nothing is a range or a snapshot.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.github.h7kz.proofstone</groupId>
+  <artifactId>maven-paper-plugin</artifactId>
+  <version>0.1.0-local</version>
+  <packaging>jar</packaging>
+  <name>examples:maven-paper-plugin</name>
+  <description>Maven example: a Paper plugin with an anvil mechanic, tested on a real server through Proofstone.</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Paper 26.3 classes are Java 25 bytecode: compile at release 25 on a JDK 26 (README, Java). -->
+    <maven.compiler.release>25</maven.compiler.release>
+    <!-- The e2e suite runs on Java 21 bytecode, as the Gradle example does (ADR-0004: the mcpl driver is Java 21). -->
+    <maven.compiler.testRelease>21</maven.compiler.testRelease>
+
+    <!-- Proofstone's version, published to mavenLocal only. Same value as the `proofstone` key in
+         gradle/libs.versions.toml; bump both together. -->
+    <proofstone.version>0.1.0-local</proofstone.version>
+    <!-- Repository root, relative to this project, for the cell pins in versions.yml and the agent jar (ADR-0008). -->
+    <proofstone.repo.root>${project.basedir}/../..</proofstone.repo.root>
+    <!-- Built by the Gradle task :platforms:bukkit:agent:shadowJar (README, step 1). Never committed. -->
+    <proofstone.agent.jar>${proofstone.repo.root}/platforms/bukkit/agent/build/libs/agent-all.jar</proofstone.agent.jar>
+
+    <!-- Paper API and its Adventure and Guava, the same pins as gradle/libs.versions.toml (build 244, paper@26.3). -->
+    <paper.version>26.3.build.244-stable</paper.version>
+    <adventure.version>5.2.0</adventure.version>
+    <paper.guava.version>33.6.0-jre</paper.guava.version>
+
+    <junit.version>5.14.4</junit.version>
+    <assertj.version>3.27.7</assertj.version>
+
+    <!-- Plugin versions, pinned (AGENTS.md section 3). -->
+    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
+    <maven-jar-plugin.version>3.4.1</maven-jar-plugin.version>
+    <maven-failsafe-plugin.version>3.5.3</maven-failsafe-plugin.version>
+  </properties>
+
+  <repositories>
+    <!-- Paper's API. Used only for io.papermc.paper artefacts (the Gradle settings use the same URL, exclusive). -->
+    <repository>
+      <id>papermc</id>
+      <url>https://repo.papermc.io/repository/maven-public/</url>
+    </repository>
+    <!-- MCProtocolLib is published only here (ADR-0004). Needed by proofstone-drivers-mcpl at test time. -->
+    <repository>
+      <id>opencollab</id>
+      <url>https://repo.opencollab.dev/main/</url>
+    </repository>
+  </repositories>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Compile only. The Paper API's POM points at brigadier and bungeecord-chat artefacts that no repository here
+         serves, and the server provides them at runtime anyway. This is the same reason the Gradle example uses
+         isTransitive = false. -->
+    <dependency>
+      <groupId>io.papermc.paper</groupId>
+      <artifactId>paper-api</artifactId>
+      <version>${paper.version}</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>net.kyori</groupId>
+      <artifactId>adventure-api</artifactId>
+      <version>${adventure.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${paper.guava.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- The e2e suite (test scope, as the Gradle e2eTest source set). Proofstone comes from mavenLocal. -->
+    <dependency>
+      <groupId>io.github.h7kz.proofstone</groupId>
+      <artifactId>proofstone-api</artifactId>
+      <version>${proofstone.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.h7kz.proofstone</groupId>
+      <artifactId>proofstone-core</artifactId>
+      <version>${proofstone.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.h7kz.proofstone</groupId>
+      <artifactId>proofstone-drivers-mcpl</artifactId>
+      <version>${proofstone.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <!-- A fixed name, so the test's @Proofstone path (target/anvil-mechanic.jar) matches exactly one jar. -->
+    <finalName>anvil-mechanic</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${maven-resources-plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plugin.version}</version>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- The real-server suite (T-M6-11). Needs Docker, PROOFSTONE_ACCEPT_EULA in the environment, the agent jar and
+         Proofstone in mavenLocal (README). Not part of a plain `mvn verify`. -->
+    <profile>
+      <id>e2e</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven-failsafe-plugin.version}</version>
+            <configuration>
+              <includes>
+                <include>**/*E2E.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <proofstone.repoRoot>${proofstone.repo.root}</proofstone.repoRoot>
+                <proofstone.agentJar>${proofstone.agent.jar}</proofstone.agentJar>
+              </systemPropertyVariables>
+            </configuration>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>

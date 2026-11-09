@@ -354,9 +354,9 @@ the Gradle example `VerdictGate.java:150` red and the `PSConf moved too quickly`
 - Document Maven steps that were not run. Depend on unpublished remote snapshots.
 
 **Acceptance.**
-- [ ] `mvn -f examples/maven-paper-plugin verify -Pe2e` is green on `paper@26.3` (XML evidence).
-- [ ] Each injected bug makes it fail.
-- [ ] `bash scripts/release-mutation-check.sh` (no `--allow-missing`) reports a complete PASS.
+- [x] `mvn -f examples/maven-paper-plugin verify -Pe2e` is green on `paper@26.3`. (Evidence: `TEST-...AnvilMechanicE2E.xml` tests=2 skipped=0 failures=0 errors=0; PR.)
+- [x] Each injected bug makes it fail. (Evidence: `double-output` failures=1 "expected: 1 but was: 2"; `accept-any-right` failures=1 "coal is not an accepted right input"; PR.)
+- [x] `bash scripts/release-mutation-check.sh` (no `--allow-missing`) reports a complete PASS. (Evidence: `mutation-check: PASS` log in PR; `dirty` per the run.)
 
 **Verify.**
 `mvn -f examples/maven-paper-plugin verify -Pe2e` and `bash scripts/release-mutation-check.sh`.

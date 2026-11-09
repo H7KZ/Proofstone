@@ -2,10 +2,13 @@
 # Mutation check for releases (T-M6-07, specs/self-tests.md §5). Local only: no CI, no workflow.
 # For each example: one baseline run with no injected bug (must PASS), then one run per bug named in that example's
 # config.yml `bugs:` block (must FAIL). Runs are sequential, one real-server cell each, under scripts/dockerlock.sh.
+# A Gradle example (build.gradle.kts) runs `:examples:<name>:e2eTest`. A Maven example (pom.xml) runs `mvn verify -Pe2e`
+# and reads failsafe's XML. mvn is found through MVN, then MAVEN_HOME/bin/mvn, then PATH; none of them is a skip.
 # Blocking: a survived mutation (suite green with the bug on), a red baseline, an inconclusive run (skip, error, no
 # tests) or an example that cannot run (NOT RUN) unless it is named in --allow-missing.
 # Writes build/release/mutation-check.env (read by `scripts/release-maven.sh --publish`) and prints a table.
 # Usage: bash scripts/release-mutation-check.sh [--allow-missing=<example>[,<example>...]] [--cell=<cell>]
+# Env: MVN (path to mvn) or MAVEN_HOME; MVN_JAVA_HOME (JDK for Maven runs, JDK 26 for the Paper plugin); JAVA_HOME for Gradle.
 #   --allow-missing  names examples that may be NOT RUN without making the check INCOMPLETE. Never a default.
 #   --cell           real-server cell for every run (default paper@26.3).
 # Exit: 0 only when status=PASS.
@@ -77,9 +80,31 @@ toggles() {
   '
 }
 
-# Sums the JUnit <testsuite> counters of the last e2eTest run of one example: "tests skipped failures errors".
+# Where the JUnit XML of an example's last e2e run lands, relative to examples/<name>.
+report_dir() { # example
+  if [[ -f "examples/$1/pom.xml" ]]; then echo "target/failsafe-reports"; else echo "build/test-results/e2eTest"; fi
+}
+
+# Prints a runnable mvn, or prints why there is none to stderr and fails. MVN wins, then MAVEN_HOME, then PATH.
+find_mvn() {
+  if [[ -n "${MVN:-}" ]]; then
+    if [[ -x "$MVN" ]]; then echo "$MVN"; return 0; fi
+    echo "mvn not found: MVN=$MVN is not an executable file" >&2
+    return 1
+  fi
+  if [[ -n "${MAVEN_HOME:-}" ]]; then
+    if [[ -x "$MAVEN_HOME/bin/mvn" ]]; then echo "$MAVEN_HOME/bin/mvn"; return 0; fi
+    echo "mvn not found: MAVEN_HOME=$MAVEN_HOME has no bin/mvn" >&2
+    return 1
+  fi
+  if command -v mvn > /dev/null 2>&1; then command -v mvn; return 0; fi
+  echo "mvn not found: set MVN or MAVEN_HOME, or put mvn on PATH" >&2
+  return 1
+}
+
+# Sums the JUnit <testsuite> counters of the last e2e run of one example: "tests skipped failures errors".
 xml_counts() {
-  local dir="examples/$1/build/test-results/e2eTest" t=0 s=0 f=0 e=0 tag
+  local dir="examples/$1/$(report_dir "$1")" t=0 s=0 f=0 e=0 tag
   if [[ -d "$dir" ]]; then
     while IFS= read -r tag; do
       t=$((t + $(attr_of "$tag" tests)))
@@ -98,7 +123,7 @@ attr_of() { # "<tag ...>" name -> numeric value, 0 when absent
 }
 
 first_failure() { # example -> first JUnit failure message, shortened
-  cat "examples/$1/build/test-results/e2eTest"/*.xml 2> /dev/null \
+  cat "examples/$1/$(report_dir "$1")"/*.xml 2> /dev/null \
     | grep -o '<failure message="[^"]*' | head -1 | sed 's/^<failure message="//' | cut -c1-110 || true
 }
 
@@ -106,13 +131,21 @@ first_failure() { # example -> first JUnit failure message, shortened
 run_suite() { # example bug(or empty) log
   local -a props=("-Dproofstone.cells=$CELL")
   if [[ -n "$2" ]]; then props+=("-Dproofstone.bug=$2"); fi
-  rm -rf "examples/$1/build/test-results/e2eTest" # stale XML from an earlier run must never be read
+  rm -rf "examples/$1/$(report_dir "$1")" # stale XML from an earlier run must never be read
   RC=0
-  PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew ":examples:$1:e2eTest" "${props[@]}" \
-    --no-parallel --max-workers=1 < /dev/null > "$3" 2>&1 || RC=$?
+  if [[ -f "examples/$1/pom.xml" ]]; then
+    # Maven compiles the Paper plugin at release 25, so it may need a JDK 26 that Gradle does not (MVN_JAVA_HOME).
+    JAVA_HOME="${MVN_JAVA_HOME:-${JAVA_HOME:-}}" PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh "$MVN_BIN" -B \
+      --no-transfer-progress -f "examples/$1" \
+      verify -Pe2e "${props[@]}" < /dev/null > "$3" 2>&1 || RC=$?
+  else
+    PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew ":examples:$1:e2eTest" "${props[@]}" \
+      --no-parallel --max-workers=1 < /dev/null > "$3" 2>&1 || RC=$?
+  fi
 }
 
-gradle_example() { # example
+# The mutation runs of one example, Gradle or Maven. MVN_BIN is set by the caller for a Maven example.
+run_example() { # example
   local name=$1 entry bug value
   local -a entries
   mapfile -t entries < <(toggles "examples/$name")
@@ -172,13 +205,17 @@ judge() { # example bug expect rc log
 for name in "${EXAMPLES[@]}"; do
   dir="examples/$name"
   if [[ -f "$dir/build.gradle.kts" ]]; then
-    gradle_example "$name"
+    run_example "$name"
+  elif [[ -f "$dir/pom.xml" ]]; then
+    if MVN_BIN=$(find_mvn 2> build/release/find-mvn.err); then
+      run_example "$name"
+    else
+      not_run "$name" "$(cat build/release/find-mvn.err)"
+    fi
   elif [[ -d "$dir" ]]; then
-    not_run "$name" "$dir has no build.gradle.kts, and this script has no Maven runner (mvn is not installed here, so it is untested)"
+    not_run "$name" "$dir has neither build.gradle.kts nor pom.xml"
   else
-    reason="$dir is missing"
-    command -v mvn > /dev/null 2>&1 || reason="$reason, and mvn is not on PATH (T-M6-04 Maven half is not merged)"
-    not_run "$name" "$reason"
+    not_run "$name" "$dir is missing"
   fi
 done
 

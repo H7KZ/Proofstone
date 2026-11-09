@@ -1,0 +1,5 @@
+# Injected bugs for the mutation check (T-M6-04, T-M6-11). All off. The suite turns one on for one test with patchConfig,
+# or a whole run turns one on with -Dproofstone.bug=<name> (README).
+bugs:
+  double-output: false
+  accept-any-right: false
