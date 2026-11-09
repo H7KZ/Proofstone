@@ -376,8 +376,8 @@ check the bundle files and the report.
 - Put the agent token in the output. `BundleWriter` redacts it, but the endpoint must not rely on that.
 
 **Acceptance.**
-- [ ] `snapshot.json` of a real bundle holds the snapshot, not the `NOT_FOUND` error.
-- [ ] A new bad test that leaves a player's XP changed fails with `LEAK` (added to metaTest).
+- [x] `snapshot.json` of a real bundle holds the snapshot, not the `NOT_FOUND` error. Evidence: `LeakE2E` bundle on paper@26.1.2 has `snapshot.plugins` (ProofstoneAgent, enabled), no error.
+- [ ] A new bad test that leaves a player's XP changed fails with `LEAK` (added to metaTest). **Deviation, open:** not reachable. Cleanup disconnects the test's client before the after-snapshot, and no public-API path changes another player, a plugin config or an enabled flag. Open finding in the PR.
 - [x] `AgentContractIT` stays green, with a new golden file for the endpoint. Evidence: `snapshot/read` replays on paper@26.3, 24/24 tests, `skipped=0 failures=0 errors=0`.
 
 **Verify.**

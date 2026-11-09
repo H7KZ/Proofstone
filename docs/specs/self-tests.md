@@ -76,14 +76,18 @@ not run. The cell's scenario timings are in the log (`PROOFSTONE CONFORMANCE <ce
 
 Robustness R6: a test must not leave server state behind. Numbered 4b so that the section numbers others cite stay put.
 
-- Before each test, and before its client joins, core reads every rule the deterministic world sets
-  (`gamerule <name>` through `POST /v1/command`, one per rule). After the test body, with the server still up, it reads
-  them again. A rule that reads back different fails the test with a message starting `LEAK`.
-- It is a failure, not a verdict: the verdict list in section 7 of the test-api spec has no leak. A test that already
-  failed is not judged again.
-- Minimal, on purpose: it covers only the world rules, not the whole agent state. The full-state dump
-  (`GET /v1/snapshot`, agent-protocol spec) is still unimplemented, so a leak outside those rules is not seen.
-- Console replies are best effort (ADR-0002), so the detector compares them as they are and fails on a blank one.
+- Before each test, and before its client joins, core reads a baseline: every rule the deterministic world sets
+  (`gamerule <name>` through `POST /v1/command`, one per rule) and the agent's full-state dump (`GET /v1/snapshot`,
+  agent-protocol §2): each plugin's enabled flag and config values, each online player's XP and inventory.
+- After the test body, the harness runs its normal cleanup (restores the configs the test patched, disconnects its
+  clients), then reads the same state again with the server up. The comparison is with that after-cleanup state, so the
+  test's own work (items given, XP spent) is not a leak. Only what cleanup fails to undo is. A player is compared only
+  when it is online in both snapshots. A key present on one side only is a change, except for a player.
+- A change fails the test with a message starting `LEAK`. It is a failure, not a verdict: the verdict list in section 7
+  of the test-api spec has no leak. A test that already failed is not judged again. A leak gets a repro bundle, written
+  after the cleanup.
+- Console replies are best effort (ADR-0002), so the detector compares them as they are and fails on a blank one. A
+  snapshot that lacks its plugin or player lists is an error, never an empty state.
 
 ## 5. Mutation check (release only)
 
@@ -106,6 +110,7 @@ erun.txt names
   assertion cannot DISAGREE. Only paper@26.1.2 is a differential row. Card T-M4-11.
 - **Section 4 (flake detector):** repeats share the class server, so they do not repeat boots. FLAKY is shown on the
   last repeat only; the report lists every run's verdict (T-M4-09). Boot coverage: card T-M4-13.
-- **Section 4b (leak detector):** four world rules only. `GET /v1/snapshot` is still missing. Card T-M4-12.
+- **Section 4b (leak detector):** world rules, plugin configs and enabled flags, and player XP and inventory, compared
+  after the harness cleanup (T-M4-12b). Open: no public-API test can leave a state the snapshot covers. See the PR.
 - **Section 5 (mutation check):** not built.
 - **Report file:** written at run end by `RunReport` (T-M4-09). The bad-test `metaTest` merges the five tasks' reports.

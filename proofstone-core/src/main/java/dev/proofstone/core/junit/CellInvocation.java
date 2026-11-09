@@ -196,7 +196,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             DifferentialRun.begin();
         }
         // Before the join, so the snapshot is the server's state before this test's client arrives.
-        state.gameRules = LeakDetector.snapshot(host);
+        state.baseline = LeakDetector.snapshot(host);
         if (declaresClient(context)) {
             // A hash of the unique test id keeps the name stable for a test and different between tests.
             String name = String.format("T%08x", context.getUniqueId().hashCode());
@@ -252,15 +252,6 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             failure = CellExpectations.check(context.getRequiredTestClass(), context.getRequiredTestMethod(),
                     new CellView(cell, bridged, state.capabilities), new HostAgent(state.host, state.patchedPlugins));
         }
-        // The leak detector (robustness R6) judges a test that is otherwise green, so it never hides another failure.
-        if (failure == null && state.gameRules != null) {
-            try {
-                failure = VerdictGate.judgeLeak(context.getRequiredTestMethod(), cellId(), state.gameRules,
-                        LeakDetector.snapshot(state.host));
-            } catch (RuntimeException e) {
-                failure = new IllegalStateException("cannot read the server state after the test", e);
-            }
-        }
         DifferentialRun.Disagreement disagreement = null;
         if (differential) {
             List<String> transcript = state.client == null ? List.of() : state.client.transcript();
@@ -309,6 +300,29 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             state.close();
         } catch (RuntimeException e) {
             failure = combine(failure, new IllegalStateException("cannot disconnect the client", e));
+        }
+        // The leak detector (robustness R6) judges the state after that cleanup, so the test's own work is not a leak: only
+        // what the cleanup did not undo is (T-M4-12b). It judges a test that is otherwise green and never hides another
+        // failure. A leak gets its own bundle, written after the cleanup (the config it restored is no longer in it).
+        if (failure == null && context.getExecutionException().isEmpty() && state.baseline != null) {
+            Throwable leak;
+            try {
+                leak = VerdictGate.judgeLeak(context.getRequiredTestMethod(), cellId(), state.baseline,
+                        LeakDetector.snapshot(state.host));
+            } catch (RuntimeException e) {
+                leak = new IllegalStateException("cannot read the server state after the test", e);
+            }
+            if (leak != null) {
+                failure = leak;
+                outcome = Attempt.fail(detail(leak));
+                try {
+                    Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0, driverId,
+                            differential, catalog);
+                    System.err.println("PROOFSTONE BUNDLE: " + bundle);
+                } catch (RuntimeException e) {
+                    failure = combine(failure, new IllegalStateException("cannot write the repro bundle", e));
+                }
+            }
         }
         if (repeats > 1) {
             // This run's outcome is what it finally was, after its own restore and disconnect.
