@@ -99,7 +99,7 @@ The CI run link.
 - Hard-code version lists. Read them from the matrix task instead.
 
 **Acceptance.**
-- [ ] Both example projects use the action and pass.
+- [ ] Both example projects use the action and pass. **UNVERIFIED**: no CI (AGENTS.md section 4), the Maven example does not exist yet, and the action is not published. Local only: `integrations/github-action/` (action, run-cells.sh, README), `scripts/action-selfcheck.sh` (plan-only and one real-server Gradle run on paper@26.3). That run was RED: 1 of 2 tests timed out joining (`docs/platforms/paper.md` gotchas). Docker layer cache is not wired (see its README).
 
 **Verify.**
 The CI run links for both example projects.

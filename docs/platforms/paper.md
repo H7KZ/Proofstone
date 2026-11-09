@@ -271,6 +271,14 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   The leak detector's snapshot reads these back raw, so a changed rule shows as a changed reply.
 - **A failed repeat's own failure is the one JUnit reports, and the flake verdict rides on it as a suppressed
   exception** (T-M4-07). The FLAKY message is in the XML body under `Suppressed:`, not in the `message` attribute.
+- **A second e2e test on paper@26.3 can time out joining with no server reply** (T-M6-03, 2026-11-09, local
+  `scripts/action-selfcheck.sh`, one run). `AnvilMechanicE2E.coalOnTheRightMakesNothing` failed with `timed out joining ...
+  after PT30S`, transcript `ClientIntentionPacket`, `ServerboundHelloPacket`, then `proofstone closing`. The first test in the
+  same run, which starts the same kind of server, passed. Not reproduced (one run only). Bundle:
+  `build/proofstone/paper@26.3/AnvilMechanicE2E.coalOnTheRightMakesNothing/`. Same symptom family as the unexplained join
+  timeouts in the M6 card.
+
+## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 Measured from the JUnit XML suite times of one serial run, image already pulled:
