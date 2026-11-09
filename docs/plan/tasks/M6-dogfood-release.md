@@ -253,8 +253,8 @@ The recorded run-through.
 - Tag the release without the maintainer's approval.
 
 **Acceptance.**
-- [ ] The exit criterion is demonstrated.
-- [ ] The release notes are drafted.
+- [ ] The exit criterion is demonstrated. **NOT MET** (NO-GO): Disenchantment CI is in another repo, the Maven example does not exist, nothing is published, the licence is undecided, and the mutation check is INCOMPLETE without `--allow-missing`. See [ROADMAP, M6 review](../ROADMAP.md).
+- [x] The release notes are drafted. (Evidence: `docs/release-notes-0.1.0-DRAFT.md`, marked DRAFT and NO-GO. Claims limited to verified items.)
 
 **Verify.**
 The links to the gate, nightly and mutation-check runs.
