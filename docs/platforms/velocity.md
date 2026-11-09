@@ -1,6 +1,6 @@
 # Velocity
 
-Status: **spike** (T-M7-01, 2026-11-09). Nothing is pinned in `versions.yml` yet and no agent exists. Every fact below
+Status: **spike** (T-M7-01, 2026-11-09) plus the agent (T-M7-05). Nothing is pinned in `versions.yml` yet; the pins the agent real-server test boots are in `gradle/libs.versions.toml` until schema 3 (T-M7-08). Every fact below
 comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/proxy-spike.sh` or
 `scripts/spike/proxy-protocol-probe.sh`, unless it says otherwise. See [platforms.md](../platforms.md).
 
@@ -82,10 +82,37 @@ change; its state model never left `PLAYING`. Proxy log for the same switch:
 `[server connection] Spike2 -> survival has connected`, then `Spike2 -> lobby has disconnected`.
 
 ## Agent notes
-None yet. No proxy agent exists (T-M7-05). Velocity plugins are Java 17+ and the 4.3.1 runtime is Java 25.
+The Velocity agent is `platforms/velocity/agent` (T-M7-05; [module README](../../platforms/velocity/agent/README.md)). Facts
+from building it and from three real-server runs against Velocity 4.3.1 build 45 (`VelocityAgentIT`, 2026-11-09):
+- **The 4.3.1 API jar is Java 25 bytecode**, and Adventure 5.2.0 is Java 21. Gradle refuses them for a release 17 compile, so the
+  module compiles on a JDK 26 at `--release 17` and overrides the classpath's `TargetJvmVersion` to 25. javac reads the class
+  files at release 17 without complaint. The API's POM names `velocity-brigadier` `1.0.0-SNAPSHOT`, which cannot be pinned, so
+  Mojang's `brigadier` `1.0.500` (Paper's repository) stands in, and the other types are listed by hand in `libs.versions.toml`.
+- **Plugin discovery:** a hand-written `velocity-plugin.json` (id `proofstone-agent`, `main`) is enough. No annotation processor.
+  The plugin class takes `ProxyServer` and an SLF4J `Logger` through `@Inject` (Guice) and starts from a `ProxyInitializeEvent`
+  handler. Velocity logged `Loaded plugin proofstone-agent 0.1.0` and then `Proofstone agent listening on port 25580` before
+  `Listening on` and `Done (0.53s)!`.
+- **Velocity bridges JUL into Log4j2.** `Logger.addHandler` on the JUL root is refused with a WARN from Log4j's status logger
+  (`Ignoring call to j.u.l.Logger.addHandler(...)`), so the agent reads Log4j2 alone (`LogBuffer.attachPreferringLog4j`). The
+  records Velocity logs after the agent attaches, such as `Done (`, are in the buffer.
+- **`velocity version` is not a command.** The proxy answered `Incorrect argument for command at position 9: velocity
+  <--[HERE]` and still reported the command as handled. The version command is `velocity info`. A syntax error is therefore
+  *output*, not a failed dispatch; only a command Velocity does not know at all (`executeAsync` false) is an agent error.
+- **A command's output is collected by the agent's own sender.** `CommandManager.executeAsync(sender, line)` with a sender that
+  implements `CommandSource` and overrides `sendMessage(Component)`; Components are rendered with `GlobalTranslator` in English
+  and flattened with the plain serializer. No log scraping.
+- **`proxy/servers` `online` is a live `RegisteredServer.ping()`**, not a cached result (Velocity keeps none). A refused
+  connection completes the future exceptionally at once, so a proxy whose backends are down answers `online: false` quickly.
+- **`events` is not claimed.** The probes work on a mock; no real Velocity has run them. `previousServer` likewise comes from
+  `ServerConnectedEvent` handlers that only the mock has driven. Both wait for T-M7-11, which needs a backend.
+- **Observe only:** every handler is `PostOrder.LAST`, no command is registered, no event result is set.
+  `ObserveOnlyTest` checks it against a mock whose command registry fails on any call, and against the compiled classes.
+- **Harness config the test used:** `command-rate-limit = 0` and `login-ratelimit = 0` as ADR-0016 section 5 says, modern
+  forwarding with a generated secret copied to `/server/forwarding.secret`, `bStats` disabled, `/server` files copied in with
+  `withCopyToContainer` (no bind mount), the agent port published to the host for the test only.
 
 ## Capabilities
-None declared. Not a row yet.
+None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `log` and `proxy` in `health` (`events` after T-M7-11).
 
 ## Gotchas
 - **A copied `/data/config` kills a Paper backend.** `docker cp` of a staged `config/` directory into `/data/` makes it
