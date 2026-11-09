@@ -24,7 +24,7 @@ Package names are the ones the Bukkit agent had, so nothing that shaded it is af
   [Bukkit agent README](../bukkit/agent/README.md).
 - `io.github.h7kz.proofstone.agent.game`: `Game` (the state seam) and `Fields` (request body checks).
 - `io.github.h7kz.proofstone.agent.log`: `LogBuffer` (JUL and Log4j2 capture with twin matching, spec §2 `log`) and
-  `Log4jTap` (the reflective Log4j2 appender). `LogBuffer.attach()` reads JUL and Log4j2 (Bukkit); `attachPreferringLog4j()` reads Log4j2 alone when present (Velocity bridges JUL itself).
+  `Log4jTap` (the reflective Log4j2 appender). `LogBuffer.attach()` reads JUL and Log4j2 (Bukkit); `attachPreferringLog4j()` reads Log4j2 alone when present (Velocity bridges JUL itself); `attachTo(Logger)` reads one JUL logger and its children (BungeeCord, whose logger has no parent, so the root logger never sees it).
 
 ## How to test
 - `./gradlew :platforms:agent-core:test`: auth, config, the envelope over real HTTP with a `FakeGame`, protocol round
