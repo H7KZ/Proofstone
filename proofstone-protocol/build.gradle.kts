@@ -4,6 +4,8 @@ plugins {
     `java-test-fixtures`
 }
 
+description = "Proofstone wire protocol: the JSON schemas and types shared by the host and the in-server agent."
+
 dependencies {
     // Test-only. The protocol types have no runtime dependencies (AGENTS.md §3).
     testImplementation(platform(libs.jackson.bom))

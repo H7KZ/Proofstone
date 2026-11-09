@@ -3,6 +3,8 @@ plugins {
     id("proofstone.publish")
 }
 
+description = "Public Java API of Proofstone: the types test authors write against (ADR-0001)."
+
 dependencies {
     // @CellTest is a JUnit @TestTemplate, so the API exposes JUnit's annotations (ADR-0001).
     api(platform(libs.junit.bom))

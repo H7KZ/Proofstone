@@ -4,6 +4,8 @@ plugins {
     id("proofstone.publish")
 }
 
+description = "Proofstone client driver built on MCProtocolLib (ADR-0004)."
+
 dependencies {
     implementation(project(":proofstone-core"))
     // ItemView, Click and BlockPos are public API types and live only there (AGENTS.md §6); the driver depends on api, not the reverse.
