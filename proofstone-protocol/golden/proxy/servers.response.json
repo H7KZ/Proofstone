@@ -1,0 +1,1 @@
+{"status":200,"body":{"ok":true,"data":{"servers":[{"name":"lobby","address":"<string>","online":true,"players":1},{"name":"survival","address":"<string>","online":true,"players":0}]}}}

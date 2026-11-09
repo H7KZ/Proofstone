@@ -69,6 +69,16 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `log/read` | `GET /v1/log?since=0&minLevel=WARN`: one record with a stack trace (v1.1) |
 | `players/open-anvil` | `players/read-after-give` with an open anvil window: `openWindow` in `player-state.json` (v1.1) |
 | `snapshot/read` | `GET /v1/snapshot` after the give: Alex with the sword, and the two fixture plugins with their config (`snapshot.json`, additive in v1.1, T-M4-12) |
+| `health/proxy-ok` | a proxy agent's health: platform `velocity`, capabilities `players` and `proxy` (v1.2, T-M7-03) |
+| `proxy/servers` | `GET /v1/proxy/servers`: the two default backends (v1.2) |
+| `proxy/server-get` | `GET /v1/proxy/servers/survival`: one backend (v1.2) |
+| `proxy/server-not-found` | 404 `SERVER_NOT_FOUND` with `detail {name}` (v1.2) |
+| `players/proxy-first-join` | proxy `GET /v1/players/Alex` on the first server: `previousServer` is an explicit `null` (v1.2) |
+| `players/proxy-switched` | the same after a switch lobby to survival (v1.2) |
+
+**Proxy cases (T-M7-03).** The six v1.2 cases are checked against their schemas by this module's `GoldenContractTest`
+only. The Bukkit agent does not replay them (a backend never serves them), and it is not in its case list. The proxy
+agents (T-M7-05, T-M7-06) replay them.
 
 **Replay order and setup (T-M2-02).** Cases that need setup:
 
@@ -81,7 +91,7 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 replay lists yet (not in `AgentContractIT.CASES`, and not in the agent's `GoldenContractTest` case list). The openWindow
 card adds it when the endpoint is served. Every other case is served and replayed.
 
-The `health/ok` golden moved from protocol `1.0` to `1.1` (T-M2-01). The agent's `PROTOCOL` constant matches it. T-M2-03
+The `health/ok` golden moved from protocol `1.1` to `1.2` for T-M7-03 (the only edit to an existing golden), and from `1.0` to `1.1` in T-M2-01. The agent's `PROTOCOL` constant matches it. T-M2-03
 added the `config` and `reload` capabilities to it and T-M2-02 added `world`, `events`, `log` and `ticks`. `reload.json`
 is additive, so the protocol stays at `1.1`.
 

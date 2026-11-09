@@ -21,7 +21,7 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public final class ProofstoneAgentPlugin extends JavaPlugin {
 
-    private static final String PROTOCOL = "1.1";
+    private static final String PROTOCOL = "1.2";
 
     private LogBuffer logs;
     private Scheduler scheduler;

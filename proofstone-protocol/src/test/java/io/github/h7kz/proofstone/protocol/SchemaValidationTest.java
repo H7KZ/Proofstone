@@ -12,6 +12,11 @@ class SchemaValidationTest {
     static Stream<Arguments> validDocuments() {
         return Stream.of(
                 Arguments.of("health.json", ProtocolExamples.HEALTH),
+                Arguments.of("proxy.json", ProtocolExamples.PROXY_SERVER),
+                Arguments.of("proxy.json#/$defs/servers", ProtocolExamples.PROXY_SERVERS),
+                Arguments.of("proxy.json#/$defs/servers", "{\"servers\":[]}"),
+                Arguments.of("proxy.json#/$defs/player", ProtocolExamples.PROXY_PLAYER),
+                Arguments.of("proxy.json#/$defs/player", ProtocolExamples.PROXY_PLAYER.replace("\"lobby\"", "null")),
                 Arguments.of("error.json", ProtocolExamples.ERROR),
                 Arguments.of("item.json", ProtocolExamples.ITEM),
                 Arguments.of("player-state.json", ProtocolExamples.PLAYER_STATE),
@@ -42,8 +47,15 @@ class SchemaValidationTest {
     static Stream<Arguments> invalidDocuments() {
         return Stream.of(
                 Arguments.of("health.json", "{\"agentVersion\":\"0.1.0\",\"platform\":\"paper\",\"mcVersion\":\"1.21.11\",\"capabilities\":[]}"),
-                Arguments.of("health.json", ProtocolExamples.HEALTH.replace("\"1.1\"", "\"2.0\"")),
+                Arguments.of("health.json", ProtocolExamples.HEALTH.replace("\"1.2\"", "\"2.0\"")),
                 Arguments.of("health.json", ProtocolExamples.HEALTH.replace("}", ",\"extra\":1}")),
+                Arguments.of("proxy.json", ProtocolExamples.PROXY_SERVER.replace("\"online\":true", "\"online\":\"yes\"")),
+                Arguments.of("proxy.json", ProtocolExamples.PROXY_SERVER.replace("\"players\":1", "\"players\":-1")),
+                Arguments.of("proxy.json", ProtocolExamples.PROXY_SERVER.replace("\"address\":\"server-lobby:25565\",", "")),
+                Arguments.of("proxy.json", ProtocolExamples.PROXY_SERVER.replace("}", ",\"extra\":1}")),
+                Arguments.of("proxy.json#/$defs/servers", "{}"),
+                Arguments.of("proxy.json#/$defs/player", ProtocolExamples.PROXY_PLAYER.replace(",\"previousServer\":\"lobby\"", "")),
+                Arguments.of("proxy.json#/$defs/player", ProtocolExamples.PROXY_PLAYER.replace("\"proxy\":", "\"position\":")),
                 Arguments.of("error.json", ProtocolExamples.ERROR.replace("UNKNOWN_KEY", "unknown_key")),
                 Arguments.of("item.json", ProtocolExamples.ITEM.replace("\"amount\":1", "\"amount\":0")),
                 Arguments.of("item.json", ProtocolExamples.ITEM.replace("minecraft:diamond_sword", "diamond_sword")),

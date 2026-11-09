@@ -20,6 +20,9 @@ class ProtocolRoundTripTest {
     static Stream<Arguments> examples() {
         return Stream.of(
                 Arguments.of(ProtocolExamples.HEALTH, new TypeReference<Health>() {}),
+                Arguments.of(ProtocolExamples.PROXY_SERVER, new TypeReference<ProxyServer>() {}),
+                Arguments.of(ProtocolExamples.PROXY_SERVERS, new TypeReference<ProxyServers>() {}),
+                Arguments.of(ProtocolExamples.PROXY_PLAYER, new TypeReference<ProxyPlayer>() {}),
                 Arguments.of(ProtocolExamples.ERROR, new TypeReference<ProtocolError>() {}),
                 Arguments.of(ProtocolExamples.ITEM, new TypeReference<Item>() {}),
                 Arguments.of(ProtocolExamples.PLAYER_STATE, new TypeReference<PlayerState>() {}),

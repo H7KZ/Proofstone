@@ -19,6 +19,9 @@ and this page explains them.
 
 ## 2. Endpoints (v1)
 
+Proxy agents (Velocity, BungeeCord; [ADR-0016](../adr/0016-topology-cells.md)) serve the proxy rows below, and `health`, `players`
+and `log`. They do not serve game-state endpoints (world, give, ticks). A backend agent never serves `/v1/proxy/*`.
+
 | Method and path | Purpose | Notes |
 |---|---|---|
 | `GET /v1/health` | readiness, agent version, protocol version, platform, MC version, capabilities | used by core readiness |
@@ -39,6 +42,8 @@ and this page explains them.
 | `GET /v1/ticks` | the current tick counter (per region on Folia: `{global, regions}`) | — |
 | `POST /v1/ticks/await` | `{n}` | — |
 | `GET /v1/log?since=&minLevel=` | captured log records with stack traces | root JUL/Log4j handler |
+| `GET /v1/proxy/servers` | proxy only (protocol 1.2): the backends the proxy knows | reply `{servers: [{name, address, online, players}]}` (`proxy.json#/$defs/servers`). `online` is the proxy's last ping result. `players` is the proxy's count for that server |
+| `GET /v1/proxy/servers/{name}` | proxy only (protocol 1.2): one backend | reply one `{name, address, online, players}` (`proxy.json`). Unknown name: `SERVER_NOT_FOUND`. Added so the code has an endpoint; it is read-only |
 | `GET /v1/snapshot` | full-state dump for repro bundles and the leak detector | reply `{players, plugins}` (`snapshot.json`): every online `PlayerState` and each loaded plugin's `{name, version, enabled, config}`, sorted by name; `config` maps each dotted path to its leaf value, jar defaults included. Read-only. No timestamps, never the agent token. Added within v1 (§4), so the protocol stays `1.1` |
 
 Error codes used so far (the code is an `UPPER_SNAKE` token; adding codes is allowed within v1):
@@ -47,7 +52,15 @@ Error codes used so far (the code is an `UPPER_SNAKE` token; adding codes is all
 |---|---|---|
 | `UNAUTHORIZED` | 401 | missing or wrong token; the reply is the same for every endpoint |
 | `PLAYER_NOT_FOUND` | 404 | the player is not online; `detail` is `{name}` |
+| `SERVER_NOT_FOUND` | 404 | proxy only (1.2): the proxy has no backend of that name; `detail` is `{name}` |
 | `UNKNOWN_KEY` | 400 | unknown material or enchantment on `give`; no partial item is created |
+
+On a **proxy agent**, `GET /v1/players/{name}` replies `{name, uuid, proxy: {server, previousServer}}`
+(`proxy.json#/$defs/player`) instead of a `PlayerState`, because a proxy has no inventory or location. `previousServer` is
+an explicit `null` until the player has switched. The backend agent's reply has no `proxy` field (absent means "this is a
+backend"). A proxy `health` reports its platform id (`velocity`, `bungeecord`) in `platform` and the proxy version in
+`mcVersion`, as for any other platform; its `capabilities` include `proxy`. There is no `POST /v1/proxy/servers/{name}/connect`:
+a server switch is client-side (`/server <name>`, ADR-0016 §5).
 
 A successful `give`, `reset` or `PATCH` with nothing to return replies `{"ok": true, "data": {}}`.
 
@@ -70,6 +83,9 @@ A successful `give`, `reset` or `PATCH` with nothing to return replies `{"ok": t
   Removing anything or changing a meaning requires `/v2`.
 - `GET /v1/health` reports `protocol: "1.<minor>"`. Core refuses to run if the major differs, or if the
   agent minor is below core's minimum.
+- **Protocol 1.2** (T-M7-03): adds `GET /v1/proxy/servers`, `GET /v1/proxy/servers/{name}`, the proxy form of
+  `GET /v1/players/{name}`, the `SERVER_NOT_FOUND` code and the `proxy` capability. Nothing existing changed: the `health/ok`
+  golden moved from `1.1` to `1.2` and nothing else in an existing golden did. A 1.1 agent still satisfies every 1.1 golden.
 - **Golden files:** `proofstone-protocol/golden/<endpoint>/*.json` hold request and response pairs.
   Every agent's contract test replays them.
 

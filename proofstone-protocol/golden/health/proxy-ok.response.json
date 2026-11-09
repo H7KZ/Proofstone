@@ -1,0 +1,1 @@
+{"status":200,"body":{"ok":true,"data":{"agentVersion":"<string>","protocol":"1.2","platform":"velocity","mcVersion":"<string>","capabilities":["players","proxy"]}}}
