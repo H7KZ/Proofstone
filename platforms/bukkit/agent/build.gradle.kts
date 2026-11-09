@@ -14,6 +14,10 @@ dependencies {
         isTransitive = false
     }
 
+    // Envelope, auth, HTTP server and log buffer, shared with the proxy agents (T-M7-04). Shaded into this jar.
+    implementation(project(":platforms:agent-core"))
+
+    // The integration test reads the wire JSON itself, and shadow relocates every copy under one name below.
     implementation(platform(libs.jackson.bom))
     implementation(libs.jackson.databind)
 

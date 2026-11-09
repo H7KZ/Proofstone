@@ -1,4 +1,4 @@
-package io.github.h7kz.proofstone.agent.bukkit;
+package io.github.h7kz.proofstone.agent.log;
 
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
 import java.io.PrintWriter;
@@ -24,7 +24,7 @@ import java.util.logging.Logger;
  * logger and message against recent records of the other side that no twin has claimed yet, within
  * {@value #TWIN_WINDOW_MILLIS} ms of each other. Without Log4j2 on the server only JUL is read.
  */
-final class LogBuffer {
+public final class LogBuffer {
 
     static final int CAPACITY = 5000;
     /** The forwarded copy carries the same time; this much slack covers a clock read on each side. */
@@ -44,7 +44,7 @@ final class LogBuffer {
     private long total;
 
     /** Attaches to the root logger. Call once, from the plugin's enable. */
-    static LogBuffer attach() {
+    public static LogBuffer attach() {
         LogBuffer buffer = new LogBuffer();
         Logger.getLogger("").addHandler(buffer.handler);
         try {
@@ -55,7 +55,7 @@ final class LogBuffer {
         return buffer;
     }
 
-    void detach() {
+    public void detach() {
         Logger.getLogger("").removeHandler(handler);
         Log4jTap installed = tap;
         if (installed != null) {
@@ -64,7 +64,7 @@ final class LogBuffer {
     }
 
     /** Records at or after the cursor, at or above {@code minLevel} (spec §2). Throws on an unknown level. */
-    synchronized Map<String, Object> read(long since, String minLevel) {
+    public synchronized Map<String, Object> read(long since, String minLevel) {
         int floor = ORDER.indexOf(minLevel);
         if (floor < 0) {
             throw new AgentException(400, "INVALID_REQUEST", "\"minLevel\" must be one of " + ORDER, null);
@@ -83,7 +83,7 @@ final class LogBuffer {
         return page;
     }
 
-    synchronized void addJul(LogRecord record) {
+    public synchronized void addJul(LogRecord record) {
         String level = name(record.getLevel());
         String logger = record.getLoggerName() == null ? "" : record.getLoggerName();
         String message = formatted(record);
@@ -111,7 +111,7 @@ final class LogBuffer {
         }
     }
 
-    synchronized void acceptLog4j(long millis, String level, String logger, String message, Throwable thrown) {
+    public synchronized void acceptLog4j(long millis, String level, String logger, String message, Throwable thrown) {
         String key = key(level, logger, message);
         if (claimTwin(pendingJul, key, millis)) {
             return;

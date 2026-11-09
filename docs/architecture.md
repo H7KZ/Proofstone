@@ -184,6 +184,7 @@ proofstone/
     mcpl/                          primary Java driver
     mineflayer-ref/                Node sidecar + Dockerfile (reference driver)
   platforms/
+    agent-core/                    envelope, auth, HTTP server, log buffer shared by the agents (Java 8 bytecode)
     bukkit/                        one agent for Paper/Folia/Spigot/Purpur (Java 8 bytecode)
       paper/  folia/  spigot/  purpur/   pack.yml + conformance per flavour
     velocity/  bungee/             (M7)

@@ -38,6 +38,7 @@ include(
     "conformance",
     "drivers:mcpl",
     "drivers:mineflayer-ref",
+    "platforms:agent-core",
     "platforms:bukkit:agent",
     "platforms:bukkit:fixture",
     "examples:smoke",

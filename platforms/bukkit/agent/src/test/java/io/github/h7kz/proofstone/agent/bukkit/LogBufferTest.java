@@ -2,6 +2,7 @@ package io.github.h7kz.proofstone.agent.bukkit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
