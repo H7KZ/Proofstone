@@ -1,5 +1,7 @@
 .gradle/
 build/
+# Maven output (examples/maven-paper-plugin, T-M6-11).
+target/
 .idea/
 *.iml
 out/

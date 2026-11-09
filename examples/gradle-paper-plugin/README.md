@@ -4,8 +4,7 @@
 
 The Gradle half of the T-M6-04 example pair. `AnvilMechanic` is a minimal Paper plugin: one iron ingot and one gold ingot
 on an anvil make one diamond. `AnvilMechanicE2E` (source set `e2eTest`) runs it on a real Paper 26.3 server through
-Proofstone. It shows the intended setup for a Gradle project. The Maven twin (`examples/maven-paper-plugin`) is not in this change: Maven is
-not installed on the machine that wrote it, so it could not be run (see the PR).
+Proofstone. It shows the intended setup for a Gradle project. The Maven twin is `examples/maven-paper-plugin` (T-M6-11).
 
 Paper 26.3's API is Java 25 bytecode, so the plugin compiles on a JDK 26 at `release 25`, and the server needs Java 25 or
 newer. The compile-only Paper API comes from `repo.papermc.io` (stable release, pinned in the catalog); it is the only

@@ -105,5 +105,5 @@ Read [writing-tests.md](writing-tests.md). Copy the shape of `AnvilMechanicE2E.j
   convention plugin in `build-logic/`. Neither is published. Copying the example elsewhere has not been tried.
 - **The example is flaky.** `paper@26.3` was red in 2 of 4 runs through the GitHub Action path and 1 of 5 plain Gradle runs
   (join timeouts and an unrecoverable `AssertionError`). Read [troubleshooting.md](troubleshooting.md) before you judge a red run.
-- **Maven** does not exist yet: [quickstart-maven.md](quickstart-maven.md).
+- **Maven** has its own quickstart, verified separately: [quickstart-maven.md](quickstart-maven.md).
 - **Time** to a green test: not measured. The 15-minute target is open.
