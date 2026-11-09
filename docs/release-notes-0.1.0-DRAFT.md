@@ -25,7 +25,7 @@ a wrong view of the world alone. See [vision](vision.md).
 
 ## Known problems (not fixed in 0.1.0 unless the maintainer decides otherwise)
 
-- The example projects are flaky on paper@26.3. The Gradle example's plain path is red in 3 of 61 runs, all join timeouts
+- The example projects are flaky on paper@26.3. The Gradle example's runs on paper@26.3 were red in 3 of 61 (2 of 46 unstressed, 1 of 15 stressed), all join timeouts
   (`timed out joining ... after PT30S`). The cause is unexplained; the rate is bounded. The GitHub Action path was red in 2 of 4
   earlier runs. Follow-up card T-M6-14 logs the handshake stage at join.
 - Prefixed-Bedrock login through ViaProxy stalls on bridged cells. Native cells only for Bedrock (C-B01).

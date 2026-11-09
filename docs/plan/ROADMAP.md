@@ -498,7 +498,7 @@ Action path (earlier): 2 red of 4. The verdict type of the earlier reds (INVALID
 the XML was overwritten before anyone read it. Do not claim a root cause.
 Next step: keep the XML of every red run (this run's loop copies it aside; reuse that pattern).
 T-M6-10 (2026-11-09, ROADMAP "M6 pre-release findings" item 3): 45 more runs, 2 red (both `join-timeout`, verdict types named
-from the kept XML and bundles), plus 1 smoke pass. Combined with the 15 plain runs above: 3 red of 61 plain-path runs, all join
+from the kept XML and bundles), plus 1 smoke pass. Combined with the 15 plain runs above: 3 red of 61 runs (2 of 46 unstressed, 1 of 15 under the artificial stressor), all join
 timeouts. Cause unknown; contention unresolved (see item 3).
 
 ### Exit criterion (six items of T-M6-99 / the M6 goal)
@@ -559,7 +559,7 @@ Not fixed, open: the namespace question (item 7).
 | 2 | Maven | Done: installed (Apache Maven 3.9.9 at `C:/Users/honzi/tools/apache-maven-3.9.9`), T-M6-11 merged | Install Apache Maven, then run T-M6-11. Maven is a stated target audience (ADR-0001, ADR-0009); dropping it removes half of the release claim. |
 | 3 | spigot-buildtools push | Decided | Keep unpushed (bundles BuildTools.jar). Only mineflayer-ref is pushed. |
 | 4 | XP-LEAK bad test | Decided | Accept the documented deviation for 0.1; add a persistent fixture player post-0.1 (M7+ gives a proxy-persistent player anyway). |
-| 5 | Flakes | Bounded, not explained (T-M6-10: 3 of 61 plain runs red, all join timeouts). Follow-up: T-M6-14 | Diagnose before any 0.1 claim: card T-M6-10. Does not block starting M7 design cards, blocks M7 real-server acceptance claims that depend on join. |
+| 5 | Flakes | Bounded, not explained (T-M6-10: 3 of 61 runs red, all join timeouts: 2 of 46 unstressed, 1 of 15 stressed). Follow-up: T-M6-14 | Diagnose before any 0.1 claim: card T-M6-10. Does not block starting M7 design cards, blocks M7 real-server acceptance claims that depend on join. |
 | 6 | T-M4-13, T-M4-14 | Decided | Defer past 0.1. |
 | 7 | Namespace | Done (T-M6-12): `io.github.h7kz.proofstone`. Central verification still open (ADR-0012) | If you do not own `proofstone.dev`, rename `dev.proofstone.*` to `io.github.h7kz.proofstone.*` before the first publish (269 files, mechanical, free now, breaking later). If you own it, change ADR-0012 to say so. Decide before M7 adds more packages. |
 | 8 | Workflow | Decided | Keep local scripts only. Revisit a tag-triggered release workflow after 0.1. |
@@ -589,7 +589,7 @@ no code change). One Docker run at a time under `dockerlock`, XML and logs read,
 | `release-images.sh --write-digests` | refused: no pushed digest |
 | Join timeouts or `PSConf moved too quickly` in this run's logs | 0 |
 
-Flake numbers (unchanged, not re-run here): paper@26.3 plain Gradle path 3 red of 61 runs (1 of 15 earlier, 2 of 46 in T-M6-10),
+Flake numbers (unchanged, not re-run here): paper@26.3 Gradle example, all conditions, 3 red of 61 runs (2 of 46 unstressed, 1 of 15 under the stressor; the unstressed runs are 1 of 15 earlier plus 1 of 31 in T-M6-10),
 all `join-timeout`. Cause unknown; bounded, not explained. Action path 2 of 4 earlier. Follow-up card **T-M6-14** logs the
 server's handshake view at join and names the stalled stage in INVALID, so the next red can be explained.
 
