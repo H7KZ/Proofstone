@@ -1,0 +1,13 @@
+// SPIKE (T-M7-01). Prints the mcpl driver's runtime classpath so scripts/spike/ProxyJoin.java can run against the
+// real driver without a build change. Used only by scripts/spike/proxy-spike.sh.
+allprojects { p ->
+    if (p.path == ':drivers:mcpl') {
+        p.afterEvaluate {
+            p.tasks.register('spikeClasspath') {
+                def cp = p.sourceSets.main.runtimeClasspath
+                dependsOn cp
+                doLast { println 'SPIKE_CP=' + cp.files.join(File.pathSeparator) }
+            }
+        }
+    }
+}

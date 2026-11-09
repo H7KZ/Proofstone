@@ -627,3 +627,20 @@ maintainer's decision. After any further commit, re-run `bash scripts/release-mu
 
 The full, current prompt is `docs/plan/NEXT-SESSION-M7-PROMPT.md` (updated after the 2026-11-09 audit). The earlier short prompt
 that stood here is superseded.
+
+## M7 findings
+
+Reds and surprises from M7 real-server runs, per the M7 Flake rule. Each names its verdict type and, for a join
+timeout, the stalled stage and hop.
+
+- **T-M7-01 spike (2026-11-09), no join timeout.** Velocity 4.3.1 build 45: 15 of 15 client joins, 41 backend logins.
+  BungeeCord build 2111: 10 of 10 client joins, 30 backend logins. Join timeouts on either hop: 0. Details in
+  `docs/platforms/velocity.md` and `docs/platforms/bungeecord.md`.
+- **Switch red, not a join timeout: Velocity sent `/server survival` to the backend** (2 of 48 switch attempts, the
+  first client of runs 3 and 5). The backend answered `command.unknown.command`. Likely Velocity's
+  `command-rate-limit = 50` with `forward-commands-if-rate-limited = true` (the two commands were 25 ms apart); with the
+  limit at 0, 10 of 10 switched (one run). Open for T-M7-09.
+- **Setup red: copying `config/` into a Paper backend's `/data` crashed both backends at world load** (root-owned
+  directory). Fixed in the spike script by copying into `/config`. Recorded in `docs/platforms/velocity.md` Gotchas.
+- **Protocol gaps:** Velocity 3.5.1 build 615 and Waterfall 1.21 build 615 reject the protocol 777 client (one probe
+  each). Neither is proposed as a row.
