@@ -59,6 +59,7 @@ Each supported platform gets `docs/platforms/<id>.md` with these sections:
 - **Gotchas**, which agents append to as they learn.
 
 Written so far: [paper](platforms/paper.md), [folia](platforms/folia.md), [purpur](platforms/purpur.md), [spigot](platforms/spigot.md). Bridged-row facts: [viaproxy](platforms/viaproxy.md).
+Proxy spike facts (T-M7-01, status spike, no rows yet): [velocity](platforms/velocity.md), [bungeecord](platforms/bungeecord.md).
 
 ## Status evidence (M5, 2026-11-08; M5 follow-up, same day)
 M5 itself promoted nothing: each row had one full local run. The M5 follow-up (`fix/m5-evidence-promotion`) applies
