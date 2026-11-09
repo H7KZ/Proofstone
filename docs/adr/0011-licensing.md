@@ -46,7 +46,7 @@ check any point that matters for a release.
 ### Facts from the repository
 
 - Shipped code: the four published modules (`proofstone-api`, `-core`, `-protocol`, `drivers:mcpl`) and the Bukkit agent
-  (`platforms/bukkit/agent`). The agent shades and relocates Jackson (`dev.proofstone.shaded.jackson`, Apache-2.0). Shaded
+  (`platforms/bukkit/agent`). The agent shades and relocates Jackson (`io.github.h7kz.proofstone.shaded.jackson`, Apache-2.0; renamed from `dev.proofstone.*` in T-M6-12). Shaded
   code keeps its own licence and notice duties.
 - Compile-only, never shaded: Spigot API (agent, fixture) and Paper API (example plugin, from `repo.papermc.io`).
   The Paper and Spigot API licences were **not checked** in this session.

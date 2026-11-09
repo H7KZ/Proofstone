@@ -556,16 +556,62 @@ Not fixed, open: the namespace question (item 7).
 | # | Decision | State | Recommendation |
 |---|---|---|---|
 | 1 | Licence | Decided 2026-11-09 | Apache-2.0 + DCO + NOTICE (T-M6-06, ADR-0011 Accepted). |
-| 2 | Maven | **Maintainer** (install) | Install Apache Maven, then run T-M6-11. Maven is a stated target audience (ADR-0001, ADR-0009); dropping it removes half of the release claim. |
+| 2 | Maven | Done: installed (Apache Maven 3.9.9 at `C:/Users/honzi/tools/apache-maven-3.9.9`), T-M6-11 merged | Install Apache Maven, then run T-M6-11. Maven is a stated target audience (ADR-0001, ADR-0009); dropping it removes half of the release claim. |
 | 3 | spigot-buildtools push | Decided | Keep unpushed (bundles BuildTools.jar). Only mineflayer-ref is pushed. |
 | 4 | XP-LEAK bad test | Decided | Accept the documented deviation for 0.1; add a persistent fixture player post-0.1 (M7+ gives a proxy-persistent player anyway). |
-| 5 | Flakes | Decided | Diagnose before any 0.1 claim: card T-M6-10. Does not block starting M7 design cards, blocks M7 real-server acceptance claims that depend on join. |
+| 5 | Flakes | Bounded, not explained (T-M6-10: 3 of 61 plain runs red, all join timeouts). Follow-up: T-M6-14 | Diagnose before any 0.1 claim: card T-M6-10. Does not block starting M7 design cards, blocks M7 real-server acceptance claims that depend on join. |
 | 6 | T-M4-13, T-M4-14 | Decided | Defer past 0.1. |
-| 7 | Namespace | **Maintainer** | If you do not own `proofstone.dev`, rename `dev.proofstone.*` to `io.github.h7kz.proofstone.*` before the first publish (269 files, mechanical, free now, breaking later). If you own it, change ADR-0012 to say so. Decide before M7 adds more packages. |
+| 7 | Namespace | Done (T-M6-12): `io.github.h7kz.proofstone`. Central verification still open (ADR-0012) | If you do not own `proofstone.dev`, rename `dev.proofstone.*` to `io.github.h7kz.proofstone.*` before the first publish (269 files, mechanical, free now, breaking later). If you own it, change ADR-0012 to say so. Decide before M7 adds more packages. |
 | 8 | Workflow | Decided | Keep local scripts only. Revisit a tag-triggered release workflow after 0.1. |
 | 9 | metaTest selector | Done | PR #88. |
 
 What only you can do: items 1, 2 (install), 7, the Central namespace verification (ADR-0012), and any publish or tag.
+
+## M6 review addendum (2026-11-09, after maintainer decisions)
+
+Run by T-M6-13 (`card/T-M6-13-pre-m7-readiness`, from origin/main 0909947). Code under test: commit `4df12c8` (docs fixes only,
+no code change). One Docker run at a time under `dockerlock`, XML and logs read, no retries, no red run.
+
+| Run | Result |
+|---|---|
+| `bash scripts/gates.sh --max-workers=1` | OK, exit 0 |
+| `:conformance:smoke`, paper@26.3 | 2 tests, skipped 0, failures 0, errors 0 |
+| `:conformance:run -Dproofstone.cells=paper@26.1.2` | failures 0, errors 0. 3 reasoned skips: missing `FOLIA_REGIONS` (2), missing `SIMULATED_BEDROCK` (1) |
+| `:examples:bad-tests:metaTest`, no selector | BUILD SUCCESSFUL, all 8 verdicts as expected |
+| Gradle example `e2eTest`, paper@26.3 (quickstart) | tests 2, skipped 0, failures 0, errors 0 |
+| Gradle example, `double-output` and `accept-any-right` | both red on assertions (`AnvilMechanicE2E.java:42`, `:60`), not join timeouts |
+| Maven example `verify -Pe2e`, paper@26.3 (quickstart) | tests 2, skipped 0, failures 0, errors 0 |
+| Maven example, both bugs | both red with the quickstart's messages (`one iron and one gold make one diamond`; `coal is not an accepted right input`) |
+| `scripts/release-mutation-check.sh` (no flag), clean tree | **PASS**: head `4df12c8`, dirty false, killed 4, no allowed-missing |
+| `scripts/release-maven.sh --dry-run` | DRY RUN OK, nothing uploaded, signatures NOT CHECKED (no key) |
+| `release-maven.sh --publish`, env cleared | refused: `PROOFSTONE_RELEASE_CONFIRM` not set |
+| `release-images.sh --push`, env cleared | refused: `PROOFSTONE_RELEASE_CONFIRM` not set |
+| `release-images.sh --write-digests` | refused: no pushed digest |
+| Join timeouts or `PSConf moved too quickly` in this run's logs | 0 |
+
+Flake numbers (unchanged, not re-run here): paper@26.3 plain Gradle path 3 red of 61 runs (1 of 15 earlier, 2 of 46 in T-M6-10),
+all `join-timeout`. Cause unknown; bounded, not explained. Action path 2 of 4 earlier. Follow-up card **T-M6-14** logs the
+server's handshake view at join and names the stalled stage in INVALID, so the next red can be explained.
+
+### Exit criterion, re-scored
+
+| # | Item | Status | Evidence and reason |
+|---|---|---|---|
+| 1 | Disenchantment's full suite runs in Disenchantment's CI | NOT MET | T-M6-05 is in another repo. No CI here, by decision (2026-11-08). Unverified |
+| 2 | Maven and Gradle example projects work | MET (local) | Both e2e green on paper@26.3 and both bugs killed, at `4df12c8`. Flake bounded (see above); Maven flake rate not measured |
+| 3 | Artefacts published to Maven Central and GHCR | NOT MET | Nothing published, by design. Central namespace verification (ADR-0012) and GHCR push not done. Correct state, not a failure |
+| 4 | GitHub Action published | NOT MET | Local only (`integrations/github-action`). Hosted runner not verified |
+| 5 | Licence decided | MET | ADR-0011 Accepted 2026-11-09: Apache-2.0, DCO, NOTICE |
+| 6 | Mutation check passes | MET (local, at `4df12c8`) | Complete PASS on a clean tree. Publish requires a PASS for the tagged HEAD: re-run before any tag |
+
+### Verdict
+
+**Still NO-GO for a public 0.1.0 claim.** Blocking: item 1 (other repo), item 3 (Central namespace verification, then publish, both
+the maintainer's), item 4 (Action not published). Nothing here publishes or tags anything.
+
+**Go-able now, locally:** dogfood use from `mavenLocal`, and a tag-ready state for the code at `4df12c8`. Tagging is the
+maintainer's decision. After any further commit, re-run `bash scripts/release-mutation-check.sh` at the tag HEAD first:
+`release-maven.sh --publish` refuses otherwise.
 
 ### M7 next-session prompt
 
