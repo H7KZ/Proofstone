@@ -205,7 +205,7 @@ Review.
 - Skip mutations to make a release pass.
 
 **Acceptance.**
-- [ ] A surviving mutation demonstrably blocks the release, tested by temporarily disabling a bug.
+- [x] A surviving mutation demonstrably blocks the release, tested by temporarily disabling a bug. (Evidence, local: with `double-output` disabled in an uncommitted edit, `scripts/release-mutation-check.sh` printed SURVIVED and exited 1, and `release-maven.sh --publish` refused with "Mutation check status is 'FAIL'". The clean run on the commit 1591d77 printed PASS: baseline PASS, both bugs KILLED, `maven-paper-plugin` NOT RUN allowed via `--allow-missing`. Publish then passed the mutation gate and stopped on ADR-0011, as expected.)
 
 **Verify.**
 The CI run link.
