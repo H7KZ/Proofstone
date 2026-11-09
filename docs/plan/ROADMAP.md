@@ -430,3 +430,84 @@ Open findings, not passes. Each needs a maintainer call or a diagnosis before M6
    Plain gradle control (same cell and flags, no action layer): 5 runs, 1 red. Both tests `java.lang.AssertionError at
    VerdictGate.java:150`, no message printed. The verdict text (INVALID, DISAGREE or LEAK) is not recoverable: the XML was overwritten
    by a later run and the bundle holds no verdict text. The plain path is red too, so the action layer is not the cause.
+
+## M6 review (T-M6-99)
+
+Date 2026-11-09. Ran on `card/T-M6-99-release-review` from origin/main d1b6c02 (PRs #77 to #86 merged). Local runs only.
+
+**Verdict: NO-GO for 0.1.0 as claimed.** Go-able now: dogfood use from `mavenLocal` and Disenchantment work in its own repo.
+Not go-able: any public release, any "examples green" claim, any GitHub Action or Maven Central claim.
+
+### Evidence from this run
+
+| Gate | Result |
+|---|---|
+| `bash scripts/gates.sh --max-workers=1` | OK. `docsCheck` 0 errors, 420 warnings (glossary, not failing). BUILD SUCCESSFUL |
+| `:examples:bad-tests:metaTest` on paper@26.3 (selector not forwarded, see finding) | BUILD SUCCESSFUL. All 8 verdicts: VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED |
+| `:conformance:smoke` on paper@26.3 | BUILD SUCCESSFUL. 2 tests, skipped 0, failures 0, errors 0 |
+| `scripts/release-mutation-check.sh --allow-missing=maven-paper-plugin` | PASS. Baseline PASS, double-output KILLED, accept-any-right KILLED. Recorded `dirty=true` (uncommitted T-M6-99 docs), so `--publish` would refuse it |
+| `scripts/release-mutation-check.sh` (no flag) | INCOMPLETE, as designed. Blocking: `maven-paper-plugin` NOT RUN (no project, no mvn) |
+| Gradle example, plain path, paper@26.3, 10 sequential runs | 10 of 10 green (`tests=2 skipped=0 failures=0 errors=0`) |
+
+Finding: the `badRuns` tasks in `examples/bad-tests/build.gradle.kts` do not forward `-Dproofstone.cells` (only `tasks.test` does).
+metaTest therefore ran each bad test on its default matrix, not the requested cell. All verdicts were still correct. The
+differential run uses paper@26.1.2 by design. Fix in a separate card: forward the selector in `badRun`, and decide what
+differential does on a paper@26.3-only run.
+
+### Gradle example flake (ROADMAP "M6 pre-release findings" item 3)
+
+Running total for paper@26.3, plain gradle path: earlier 1 red of 5 (T-M6-03 review), this run 0 red of 10. Total 1 of 15.
+Action path (earlier): 2 red of 4. The verdict type of the earlier reds (INVALID/DISAGREE/LEAK/VACUOUS) is **not recoverable**:
+the XML was overwritten before anyone read it. Do not claim a root cause.
+Next step: keep the XML of every red run (this run's loop copies it aside; reuse that pattern).
+
+### Exit criterion (six items of T-M6-99 / the M6 goal)
+
+| # | Item | Status | Evidence and reason |
+|---|---|---|---|
+| 1 | Disenchantment's full suite runs in Disenchantment's CI | NOT MET | T-M6-05 is in another repo. No CI exists here. Unverified |
+| 2 | Maven and Gradle example projects work | NOT MET | Maven example missing (mvn not installed). Gradle green 10 of 10 this run, but flake 1 red of 15 unexplained |
+| 3 | Artefacts published to Maven Central and GHCR | NOT MET | Nothing published, by design (licence undecided). Correct state, not a failure |
+| 4 | GitHub Action published | NOT MET | Local only (`integrations/github-action`). Action self-check was red earlier |
+| 5 | Licence decided | NOT MET | ADR-0011 Proposed. Proposal section added, no decision |
+| 6 | Mutation check passes | NOT MET | PASS only with `--allow-missing` (Maven). Without it INCOMPLETE. Also needs a clean-tree run at the release HEAD |
+
+"In CI" is impossible: no CI, no workflows (maintainer decision 2026-11-08).
+
+### Merged in M6
+
+- T-M4-10 (per-cell conformance) and T-M4-12 (real snapshot in bundles, wider leak detector): merged in PRs #77 to #86 per the brief.
+- T-M6-01 Maven publishing pipeline (dry run only), T-M6-02 GHCR scripts (dry run only; no push), T-M6-03 GitHub Action (local),
+  T-M6-04 Gradle example only, T-M6-07 mutation check (local), T-M6-08 quickstart docs.
+- T-M6-06 licence: proposal only. T-M6-05: other repo.
+
+### Unverified
+
+- Disenchantment CI run (T-M6-05). Maven example (T-M6-04). Maven Central staging and publish. GHCR push and pull by digest (T-M6-02).
+- GitHub Action on a hosted runner. Quickstart 15-min target: a fresh agent run took 108 s green on first run, with caveats
+  (images cached, JDK 21 not 26 though the doc says 26, clone from a stale local main). Not re-run in this card.
+- Mutation check on a clean tree at the release HEAD.
+
+### Decisions needed from the maintainer
+
+1. Licence: Apache-2.0 vs MIT. Recommendation in ADR-0011 "Proposal for the maintainer" (Apache-2.0, DCO, NOTICE). Not decided.
+2. Maven: install mvn, or drop the Maven example from 0.1.0.
+3. spigot-buildtools image: keep it unpushed (it bundles BuildTools.jar), or decide otherwise.
+4. XP-LEAK bad test (T-M4-12 deviation, "M6 pre-release findings" item 1): fixture player, or compare own client.
+5. Flakes: Gradle example on paper@26.3 (1 of 15 plain, 2 of 4 action) and `PSConf moved too quickly` (item 2). Accept as known, or fix before 0.1.
+6. T-M4-13 and T-M4-14: defer past 0.1 (the M4 review says they can wait). Confirm.
+7. Namespace: verify `io.github.h7kz` on the Central Portal (ADR-0012). The agent shades under `dev.proofstone.shaded.jackson`, while ADR-0012 says `io.github.h7kz.proofstone.*` unless a domain is acquired. Decide.
+8. Workflow: add one for the release, or keep local scripts only (current decision).
+9. metaTest cell selector: approve the forwarding fix card.
+
+### M6 re-estimate
+
+Original estimate 2 weeks. Remaining: Maven example (about 2 days, needs mvn), selector fix and flake diagnosis (about 2 days, needs Docker
+runs and a diagnosis), release dry run on a clean tree, Disenchantment CI (external), licence decision (maintainer time).
+Re-estimate **3 weeks** from now, most of it waiting on the maintainer and on Docker runs.
+
+### M7 next-session prompt
+
+> Start M7 (Proxies, Velocity and BungeeCord). First read AGENTS.md, docs/plan/ROADMAP.md (M6 review, T-M6-99), docs/adr/0011
+> and docs/adr/README.md. Do not start M7 cards until the M6 decisions list is answered. Refine the M7 epic into cards
+> (Sonnet) and stop for approval. Run `bash scripts/gates.sh --max-workers=1` before any PR. One Docker run at a time.
