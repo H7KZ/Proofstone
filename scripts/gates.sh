@@ -12,6 +12,8 @@ cd "$(dirname "$0")/.."
 
 # Release-script tests (T-M6-09): fixture-based, no publish, no Docker.
 bash scripts/release-gate-test.sh
+# Bad-test cell pins (T-M6-09): a mismatched selector is refused before any server starts. No Docker.
+bash scripts/bad-tests-pin-check.sh
 
 if ! git diff --quiet origin/main -- renovate.json 2>/dev/null; then
   # Version pinned like the old workflow did (renovate@44.171.1); Node comes from the machine.

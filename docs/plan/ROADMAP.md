@@ -430,6 +430,19 @@ Open findings, not passes. Each needs a maintainer call or a diagnosis before M6
    Plain gradle control (same cell and flags, no action layer): 5 runs, 1 red. Both tests `java.lang.AssertionError at
    VerdictGate.java:150`, no message printed. The verdict text (INVALID, DISAGREE or LEAK) is not recoverable: the XML was overwritten
    by a later run and the bundle holds no verdict text. The plain path is red too, so the action layer is not the cause.
+   **Data points, same family (join timeout `timed out joining ... after PT30S`):**
+   - purpur@26.3 C06 join timeout (earlier single red, unexplained; see the M6 status above and `docs/platforms/purpur.md`).
+   - Gradle example `paper@26.3`, two runs (action selfcheck, verifier run 2; see above).
+   - `metaExpect` on `paper@26.3` (T-M6-09, 2026-11-09, `-Dproofstone.cells=paper@26.3` run): `ExpectFailsE2E` got
+     `INVALID` from `cell conformance failed: the conformance client could not join: timed out joining PSConf ... after PT30S`,
+     twice in one run, instead of `FAIL`. The red-run XML is kept aside in the T-M6-09 verifier scratchpad. Not a verdict of the test.
+   - The same `metaTest` run without a selector (default cells, 2026-11-09, `paper@26.3` and `paper@26.1.2`): 0 join timeouts, all 8
+     verdicts as expected. The `paper@26.3` join timeouts did not recur in that run.
+   **Hypothesis to test (not confirmed):** other containers on the same Docker Desktop cause resource contention. Checked on
+   2026-11-09: `docker ps -a` showed `ohlidame-redis`, `ohlidame-mysql` and `ohlidame-mailpit` running (not Proofstone's, 21 hours up),
+   all others exited. A 20-second `docker stats` sample during the default-cells run showed them idle (CPU under 3%, mysql about
+   0.6 GiB of an 11.68 GiB limit). The sampler saw no Proofstone container, so contention during the Paper cell is **not measured**.
+   Next: record `docker stats` for the whole cell start, with the `ohlidame-*` containers stopped and started, on one red-prone cell.
 
 ## M6 review (T-M6-99)
 

@@ -58,9 +58,30 @@ PROOFSTONE_ACCEPT_EULA=true ./gradlew :examples:bad-tests:test -Dproofstone.diff
 ```
 
 The cell selector (`-Dproofstone.cells=<platform>@<mc>`) and `-Dproofstone.scope` reach every run, `test` and each `meta*`
-task alike. `metaTest` with `-Dproofstone.cells=paper@26.3` therefore runs the bad tests on that one cell only. A differential
-run needs the native cell it runs on, `paper@26.1.2`: without `-Dproofstone.cells` it stops before any server starts, and the
-error says which cell to pass.
+task alike. The selector is subject to the cell pins below. A differential run (`-Dproofstone.differential=true`) needs the
+native cell it runs on, `-Dproofstone.cells=paper@26.1.2`: without it the run stops before any server starts.
+
+### Cell pins
+
+The selector replaces each test's `@Matrix`, so a selector can move a test to a cell where its verdict means something else.
+Tests whose `@Matrix` names one version are pinned to it. Without a selector a pinned task runs its pin. A selector that names any
+other cell is refused in that task's `doFirst`, before any server starts. The refusal names the task and the supported cell
+(`scripts/bad-tests-pin-check.sh`, run by `scripts/gates.sh`).
+
+| Task | Test | `@Matrix` | Supported cells |
+|---|---|---|---|
+| `metaVacuous` | `VacuousE2E` | `latest` | any Paper cell |
+| `metaFlaky` | `FlakyE2E` | `latest` | any Paper cell |
+| `metaDisagree` | `differential/DriverFaultDisagreeE2E` | `26.1.2` | `paper@26.1.2` only |
+| `metaInvalid` | `invalid/InvalidConformanceE2E` | `latest` | any Paper cell |
+| `metaInvalidWindow` | `invalid/window/WindowConformanceInvalidE2E` | `26.1.2` | `paper@26.1.2` only |
+| `metaLeak` | `leak/LeakE2E` | `26.1.2` | `paper@26.1.2` only |
+| `metaExpect` | `expect/ExpectFailsE2E` | `latest` | any Paper cell |
+| `metaRequires` | `requires/RequiresSkipsE2E` | `latest` | any Paper cell |
+
+`-Dproofstone.cells=paper@26.3` on `metaTest` is therefore refused at `metaInvalidWindow`, `metaDisagree` and `metaLeak`. Run
+the cell-agnostic tasks on another cell by name, for example `:examples:bad-tests:metaVacuous -Dproofstone.cells=paper@26.3`.
+`metaTest` without a selector is the full check.
 
 The first run is green: the vacuous test passes with its plugin, and the flaky test passes on its first draw. The
 control run is expected to fail with `VACUOUS` on `VacuousE2E`. The repeat run is expected to fail with `FLAKY` on
