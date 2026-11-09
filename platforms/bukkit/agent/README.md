@@ -40,6 +40,9 @@ setup writes: give, reset and PATCH.
     patched: a no-op;
   - `POST /plugins/{id}/reload`, optional body `{proofstone-reload-command}`, reply `{}`. Runs the named console
     command as the plugin's hook, or disables and enables the plugin. Never `/reload`.
+  - `GET /snapshot`, reply `{players, plugins}` (snapshot.json, T-M4-12): every online `PlayerState` and every loaded
+    plugin's name, version, enabled flag and config (dotted path to leaf value, jar defaults included), sorted by name. Read-only, one pass on the server
+    thread. Never the agent token.
 - Error codes: `UNAUTHORIZED` 401, `PLAYER_NOT_FOUND` 404, `INVALID_REQUEST` 400, `UNKNOWN_KEY` 400,
   `TIMEOUT` 504, `NOT_FOUND` 404, `METHOD_NOT_ALLOWED` 405, `INVENTORY_FULL` 409, `INTERNAL` 500. The last five
   are additions within v1, not yet in the spec table.

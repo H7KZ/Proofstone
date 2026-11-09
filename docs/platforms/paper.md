@@ -198,6 +198,9 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in `setupConfig`). The
   fixture plugin only survived because it loads every class on first enable. A plugin that caches config in `onEnable`
   needs a reload hook. (T-M2-03, changed in T-M2-10.)
+- **`ConfigurationSection.getValues(false)` leaves out jar defaults.** A key the plugin never wrote to `config.yml` reads
+  through `get()` but is missing from `getValues`. `GET /v1/snapshot` reads `getKeys(true)` plus the defaults' keys, so
+  the fixture's `greeting` shows as `hi`. (T-M4-12)
 - **A plain player cannot run vanilla `/list`** (`Unknown command`): vanilla commands need op. `/version` and `/plugins`
   work for everyone. Use the agent (console) for setup commands.
 - **MCProtocolLib does not answer a teleport.** The server ignores a client's packets, block use included, until it gets

@@ -39,7 +39,7 @@ and this page explains them.
 | `GET /v1/ticks` | the current tick counter (per region on Folia: `{global, regions}`) | — |
 | `POST /v1/ticks/await` | `{n}` | — |
 | `GET /v1/log?since=&minLevel=` | captured log records with stack traces | root JUL/Log4j handler |
-| `GET /v1/snapshot` | full-state dump for repro bundles | — |
+| `GET /v1/snapshot` | full-state dump for repro bundles and the leak detector | reply `{players, plugins}` (`snapshot.json`): every online `PlayerState` and each loaded plugin's `{name, version, enabled, config}`, sorted by name; `config` maps each dotted path to its leaf value, jar defaults included. Read-only. No timestamps, never the agent token. Added within v1 (§4), so the protocol stays `1.1` |
 
 Error codes used so far (the code is an `UPPER_SNAKE` token; adding codes is allowed within v1):
 

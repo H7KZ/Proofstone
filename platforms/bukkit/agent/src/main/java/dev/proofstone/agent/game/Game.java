@@ -76,4 +76,10 @@ public interface Game {
 
     /** Reloads one plugin: runs {@code hookCommand} as the console when given, else disables and enables it. */
     void reloadPlugin(String plugin, String hookCommand, long timeoutMs);
+
+    /**
+     * The full-state dump (snapshot.json): every online player's {@code PlayerState} and every loaded plugin's name,
+     * version, enabled flag and config values, both sorted by name. Read on the server thread in one pass.
+     */
+    Map<String, Object> snapshot(long timeoutMs);
 }

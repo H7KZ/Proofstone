@@ -48,7 +48,8 @@ class GoldenContractTest {
             entry("ticks/await", new Schemas("ticks.json#/$defs/await", "ticks.json")),
             entry("events/subscribe", new Schemas("event.json#/$defs/subscribe", "event.json#/$defs/subscribeReply")),
             entry("events/poll", new Schemas(null, "event.json#/$defs/page")),
-            entry("log/read", new Schemas(null, "log-record.json#/$defs/page")));
+            entry("log/read", new Schemas(null, "log-record.json#/$defs/page")),
+            entry("snapshot/read", new Schemas(null, "snapshot.json")));
 
     /** The card's cases. The list is fixed so that a deleted golden file fails the build. */
     private static final List<String> CASES = List.of(
@@ -63,6 +64,7 @@ class GoldenContractTest {
             "players/not-found",
             "players/open-anvil",
             "players/read-after-give",
+            "snapshot/read",
             "plugins/config-patch",
             "plugins/config-read",
             "plugins/config-read-after-restore",

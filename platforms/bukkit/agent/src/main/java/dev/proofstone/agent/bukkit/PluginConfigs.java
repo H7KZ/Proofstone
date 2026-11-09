@@ -148,7 +148,7 @@ final class PluginConfigs {
     }
 
     /** YAML sections become maps and lists recurse, so the reply is JSON-ready (spec §2 config value). */
-    private static Object plain(Object value) {
+    static Object plain(Object value) {
         if (value instanceof ConfigurationSection) {
             Map<String, Object> out = new LinkedHashMap<>();
             for (Map.Entry<String, Object> entry : ((ConfigurationSection) value).getValues(false).entrySet()) {

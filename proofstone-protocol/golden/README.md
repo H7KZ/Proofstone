@@ -68,6 +68,7 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `events/poll` | `GET /v1/events/probe-1?since=0`: one captured event with getters serialised (v1.1) |
 | `log/read` | `GET /v1/log?since=0&minLevel=WARN`: one record with a stack trace (v1.1) |
 | `players/open-anvil` | `players/read-after-give` with an open anvil window: `openWindow` in `player-state.json` (v1.1) |
+| `snapshot/read` | `GET /v1/snapshot` after the give: Alex with the sword, and the two fixture plugins with their config (`snapshot.json`, additive in v1.1, T-M4-12) |
 
 **Replay order and setup (T-M2-02).** Cases that need setup:
 
