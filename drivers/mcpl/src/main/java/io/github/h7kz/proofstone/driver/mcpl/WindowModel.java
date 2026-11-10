@@ -128,6 +128,19 @@ class WindowModel implements WindowView {
 
     private static final int PLAYER_SLOTS = 36;
 
+    /**
+     * Back to "not synced": a new server join (T-M7-09). The state id restarts and the cursor is empty; the next
+     * full sync is the new server's. The {@code syncs} count is kept, so a click waiting across it still sees a change.
+     */
+    synchronized void reset() {
+        slots = null;
+        rawSlots = List.of();
+        rawCursor = null;
+        cursor = SlotStack.EMPTY;
+        stateId = 0;
+        synced = false;
+    }
+
     synchronized void markClosed() {
         closed = true;
     }

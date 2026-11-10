@@ -313,10 +313,10 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Predict state after the switch. Swallow a disconnect during the switch as success (a kick mid-switch is a failure with its reason). Change the single-server join path.
 
 **Acceptance.**
-- [ ] Unit tests pass for: normal switch, kick during switch, switch to an unreachable server (the proxy keeps the client on the first server), double switch.
-- [ ] Real server: a Velocity and a BungeeCord topology, client switches lobby to survival and back, window and inventory views are the new server's, not stale. Flake rule: three invocations each.
-- [ ] A join timeout during the switch names the stage and the hop (T-M7-07 message).
-- [ ] The C01 to C08 conformance on a plain `paper@26.3` cell is unchanged (one invocation, XML read).
+- [x] Unit tests pass for: normal switch, kick during switch, switch to an unreachable server (the proxy keeps the client on the first server), double switch.
+- [x] Real server: a Velocity and a BungeeCord topology, client switches lobby to survival and back, window and inventory views are the new server's, not stale. Flake rule: three invocations each.
+- [x] A join timeout during the switch names the stage and the hop (T-M7-07 message).
+- [x] The C01 to C08 conformance on a plain `paper@26.3` cell is unchanged (one invocation, XML read).
 
 **Verify.**
 `./gradlew :drivers:mcpl:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=velocity@<row>+paper@26.3 --no-parallel --max-workers=1`

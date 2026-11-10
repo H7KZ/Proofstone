@@ -54,6 +54,21 @@ public interface ClientSession extends AutoCloseable {
     /** The last server-synced position {x, y, z}, or {@code null} before the first sync. */
     double[] position();
 
+    /**
+     * Waits for the next server switch the proxy completes on this live connection (ADR-0016 section 5): the
+     * configuration phase, then the new server's join. Each completed switch is returned once, so a switch that
+     * finished before the call is not lost and a second call waits for the next one. On return the views are the
+     * new server's: no slot, window, position or experience of the previous server is kept, and each is empty until
+     * the new server syncs it. Additive (T-M7-09); a driver without proxy support fails loudly instead of passing.
+     *
+     * @throws JoinTimeoutException when the timeout passes first, naming the stalled stage (the switch never began, or
+     *     which step of the new join stopped); a backend's reply to the {@code /server} command is quoted
+     * @throws ClientDriverException when the server disconnected during or before the switch, with its reason
+     */
+    default void awaitServerSwitch(Duration timeout) {
+        throw new ClientDriverException("this driver cannot await a proxy server switch; use a driver that supports it");
+    }
+
     /** Timestamped packet names and summaries, for repro bundles. */
     List<String> transcript();
 
