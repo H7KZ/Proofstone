@@ -155,6 +155,12 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
     static List<Cell> planCells(Class<?> type, List<Matrix> matrices, CellSelector selector, CellPlanner planner,
             Scope scope, VersionFamilies families) {
         List<Cell> cells = new ArrayList<>();
+        // A topology entry selects a topology cell, which no @Matrix plans until the API names a proxy (T-M7-10). It is
+        // said out loud, never dropped silently.
+        for (CellSelector.Topology topology : selector.topologies()) {
+            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
+                    + "that plans the topology cell " + topology.entry() + " (topology tests arrive with T-M7-10)");
+        }
         for (Matrix matrix : matrices) {
             String platform = matrix.platform().name().toLowerCase(Locale.ROOT);
             List<String> requested = selector.isSet() ? selector.versions(platform) : List.of(matrix.versions());

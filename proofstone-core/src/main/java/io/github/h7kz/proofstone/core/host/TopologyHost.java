@@ -1,7 +1,9 @@
 package io.github.h7kz.proofstone.core.host;
 
 import io.github.h7kz.proofstone.core.cell.Cell;
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -49,12 +51,25 @@ public final class TopologyHost implements AutoCloseable {
     }
 
     /**
+     * Starts a planned topology cell (ADR-0016): its backends in order, all on its backend row, then its proxy from the
+     * proxy pins of {@code versions.yml}. Returns them ready.
+     *
+     * @param backendOptions each backend's options by name; network, alias and forwarding files are set here
+     * @param proxyAgentJar the shaded proxy agent jar
+     */
+    public static TopologyHost start(TopologyCell cell, Function<String, PaperHostOptions> backendOptions,
+            Path proxyAgentJar) {
+        return start(cell.backend(), cell.backendNames(), backendOptions,
+                ProxyHostOptions.of(cell, proxyAgentJar));
+    }
+
+    /**
      * Starts the proxy and its backends, all on {@code cell}'s row, and returns them ready.
      *
      * @param backendNames the backends in order; the first is the proxy's default server
      * @param backendOptions each backend's options by name; network, alias and forwarding files are set here
      */
-    public static TopologyHost start(Cell cell, List<String> backendNames,
+    static TopologyHost start(Cell cell, List<String> backendNames,
             Function<String, PaperHostOptions> backendOptions, ProxyHostOptions proxyOptions) {
         TopologyConfig.requireBackendNames(backendNames);
         String secret = TopologyConfig.newSecret();

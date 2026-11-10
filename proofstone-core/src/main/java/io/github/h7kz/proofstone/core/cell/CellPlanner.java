@@ -1,6 +1,8 @@
 package io.github.h7kz.proofstone.core.cell;
 
 import io.github.h7kz.proofstone.core.versions.Platform;
+import io.github.h7kz.proofstone.core.versions.ProxyPlatform;
+import io.github.h7kz.proofstone.core.versions.ProxyRow;
 import io.github.h7kz.proofstone.core.versions.Row;
 import io.github.h7kz.proofstone.core.versions.Status;
 import io.github.h7kz.proofstone.core.versions.VersionNumber;
@@ -14,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Turns a platform and a list of versions into {@link Cell}s. {@code latest} means the highest
@@ -67,6 +70,163 @@ public final class CellPlanner {
             cells.putIfAbsent(cell.mc(), cell);
         }
         return List.copyOf(cells.values());
+    }
+
+    /**
+     * Plans one topology cell (ADR-0016): a proxy row and one backend row it is paired with. {@code latest} resolves as
+     * it does for that platform, and the resolved pairing must be listed in {@code versions.yml}.
+     *
+     * @param backendNames the backends in order, validated as {@link TopologyCell#requireBackendNames}
+     * @throws VersionsException on an unknown proxy or version, a pairing that is not listed, a {@code TODO} pin, or
+     *     more than one cell ({@code all}: use {@link #planTopologies})
+     * @throws IllegalArgumentException on a malformed backend list
+     */
+    public TopologyCell planTopology(String proxyId, String proxyVersion, String backendPlatform,
+            String backendVersion, Scope scope, List<String> backendNames) {
+        List<TopologyCell> cells = planTopologies(proxyId, List.of(proxyVersion), backendPlatform,
+                List.of(backendVersion), scope, backendNames);
+        if (cells.size() != 1) {
+            throw new VersionsException(TopologyCell.identity(proxyId, proxyVersion, backendPlatform, backendVersion)
+                    + " plans " + cells.size() + " cells; planTopology takes one, use planTopologies");
+        }
+        return cells.get(0);
+    }
+
+    /**
+     * Plans topology cells from a proxy and a backend platform. Each version is exact, {@code latest} or {@code all}.
+     * {@code all} on either half takes the pairings whose weakest status is in {@code scope} (PR runs
+     * {@code required}, nightly also {@code experimental}); exact and {@code latest} cells run in any scope.
+     *
+     * @return the cells in request order, proxy rows in file order within {@code all}; duplicates collapse
+     * @throws VersionsException on an unknown proxy or version, an exact or {@code latest} pairing that is not listed,
+     *     a {@code TODO} pin, or no cell in scope
+     * @throws IllegalArgumentException on a malformed backend list
+     */
+    public List<TopologyCell> planTopologies(String proxyId, List<String> proxyVersions, String backendPlatform,
+            List<String> backendVersions, Scope scope, List<String> backendNames) {
+        TopologyCell.requireBackendNames(backendNames);
+        ProxyPlatform proxy = catalog.proxy(proxyId);
+        if (proxyVersions.isEmpty() || backendVersions.isEmpty()) {
+            throw new VersionsException("no versions requested for " + proxyId + "+" + backendPlatform);
+        }
+        Map<String, TopologyCell> cells = new LinkedHashMap<>();
+        for (String requestedProxy : proxyVersions) {
+            boolean allProxyRows = ALL.equals(requestedProxy);
+            Map<ProxyRow, List<String>> rows = new LinkedHashMap<>();
+            if (allProxyRows) {
+                proxy.rows().forEach(row -> rows.put(row, List.of()));
+            } else {
+                rows.putAll(resolveProxyRow(proxy, requestedProxy));
+            }
+            for (Map.Entry<ProxyRow, List<String>> row : rows.entrySet()) {
+                for (String requestedBackend : backendVersions) {
+                    for (ProxyRow.Pairing pairing : pairings(proxy, row.getKey(), backendPlatform, requestedBackend,
+                            allProxyRows)) {
+                        TopologyCell cell = toTopologyCell(proxy, row.getKey(), pairing, backendNames, row.getValue());
+                        boolean named = !allProxyRows && !ALL.equals(requestedBackend);
+                        if (named || inScope(cell.status(), scope)) {
+                            cells.putIfAbsent(cell.identity(), cell);
+                        }
+                    }
+                }
+            }
+        }
+        if (cells.isEmpty()) {
+            throw new VersionsException(proxyId + "+" + backendPlatform + ": no topology cell in scope " + scope
+                    + " (PR runs required pairings, nightly runs required and experimental ones; the weakest of proxy "
+                    + "row, pairing and backend row counts)");
+        }
+        return List.copyOf(cells.values());
+    }
+
+    private static boolean inScope(Status status, Scope scope) {
+        return status == Status.REQUIRED || (scope == Scope.NIGHTLY && status == Status.EXPERIMENTAL);
+    }
+
+    /** The proxy row for an exact version or {@code latest}, with the notes the choice carries. */
+    private static Map<ProxyRow, List<String>> resolveProxyRow(ProxyPlatform proxy, String requested) {
+        if (LATEST.equals(requested)) {
+            Optional<ProxyRow> required = highestProxy(proxy.rows(), Status.REQUIRED);
+            if (required.isPresent()) {
+                return Map.of(required.get(), List.of());
+            }
+            Optional<ProxyRow> experimental = highestProxy(proxy.rows(), Status.EXPERIMENTAL);
+            if (experimental.isEmpty()) {
+                throw new VersionsException("latest: proxy " + proxy.id() + " has no required or experimental row");
+            }
+            return Map.of(experimental.get(), List.of("latest: no required " + proxy.id()
+                    + " row; using experimental " + experimental.get().version()));
+        }
+        ProxyRow row = proxy.rows().stream()
+                .filter(candidate -> candidate.version().equals(requested))
+                .findFirst()
+                .orElseThrow(() -> new VersionsException("unknown version \"" + requested + "\" for proxy "
+                        + proxy.id() + "; valid: " + proxy.rows().stream().map(ProxyRow::version)
+                        .collect(Collectors.joining(", "))));
+        return Map.of(row, List.of());
+    }
+
+    private static Optional<ProxyRow> highestProxy(List<ProxyRow> rows, Status status) {
+        return rows.stream()
+                .filter(row -> row.status() == status)
+                .max(Comparator.comparing(ProxyRow::version, VersionNumber::compare));
+    }
+
+    /**
+     * The pairings of {@code row} that match a backend request. {@code lenient} (the proxy half was {@code all}) skips
+     * a row that lacks the pairing; otherwise a missing pairing is an error that lists the row's pairings.
+     */
+    private List<ProxyRow.Pairing> pairings(ProxyPlatform proxy, ProxyRow row, String platform, String requested,
+            boolean lenient) {
+        if (ALL.equals(requested)) {
+            return row.backends().stream().filter(p -> p.platform().equals(platform)).toList();
+        }
+        String mc = LATEST.equals(requested) ? latest(catalog.platform(platform)).mc() : requested;
+        List<ProxyRow.Pairing> found = row.backends().stream()
+                .filter(p -> p.platform().equals(platform) && p.mc().equals(mc)).toList();
+        if (found.isEmpty() && !lenient) {
+            throw new VersionsException(proxy.id() + "@" + row.version() + " is not paired with " + platform + "@" + mc
+                    + (LATEST.equals(requested) ? " (latest of " + platform + ")" : "") + "; its pairings: "
+                    + row.backends().stream().map(p -> p.platform() + "@" + p.mc())
+                    .collect(Collectors.joining(", ")));
+        }
+        return found;
+    }
+
+    private TopologyCell toTopologyCell(ProxyPlatform proxy, ProxyRow row, ProxyRow.Pairing pairing,
+            List<String> backendNames, List<String> extraNotes) {
+        String identity = TopologyCell.identity(proxy.id(), row.version(), pairing.platform(), pairing.mc());
+        List<String> todo = new ArrayList<>();
+        if (row.build() == null) {
+            todo.add("build");
+        }
+        if (row.sha256() == null) {
+            todo.add("sha256");
+        }
+        String hostDigest = proxy.host().digest(row.java());
+        if (hostDigest == null) {
+            todo.add("host digest for " + row.java());
+        }
+        if (!todo.isEmpty()) {
+            throw new VersionsException(identity + " has TODO pins: " + String.join(", ", todo)
+                    + ". Pin them in versions.yml before use (AGENTS.md §3).");
+        }
+        Platform backendPlatform = catalog.platform(pairing.platform());
+        Row backendRow = backendPlatform.rows().stream().filter(r -> r.mc().equals(pairing.mc())).findFirst()
+                .orElseThrow(() -> new VersionsException(identity + ": backend row " + pairing.platform() + "@"
+                        + pairing.mc() + " is not in versions.yml"));
+        Cell backend = toCell(backendPlatform, backendRow, List.of());
+        Status status = Stream.of(row.status(), pairing.status(), backend.status())
+                .max(Comparator.naturalOrder()).orElseThrow();
+        List<String> notes = new ArrayList<>(extraNotes);
+        notes.addAll(backend.notes());
+        if (status == Status.RETIRED) {
+            notes.add("status: retired");
+        }
+        return new TopologyCell(identity,
+                new TopologyCell.Proxy(proxy.id(), row.version(), row.build(), row.sha256(), row.java(),
+                        proxy.forwarding(), proxy.host().image(), hostDigest, row.status()),
+                backend, backendNames, pairing.status(), status, notes);
     }
 
     private List<Row> allRows(Platform platform, Scope scope, VersionFamilies families) {

@@ -1,6 +1,6 @@
 # Velocity
 
-Status: **spike** (T-M7-01, 2026-11-09) plus the agent (T-M7-05). Nothing is pinned in `versions.yml` yet; the pins the agent real-server test boots are in `gradle/libs.versions.toml` until schema 3 (T-M7-08). Every fact below
+Status: **spike** (T-M7-01, 2026-11-09) plus the agent (T-M7-05). The pins are in `versions.yml` `proxies` (schema 3, T-M7-08, experimental); the agent real-server test plans them from there. Every fact below
 comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/proxy-spike.sh` or
 `scripts/spike/proxy-protocol-probe.sh`, unless it says otherwise. See [platforms.md](../platforms.md).
 
@@ -136,9 +136,9 @@ None declared for a cell. Not a row yet. The agent itself reports `command`, `pl
   proxied harness client must keep that naming.
 - **`command-rate-limit` is an `[advanced]` key.** Velocity 4.3.1's `default-velocity.toml` (read from the build 45 jar,
   2026-11-10) has `login-ratelimit`, `command-rate-limit` and `forward-commands-if-rate-limited` under `[advanced]`
-  only. `VelocityAgentIT` (T-M7-05) sets `command-rate-limit = 0` at the top level, where Velocity does not read it, so
-  that test ran with the default 50; it sends no player commands, so its results stand. `TopologyConfig` (T-M7-07)
-  renders both limits under `[advanced]`. _T-M7-07_
+  only. `VelocityAgentIT` (T-M7-05) set `command-rate-limit = 0` at the top level, where Velocity does not read it, so
+  that test ran with the default 50; it sends no player commands, so its results stood. `TopologyConfig` (T-M7-07)
+  renders both limits under `[advanced]`, and T-M7-08 moved the IT's key there too. _T-M7-07_
 - **A paused backend stalls a join on the proxy-to-backend hop.** With the lobby container paused (`docker pause`), the
   client got login success from Velocity and stalled at `CONFIGURATION_STALLED`; Velocity logged `[connected player]
   T5a1 ... has connected` and the backend logged nothing. A stopped (not paused) backend was not run. `TopologyFaultIT`

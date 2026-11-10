@@ -48,11 +48,11 @@ class TopologyFaultIT {
             zip.closeEntry();
         }
 
-        Throwable failure = catchThrowable(() -> TopologyHost.start(Topologies.backendCell(), Topologies.BACKENDS,
+        Throwable failure = catchThrowable(() -> TopologyHost.start(Topologies.velocity(Topologies.BACKENDS),
                 name -> name.equals("survival")
                         ? PaperHostOptions.of(notAnAgent, true).withAgentTimeout(Duration.ofSeconds(10))
                         : Topologies.backendOptions(),
-                Topologies.velocity()));
+                Topologies.velocityAgentJar()));
 
         assertThat(failure).isInstanceOf(PaperHostException.class)
                 .hasMessageContaining("container server-survival did not become ready")
@@ -66,8 +66,8 @@ class TopologyFaultIT {
         Topologies.requireEula();
         ClientDriver driver = ServiceLoader.load(ClientDriver.class).stream().map(ServiceLoader.Provider::get)
                 .filter(d -> d.id().equals("mcpl")).findFirst().orElseThrow();
-        try (TopologyHost topology = TopologyHost.start(Topologies.backendCell(), List.of("lobby"),
-                name -> Topologies.backendOptions(), Topologies.velocity())) {
+        try (TopologyHost topology = TopologyHost.start(Topologies.velocity(List.of("lobby")),
+                name -> Topologies.backendOptions(), Topologies.velocityAgentJar())) {
             // A paused backend still accepts the proxy's TCP connection but never answers: a stall, not a refusal.
             DockerClient docker = DockerClientFactory.instance().client();
             String lobby = topology.backend("lobby").containerId();

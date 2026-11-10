@@ -82,15 +82,7 @@ tasks.register<Test>("topologyTest") {
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     systemProperty("proofstone.velocity.agentJar", platforms.file("velocity/agent/build/libs/agent-all.jar").asFile.absolutePath)
     systemProperty("proofstone.bungee.agentJar", platforms.file("bungee/agent/build/libs/agent-all.jar").asFile.absolutePath)
-    // The proxy pins come from the version catalog until versions.yml schema 3 carries them (T-M7-08), as in the
-    // proxy agents' real-server tests.
-    systemProperty("proofstone.velocity.image", "${libs.versions.velocity.host.image.get()}@${libs.versions.velocity.host.digest.get()}")
-    systemProperty("proofstone.velocity.version", libs.versions.velocity.api.get())
-    systemProperty("proofstone.velocity.build", libs.versions.velocity.build.get())
-    systemProperty("proofstone.velocity.sha256", libs.versions.velocity.jar.sha256.get())
-    systemProperty("proofstone.bungee.image", "${libs.versions.bungee.host.image.get()}@${libs.versions.bungee.host.digest.get()}")
-    systemProperty("proofstone.bungee.build", libs.versions.bungee.build.get())
-    systemProperty("proofstone.bungee.sha256", libs.versions.bungee.jar.sha256.get())
+    // The proxy pins are planned from versions.yml schema 3 by the tests themselves (T-M7-08, ADR-0016 section 2).
 }
 
 // AGENTS.md section 3 applies to these classes too: archTest scans them.

@@ -8,6 +8,8 @@ import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,13 +33,16 @@ abstract class TopologyContract {
 
     private TopologyHost topology;
 
-    abstract ProxyHostOptions proxyOptions();
+    /** The planned topology cell of this proxy (versions.yml schema 3) with the given backends. */
+    abstract TopologyCell cell(List<String> backends);
+
+    abstract Path proxyAgentJar();
 
     @BeforeAll
     void start() {
         Topologies.requireEula();
-        topology = TopologyHost.start(Topologies.backendCell(), Topologies.BACKENDS,
-                name -> Topologies.backendOptions(), proxyOptions());
+        topology = TopologyHost.start(cell(Topologies.BACKENDS), name -> Topologies.backendOptions(),
+                proxyAgentJar());
     }
 
     @AfterAll
@@ -54,7 +59,7 @@ abstract class TopologyContract {
     @Test
     void everyContainerAnswersHealth() {
         ProxyHost proxy = topology.proxy();
-        assertThat(proxy.health().platform()).isEqualTo(proxyOptions().kind().id());
+        assertThat(proxy.health().platform()).isEqualTo(cell(Topologies.BACKENDS).proxy().id());
         System.out.println("proxy health: " + proxy.health());
         assertThat(topology.backendNames()).containsExactlyElementsOf(Topologies.BACKENDS);
         for (String name : topology.backendNames()) {

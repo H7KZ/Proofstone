@@ -1,6 +1,6 @@
 # BungeeCord
 
-Status: **spike** (T-M7-01, 2026-11-09), plus the agent notes of T-M7-06. Nothing is pinned in `versions.yml` yet. Every fact below
+Status: **spike** (T-M7-01, 2026-11-09), plus the agent notes of T-M7-06. The pins are in `versions.yml` `proxies` (schema 3, T-M7-08, experimental). Every fact below
 comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/proxy-spike.sh` or
 `scripts/spike/proxy-protocol-probe.sh`, unless it says otherwise. See [platforms.md](../platforms.md) and
 [velocity.md](velocity.md) for the shared topology.

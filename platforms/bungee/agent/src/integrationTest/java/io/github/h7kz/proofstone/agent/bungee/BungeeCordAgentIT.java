@@ -7,6 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.h7kz.proofstone.core.await.Await;
+import io.github.h7kz.proofstone.core.cell.CellPlanner;
+import io.github.h7kz.proofstone.core.cell.Scope;
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
+import io.github.h7kz.proofstone.core.versions.VersionsCatalog;
 import io.github.h7kz.proofstone.protocol.testing.GoldenMatcher;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -52,13 +56,22 @@ class BungeeCordAgentIT {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Path ROOT = Path.of(System.getProperty("proofstone.repoRoot"));
     private static final Path GOLDEN = ROOT.resolve("proofstone-protocol/golden");
-    private static final String IMAGE = System.getProperty("proofstone.bungee.image");
-    private static final String BUILD = System.getProperty("proofstone.bungee.build");
-    private static final String JAR_SHA256 = System.getProperty("proofstone.bungee.sha256");
+    private static final TopologyCell CELL = plannedCell();
+    private static final String IMAGE = CELL.proxy().hostImage() + "@" + CELL.proxy().hostDigest();
+    private static final String BUILD = Integer.toString(CELL.proxy().build());
+    private static final String JAR_SHA256 = CELL.proxy().sha256();
     private static final Path AGENT_JAR = Path.of(System.getProperty("proofstone.agentJar"));
     private static final int AGENT_PORT = 25580;
     private static final Duration BOOT_TIMEOUT = Duration.ofMinutes(3);
     private static final Duration AGENT_TIMEOUT = Duration.ofSeconds(30);
+
+    /** The topology cell the pins come from: versions.yml schema 3, not this file (T-M7-08). */
+    private static TopologyCell plannedCell() {
+        VersionsCatalog catalog = VersionsCatalog.load(ROOT.resolve("versions.yml"),
+                ROOT.resolve("proofstone-protocol/schemas/versions.schema.json"));
+        return new CellPlanner(catalog).planTopology("bungeecord", "latest", "paper", "latest", Scope.NIGHTLY,
+                TopologyCell.DEFAULT_BACKENDS);
+    }
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final String token = randomHex(24);

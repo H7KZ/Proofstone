@@ -34,13 +34,7 @@ velocity-api = "4.3.1"
 velocity-guice = "7.0.0"
 velocity-slf4j = "2.0.20"
 velocity-brigadier = "1.0.500"
-# The pins the Velocity real-server test boots (ADR-0016 section 2). They live here, not in versions.yml, until the schema 3
-# `proxies` key exists (T-M7-08), which then takes them over. Image: itzg/mc-proxy release 2026.11.1, java25 tag, index digest.
-# Jar: Velocity 4.3.1 build 45 from the Paper fill API (sha256 below, checked in the container before the test runs).
-velocity-host-image = "itzg/mc-proxy"
-velocity-host-digest = "sha256:8efdaa9d990f4c509f21b7ced003dd959060777784422fd72fdd537d613c1813"
-velocity-build = "45"
-velocity-jar-sha256 = "0844bcabdcdb4f5b875906fd4c3365bc1bb76918e42bc595ed88ad195258dd75"
+# The proxy host image, build and jar checksum are in versions.yml `proxies` (schema 3, T-M7-08), not here.
 # BungeeCord agent (T-M7-06). Compile-only API: 1.21-R0.4 is the newest release on Maven Central (the pinned row, build 2111,
 # reports 26.1-R0.1-SNAPSHOT, which is not published as a release and cannot be pinned). Its POM names only Central artefacts.
 bungee-api = "1.21-R0.4"
@@ -49,13 +43,6 @@ bungee-api = "1.21-R0.4"
 # at the versions that POM declares.
 bungee-maven-resolver-provider = "3.9.6"
 bungee-resolver = "1.9.18"
-# The pins the BungeeCord real-server test boots (ADR-0016 section 2), here until the schema 3 `proxies` key exists (T-M7-08).
-# Image: itzg/mc-proxy release 2026.11.1, java21 tag, index digest. Jar: build 2111 from Jenkins (job BungeeCord, which
-# publishes md5 only), so the sha256 is computed from the download and checked in the container before the test runs.
-bungee-host-image = "itzg/mc-proxy"
-bungee-host-digest = "sha256:4e6901b4640a913ef6d8470de887b89ff6d19702e410edfbccdbdbce4b54159f"
-bungee-build = "2111"
-bungee-jar-sha256 = "1d9dbc31b57b22a37553f160ac1b61762717e9e4a6a1341f3dd27a1f6f2671fd"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
