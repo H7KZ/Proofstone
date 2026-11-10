@@ -47,6 +47,19 @@ class ProofstoneExtensionPlanTest {
     }
 
     @Test
+    void aTopologyEntryNextToASingleServerEntryLeavesTheSingleServerCellsAsTheyWere() throws IOException {
+        assertThat(plan(Declared.class, "paper@1.20.4,velocity@4.3.1+paper@26.3")).extracting(Cell::mc)
+                .containsExactly("1.20.4");
+    }
+
+    @Test
+    void aTopologyEntryAloneFailsTheClassByNameInsteadOfRunningNothing() {
+        assertThatThrownBy(() -> plan(Declared.class, "velocity@4.3.1+paper@26.3"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(Declared.class.getName());
+    }
+
+    @Test
     void selectorReplacesTheMatrixVersionsOfThePlatformItNames() throws IOException {
         assertThat(plan(Declared.class, "paper@1.20.4")).extracting(Cell::mc).containsExactly("1.20.4");
     }

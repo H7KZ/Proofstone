@@ -73,10 +73,7 @@ tasks.named<Test>("integrationTest") {
     dependsOn(tasks.named("shadowJar"))
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.get().asFile.absolutePath)
-    // The proxy pins come from the version catalog (ADR-0006), until versions.yml schema 3 carries them (T-M7-08).
-    systemProperty("proofstone.bungee.image", "${libs.versions.bungee.host.image.get()}@${libs.versions.bungee.host.digest.get()}")
-    systemProperty("proofstone.bungee.build", libs.versions.bungee.build.get())
-    systemProperty("proofstone.bungee.sha256", libs.versions.bungee.jar.sha256.get())
+    // The proxy pins are planned from versions.yml schema 3 by the test itself (T-M7-08, ADR-0016 section 2).
 }
 
 // AGENTS.md section 3: bundled libraries are relocated so they never clash with the server's own copies.

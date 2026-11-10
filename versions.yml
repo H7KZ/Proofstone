@@ -1,7 +1,7 @@
 # Source of truth for the Proofstone version matrix. Spec: docs/specs/versions-yml.md
 # SEED DATA: rows below are the cells exercised by the 2026-11-03 prototype. Pins marked "TODO" are filled by
 # the version-watch workflow (card T-M3-01). Do not hand-edit pins once automation exists.
-schema: 2
+schema: 3
 
 java-rules:            # first match wins; observed in T-M3-02, see docs/versioning.md section 3
   - { range: "<=1.16.5",          image: java8 }
@@ -94,3 +94,45 @@ platforms:
       - { mc: "1.8.8", sha256: "34091112f3f9f8c0e17cb79c88bf3c244801648e395eb4f0cb95eb8c27781c9b", protocol: 47, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java8, 3m31s" }
       - { mc: "1.21.11", sha256: "4aae5835adcd683c9ed7b7a78851dec718173b6dff854f09e1c10f654c0d5ca0", protocol: 774, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java21 (manual build of the pinned rev, then cell run)" }
       - { mc: "26.3", sha256: "22b5f5b31d000eed1dfbf21995a168ec93352a79842c34526b8b543cf086e78d", protocol: 777, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java25 (manual build of the pinned rev, then cell run)" }
+
+# Schema 3 (ADR-0016): proxies and the backend rows they are paired with. A topology cell is one proxy row plus a backend
+# row set; its identity is <proxy>@<version>+<platform>@<mc>. Hand-pinned, as the first rows were: `updateVersions` does not
+# touch this key (T-M7-08). The pins are the T-M7-01 spike's, run again by the T-M7-05 and T-M7-06 agent tests and the T-M7-07
+# topology tests. Every row starts experimental; promotion to required follows ADR-0015 with P01 to P05 evidence.
+proxies:
+  velocity:
+    host:
+      image: "itzg/mc-proxy"
+      # itzg/mc-proxy release 2026.11.1, one digest per Java tag (ADR-0013). Velocity 4.3.1 is Java 25 bytecode.
+      digests:
+        java25: "sha256:8efdaa9d990f4c509f21b7ced003dd959060777784422fd72fdd537d613c1813"
+    forwarding: modern
+    rows:
+      - version: "4.3.1"
+        build: 45
+        sha256: "0844bcabdcdb4f5b875906fd4c3365bc1bb76918e42bc595ed88ad195258dd75"
+        java: java25
+        status: experimental
+        backends:
+          - { platform: paper, mc: "26.3", status: experimental }
+        observed: "T-M7-01 2026-11-09: 15 of 15 joins on paper@26.3, native protocol 777; T-M7-05 agent test and T-M7-07 topology test green"
+        notes: "Velocity 3.5.1 build 615 rejects protocol 777 and is not a row (ADR-0016 section 3). Jar from the Paper fill API, build 45."
+  bungeecord:
+    host:
+      image: "itzg/mc-proxy"
+      # Same image release, java21 tag. BungeeCord build 2111 runs on Java 21.
+      digests:
+        java21: "sha256:4e6901b4640a913ef6d8470de887b89ff6d19702e410edfbccdbdbce4b54159f"
+    forwarding: legacy
+    rows:
+      # BungeeCord has no release version: the row version is the Jenkins build number as a string (ADR-0016 section 1).
+      # Jenkins publishes no sha256, so it is computed from the download (T-M7-01).
+      - version: "2111"
+        build: 2111
+        sha256: "1d9dbc31b57b22a37553f160ac1b61762717e9e4a6a1341f3dd27a1f6f2671fd"
+        java: java21
+        status: experimental
+        backends:
+          - { platform: paper, mc: "26.3", status: experimental }
+        observed: "T-M7-01 2026-11-09: 10 of 10 joins on paper@26.3, native protocol 777, legacy forwarding; T-M7-06 agent test and T-M7-07 topology test green"
+        notes: "Waterfall 1.21 build 615 rejects protocol 777 and is end-of-life: no row (ADR-0016 section 4). Jenkins may prune a build; a pruned pin fails loudly at download."

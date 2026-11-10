@@ -3,8 +3,9 @@ package io.github.h7kz.proofstone.core.host;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.github.dockerjava.api.model.Container;
-import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.CellPlanner;
+import io.github.h7kz.proofstone.core.cell.Scope;
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.versions.VersionsCatalog;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -12,23 +13,42 @@ import java.util.List;
 import java.util.Map;
 import org.testcontainers.DockerClientFactory;
 
-/** What the topology tests share: the backend row, the proxy pins and the "nothing of ours left" check. */
+/**
+ * What the topology tests share: the topology cells planned from versions.yml schema 3 (the proxy pins and the backend
+ * row are the file's, T-M7-08) and the "nothing of ours left" check.
+ */
 final class Topologies {
 
     static final List<String> BACKENDS = List.of("lobby", "survival");
-    /** The Java the itzg/mc-proxy tags run (docs/platforms/velocity.md, bungeecord.md); checked in the container. */
-    private static final int VELOCITY_JAVA = 25;
-    private static final int BUNGEE_JAVA = 21;
 
     private Topologies() {
     }
 
-    /** {@code paper@26.3} exactly as versions.yml pins it: the native row of ADR-0016 section 3. */
-    static Cell backendCell() {
+    /**
+     * The planned cell of {@code proxy} on its latest paired {@code paper} row, exactly as versions.yml pins it: the
+     * native row of ADR-0016 section 3. Planned in nightly scope, so an experimental pairing runs here.
+     */
+    static TopologyCell cell(String proxy, List<String> backends) {
         Path root = Path.of(property("proofstone.repoRoot"));
         VersionsCatalog catalog = VersionsCatalog.load(root.resolve("versions.yml"),
                 root.resolve("proofstone-protocol/schemas/versions.schema.json"));
-        return new CellPlanner(catalog).plan("paper", List.of("26.3")).get(0);
+        return new CellPlanner(catalog).planTopology(proxy, "latest", "paper", "latest", Scope.NIGHTLY, backends);
+    }
+
+    static TopologyCell velocity(List<String> backends) {
+        return cell("velocity", backends);
+    }
+
+    static TopologyCell bungeeCord(List<String> backends) {
+        return cell("bungeecord", backends);
+    }
+
+    static Path velocityAgentJar() {
+        return Path.of(property("proofstone.velocity.agentJar"));
+    }
+
+    static Path bungeeAgentJar() {
+        return Path.of(property("proofstone.bungee.agentJar"));
     }
 
     static void requireEula() {
@@ -37,18 +57,6 @@ final class Topologies {
 
     static PaperHostOptions backendOptions() {
         return PaperHostOptions.of(Path.of(property("proofstone.agentJar")), true);
-    }
-
-    static ProxyHostOptions velocity() {
-        return ProxyHostOptions.of(ProxyKind.VELOCITY, property("proofstone.velocity.image"),
-                property("proofstone.velocity.version"), property("proofstone.velocity.build"),
-                property("proofstone.velocity.sha256"), VELOCITY_JAVA, Path.of(property("proofstone.velocity.agentJar")));
-    }
-
-    static ProxyHostOptions bungeeCord() {
-        String build = property("proofstone.bungee.build");
-        return ProxyHostOptions.of(ProxyKind.BUNGEECORD, property("proofstone.bungee.image"), build, build,
-                property("proofstone.bungee.sha256"), BUNGEE_JAVA, Path.of(property("proofstone.bungee.agentJar")));
     }
 
     /**

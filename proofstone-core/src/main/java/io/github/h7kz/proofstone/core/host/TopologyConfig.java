@@ -1,12 +1,10 @@
 package io.github.h7kz.proofstone.core.host;
 
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import java.security.SecureRandom;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * The files a topology copies into its containers: the proxy config and the backends' forwarding settings, exactly as
@@ -16,8 +14,6 @@ import java.util.regex.Pattern;
  */
 public final class TopologyConfig {
 
-    /** ADR-0016 section 1. */
-    private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9]{0,15}");
     /** The port every proxy binds inside its container. */
     static final int PROXY_PORT = 25577;
 
@@ -38,21 +34,7 @@ public final class TopologyConfig {
 
     /** Fails on an empty list, a name outside {@code [a-z][a-z0-9]{0,15}}, {@code proxy} or a duplicate. */
     public static void requireBackendNames(List<String> names) {
-        if (names.isEmpty()) {
-            throw new IllegalArgumentException("a topology needs at least one backend");
-        }
-        Set<String> seen = new HashSet<>();
-        for (String name : names) {
-            if (!NAME.matcher(name).matches()) {
-                throw new IllegalArgumentException("backend name \"" + name + "\" must match " + NAME.pattern());
-            }
-            if (name.equals(TopologyHost.PROXY_ALIAS)) {
-                throw new IllegalArgumentException("backend name \"proxy\" is reserved for the proxy (ADR-0016)");
-            }
-            if (!seen.add(name)) {
-                throw new IllegalArgumentException("duplicate backend name \"" + name + "\"");
-            }
-        }
+        TopologyCell.requireBackendNames(names);
     }
 
     /** Container path to content for the proxy. The first backend is the default server. */

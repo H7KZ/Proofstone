@@ -1,10 +1,19 @@
 package io.github.h7kz.proofstone.core.host;
 
-/** Velocity 4.3.1 build 45, modern forwarding, two paper@26.3 backends. */
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
+import java.nio.file.Path;
+import java.util.List;
+
+/** The planned velocity topology cell (versions.yml), modern forwarding, two paper backends. */
 class VelocityTopologyIT extends TopologyContract {
 
     @Override
-    ProxyHostOptions proxyOptions() {
-        return Topologies.velocity();
+    TopologyCell cell(List<String> backends) {
+        return Topologies.velocity(backends);
+    }
+
+    @Override
+    Path proxyAgentJar() {
+        return Topologies.velocityAgentJar();
     }
 }

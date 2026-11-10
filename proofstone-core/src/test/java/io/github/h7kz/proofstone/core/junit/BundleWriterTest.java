@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.h7kz.proofstone.core.cell.Cell;
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.versions.Status;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,17 +31,42 @@ class BundleWriterTest {
     }
 
     private static BundleWriter.Contents contents(String leakyLog, String viaproxyLog, String joinStall) {
+        return contents(leakyLog, viaproxyLog, joinStall, CELL);
+    }
+
+    private static BundleWriter.Contents contents(String leakyLog, String viaproxyLog, String joinStall,
+            Object cell) {
         return new BundleWriter.Contents(
                 leakyLog,
                 viaproxyLog,
                 List.of("{\"call\":\"POST /v1/command\",\"reply\":\"token " + TOKEN + "\"}"),
                 List.of("12:00:00 handshake", "12:00:01 " + TOKEN),
-                CELL,
+                cell,
                 "{\"error\":\"not found\"}\n",
                 "{\"os\":\"Windows 11\",\"docker\":\"29.9.2\",\"viaproxy\":{\"digest\":\"sha256:46ee\"}}\n",
                 "bash scripts/dockerlock.sh ./gradlew :examples:smoke:test\n",
                 joinStall,
                 TOKEN);
+    }
+
+    @Test
+    void aTopologyCellIsRecordedUnderItsIdentityWithTheProxyAndBackendPins() throws IOException {
+        TopologyCell topology = new TopologyCell("velocity@4.3.1+paper@26.3",
+                new TopologyCell.Proxy("velocity", "4.3.1", 45, "ef".repeat(32), "java25", "modern", "itzg/mc-proxy",
+                        "sha256:" + "12".repeat(32), Status.EXPERIMENTAL),
+                new Cell("paper", "26.3", 244, "ab".repeat(32), "java25", Status.REQUIRED, "itzg/minecraft-server",
+                        "sha256:" + "cd".repeat(32), List.of()),
+                List.of("lobby", "survival"), Status.EXPERIMENTAL, Status.EXPERIMENTAL, List.of());
+
+        Path dir = BundleWriter.write(tmp.resolve("velocity@4.3.1+paper@26.3").resolve("T.test"),
+                contents("log", null, null, topology));
+
+        String json = Files.readString(dir.resolve("cell.json"));
+        assertThat(json).contains("\"identity\" : \"velocity@4.3.1+paper@26.3\"", "\"build\" : 45",
+                "\"forwarding\" : \"modern\"", "\"hostDigest\" : \"sha256:" + "12".repeat(32) + "\"",
+                "\"mc\" : \"26.3\"", "\"build\" : 244", "\"lobby\"", "\"survival\"");
+        assertThat(BundleWriter.directory(topology).getFileName().toString()).isEqualTo("velocity@4.3.1+paper@26.3");
+        assertThat(BundleWriter.directory(CELL).getFileName().toString()).isEqualTo("paper@1.8.8");
     }
 
     @Test

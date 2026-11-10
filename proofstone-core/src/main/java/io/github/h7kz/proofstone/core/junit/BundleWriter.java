@@ -3,6 +3,7 @@ package io.github.h7kz.proofstone.core.junit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.h7kz.proofstone.core.cell.Cell;
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.host.PaperHost;
 import io.github.h7kz.proofstone.core.versions.ImagePin;
@@ -43,10 +44,12 @@ final class BundleWriter {
     /**
      * Everything a bundle holds. {@code viaproxyLog} is {@code null} for an unbridged cell. {@code host} is the rendered
      * host.json: OS, Java, Docker server version and the pins of the run. {@code joinStall} is the server's view of a
-     * join that timed out (T-M6-14), {@code null} when no join stalled.
+     * join that timed out (T-M6-14), {@code null} when no join stalled. {@code cell} is the {@link Cell} of a
+     * single-server run or the {@link TopologyCell} of a topology run: {@code cell.json} records it as it is, with every
+     * pin (T-M7-08).
      */
     record Contents(String serverLog, String viaproxyLog, List<String> agentTranscript,
-            List<String> driverTranscript, Cell cell, String snapshot, String host, String rerun, String joinStall,
+            List<String> driverTranscript, Object cell, String snapshot, String host, String rerun, String joinStall,
             String secret) {
     }
 
@@ -68,7 +71,7 @@ final class BundleWriter {
         if (repetition > 0) {
             test += ".r" + repetition;
         }
-        Path dir = ROOT.resolve(cell.platform() + "@" + cell.mc()).resolve(test);
+        Path dir = directory(cell).resolve(test);
         if (differential) {
             dir = dir.resolve(driverId);
         }
@@ -84,6 +87,16 @@ final class BundleWriter {
                 rerun(context, cell),
                 joinStall,
                 state.host.agentToken()));
+    }
+
+    /** {@code build/proofstone/<platform>@<mc>}, the directory of a single-server cell's bundles. */
+    static Path directory(Cell cell) {
+        return ROOT.resolve(cell.platform() + "@" + cell.mc());
+    }
+
+    /** {@code build/proofstone/<identity>}: the topology identity unchanged (ADR-0016 section 1). */
+    static Path directory(TopologyCell cell) {
+        return ROOT.resolve(cell.identity());
     }
 
     /** Writes the files, replacing an earlier bundle of the same test, and returns the directory. */

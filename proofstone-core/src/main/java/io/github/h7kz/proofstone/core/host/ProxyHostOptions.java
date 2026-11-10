@@ -1,12 +1,13 @@
 package io.github.h7kz.proofstone.core.host;
 
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
 
 /**
- * The pins and inputs of one {@link ProxyHost} (ADR-0016 section 2). Until {@code versions.yml} schema 3 (T-M7-08)
- * the pins come from the version catalog, as the proxy agents' real-server tests take them.
+ * The pins and inputs of one {@link ProxyHost} (ADR-0016 section 2). The pins come from the planned
+ * {@link TopologyCell}, that is from {@code versions.yml} schema 3 ({@link #of(TopologyCell, Path)}).
  *
  * @param kind which proxy
  * @param image the {@code itzg/mc-proxy} image as {@code name@sha256:...}, by digest for the proxy's Java tag
@@ -29,6 +30,27 @@ public record ProxyHostOptions(ProxyKind kind, String image, String version, Str
         if (!jarSha256.matches("[0-9a-f]{64}")) {
             throw new IllegalArgumentException("proxy jar sha256 is not 64 hex digits: " + jarSha256);
         }
+    }
+
+    /**
+     * The options of the proxy half of a planned topology cell: its host image by digest, build, jar checksum and Java
+     * tag, exactly as {@code versions.yml} pins them. BungeeCord's version and build are both its build number.
+     *
+     * @throws IllegalArgumentException on an unknown proxy, a forwarding mode other than the proxy's one, or a Java tag
+     *     that is not {@code java<major>}
+     */
+    public static ProxyHostOptions of(TopologyCell cell, Path agentJar) {
+        TopologyCell.Proxy proxy = cell.proxy();
+        ProxyKind kind = ProxyKind.of(proxy.id());
+        if (!kind.forwarding().equals(proxy.forwarding())) {
+            throw new IllegalArgumentException(cell.identity() + ": " + kind.id() + " runs " + kind.forwarding()
+                    + " forwarding in M7 but versions.yml says " + proxy.forwarding());
+        }
+        if (!proxy.java().matches("java[0-9]+")) {
+            throw new IllegalArgumentException(cell.identity() + ": Java tag \"" + proxy.java() + "\" is not java<major>");
+        }
+        return of(kind, proxy.hostImage() + "@" + proxy.hostDigest(), proxy.version(), Integer.toString(proxy.build()),
+                proxy.sha256(), Integer.parseInt(proxy.java().substring("java".length())), agentJar);
     }
 
     public static ProxyHostOptions of(ProxyKind kind, String image, String version, String build, String jarSha256,

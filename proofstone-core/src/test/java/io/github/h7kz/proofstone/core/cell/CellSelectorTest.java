@@ -127,4 +127,68 @@ class CellSelectorTest {
 
         assertThatThrownBy(() -> versions.add("1.8.8")).isInstanceOf(UnsupportedOperationException.class);
     }
+    // Topology selectors (ADR-0016 section 1): proxy@version+platform@version.
+
+    @Test
+    void aTopologyEntryIsKeptApartFromTheSingleServerEntries() {
+        CellSelector selector = CellSelector.parse("paper@26.3,velocity@4.3.1+paper@26.3", SOURCE);
+
+        assertThat(selector.isSet()).isTrue();
+        assertThat(selector.versions("paper")).containsExactly("26.3");
+        assertThat(selector.selects("velocity")).isFalse();
+        assertThat(selector.topologies()).singleElement().satisfies(topology -> {
+            assertThat(topology.proxy()).isEqualTo("velocity");
+            assertThat(topology.proxyVersion()).isEqualTo("4.3.1");
+            assertThat(topology.backend()).isEqualTo("paper");
+            assertThat(topology.backendVersion()).isEqualTo("26.3");
+        });
+    }
+
+    @Test
+    void aTopologyAloneIsASelectorThatIsSet() {
+        assertThat(CellSelector.parse("bungeecord@2111+paper@26.3", SOURCE).isSet()).isTrue();
+        assertThat(CellSelector.none().topologies()).isEmpty();
+    }
+
+    @Test
+    void latestAndAllWorkOnEitherHalfAndDuplicatesCollapse() {
+        CellSelector selector = CellSelector.parse(
+                "velocity@latest+paper@all,velocity@all+paper@latest,velocity@latest+paper@all", SOURCE);
+
+        assertThat(selector.topologies()).hasSize(2);
+    }
+
+    @Test
+    void aMalformedTopologyEntryIsAnErrorThatQuotesIt() {
+        for (String bad : List.of("velocity@4.3.1+", "+paper@26.3", "velocity@+paper@26.3", "velocity+paper@26.3",
+                "velocity@4.3.1+paper", "velocity@4.3.1+paper@", "velocity@4.3.1++paper@26.3",
+                "velocity@4.3.1+paper@26.3+folia@26.3", "Velocity@4.3.1+paper@26.3", "velocity@4.3.1 + paper@26.3",
+                "velocity@4.3.1+paper@26.x", "velocity@4.3.1+@26.3", "@4.3.1+paper@26.3", "velocity@4.3.1+paper@26.3+")) {
+            assertThatThrownBy(() -> CellSelector.parse(bad, SOURCE))
+                    .as(bad)
+                    .isInstanceOf(VersionsException.class)
+                    .hasMessageContaining("\"" + bad.trim() + "\"");
+        }
+    }
+
+    @Test
+    void aTopologyEntryNamesItsFormInTheError() {
+        assertThatThrownBy(() -> CellSelector.parse("velocity@4.3.1+", SOURCE))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContaining("proxy@version+platform@version");
+    }
+
+    @Test
+    void anEmptyEntryNextToATopologyStillFails() {
+        assertThatThrownBy(() -> CellSelector.parse("velocity@4.3.1+paper@26.3,", SOURCE))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContaining("empty entry");
+    }
+
+    @Test
+    void topologiesReturnAnImmutableList() {
+        List<CellSelector.Topology> topologies = CellSelector.parse("velocity@4.3.1+paper@26.3", SOURCE).topologies();
+
+        assertThatThrownBy(() -> topologies.add(topologies.get(0))).isInstanceOf(UnsupportedOperationException.class);
+    }
 }

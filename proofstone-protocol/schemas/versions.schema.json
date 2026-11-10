@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schema", "java-rules", "drivers", "platforms"],
   "properties": {
-    "schema": { "const": 2 },
+    "schema": { "enum": [2, 3] },
     "java-rules": {
       "type": "array",
       "items": {
@@ -27,6 +27,11 @@
     "platforms": {
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/platform" }
+    },
+    "proxies": {
+      "description": "Schema 3 (ADR-0016): proxy platforms and the backend rows they are paired with. Semantic rules live in VersionsCatalog.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/proxy" }
     }
   },
   "$defs": {
@@ -56,6 +61,60 @@
           }
         },
         "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+      }
+    },
+    "proxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "forwarding", "rows"],
+      "properties": {
+        "host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["image", "digests"],
+          "properties": {
+            "image": { "type": "string", "minLength": 1 },
+            "digests": {
+              "description": "Image digest by Java tag (ADR-0013). TODO until pinned.",
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": { "$ref": "#/$defs/javaImage" },
+              "additionalProperties": {
+                "anyOf": [{ "type": "string", "pattern": "^sha256:[0-9a-f]+$" }, { "const": "TODO" }]
+              }
+            }
+          }
+        },
+        "forwarding": { "enum": ["modern", "legacy"] },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/proxyRow" } }
+      }
+    },
+    "proxyRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "build", "sha256", "java", "status", "backends"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "build": { "anyOf": [{ "type": "integer", "minimum": 1 }, { "const": "TODO" }] },
+        "sha256": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{64}$" }, { "const": "TODO" }] },
+        "java": { "$ref": "#/$defs/javaImage" },
+        "status": { "$ref": "#/$defs/status" },
+        "backends": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["platform", "mc", "status"],
+            "properties": {
+              "platform": { "type": "string", "minLength": 1 },
+              "mc": { "type": "string", "minLength": 1 },
+              "status": { "$ref": "#/$defs/status" }
+            }
+          }
+        },
+        "observed": { "type": "string" },
+        "notes": { "type": "string" }
       }
     },
     "builder": {

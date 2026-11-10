@@ -51,7 +51,7 @@ with no digest is an error that names the tag and the row, never a fallback to a
 Decision: [ADR-0016](../adr/0016-topology-cells.md). Schema 3 adds one optional top-level key, `proxies`, next to
 `platforms`. Nothing in schema 2 changes meaning: a schema 2 file is a valid schema 3 file, the `platforms` section is
 read exactly as before, and the single-server cells it plans (and their `printMatrix` lines) stay identical. The
-values below are the T-M7-01 spike pins; the file gains them in T-M7-08, not before.
+values below are the T-M7-01 spike pins, which `versions.yml` carries since T-M7-08 as `experimental` rows.
 
 ```yaml
 schema: 3
@@ -88,7 +88,7 @@ proxies:
 - **BungeeCord** has no release version, so `version` is the Jenkins build number as a string. Jenkins publishes no
   sha256: the pin is computed from the download.
 
-Validation rules for `proxies`, enforced in `check` (T-M7-08):
+Validation rules for `proxies`, enforced by `VersionsCatalog.load` (run by every `:proofstone-core:test` against the real file, so by `check`) since T-M7-08. A `proxies` key in a `schema: 2` file is an error:
 - A proxy id is not also a `platforms` id. `version` values are unique within a proxy.
 - `java` is present on every row, and `host.digests` has a key for it. A `required` row has a real digest, no `TODO`.
 - Every `backends` entry names an existing `platforms` row, and no pairing is listed twice.
