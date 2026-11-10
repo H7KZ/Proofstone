@@ -644,3 +644,11 @@ timeout, the stalled stage and hop.
   directory). Fixed in the spike script by copying into `/config`. Recorded in `docs/platforms/velocity.md` Gotchas.
 - **Protocol gaps:** Velocity 3.5.1 build 615 and Waterfall 1.21 build 615 reject the protocol 777 client (one probe
   each). Neither is proposed as a row.
+- **T-M7-07 topology host (2026-11-10), no join timeout.** `:proofstone-core:topologyTest`, three invocations per proxy, one
+  proxy per invocation, each with two `paper@26.3` backends and one client join through the proxy: Velocity 3 of 3 green,
+  BungeeCord 3 of 3 green, 6 of 6 joins. One forced-fault invocation (expected outcomes, not flakes): a backend whose agent
+  never answers fails the start naming `server-survival` with every container stopped; a paused backend stalls the join
+  at `CONFIGURATION_STALLED` on the proxy-to-backend hop.
+- **Latent config error, not a red run: `VelocityAgentIT` sets `command-rate-limit` at the top level**, where Velocity 4.3.1 ignores it
+  (it is an `[advanced]` key). No player commands run in that test, so no result changed. Recorded in
+  `docs/platforms/velocity.md` Gotchas; the topology config renders it under `[advanced]`.

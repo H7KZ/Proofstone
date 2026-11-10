@@ -33,6 +33,7 @@ final class BundleWriter {
     /** Relative to the test working directory, which is the project directory under Gradle. */
     static final Path ROOT = Path.of("build", "proofstone");
     static final String REDACTED = "<redacted: agent token>";
+    static final String REDACTED_FORWARDING = "<redacted: forwarding secret>";
     /** The switch that makes the forced-failure example fail on purpose (ForcedFailureE2E). */
     static final String FORCE_FAIL = "proofstone.forceFail";
     /** The reference driver's fault switch, named as MineflayerRefDriver.FAULT_PROPERTY (core does not depend on it). */
@@ -87,8 +88,21 @@ final class BundleWriter {
 
     /** Writes the files, replacing an earlier bundle of the same test, and returns the directory. */
     static Path write(Path dir, Contents contents) {
+        return write(dir, contents, List.of());
+    }
+
+    /**
+     * As {@link #write(Path, Contents)}, and also redacts each of {@code forwardingSecrets}, a topology's forwarding
+     * secret (ADR-0016 section 8), from every file, scanning again after writing.
+     */
+    static Path write(Path dir, Contents contents, List<String> forwardingSecrets) {
         if (contents.secret() == null || contents.secret().isBlank()) {
             throw new IllegalStateException("a repro bundle needs the agent token to redact it");
+        }
+        for (String secret : forwardingSecrets) {
+            if (secret == null || secret.isBlank()) {
+                throw new IllegalArgumentException("a forwarding secret to redact must not be blank");
+            }
         }
         Map<String, String> files = new LinkedHashMap<>();
         files.put("server.log", contents.serverLog() + "\n");
@@ -109,13 +123,20 @@ final class BundleWriter {
         try {
             Files.createDirectories(dir);
             for (Map.Entry<String, String> file : files.entrySet()) {
-                Files.writeString(dir.resolve(file.getKey()),
-                        redact(file.getValue(), contents.secret()), StandardCharsets.UTF_8);
+                String text = redact(file.getValue(), contents.secret());
+                for (String secret : forwardingSecrets) {
+                    text = text.replace(secret, REDACTED_FORWARDING);
+                }
+                Files.writeString(dir.resolve(file.getKey()), text, StandardCharsets.UTF_8);
             }
             for (String name : files.keySet()) {
                 String text = Files.readString(dir.resolve(name), StandardCharsets.UTF_8);
                 if (text.contains(contents.secret())) {
                     throw new IllegalStateException("the agent token is in bundle file " + name + "; not left behind");
+                }
+                if (forwardingSecrets.stream().anyMatch(text::contains)) {
+                    throw new IllegalStateException("the forwarding secret is in bundle file " + name
+                            + "; not left behind");
                 }
             }
         } catch (IOException e) {

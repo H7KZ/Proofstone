@@ -134,6 +134,15 @@ None declared for a cell. Not a row yet. The agent itself reports `command`, `pl
 - **`moved too quickly!` WARNs on the backend** for every proxied client on its first lobby join (`Spike2 moved too
   quickly! -6.5,-60.0,-9.5`, six lines), as on a direct join. The harness allowlist matches only `T<hex>` names, so a
   proxied harness client must keep that naming.
+- **`command-rate-limit` is an `[advanced]` key.** Velocity 4.3.1's `default-velocity.toml` (read from the build 45 jar,
+  2026-11-10) has `login-ratelimit`, `command-rate-limit` and `forward-commands-if-rate-limited` under `[advanced]`
+  only. `VelocityAgentIT` (T-M7-05) sets `command-rate-limit = 0` at the top level, where Velocity does not read it, so
+  that test ran with the default 50; it sends no player commands, so its results stand. `TopologyConfig` (T-M7-07)
+  renders both limits under `[advanced]`. _T-M7-07_
+- **A paused backend stalls a join on the proxy-to-backend hop.** With the lobby container paused (`docker pause`), the
+  client got login success from Velocity and stalled at `CONFIGURATION_STALLED`; Velocity logged `[connected player]
+  T5a1 ... has connected` and the backend logged nothing. A stopped (not paused) backend was not run. `TopologyFaultIT`
+  uses the pause. _T-M7-07_
 - **Docker on Windows:** run the spike with `MSYS_NO_PATHCONV=1`; host paths given to `docker cp` and `java` go through
   `cygpath -m` (run 2 failed on `/c/pw/...`).
 

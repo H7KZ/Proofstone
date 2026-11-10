@@ -35,3 +35,72 @@ tasks.named<Test>("integrationTest") {
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
 }
+
+// Real-server topology tests (T-M7-07): a proxy and Paper backends on one network. Not part of `check`; run one proxy
+// per invocation under scripts/dockerlock.sh (M7 flake rule). Its own source set, so `integrationTest` stays as it was.
+val topologyTest = sourceSets.create("topologyTest") {
+    compileClasspath += sourceSets["main"].output
+    runtimeClasspath += sourceSets["main"].output
+}
+configurations["topologyTestImplementation"].extendsFrom(configurations["implementation"])
+configurations["topologyTestRuntimeOnly"].extendsFrom(configurations["runtimeOnly"])
+
+dependencies {
+    "topologyTestImplementation"(platform(libs.junit.bom))
+    "topologyTestImplementation"(libs.junit.jupiter)
+    "topologyTestImplementation"(libs.assertj.core)
+    "topologyTestRuntimeOnly"(libs.junit.platform.launcher)
+    // The join-stall test finds the client driver through ServiceLoader, as the extension does. Runtime only: core
+    // never compiles against a driver (README, Boundaries).
+    "topologyTestRuntimeOnly"(project(":drivers:mcpl"))
+}
+
+// The mcpl driver is Java 21 bytecode, so the runtime classpath resolves for 21 and the tests run on JDK 21.
+configurations.named("topologyTestRuntimeClasspath") {
+    attributes.attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
+}
+
+val topologyToolchains = extensions.getByType<JavaToolchainService>()
+
+tasks.register<Test>("topologyTest") {
+    group = "verification"
+    description = "Real-server topology tests: a proxy and Paper backends. Needs Docker. Not part of check."
+    testClassesDirs = topologyTest.output.classesDirs
+    classpath = topologyTest.runtimeClasspath
+    useJUnitPlatform()
+    javaLauncher.set(topologyToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+    // Path-based, so this project does not need the agent projects configured first.
+    dependsOn(":platforms:bukkit:agent:shadowJar", ":platforms:velocity:agent:shadowJar",
+        ":platforms:bungee:agent:shadowJar")
+    val platforms = rootProject.layout.projectDirectory.dir("platforms")
+    systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
+    systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
+    systemProperty("proofstone.velocity.agentJar", platforms.file("velocity/agent/build/libs/agent-all.jar").asFile.absolutePath)
+    systemProperty("proofstone.bungee.agentJar", platforms.file("bungee/agent/build/libs/agent-all.jar").asFile.absolutePath)
+    // The proxy pins come from the version catalog until versions.yml schema 3 carries them (T-M7-08), as in the
+    // proxy agents' real-server tests.
+    systemProperty("proofstone.velocity.image", "${libs.versions.velocity.host.image.get()}@${libs.versions.velocity.host.digest.get()}")
+    systemProperty("proofstone.velocity.version", libs.versions.velocity.api.get())
+    systemProperty("proofstone.velocity.build", libs.versions.velocity.build.get())
+    systemProperty("proofstone.velocity.sha256", libs.versions.velocity.jar.sha256.get())
+    systemProperty("proofstone.bungee.image", "${libs.versions.bungee.host.image.get()}@${libs.versions.bungee.host.digest.get()}")
+    systemProperty("proofstone.bungee.build", libs.versions.bungee.build.get())
+    systemProperty("proofstone.bungee.sha256", libs.versions.bungee.jar.sha256.get())
+}
+
+// AGENTS.md section 3 applies to these classes too: archTest scans them.
+tasks.named("archTest") {
+    dependsOn("topologyTestClasses")
+    val dirs = topologyTest.output.classesDirs
+    doLast {
+        val violations = io.github.h7kz.proofstone.build.arch.HardRules.check(dirs.files.map { it.toPath() })
+        if (violations.isNotEmpty()) {
+            throw GradleException("archTest failed (topologyTest classes):\n" + violations.joinToString("\n"))
+        }
+    }
+}

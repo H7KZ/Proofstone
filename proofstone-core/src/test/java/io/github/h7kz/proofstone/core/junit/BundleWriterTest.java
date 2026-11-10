@@ -70,6 +70,27 @@ class BundleWriterTest {
     }
 
     @Test
+    void theForwardingSecretIsAbsentFromEveryBundleFileEvenInACopiedConfig() throws IOException {
+        // ADR-0016 section 8: a topology's forwarding secret is redacted like the token, from logs and copied configs.
+        String secret = io.github.h7kz.proofstone.core.host.TopologyConfig.newSecret();
+        String config = io.github.h7kz.proofstone.core.host.TopologyConfig
+                .backendFiles(io.github.h7kz.proofstone.core.host.ProxyKind.VELOCITY, secret)
+                .get("/config/paper-global.yml");
+        Path dir = BundleWriter.write(tmp.resolve("bundle"),
+                contents("paper-global.yml:\n" + config, "proxy log " + secret, "stall " + secret), List.of(secret));
+
+        try (Stream<Path> files = Files.list(dir)) {
+            for (Path file : files.toList()) {
+                String text = Files.readString(file, StandardCharsets.UTF_8);
+                assertThat(text).as(file.getFileName().toString()).doesNotContain(secret).doesNotContain(TOKEN);
+            }
+        }
+        assertThat(Files.readString(dir.resolve("server.log"))).contains("secret: " + BundleWriter.REDACTED_FORWARDING);
+        assertThatThrownBy(() -> BundleWriter.write(tmp.resolve("blank"), contents("log", null), List.of(" ")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void aSecretInAnyJsonLineIsStillRedacted() throws IOException {
         // The agent transcript is JSON; redaction works on the text, so a quoted token is caught too.
         Path dir = BundleWriter.write(tmp.resolve("bundle"), contents("log", null));
