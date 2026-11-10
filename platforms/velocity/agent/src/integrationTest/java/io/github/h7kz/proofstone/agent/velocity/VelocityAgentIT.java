@@ -120,7 +120,6 @@ class VelocityAgentIT {
                 forwarding-secret-file = "forwarding.secret"
                 announce-forge = false
                 kick-existing-players = false
-                command-rate-limit = 0
 
                 [servers]
                 lobby = "127.0.0.1:25565"
@@ -131,6 +130,7 @@ class VelocityAgentIT {
 
                 [advanced]
                 login-ratelimit = 0
+                command-rate-limit = 0
                 log-player-connections = true
                 """;
     }
