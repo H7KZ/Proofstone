@@ -73,6 +73,35 @@ record JoinDiagnosis(JoinStage stage, String protocolOffered, String lastReceive
     }
 
     /**
+     * The stage a server switch stopped at, from the transcript lines since the awaited switch began (T-M7-09). Like
+     * {@link #classify}, it reads only what the client saw.
+     */
+    static JoinDiagnosis classifySwitch(List<String> sinceSwitch) {
+        List<String> sent = new ArrayList<>();
+        List<String> received = new ArrayList<>();
+        for (String line : sinceSwitch) {
+            Matcher packet = PACKET.matcher(line);
+            if (packet.matches()) {
+                (packet.group(1).equals("->") ? sent : received).add(packet.group(2));
+            }
+        }
+        String last = received.isEmpty() ? "none" : received.get(received.size() - 1);
+        JoinStage stage;
+        if (!received.contains("ClientboundStartConfigurationPacket")) {
+            stage = JoinStage.SWITCH_NOT_STARTED;
+        } else if (!sent.contains("ServerboundConfigurationAcknowledgedPacket")) {
+            stage = JoinStage.SWITCH_START_NOT_ACKNOWLEDGED;
+        } else if (!received.contains("ClientboundFinishConfigurationPacket")) {
+            stage = JoinStage.SWITCH_CONFIGURATION_STALLED;
+        } else if (!sent.contains("ServerboundFinishConfigurationPacket")) {
+            stage = JoinStage.SWITCH_FINISH_NOT_ANSWERED;
+        } else {
+            stage = JoinStage.SWITCH_NO_JOIN_PACKET;
+        }
+        return new JoinDiagnosis(stage, "n/a (server switch on a live connection)", last, null);
+    }
+
+    /**
      * The failure message. It starts {@code timed out joining}, which scripts/flake-loop.sh and the troubleshooting
      * guide classify on, then names the stage, then keeps the full transcript as before.
      */
@@ -80,6 +109,18 @@ record JoinDiagnosis(JoinStage stage, String protocolOffered, String lastReceive
         return "timed out joining " + where + " after " + timeout + "; stalled at " + stage + " (" + stage.summary()
                 + "); protocol offered: " + protocolOffered + "; last packet received: " + lastReceived
                 + (packetError == null ? "" : "; client packet error: " + packetError)
+                + "; transcript: " + transcript;
+    }
+
+    /**
+     * The message of a switch that did not complete (T-M7-09). It starts {@code timed out joining} like a join timeout,
+     * so the flake accounting counts it, then names the stage. {@code replies} are the chat lines the client got since
+     * the switch was awaited: a backend answering the command is the loud red the ADR asks for.
+     */
+    String switchMessage(String where, String timeout, List<String> replies, List<String> transcript) {
+        return "timed out joining " + where + " during a server switch after " + timeout + "; stalled at " + stage
+                + " (" + stage.summary() + "); last packet received: " + lastReceived
+                + "; chat received while waiting: " + (replies.isEmpty() ? "none" : replies)
                 + "; transcript: " + transcript;
     }
 }

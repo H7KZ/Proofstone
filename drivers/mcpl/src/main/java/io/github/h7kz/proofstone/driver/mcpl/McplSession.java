@@ -8,6 +8,7 @@ import io.github.h7kz.proofstone.core.driver.ChatMessage;
 import io.github.h7kz.proofstone.api.Click;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
+import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.Face;
 import io.github.h7kz.proofstone.core.driver.SlotStack;
 import io.github.h7kz.proofstone.core.driver.WindowSession;
@@ -54,6 +55,7 @@ import org.geysermc.mcprotocollib.protocol.packet.configuration.clientbound.Clie
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundDisguisedChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundStartConfigurationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetExperiencePacket;
@@ -79,7 +81,8 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.Serv
  */
 final class McplSession implements ClientSession {
 
-    enum State { JOINING, PLAYING, DISCONNECTED }
+    /** SWITCHING is the proxy's configuration phase on a live connection, until the new server's join (T-M7-09). */
+    enum State { JOINING, PLAYING, SWITCHING, DISCONNECTED }
 
     private final Session network;
     private final String username;
@@ -99,6 +102,14 @@ final class McplSession implements ClientSession {
     private volatile Integer experienceLevel;
     private volatile State state = State.JOINING;
     private volatile String disconnectReason;
+    // Switches the proxy completed, and how many awaitServerSwitch has handed out. Counted, so one that finished before
+    // the await is not lost and none is returned twice.
+    private int switchesCompleted;
+    private int switchesClaimed;
+    // Transcript index where the switch in progress began, or -1; and where the last command was sent, or -1.
+    private volatile int switchMark = -1;
+    private volatile int commandMark = -1;
+    private volatile boolean disconnectedMidSwitch;
 
     McplSession(Session network, String username) {
         this.network = network;
@@ -131,6 +142,7 @@ final class McplSession implements ClientSession {
 
             @Override
             public void disconnected(DisconnectedEvent event) {
+                disconnectedMidSwitch = state == State.SWITCHING;
                 String reason = event.getReason() == null ? "" : flatten(event.getReason());
                 if (event.getCause() != null) {
                     reason += (reason.isEmpty() ? "" : " ") + "(" + event.getCause() + ")";
@@ -147,8 +159,21 @@ final class McplSession implements ClientSession {
 
     private void onReceived(Packet packet) {
         String summary = packet.getClass().getSimpleName();
-        if (packet instanceof ClientboundLoginPacket) {
+        if (packet instanceof ClientboundStartConfigurationPacket) {
+            // A proxy moves the client to another backend through the configuration phase again (ADR-0016 section 5).
+            // MCProtocolLib answers it; this only notes the state, so nothing is sent or predicted here.
+            switchMark = transcript.size();
+            state = State.SWITCHING;
+        } else if (packet instanceof ClientboundLoginPacket) {
+            boolean newServer = state != State.JOINING;
+            if (newServer) {
+                resetViews();
+            }
+            // PLAYING before the count moves: a test thread released by the await may send at once.
             state = State.PLAYING;
+            if (newServer) {
+                completeSwitch();
+            }
         } else if (packet instanceof ClientboundPingPacket ping) {
             // A vanilla client answers every ping. ViaProxy turns a rejected click of a pre-1.17 server into a
             // ping, and the server ignores all further clicks until the pong comes back (T-M3-03).
@@ -543,7 +568,91 @@ final class McplSession implements ClientSession {
     @Override
     public void command(String commandWithoutSlash) {
         requireOpen("cannot run a command");
+        commandMark = transcript.size();
         network.send(new ServerboundChatCommandPacket(commandWithoutSlash));
+    }
+
+    /**
+     * A new join on a live connection: the new server is authoritative, so nothing of the previous one is kept
+     * (client-driver spec section 2). Windows are closed (a held window then fails loudly), window 0 and the cursor are
+     * empty until the new server syncs them, and position and experience wait for its first sync.
+     */
+    private void resetViews() {
+        synchronized (opened) {
+            for (WindowModel window : opened) {
+                window.markClosed();
+            }
+            opened.clear();
+        }
+        playerInventory.reset();
+        position = null;
+        experienceLevel = null;
+    }
+
+    private synchronized void completeSwitch() {
+        switchesCompleted++;
+        switchMark = -1;
+    }
+
+    private synchronized boolean claimSwitch() {
+        if (switchesClaimed < switchesCompleted) {
+            switchesClaimed++;
+            commandMark = -1;
+            return true;
+        }
+        return false;
+    }
+
+    private enum Switch { DONE, DISCONNECTED, WAITING }
+
+    @Override
+    public void awaitServerSwitch(Duration timeout) {
+        int waitedFrom = transcript.size();
+        String where = username + " (server switch)";
+        Switch outcome;
+        try {
+            // A disconnect is a value, not an exception, because Await treats a throwing probe as "not yet".
+            outcome = Await.until("a completed server switch for " + username,
+                    () -> claimSwitch() ? Switch.DONE : state == State.DISCONNECTED ? Switch.DISCONNECTED : Switch.WAITING,
+                    s -> s != Switch.WAITING, timeout);
+        } catch (AwaitTimeoutException e) {
+            int mark = switchMark;
+            JoinDiagnosis diagnosis = JoinDiagnosis.classifySwitch(mark >= 0 ? transcriptSince(mark) : List.of());
+            // The command's reply counts even when it beat this call, so a backend answering it is quoted.
+            int from = commandMark >= 0 ? Math.min(commandMark, waitedFrom) : waitedFrom;
+            throw new JoinTimeoutException(diagnosis.switchMessage(where, timeout.toString(), chatSince(from), tail()), e,
+                    username, diagnosis.stage().name(), diagnosis.protocolOffered(), diagnosis.lastReceived());
+        }
+        if (outcome == Switch.DISCONNECTED) {
+            if (disconnectedMidSwitch) {
+                JoinDiagnosis diagnosis = JoinDiagnosis.classifySwitch(transcriptSince(Math.max(switchMark, 0)));
+                throw new ClientDriverException("disconnected during a server switch at " + diagnosis.stage() + " ("
+                        + diagnosis.stage().summary() + "): " + disconnectReason + "; transcript tail: " + tail());
+            }
+            throw new ClientDriverException("disconnected while waiting for a server switch: " + disconnectReason
+                    + "; transcript tail: " + tail());
+        }
+    }
+
+    private List<String> transcriptSince(int from) {
+        synchronized (transcript) {
+            return new ArrayList<>(transcript.subList(Math.min(from, transcript.size()), transcript.size()));
+        }
+    }
+
+    private static final Pattern CHAT_LINE = Pattern.compile(
+            "^\\S+ <- (?:ClientboundSystemChatPacket|ClientboundDisguisedChatPacket|ClientboundPlayerChatPacket) (.*)$");
+
+    /** The chat the server sent since a transcript index: the proxy's or a backend's reply to a command. */
+    private List<String> chatSince(int from) {
+        List<String> out = new ArrayList<>();
+        for (String line : transcriptSince(from)) {
+            var matcher = CHAT_LINE.matcher(line);
+            if (matcher.matches()) {
+                out.add(matcher.group(1));
+            }
+        }
+        return out;
     }
 
     @Override

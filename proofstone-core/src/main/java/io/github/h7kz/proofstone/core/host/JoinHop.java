@@ -39,4 +39,26 @@ public record JoinHop(String name, String evidence) {
         }
         return new JoinHop("after both hops (backend " + target + " logged the player in)", login);
     }
+
+    /**
+     * The hop of a server switch that did not complete (T-M7-09). The client to proxy hop was already up when the
+     * switch began, so the only hop in doubt is the proxy to the target: no {@code logged in} line for the player on the
+     * target backend since the switch was typed means it stopped there. Evidence of where, never a reason why.
+     *
+     * @param proxyLines the proxy log lines since the {@code /server} command, quoted as evidence
+     * @param targetLines the target backend's log lines since the command
+     */
+    public static JoinHop ofSwitch(String player, List<String> proxyLines, List<String> targetLines, String target) {
+        Pattern name = Pattern.compile("(?<![A-Za-z0-9_])" + Pattern.quote(player) + "(?![A-Za-z0-9_])");
+        String login = targetLines.stream()
+                .filter(line -> line.contains("logged in") && name.matcher(line).find()).findFirst().orElse(null);
+        if (login != null) {
+            return new JoinHop("after both hops (backend " + target + " logged the player in)", login);
+        }
+        String proxyLine = proxyLines.stream().filter(line -> name.matcher(line).find()).findFirst().orElse(null);
+        return new JoinHop("proxy to backend " + target, "client to proxy was up before the switch; backend " + target
+                + " logged no \"logged in\" line for " + player + "; "
+                + (proxyLine == null ? "no proxy log line since the command names the player"
+                        : "proxy logged \"" + proxyLine + "\""));
+    }
 }

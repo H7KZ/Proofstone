@@ -146,6 +146,35 @@ class TopologyHostTest {
         assertThat(hop.name()).isEqualTo("after both hops (backend lobby logged the player in)");
     }
 
+    // A server switch (T-M7-09): the client to proxy hop was already up, so only the target's login decides.
+
+    @Test
+    void aSwitchWithNoLoginOnTheTargetStoppedAtTheProxyToBackendHop() {
+        JoinHop hop = JoinHop.ofSwitch("T1", List.of(), List.of("T10[/172.18.0.1:6] logged in with entity id 7"),
+                "survival");
+
+        assertThat(hop.name()).isEqualTo("proxy to backend survival");
+        assertThat(hop.evidence()).contains("client to proxy was up before the switch")
+                .contains("no proxy log line since the command names the player");
+    }
+
+    @Test
+    void aSwitchWithTheProxyLoggingTheAttemptQuotesIt() {
+        JoinHop hop = JoinHop.ofSwitch("T1", List.of("[connected player] T1 -> survival has connected"), List.of(),
+                "survival");
+
+        assertThat(hop.name()).isEqualTo("proxy to backend survival");
+        assertThat(hop.evidence()).contains("[connected player] T1 -> survival has connected");
+    }
+
+    @Test
+    void aSwitchWithALoginOnTheTargetStoppedAtNeitherHop() {
+        JoinHop hop = JoinHop.ofSwitch("T1", List.of(), List.of("T1[/172.18.0.1:5] logged in with entity id 7"),
+                "survival");
+
+        assertThat(hop.name()).isEqualTo("after both hops (backend survival logged the player in)");
+    }
+
     @Test
     void anUnknownTargetIsAnError() {
         assertThatThrownBy(() -> JoinHop.of("T1", List.of(), Map.of("lobby", List.of()), "ghost"))

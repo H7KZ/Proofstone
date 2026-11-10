@@ -180,6 +180,22 @@ public final class TopologyHost implements AutoCloseable {
         return JoinHop.of(player, proxy.logs().since(marks.proxy()), lines, target);
     }
 
+    /** The hop a server switch of {@code player} to {@code target} stopped at, from the logs since {@code marks}. */
+    public JoinHop switchHop(String player, JoinMarks marks, String target) {
+        return JoinHop.ofSwitch(player, proxy.logs().since(marks.proxy()),
+                backend(target).logs().since(marks.backends().get(target)), target);
+    }
+
+    /**
+     * A switch timeout (T-M7-09) with the topology's side added: the hop, the stalled stage and the log tails. Marks come
+     * from {@link #mark()}, taken before the {@code /server} command. The timeout stays a failure.
+     */
+    public JoinTimeoutException describeSwitch(JoinTimeoutException timeout, JoinMarks marks, String target) {
+        Map<String, String> tails = new LinkedHashMap<>();
+        backends.forEach((name, host) -> tails.put(name, host.logTail()));
+        return describe(timeout, switchHop(timeout.player(), marks, target), proxy.logTail(), tails, secret);
+    }
+
     /**
      * The T-M6-14 timeout with the topology's side added: the hop, the stalled stage and the proxy and backend log
      * tails. Explains nothing and fixes nothing; the timeout stays a failure.

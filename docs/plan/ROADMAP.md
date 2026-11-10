@@ -649,6 +649,7 @@ timeout, the stalled stage and hop.
   BungeeCord 3 of 3 green, 6 of 6 joins. One forced-fault invocation (expected outcomes, not flakes): a backend whose agent
   never answers fails the start naming `server-survival` with every container stopped; a paused backend stalls the join
   at `CONFIGURATION_STALLED` on the proxy-to-backend hop.
+- **T-M7-09 driver survives a server switch (2026-11-10), no join timeout, no red.** `:proofstone-core:topologyTest --tests '*<Proxy>SwitchIT'`, one proxy per invocation, three separate invocations per proxy, each with two `paper@26.3` backends: Velocity 3 of 3 green, BungeeCord 3 of 3 green. Each run: one client, `/server survival` and back, twice (4 switches, 5 logins, 4 start-configurations; BungeeCord also 4 respawns, Velocity 0), views the new server's each time. `:conformance:run -Dproofstone.cells=paper@26.3`: 0 failures, 0 errors, 2 reasoned skips (Folia).
 - **Latent config error, not a red run: `VelocityAgentIT` sets `command-rate-limit` at the top level**, where Velocity 4.3.1 ignores it
   (it is an `[advanced]` key). No player commands run in that test, so no result changed. Recorded in
   `docs/platforms/velocity.md` Gotchas; the topology config renders it under `[advanced]`.
