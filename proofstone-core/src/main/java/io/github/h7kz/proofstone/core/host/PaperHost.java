@@ -1,11 +1,9 @@
 package io.github.h7kz.proofstone.core.host;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.await.AwaitTimeoutException;
 import io.github.h7kz.proofstone.core.cell.Cell;
@@ -14,23 +12,16 @@ import io.github.h7kz.proofstone.protocol.Command;
 import io.github.h7kz.proofstone.protocol.CommandReply;
 import io.github.h7kz.proofstone.protocol.Envelope;
 import io.github.h7kz.proofstone.protocol.Health;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
-import java.util.UUID;
 import java.util.regex.Pattern;
-import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
@@ -46,19 +37,16 @@ import org.testcontainers.utility.MountableFile;
  */
 public final class PaperHost implements AutoCloseable {
 
-    static final int AGENT_PORT = 25580;
+    static final int AGENT_PORT = AgentClient.AGENT_PORT;
     /** The server's name on the cell network, where {@link PaperHostOptions#network()} is set. */
     public static final String NETWORK_ALIAS = "server";
     /** The port the server listens on inside its container. */
     public static final int GAME_PORT = 25565;
-    private static final String AGENT_URL = "http://127.0.0.1:" + AGENT_PORT;
     private static final int TAIL_LINES = 60;
-    private static final int TRANSCRIPT_TEXT_LIMIT = 500;
     private static final String BUKKIT_YML = "settings:\n  connection-throttle: -1\n";
     private static final String SEED = "1234567";
     private static final String WORLD_SPAWN = "setworldspawn 0 64 0";
-    // Absent optional fields are omitted: the agent rejects an explicit "timeoutMs": null (found in T-M1-08).
-    private static final ObjectMapper JSON = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    private static final ObjectMapper JSON = AgentClient.JSON;
     private static final Pattern JAVA_MAJOR = Pattern.compile("version \"(\\d+)(?:\\.(\\d+))?");
 
     private final Cell cell;
@@ -69,15 +57,16 @@ public final class PaperHost implements AutoCloseable {
     private final LogBuffer logs = new LogBuffer();
     private final GenericContainer<?> container;
     private final List<String> copiedPlugins = new ArrayList<>();
-    /** One JSON line per agent call, for the repro bundle. The token is never recorded: headers are not. */
-    private final List<String> agentTranscript = Collections.synchronizedList(new ArrayList<>());
+    /** Agent calls through curl in the container; it keeps the transcript for the repro bundle. */
+    private final AgentClient agent;
     private Health health;
 
     private PaperHost(Cell cell, PaperHostOptions options) {
         this.cell = cell;
         this.options = options;
-        this.token = randomToken();
+        this.token = AgentClient.randomToken();
         this.container = new GenericContainer<>(DockerImageName.parse(cell.hostImage() + "@" + cell.hostDigest()));
+        this.agent = new AgentClient(container, token);
     }
 
     /** Starts the cell's server and returns it ready, or throws {@link PaperHostException} with the log tail. */
@@ -155,10 +144,12 @@ public final class PaperHost implements AutoCloseable {
         // Tests join several clients from one address within seconds; Paper's default 4 s connection throttle
         // would refuse the second ("Connection throttled!"). Copied in, like every input (T-M1-10).
         container.withCopyToContainer(Transferable.of(BUKKIT_YML), "/data/bukkit.yml");
+        // A topology backend's forwarding settings (TopologyConfig); empty for a single server.
+        options.files().forEach((path, content) -> container.withCopyToContainer(Transferable.of(content), path));
         // Players join over the game port, so it is the one port always published (T-M1-08).
         container.addExposedPort(GAME_PORT);
         if (options.network() != null) {
-            container.withNetwork(options.network()).withNetworkAliases(NETWORK_ALIAS);
+            container.withNetwork(options.network()).withNetworkAliases(options.networkAlias());
         }
         if (options.debugPorts()) {
             container.addExposedPort(AGENT_PORT);
@@ -208,7 +199,7 @@ public final class PaperHost implements AutoCloseable {
     private void awaitAgent() {
         awaitProbe("agent /v1/health OK", () -> {
             requireRunning();
-            health = readHealth();
+            health = agent.health();
             return true;
         }, options.agentTimeout());
     }
@@ -227,17 +218,6 @@ public final class PaperHost implements AutoCloseable {
         if (!container.isRunning()) {
             throw new IllegalStateException("container exited");
         }
-    }
-
-    private Health readHealth() {
-        Envelope<Health> envelope = parse(agent("GET", "/v1/health", null), new TypeReference<>() { });
-        if (!envelope.ok() || envelope.data() == null) {
-            throw new IllegalStateException("agent health not ok: " + envelope.error());
-        }
-        if (!envelope.data().protocol().startsWith("1.")) {
-            throw new PaperHostException("agent protocol " + envelope.data().protocol() + " is not 1.x");
-        }
-        return envelope.data();
     }
 
     /** The pins must be what actually runs: the Java major matches the cell, and the jar matches the sha256. */
@@ -279,7 +259,8 @@ public final class PaperHost implements AutoCloseable {
     public String command(String command) {
         try {
             String body = JSON.writeValueAsString(new Command(command, null));
-            Envelope<CommandReply> envelope = parse(agent("POST", "/v1/command", body), new TypeReference<>() { });
+            Envelope<CommandReply> envelope = AgentClient.parse(agent.call("POST", "/v1/command", body),
+                    new TypeReference<>() { });
             if (!envelope.ok()) {
                 throw new PaperHostException("command \"" + command + "\" failed: " + envelope.error());
             }
@@ -298,8 +279,8 @@ public final class PaperHost implements AutoCloseable {
     public JsonNode request(String method, String path, Object body) {
         String call = method + " " + path;
         try {
-            String reply = agent(method, path, body == null ? null : JSON.writeValueAsString(body));
-            Envelope<JsonNode> envelope = parse(reply, new TypeReference<>() { });
+            String reply = agent.call(method, path, body == null ? null : JSON.writeValueAsString(body));
+            Envelope<JsonNode> envelope = AgentClient.parse(reply, new TypeReference<>() { });
             if (!envelope.ok()) {
                 throw new PaperHostException("agent " + call + " failed: " + envelope.error());
             }
@@ -309,72 +290,14 @@ public final class PaperHost implements AutoCloseable {
         }
     }
 
-    private static <T> T parse(String json, TypeReference<T> type) {
-        try {
-            return JSON.readValue(json, type);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("unparsable agent reply: " + json, e);
-        }
-    }
-
-    private String agent(String method, String path, String body) {
-        String requestId = UUID.randomUUID().toString();
-        List<String> args = new ArrayList<>(List.of("curl", "-sS", "-m", "5", "-X", method,
-                "-H", "Authorization: Bearer " + token, "-H", "Content-Type: application/json",
-                "-H", "X-Proofstone-Request-Id: " + requestId));
-        if (body != null) {
-            args.addAll(List.of("-d", body));
-        }
-        args.add(AGENT_URL + path);
-        String call = method + " " + path;
-        try {
-            String reply = exec(args.toArray(String[]::new));
-            recordAgentCall(requestId, call, body, reply);
-            return reply;
-        } catch (RuntimeException e) {
-            recordAgentCall(requestId, call, body, "error: " + e.getMessage());
-            throw e;
-        }
-    }
-
-    private void recordAgentCall(String requestId, String call, String body, String reply) {
-        ObjectNode line = JSON.createObjectNode()
-                .put("at", Instant.now().toString())
-                .put("requestId", requestId)
-                .put("call", call);
-        if (body != null) {
-            line.put("request", truncate(body));
-        }
-        line.put("reply", truncate(reply));
-        agentTranscript.add(line.toString());
-    }
-
-    /** Keeps a recorded reply short; the full output is in the server log. */
-    private static String truncate(String text) {
-        return text.length() <= TRANSCRIPT_TEXT_LIMIT ? text : text.substring(0, TRANSCRIPT_TEXT_LIMIT) + "...";
-    }
-
     /** The agent calls made so far, as JSON lines (repro bundle, agent-transcript.jsonl). */
     public List<String> agentTranscript() {
-        synchronized (agentTranscript) {
-            return new ArrayList<>(agentTranscript);
-        }
+        return agent.transcript();
     }
 
-    private String exec(String... args) {
-        try {
-            ExecResult result = container.execInContainer(args);
-            if (result.getExitCode() != 0) {
-                throw new IllegalStateException(args[0] + " exited " + result.getExitCode() + ": "
-                        + result.getStderr());
-            }
-            return result.getStdout() + result.getStderr();
-        } catch (IOException e) {
-            throw new IllegalStateException("exec " + args[0] + " failed", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("exec " + args[0] + " interrupted", e);
-        }
+    /** Runs a command in the container; a non-zero exit is an error with its stderr. */
+    String exec(String... args) {
+        return agent.exec(args);
     }
 
     public Cell cell() {
@@ -417,14 +340,13 @@ public final class PaperHost implements AutoCloseable {
         return container.getMappedPort(AGENT_PORT);
     }
 
+    /** The Docker container id, for fault tests that pause the server (T-M7-07). */
+    String containerId() {
+        return container.getContainerId();
+    }
+
     @Override
     public void close() {
         container.stop();
-    }
-
-    private static String randomToken() {
-        byte[] bytes = new byte[24];
-        new SecureRandom().nextBytes(bytes);
-        return HexFormat.of().formatHex(bytes);
     }
 }

@@ -30,6 +30,15 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
   (harness code only, never logged). `PaperHostOptions.withDebugPorts(true)` publishes the agent port for host-side tests
   (T-M1-05).
 - `io.github.h7kz.proofstone.core.host.PaperHostOptions`, `Eula`, `LogBuffer`, `PaperHostException`: options, the EULA gate (`PROOFSTONE_ACCEPT_EULA=true`), the log buffer for repro bundles, and the failure type (message includes the log tail).
+- Topologies (T-M7-07, ADR-0016), package `host`: `TopologyHost.start(cell, backendNames, backendOptions, proxyOptions)`
+  starts N `PaperHost` backends (alias `server-<name>`) and then one `ProxyHost` (alias `proxy`, `itzg/mc-proxy` by digest,
+  jar sha256 and Java checked in the container) on one network, each ready by log line and agent health. `TopologyConfig`
+  renders the copied proxy and backend files (Velocity modern, BungeeCord legacy, the harness rate limits) and the
+  per-topology forwarding secret, which reaches containers only (never a host file, log, message or bundle). A failed start
+  stops every container and names the one that failed with every log tail. `mark()`, `hop(...)` and `describe(timeout, marks,
+  target)` add the hop (client to proxy, or proxy to backend) and the proxy and backend log tails to a join timeout.
+  `PaperHostOptions.withNetwork(network, alias)` and `withFiles(...)` are what a backend needs; their defaults leave the
+  single-server path as it was.
 
 - `io.github.h7kz.proofstone.core.cell.CiMatrix`: the CI matrix JSON for `printMatrix --scope=pr|nightly` (T-M3-07), built with `CellPlanner` and `all`. A platform with a `TODO` pin is skipped with its reason.
 
@@ -42,6 +51,10 @@ Java tags come from `java-rules` (first match wins). A row's `java:` field overr
 The tests read the real schema and seed from the repo root (`proofstone.repoRoot`, set in `build.gradle.kts`).
 
 `./gradlew :proofstone-core:integrationTest --tests '*PaperHostIT*'` needs Docker and `PROOFSTONE_ACCEPT_EULA=true` (read <https://aka.ms/MinecraftEULA> first; the harness never accepts it for you). Without the variable the server tests are skipped with that reason. It is not part of `check`.
+
+`./gradlew :proofstone-core:topologyTest --tests '*VelocityTopologyIT'` (or `*BungeeCordTopologyIT`, `*TopologyFaultIT`)
+boots a proxy and `paper@26.3` backends. Docker, the EULA variable and `scripts/dockerlock.sh` as above; one proxy per
+invocation (M7 flake rule). Not part of `check`.
 - `io.github.h7kz.proofstone.core.verdict` (T-M4-01): the verdict engine. `VerdictEngine.resolve(CellRun, ConformanceResult)` gives
   one `CellResult` per test and cell; `Verdict` (`PASS`, `FAIL`, `INVALID`, `VACUOUS`, `FLAKY`, `DISAGREE`, `SKIPPED`,
   green = `PASS` or `SKIPPED` only); `Attempt` (one run: PASS, FAIL or SKIPPED); `SkipReason` (the allowed skip reasons);
