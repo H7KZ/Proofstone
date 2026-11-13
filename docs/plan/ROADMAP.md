@@ -673,5 +673,5 @@ timeout, the stalled stage and hop.
   backend's refusal was never reached. Fix: the driver answers a login query with an empty answer, as a vanilla client does
   (`McplLoginQueryTest`). The three Velocity invocations and the three BungeeCord invocations after the fix are all green
   (6 of 6, 1 test each, skipped 0 failures 0 errors 0). P01 reads `events` and `players` on a real proxy, so both agents now
-  report `events`. Observation, not changed here: backend game ports are published to the host (`addExposedPort`), against ADR-0016
-  section 8, and P02's direct join relies on it.
+  report `events`. Backend game ports had been published on all addresses against ADR-0016 section 8; the maintainer's decision: a test-only
+  exception bound to `127.0.0.1` (ADR-0016 section 8 amended, `GamePortBindingTest`).

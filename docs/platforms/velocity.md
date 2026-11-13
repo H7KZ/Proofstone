@@ -127,9 +127,8 @@ change the same join ended in `timed out joining ... last packet received: Clien
 of the harness's client and not a refusal by the backend (run `velocity-1`, kept in the PR evidence).
 
 ## Gotchas
-- **A backend's game port is published to the host**, contrary to ADR-0016 section 8's "never published": `PaperHost` calls
-  `addExposedPort` for the game port, and P02's direct join uses it. With modern forwarding the secret protects the backend (the
-  direct join is refused). Not changed in T-M7-11; raised in the PR. _T-M7-11_
+- **A backend's game port is bound to `127.0.0.1` on a random host port** (T-M7-11, test-only exception in ADR-0016 section 8), so
+  P02's direct join can reach it; nothing else on the machine's network can. With modern forwarding the secret protects the backend: the direct join is refused. _T-M7-11_
 - **A copied `/data/config` kills a Paper backend.** `docker cp` of a staged `config/` directory into `/data/` makes it
   root-owned; the image cannot write `paper-world-defaults.yml` (`AccessDeniedException`), and Paper then crashes at
   world load with `World defaults configuration file 'config/paper-world-defaults.yml' doesn't exist`. Copy

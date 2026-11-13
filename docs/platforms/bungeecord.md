@@ -141,9 +141,8 @@ P02 asserts that text, as observed. It protects nothing: a client that sends a f
 accepted (legacy forwarding has no secret), which is why ADR-0016 section 8 wants backend ports unpublished; that is not asserted here.
 
 ## Gotchas
-- **A backend's game port is published to the host**, contrary to ADR-0016 section 8's "never published": `PaperHost` calls
-  `addExposedPort` for the game port, and P02's direct join uses it. With legacy forwarding that leaves a forged forwarded handshake
-  possible from the host. Not changed in T-M7-11; raised in the PR. _T-M7-11_
+- **A backend's game port is bound to `127.0.0.1` on a random host port** (T-M7-11, test-only exception in ADR-0016 section 8), so
+  P02's direct join can reach it; nothing else on the machine's network can. With legacy forwarding a forged forwarded handshake from a local process would still be accepted. _T-M7-11_
 - **The default `config.yml` has `max_players: 1`** on the listener, and `connection_throttle: 4000` with
   `connection_throttle_limit: 3`. The spike raised players to 20 and turned the throttle off (`-1`), because every
   test client comes from one address. Not observed with the defaults.
