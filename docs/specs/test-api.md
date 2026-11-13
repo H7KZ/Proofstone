@@ -191,7 +191,7 @@ These appear in the sketches and are **not** part of the contract. Each needs an
   agent has no `openWindow` endpoint, so the chest contents have no server oracle).
 - Experience points and the progress bar (`PlayerHandle.exp`, `Client.experience`).
 - `Item.repairCost`, `Item.pdc`, and a real `ItemView.repairCost`.
-- `Clients` (multi-player) and `Topology` (proxies).
+- `Clients` (multi-player). `Topology` moved out of this list in T-M7-10 (section 12).
 - Test hygiene: the world fixture region reset and the leak detector (T-M2-08 left them out).
 - `Cell.driver()`.
 - Verdict reporting (`serverOnlyReasons` is its stand-in).
@@ -303,3 +303,55 @@ class BedrockPathE2E {
   `CAPABILITY_MISSING`, and the reason names the cell.
 - **Bad test.** None yet. Conformance scenario `C-B01` (`ConformanceBedrockPrefixTest`) asserts the example plugin's
   detection on a prefixed client and on a normal one.
+
+## 12. Topologies: `Topology`, `@Topology.Backends`, `Client.transferTo` (T-M7-10, post-v0 additive)
+
+Added by T-M7-10 as an `api-change` ([ADR-0016](../adr/0016-topology-cells.md)): `Topology` and its nested annotation
+`Topology.Backends` are new members of `io.github.h7kz.proofstone.api`, `Client.transferTo(String)` is a new **default**
+method, `Platform.VELOCITY`, `Platform.BUNGEECORD`, `Capability.PROXY` and `Capability.TOPOLOGY` are new constants, and
+`api-baseline.txt` gains exactly those 11 lines. No frozen v0 signature changed: every addition is a new type, a new
+constant or a default method, so existing callers and implementers compile and link unchanged.
+
+```java
+@Proofstone(plugins = "build/libs/MyProxyAwarePlugin.jar")
+@Matrix(platform = Platform.VELOCITY, versions = {"latest"})
+@Topology.Backends({"lobby", "survival"})            // optional; these are the defaults
+class SwitchE2E {
+    @CellTest
+    void survivalGivesItsOwnKit(Topology topology, Client client) {
+        client.transferTo("survival");                // types /server survival, awaits both oracles
+        topology.server("survival").player(client).give(Item.of("minecraft:stick"));
+        DualAssert.item(topology.server("survival").player(client), client).inInventory(i -> i.is("stick"));
+    }
+}
+```
+
+- **Planning.** A `@Matrix` naming a proxy platform plans topology cells: its versions paired with `paper@latest`, which must
+  be a pairing listed in `versions.yml` (an unlisted one is an error). A selector entry such as
+  `-Dproofstone.cells=velocity@4.3.1+paper@26.3` replaces them. A differential or flake-detector run on a topology cell is
+  refused with an error in M7.
+- **Deviation from the card.** The card names the annotation `@Topology`. Java cannot have an annotation and an interface of
+  the same name in one package, and the injected type is `Topology` (section 2), so the annotation is `@Topology.Backends`.
+- **Injected.** `Topology` (`server(name)`, `proxy()`, `servers()`); the plain `Agent` is the default backend's (the first
+  name, where the client lands); `Cell` describes the backend row (`paper`, `26.3`) and holds `TOPOLOGY` and `PROXY`.
+  `topology.proxy().player(..)` fails loudly: a proxy holds no game state.
+- **`transferTo(name)`.** A server switch, never the vanilla transfer packet. An unknown backend or the current one is an
+  `IllegalArgumentException` before anything is sent. The client types `/server <name>` once, the driver awaits the
+  switch (a timeout names the stalled stage and the hop), then the agents are awaited: the proxy agent says `name`, that
+  backend lists the player and the source does not. A disagreement is `DisagreeException` (`DISAGREE ...`, every agent and
+  its value named), no oracle on the target is `FAIL`, an agent that never answers is `ORACLE MISSING`. Nothing is
+  retried. On a single-server cell `transferTo` is an `IllegalStateException`.
+- **Single-server cells.** `@Topology.Backends` and `@Requires(TOPOLOGY)` (or `PROXY`) skip with `CAPABILITY_MISSING`
+  (`missing capability TOPOLOGY on cell paper@26.3`) before any server boots. A test that declares a `Topology` parameter
+  without either is misdeclared: it fails with `INVALID test declaration`, never a pass.
+- **Lifecycle.** Per class by default. Before each test the client joins through the proxy, the proxy agent and the default
+  backend list it, and the player is reset there; the leak baseline is read on every backend. After it the log guard
+  runs per container with its pack's list (Velocity and BungeeCord packs have their own, empty until a reviewed run adds an
+  entry), configs are restored per agent, the client leaves (awaited on the proxy agent) and the leak detector compares
+  every backend.
+- **Conformance.** Until P01 to P05 exist (T-M7-11, T-M7-12), the cached per-cell check is `T00`: the proxy agent lists
+  exactly the topology's backends, each online. A red makes every test on the cell `INVALID`.
+- **Bundle.** `build/proofstone/<identity>/<Test>.<method>/` has `proxy/` and `server-<name>/` (log, agent transcript, and a
+  snapshot per backend), plus the client transcript, `cell.json`, `host.json` and `rerun.txt`. Every agent token and the
+  forwarding secret are redacted, and every file is read back to check.
+- **Bad test.** `examples/bad-tests/.../requires/TopologySkipsE2E` (`metaRequires`) asserts the `TOPOLOGY` skip.

@@ -5,6 +5,7 @@ import io.github.h7kz.proofstone.api.Client;
 import io.github.h7kz.proofstone.api.Clients;
 import io.github.h7kz.proofstone.api.Isolation;
 import io.github.h7kz.proofstone.api.Proofstone;
+import io.github.h7kz.proofstone.api.Topology;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
@@ -59,7 +60,7 @@ import org.junit.jupiter.api.extension.TestTemplateInvocationContext;
 final class CellInvocation implements TestTemplateInvocationContext, ParameterResolver, BeforeEachCallback,
         AfterEachCallback {
 
-    private static final Namespace NAMESPACE = Namespace.create(CellInvocation.class);
+    static final Namespace NAMESPACE = Namespace.create(CellInvocation.class);
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(30);
     private static final String AGENT_JAR = "proofstone.agentJar";
     /** The driver the cells run is chosen by id; mcpl is the primary (ADR-0004). */
@@ -68,7 +69,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     private static final String STATE = "state";
     /** The root-store key of the conformance cache: one per run, so each cell's conformance runs once (section 1). */
-    private static final String CONFORMANCE = "conformance";
+    static final String CONFORMANCE = "conformance";
     /** The root-store key of the run's report collector (RunReport). */
     private static final String REPORT = "report";
 
@@ -141,7 +142,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     public boolean supportsParameter(ParameterContext parameter, ExtensionContext context) {
         Class<?> type = parameter.getParameter().getType();
         return type == io.github.h7kz.proofstone.api.Cell.class || type == Agent.class || type == Client.class
-                || type == Clients.class;
+                || type == Clients.class || type == Topology.class;
     }
 
     @Override
@@ -160,6 +161,12 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (type == Clients.class) {
             return state.clients;
         }
+        if (type == Topology.class) {
+            // Misdeclared: a test that needs a topology says so, and then a single-server cell skips it before this point.
+            throw new ParameterResolutionException("INVALID test declaration: " + cellId() + " is a single-server cell "
+                    + "and has no Topology; mark " + context.getRequiredTestClass().getName() + " with @Topology.Backends "
+                    + "or @Requires(TOPOLOGY), so a single-server cell skips it with its reason (ADR-0016 section 10)");
+        }
         if (state.client == null) {
             throw new ParameterResolutionException("the client joins before the test only when the test method "
                     + "declares a Client parameter; add one to " + context.getRequiredTestMethod().getName());
@@ -169,6 +176,16 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     @Override
     public void beforeEach(ExtensionContext context) {
+        Set<io.github.h7kz.proofstone.api.Capability> required = CapabilityModel.required(
+                context.getRequiredTestClass(), context.getRequiredTestMethod());
+        // Only a proxy pack declares these, so the skip needs no server: none is booted for it (ADR-0016 section 10).
+        Optional<String> topologyOnly = CapabilityModel.topologyOnlyMissing(required, cellId());
+        if (topologyOnly.isPresent()) {
+            TestState skipped = new TestState(null, 0);
+            skipped.skipped = topologyOnly.get();
+            context.getStore(NAMESPACE).put(STATE, skipped);
+            throw new TestAbortedException(topologyOnly.get());
+        }
         HostResource resource = resource(context);
         PaperHost host = resource.host();
         // Before the join, so anything the join or the reset logs counts for this test.
@@ -179,9 +196,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         state.clients = new TestClients(name -> connect(resource, name));
         context.getStore(NAMESPACE).put(STATE, state);
         // Capabilities come before conformance: a cell that lacks one is SKIPPED with its reason, and nothing else runs (T-M5-01).
-        Optional<String> missing = CapabilityModel.missingReason(
-                CapabilityModel.required(context.getRequiredTestClass(), context.getRequiredTestMethod()),
-                state.capabilities, cellId());
+        Optional<String> missing = CapabilityModel.missingReason(required, state.capabilities, cellId());
         if (missing.isPresent()) {
             state.skipped = missing.get();
             throw new TestAbortedException(missing.get());
@@ -376,7 +391,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 + cell.mc();
     }
 
-    private static Throwable combine(Throwable first, Throwable next) {
+    static Throwable combine(Throwable first, Throwable next) {
         if (first == null) {
             return next;
         }
@@ -387,7 +402,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     }
 
     /** A failure's message, or its class name when it has none: a FAIL run always needs a detail. */
-    private static String detail(Throwable failure) {
+    static String detail(Throwable failure) {
         String message = failure.getMessage();
         return message == null || message.isBlank() ? failure.getClass().getName() : message;
     }
@@ -422,7 +437,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     }
 
     /** Adds one verdict to the run's report, which is written when the run ends (T-M4-09, X2). */
-    private void report(ExtensionContext context, CellResult result) {
+    static void report(ExtensionContext context, CellResult result) {
         RunReport report = context.getRoot().getStore(NAMESPACE).getOrComputeIfAbsent(REPORT,
                 key -> new RunReport(RunReport.defaultDirectory()), RunReport.class);
         report.record(result);
@@ -432,14 +447,14 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * A PASS whose own teardown then failed is reported as a FAIL: the test is red in JUnit, so the report never shows
      * it green.
      */
-    private static CellResult settle(CellResult verdict, Throwable failure) {
+    static CellResult settle(CellResult verdict, Throwable failure) {
         if (verdict.verdict() == Verdict.PASS && failure != null) {
             return new CellResult(verdict.test(), verdict.cell(), Verdict.FAIL, detail(failure), null, 1);
         }
         return verdict;
     }
 
-    private static boolean declaresClient(ExtensionContext context) {
+    static boolean declaresClient(ExtensionContext context) {
         for (Class<?> type : context.getRequiredTestMethod().getParameterTypes()) {
             if (type == Client.class) {
                 return true;

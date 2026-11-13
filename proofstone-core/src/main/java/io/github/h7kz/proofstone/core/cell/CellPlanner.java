@@ -72,6 +72,11 @@ public final class CellPlanner {
         return List.copyOf(cells.values());
     }
 
+    /** Whether {@code id} names a proxy platform of {@code versions.yml} (schema 3 {@code proxies}). */
+    public boolean isProxy(String id) {
+        return catalog.proxyIds().contains(id);
+    }
+
     /**
      * Plans one topology cell (ADR-0016): a proxy row and one backend row it is paired with. {@code latest} resolves as
      * it does for that platform, and the resolved pairing must be listed in {@code versions.yml}.

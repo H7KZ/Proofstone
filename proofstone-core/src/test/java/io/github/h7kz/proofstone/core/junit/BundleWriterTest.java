@@ -188,4 +188,38 @@ class BundleWriterTest {
         assertThat(BundleWriter.gradleTask(root, Path.of("/repo/examples/smoke"))).isEqualTo(":examples:smoke:test");
         assertThat(BundleWriter.gradleTask(root, Path.of("/repo"))).isEqualTo(":test");
     }
+
+    @Test
+    void aTopologyBundleHasADirectoryPerContainerAndNoTokenOrSecretAnywhere() throws IOException {
+        String proxyToken = "a1".repeat(24);
+        String lobbyToken = "b2".repeat(24);
+        String secret = io.github.h7kz.proofstone.core.host.TopologyConfig.newSecret();
+        java.util.Map<String, String> files = new java.util.LinkedHashMap<>();
+        files.put("proxy/proxy.log", "forwarding secret " + secret + " token " + proxyToken + "\n");
+        files.put("server-lobby/server.log", "paper-global secret: " + secret + " token " + lobbyToken + "\n");
+        files.put("server-survival/server.log", "survival up\n");
+        files.put("driver-transcript.jsonl", "{\"line\":\"" + lobbyToken + "\"}\n");
+
+        Path dir = BundleWriter.writeFiles(tmp.resolve("topology"), files, List.of(proxyToken, lobbyToken),
+                List.of(secret));
+
+        assertThat(dir.resolve("proxy/proxy.log")).isRegularFile();
+        assertThat(dir.resolve("server-lobby/server.log")).isRegularFile();
+        assertThat(dir.resolve("server-survival/server.log")).isRegularFile();
+        try (Stream<Path> all = Files.walk(dir)) {
+            for (Path file : all.filter(Files::isRegularFile).toList()) {
+                String text = Files.readString(file, StandardCharsets.UTF_8);
+                assertThat(text).as(file.toString()).doesNotContain(secret).doesNotContain(proxyToken)
+                        .doesNotContain(lobbyToken);
+            }
+        }
+        assertThat(Files.readString(dir.resolve("proxy/proxy.log"))).contains(BundleWriter.REDACTED_FORWARDING)
+                .contains(BundleWriter.REDACTED);
+    }
+
+    @Test
+    void aTopologyRerunNamesTheIdentity() {
+        assertThat(BundleWriter.rerunCommand(":x:test", "a.B.c", "velocity@4.3.1+paper@26.3", java.util.Map.of()))
+                .contains("-Dproofstone.cells=velocity@4.3.1+paper@26.3");
+    }
 }

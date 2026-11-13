@@ -124,4 +124,41 @@ class CapabilityModelTest {
                 "paper@26.3")).isEmpty();
         assertThat(CapabilityModel.missingReason(Set.of(), Set.of(), "paper@26.3")).isEmpty();
     }
+
+    @io.github.h7kz.proofstone.api.Topology.Backends
+    static class TopologyTest {
+        void plain() {
+        }
+    }
+
+    @Test
+    void aTopologyClassRequiresTopology() throws NoSuchMethodException {
+        assertThat(CapabilityModel.required(TopologyTest.class, TopologyTest.class.getDeclaredMethod("plain")))
+                .containsExactly(Capability.TOPOLOGY);
+    }
+
+    @Test
+    void onlyTheProxyPacksDeclareProxyAndTopology() {
+        assertThat(CapabilityModel.cellCapabilities("velocity", List.of("command", "players", "log", "proxy")))
+                .containsExactlyInAnyOrder(Capability.PROXY, Capability.TOPOLOGY);
+        assertThat(CapabilityModel.cellCapabilities("bungeecord", List.of("proxy")))
+                .containsExactlyInAnyOrder(Capability.PROXY, Capability.TOPOLOGY);
+        assertThat(CapabilityModel.cellCapabilities("paper", List.of("events", "command", "proxy")))
+                .doesNotContain(Capability.PROXY, Capability.TOPOLOGY);
+        assertThat(CapabilityModel.cellCapabilities("velocity", List.of("command"))).isEmpty();
+    }
+
+    @Test
+    void aTopologyCellHoldsTheBackendsCapabilitiesPlusTheProxysButNotSimulatedBedrock() {
+        assertThat(CapabilityModel.topologyCapabilities("paper", List.of("events", "command", "bedrock-prefix"),
+                "velocity", List.of("proxy"))).containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.CONSOLE,
+                        Capability.PROXY, Capability.TOPOLOGY);
+    }
+
+    @Test
+    void aSingleServerCellSkipsATopologyRequirementWithoutAServer() {
+        assertThat(CapabilityModel.topologyOnlyMissing(Set.of(Capability.TOPOLOGY, Capability.CONSOLE), "paper@26.3"))
+                .contains("missing capability TOPOLOGY on cell paper@26.3");
+        assertThat(CapabilityModel.topologyOnlyMissing(Set.of(Capability.CONSOLE), "paper@26.3")).isEmpty();
+    }
 }

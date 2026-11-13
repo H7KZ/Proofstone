@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
+import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.TopologyConfig;
+import io.github.h7kz.proofstone.core.host.TopologyHost;
 import io.github.h7kz.proofstone.core.versions.ImagePin;
 import io.github.h7kz.proofstone.core.versions.VersionsCatalog;
 import java.io.IOException;
@@ -13,6 +16,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -132,19 +136,36 @@ final class BundleWriter {
         if (contents.joinStall() != null) {
             files.put("join-stall.txt", contents.joinStall());
         }
+        return writeFiles(dir, files, List.of(contents.secret()), forwardingSecrets);
+    }
+
+    /**
+     * Writes {@code files} (path relative to {@code dir}, then content) after replacing every agent token and every
+     * forwarding secret, then reads each file back: a secret still present is an error, never a silent leak.
+     */
+    static Path writeFiles(Path dir, Map<String, String> files, List<String> tokens, List<String> forwardingSecrets) {
+        for (String token : tokens) {
+            if (token == null || token.isBlank()) {
+                throw new IllegalStateException("a repro bundle needs the agent token to redact it");
+            }
+        }
         deleteTree(dir);
         try {
-            Files.createDirectories(dir);
             for (Map.Entry<String, String> file : files.entrySet()) {
-                String text = redact(file.getValue(), contents.secret());
+                String text = file.getValue();
+                for (String token : tokens) {
+                    text = redact(text, token);
+                }
                 for (String secret : forwardingSecrets) {
                     text = text.replace(secret, REDACTED_FORWARDING);
                 }
-                Files.writeString(dir.resolve(file.getKey()), text, StandardCharsets.UTF_8);
+                Path target = dir.resolve(file.getKey());
+                Files.createDirectories(target.getParent());
+                Files.writeString(target, text, StandardCharsets.UTF_8);
             }
             for (String name : files.keySet()) {
                 String text = Files.readString(dir.resolve(name), StandardCharsets.UTF_8);
-                if (text.contains(contents.secret())) {
+                if (tokens.stream().anyMatch(text::contains)) {
                     throw new IllegalStateException("the agent token is in bundle file " + name + "; not left behind");
                 }
                 if (forwardingSecrets.stream().anyMatch(text::contains)) {
@@ -156,6 +177,40 @@ final class BundleWriter {
             throw new UncheckedIOException("cannot write the repro bundle to " + dir, e);
         }
         return dir;
+    }
+
+    /**
+     * The bundle of a topology test (ADR-0016 sections 8 and 9): one directory per container ({@code proxy/},
+     * {@code server-<name>/}) with its log and agent transcript, a snapshot per backend, and the client transcript, cell,
+     * host and rerun at the top. Every agent token and the forwarding secret are redacted from every file.
+     */
+    static Path captureTopology(ExtensionContext context, TopologyCell cell, TopologyHost topology,
+            List<String> driverTranscript, VersionsCatalog catalog, String driverId, String joinStall) {
+        String test = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
+        Map<String, String> files = new LinkedHashMap<>();
+        List<String> tokens = new ArrayList<>();
+        files.put("proxy/proxy.log", topology.proxy().logs().all() + "\n");
+        files.put("proxy/agent-transcript.jsonl", lines(topology.proxy().agentTranscript()));
+        tokens.add(topology.proxy().agentToken());
+        for (String name : topology.backendNames()) {
+            PaperHost backend = topology.backend(name);
+            String alias = TopologyConfig.alias(name);
+            files.put(alias + "/server.log", backend.logs().all() + "\n");
+            files.put(alias + "/agent-transcript.jsonl", lines(backend.agentTranscript()));
+            files.put(alias + "/snapshot.json", snapshot(backend) + "\n");
+            tokens.add(backend.agentToken());
+        }
+        files.put("driver-transcript.jsonl", lines(driverTranscript.stream()
+                .map(line -> JSON.createObjectNode().put("line", line).toString()).toList()));
+        files.put("cell.json", JSON.valueToTree(cell).toPrettyString() + "\n");
+        files.put("host.json", hostInfo(catalog, driverId, false) + "\n");
+        files.put("rerun.txt", rerunCommand(gradleTask(Path.of(repoRoot()), Path.of("")),
+                context.getRequiredTestClass().getName() + "." + context.getRequiredTestMethod().getName(),
+                cell.identity(), switches()));
+        if (joinStall != null) {
+            files.put("join-stall.txt", joinStall);
+        }
+        return writeFiles(directory(cell).resolve(test), files, tokens, List.of(topology.forwardingSecret()));
     }
 
     /** Replaces every occurrence of the secret. A blank secret would match everywhere, so it is refused. */
@@ -182,12 +237,16 @@ final class BundleWriter {
 
     /** The command that reruns the one test on the one cell, with the Docker lock (AGENTS.md section 4). */
     static String rerun(ExtensionContext context, Cell cell) {
+        String test = context.getRequiredTestClass().getName() + "." + context.getRequiredTestMethod().getName();
+        return rerunCommand(gradleTask(Path.of(repoRoot()), Path.of("")), test, cell, switches());
+    }
+
+    private static String repoRoot() {
         String root = System.getProperty(ProofstoneExtension.REPO_ROOT);
         if (root == null) {
             throw new IllegalStateException("system property " + ProofstoneExtension.REPO_ROOT + " is not set");
         }
-        String test = context.getRequiredTestClass().getName() + "." + context.getRequiredTestMethod().getName();
-        return rerunCommand(gradleTask(Path.of(root), Path.of("")), test, cell, switches());
+        return root;
     }
 
     /**
@@ -198,10 +257,15 @@ final class BundleWriter {
      * @param switches the system properties to pass, name to value; a null value is not allowed
      */
     static String rerunCommand(String gradleTask, String test, Cell cell, Map<String, String> switches) {
+        return rerunCommand(gradleTask, test, cell.platform() + "@" + cell.mc(), switches);
+    }
+
+    /** As above, for a cell given by its identity, such as a topology's {@code velocity@4.3.1+paper@26.3}. */
+    static String rerunCommand(String gradleTask, String test, String cellId, Map<String, String> switches) {
         StringBuilder command = new StringBuilder("bash scripts/dockerlock.sh ./gradlew ")
                 .append(gradleTask)
                 .append(" --tests '").append(test).append('\'')
-                .append(" -Dproofstone.cells=").append(cell.platform()).append('@').append(cell.mc());
+                .append(" -Dproofstone.cells=").append(cellId);
         for (Map.Entry<String, String> entry : switches.entrySet()) {
             command.append(" -D").append(entry.getKey()).append('=').append(entry.getValue());
         }
@@ -258,7 +322,7 @@ final class BundleWriter {
     }
 
     /** The agent's full-state dump (agent-protocol §2). A failure is recorded in the file, not left out. */
-    private static String snapshot(PaperHost host) {
+    private static String snapshot(AgentEndpoint host) {
         ObjectNode node = JSON.createObjectNode();
         try {
             node.set("snapshot", host.request("GET", "/v1/snapshot", null));

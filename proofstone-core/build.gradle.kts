@@ -83,6 +83,13 @@ tasks.register<Test>("topologyTest") {
     systemProperty("proofstone.velocity.agentJar", platforms.file("velocity/agent/build/libs/agent-all.jar").asFile.absolutePath)
     systemProperty("proofstone.bungee.agentJar", platforms.file("bungee/agent/build/libs/agent-all.jar").asFile.absolutePath)
     // The proxy pins are planned from versions.yml schema 3 by the tests themselves (T-M7-08, ADR-0016 section 2).
+    // The public-API topology tests (T-M7-10) run through the JUnit extension, found by auto-detection as in a user
+    // project; it leaves the classes without @Proofstone alone.
+    systemProperty("junit.jupiter.extensions.autodetection.enabled", "true")
+    // forceFail proves a failing topology test writes its bundle (TopologyApiContract); scope as in a user run.
+    for (name in listOf("proofstone.forceFail", "proofstone.scope")) {
+        providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
+    }
 }
 
 // AGENTS.md section 3 applies to these classes too: archTest scans them.

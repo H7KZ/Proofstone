@@ -258,6 +258,14 @@ tasks.register("metaTest") {
                 if (!named) {
                     problems += "$task: no SKIPPED report naming the missing capability FOLIA_REGIONS"
                 }
+                // T-M7-10: a topology test on a single-server cell is skipped with its reason, never run or passed.
+                val topology = rows.filterIsInstance<Map<*, *>>().any { row ->
+                    row["verdict"] == "SKIPPED" && row["skipReason"] == "CAPABILITY_MISSING" &&
+                        (row["reason"] as String?)?.contains("missing capability TOPOLOGY on cell") == true
+                }
+                if (!topology) {
+                    problems += "$task: no SKIPPED report naming the missing capability TOPOLOGY"
+                }
             }
             if (verdictFailures == 0) {
                 problems += "$task: no test produced $verdict"

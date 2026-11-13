@@ -653,3 +653,13 @@ timeout, the stalled stage and hop.
 - **Latent config error, not a red run: `VelocityAgentIT` sets `command-rate-limit` at the top level**, where Velocity 4.3.1 ignores it
   (it is an `[advanced]` key). No player commands run in that test, so no result changed. Recorded in
   `docs/platforms/velocity.md` Gotchas; the topology config renders it under `[advanced]`.
+- **T-M7-10 public topology API (2026-11-13), no join timeout; one red (log guard), BungeeCord.**
+  `:proofstone-core:topologyTest --tests '*<Proxy>TopologyApiE2E'`, one proxy per invocation, three invocations each, two
+  tests per run (one client join through the proxy, `transferTo("survival")` and back): Velocity 3 of 3 green, BungeeCord
+  2 of 3 green. The red (run 2, `FAIL`, not a join timeout, not a switch timeout): the `lobby` backend logged an `ERROR`
+  and a `WARN` from authlib, a `sessionserver.mojang.com` profile lookup answered `HTTP 429` during
+  `ServerLoginPacketListenerImpl.callPlayerPreLoginEvents`. A Paper backend behind BungeeCord legacy forwarding completes
+  the forwarded profile online at each login, so the run depends on Mojang's session server and its rate limit. The log
+  guard did its job; no allowlist was added and nothing was retried. Open: decide between a backend setting that stops
+  the lookup, an allowlist entry with this reason, or accepting the network dependency (BungeeCord platform doc, Gotchas).
+  Not seen on Velocity (modern forwarding carries the profile). Evidence kept locally (XML, bundle with a log per container).

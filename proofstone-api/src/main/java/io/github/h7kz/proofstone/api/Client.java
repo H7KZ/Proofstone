@@ -47,4 +47,25 @@ public interface Client {
      * @throws RuntimeException when the server has not synced an experience level yet
      */
     int experienceLevel();
+
+    /**
+     * Moves this client to another backend of a topology (a server switch, ADR-0016 section 5): it types
+     * {@code /server <name>} as a player would, waits for the client to see the new server's join, then waits for the
+     * agents to agree: the proxy agent says the player is on {@code name}, that backend lists the player and the backend
+     * it left does not. It is not the vanilla transfer packet. On return the client's views are the new server's.
+     *
+     * <p>Additive (T-M7-10). The default throws, so a custom {@code Client} fails loudly instead of passing.
+     *
+     * @throws IllegalArgumentException before anything is sent, when {@code name} is not a backend of the topology or is
+     *     the backend the client is on
+     * @throws IllegalStateException on a single-server cell, which has no backends to switch between
+     * @throws DisagreeException when the client saw the switch but an agent says otherwise, or the agents disagree; the
+     *     message names every agent and its value
+     * @throws AssertionError starting {@code FAIL} when no oracle shows the client on {@code name}, or
+     *     {@code ORACLE MISSING} when an agent never answers
+     * @throws RuntimeException on a switch timeout, naming the stalled stage and the hop
+     */
+    default void transferTo(String name) {
+        throw new UnsupportedOperationException("this Client implementation cannot switch servers; override transferTo");
+    }
 }

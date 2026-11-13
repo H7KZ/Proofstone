@@ -141,6 +141,10 @@ None declared for a cell. Not a row yet. The agent itself reports `command`, `pl
   (`log_pings: true` by default).
 - **`moved too quickly!` WARNs on the lobby backend** for proxied clients (54 lines in run 4), as on a direct join. See
   the Velocity note on harness client names.
+- **A Paper backend behind legacy forwarding calls `sessionserver.mojang.com` at login** (T-M7-10, 1 of 3 runs red): Paper
+  completes the forwarded profile online in `callPlayerPreLoginEvents`, and a `HTTP 429` reply was logged as an authlib
+  `ERROR` plus `WARN Couldn't look up profile properties`, which the per-container log guard fails. Not allowlisted; open
+  in ROADMAP "M7 findings". Not seen on Velocity.
 - No `/server` command was forwarded to a backend in 20 switches with the same back-to-back command timing that hit
   Velocity's rate limit.
 

@@ -94,7 +94,10 @@ class ErrorLogGuardTest {
         assertThat(Patterns.of("folia")).isSameAs(Patterns.FOLIA);
         assertThat(Patterns.of("spigot")).isSameAs(Patterns.SPIGOT);
         // A platform with no pack list still fails loudly, so an unknown id never gets Paper's allowlist.
-        assertThatThrownBy(() -> Patterns.of("velocity")).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("velocity").hasMessageContaining("its own list");
+        // Velocity and BungeeCord have their own lists since T-M7-10, so the unknown id is Waterfall (no pack, ADR-0016).
+        assertThat(Patterns.of("velocity")).isSameAs(Patterns.VELOCITY);
+        assertThat(Patterns.of("bungeecord")).isSameAs(Patterns.BUNGEECORD);
+        assertThatThrownBy(() -> Patterns.of("waterfall")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("waterfall").hasMessageContaining("its own list");
     }
 }

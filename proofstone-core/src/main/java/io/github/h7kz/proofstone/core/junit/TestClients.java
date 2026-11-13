@@ -34,6 +34,11 @@ final class TestClients implements Clients {
         return client;
     }
 
+    /** The names of the clients this test created and has not closed yet. */
+    List<String> names() {
+        return created.stream().map(SessionClient::name).toList();
+    }
+
     /**
      * Disconnects every client this test created. Every close runs, whatever an earlier one did.
      *

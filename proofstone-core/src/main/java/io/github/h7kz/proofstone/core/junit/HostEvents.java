@@ -7,7 +7,7 @@ import io.github.h7kz.proofstone.api.CapturedEvent;
 import io.github.h7kz.proofstone.api.EventProbe;
 import io.github.h7kz.proofstone.api.Events;
 import io.github.h7kz.proofstone.core.await.Await;
-import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +17,9 @@ final class HostEvents implements Events {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final PaperHost host;
+    private final AgentEndpoint host;
 
-    HostEvents(PaperHost host) {
+    HostEvents(AgentEndpoint host) {
         this.host = host;
     }
 
@@ -36,11 +36,11 @@ final class HostEvents implements Events {
 
     private static final class Probe implements EventProbe {
 
-        private final PaperHost host;
+        private final AgentEndpoint host;
         private final String className;
         private final String id;
 
-        Probe(PaperHost host, String className, String id) {
+        Probe(AgentEndpoint host, String className, String id) {
             this.host = host;
             this.className = className;
             this.id = id;
