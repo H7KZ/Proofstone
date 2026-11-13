@@ -116,7 +116,7 @@ same test was red on a wrong guess about `glist` output, see below):
   the probe reports `<player>@lobby`. A probe cannot attach to an arbitrary class by name, because BungeeCord finds handlers by
   scanning a listener for annotated methods: the agent has a handler for each of eleven events and any other class is a `400`.
   `players` and the proxy `PlayerState` are read on a joined player there too. `previousServer` after a real switch
-  (`ServerSwitchEvent#getFrom`) is still only mock-driven; P03 (T-M7-12) checks it, it is not claimed here.
+  (`ServerSwitchEvent#getFrom`) was mock-driven until P03 (T-M7-12) checked it on a real switch.
 - **Observe only:** every handler is `EventPriority.HIGHEST`, no command is registered, no event is cancelled or changed, no intent is
   registered. `ObserveOnlyTest` checks it against the real command registry and event bus and against the compiled classes.
 - **Harness config the test used:** `online_mode: false`, `ip_forward: true`, `connection_throttle: -1` as ADR-0016 section 5 says,
@@ -131,6 +131,17 @@ same test was red on a wrong guess about `glist` output, see below):
 ## Capabilities
 None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `events`, `log` and `proxy` in `health`
 (`events` and `players` on the evidence of P01, T-M7-11).
+
+## Plugin messaging and commands (T-M7-12)
+- P04 works on both sides on BungeeCord: the lobby fixture's `GetServer` is answered (`GetServer lobby`, equal to the proxy agent's
+  server) and the proxy event probe on `net.md_5.bungee.api.event.PluginMessageEvent` sees a `BungeeCord` message.
+- A player's `/server` arrives as a `ChatEvent` whose message is `/server`; P05 types plain `/server` and the probe sees it. The
+  console command `bungee` run through the agent prints a line naming BungeeCord.
+- **The `has connected` log line names the player** when BungeeCord knows it: `[T7e5c0f01,/172.26.0.1:47956] <-> InitialHandler has
+  connected` (the spike's clients logged `[/172.26.0.1:48150]`). P02's address parser took only the second form and the first
+  P02 run on the conformance client failed with "no line that gives the address ... in 2 line(s)" (kept as a finding); it now
+  accepts both and ignores a line that names another player.
+- `previousServer` after a real switch is checked by P03: `survival` after lobby to survival, `lobby` on the way back, 3 of 3 runs.
 
 ## Direct join (T-M7-11)
 P02 joins a client to a backend's own game port, around the proxy, with `ip_forward` on. `ip_forward` is not a security feature, but

@@ -77,6 +77,7 @@ public final class TopologyConfig {
                     .append("\"\n");
         }
         // Both rate limits are [advanced] keys; Velocity ignores them at the top level (default-velocity.toml, 4.3.1).
+        // bungee-plugin-message-channel is on by default; it is written out because P04 (GetServer) depends on it.
         return """
                 config-version = "2.9"
                 bind = "0.0.0.0:%d"
@@ -98,6 +99,7 @@ public final class TopologyConfig {
                 [advanced]
                 login-ratelimit = 0
                 command-rate-limit = 0
+                bungee-plugin-message-channel = true
                 log-player-connections = true
                 """.formatted(PROXY_PORT, servers, backends.get(0));
     }

@@ -106,7 +106,7 @@ from building it and from three real-server runs against Velocity 4.3.1 build 45
 - **`events` is claimed (T-M7-11).** The topology conformance P01 subscribes a probe to `ServerConnectedEvent` before a client joins
   through the proxy and reads the join back from a real Velocity 4.3.1: `getPlayer` and `getServer` serialise as `{name}`, so the probe
   reports `<player>@lobby`. `players` and the proxy `PlayerState` (`{name, uuid, proxy: {server, previousServer}}`) are read there too.
-  `previousServer` after a real switch is still only mock-driven; it is checked by P03 (T-M7-12), not claimed here.
+  `previousServer` after a real switch is checked by P03 (T-M7-12): `survival` after lobby to survival, then `lobby` on the way back, 3 of 3 runs.
 - **Observe only:** every handler is `PostOrder.LAST`, no command is registered, no event result is set.
   `ObserveOnlyTest` checks it against a mock whose command registry fails on any call, and against the compiled classes.
 - **Harness config the test used:** `command-rate-limit = 0` and `login-ratelimit = 0` as ADR-0016 section 5 says, modern
@@ -116,6 +116,19 @@ from building it and from three real-server runs against Velocity 4.3.1 build 45
 ## Capabilities
 None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `events`, `log` and `proxy` in `health`
 (`events` and `players` on the evidence of P01, T-M7-11).
+
+## Plugin messaging and commands (T-M7-12)
+- **Velocity answers `BungeeCord`-channel messages itself and fires no `PluginMessageEvent` for them.** P04: the lobby fixture sends
+  `GetServer`, the fixture logs `GetServer lobby` (the proxy's answer, equal to the proxy agent's `proxy.server`), but a proxy event
+  probe on `com.velocitypowered.api.event.connection.PluginMessageEvent` saw `channels []` (first run, kept as a finding). P04 on
+  Velocity therefore requires the reply only and prints why the probe is not required; BungeeCord requires both. The setting
+  `bungee-plugin-message-channel = true` is written into `[advanced]` by `TopologyConfig` (it is also the default).
+- A player's `/server` is a `CommandExecuteEvent` (`getCommand` is `server`, no slash); P05 types plain `/server` (which does not
+  switch) and the probe sees it. The console command `velocity info` run through the agent prints a line naming Velocity.
+- `command-rate-limit = 0` (set under `[advanced]`) let P03 type `/server survival` then `/server lobby` back to back with no
+  forwarded command.
+- The conformance client is named `T<8 hex>`: on the switch back to the lobby the backend WARNs `moved too quickly!`, which the log
+  guard allows only for that name pattern.
 
 ## Direct join (T-M7-11)
 P02 joins a client to a backend's own game port, around the proxy, with modern forwarding on. Paper refuses it. Observed on

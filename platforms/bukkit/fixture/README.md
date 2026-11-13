@@ -15,6 +15,9 @@ A test-only Bukkit plugin, `proofstone-fixture`, that the agent's contract tests
 - Plugin name `proofstone-fixture` (the `{id}` in `/v1/plugins/{id}/...`).
 - Config key `greeting`, default `hi`.
 - Command `fixture-reload`, the declared reload hook.
+- Command `fixture-getserver <player>` (T-M7-12): sends `GetServer` on the `BungeeCord` plugin channel for that player and
+  logs the proxy's answer as `fixture BungeeCord reply: GetServer <server>`. The topology conformance P04 reads that line from
+  the container log. It sends one message and records the reply; it does nothing else.
 
 ## How to test
 - `./gradlew :platforms:bukkit:agent:integrationTest`: `AgentContractIT` copies this jar into the Paper container with

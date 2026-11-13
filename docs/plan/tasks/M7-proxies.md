@@ -396,9 +396,9 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Add a sleep around the messaging round trip: use `await` on the fixture's recorded reply. Make the fixture do more than record.
 
 **Acceptance.**
-- [ ] P03 to P05 pass on both topology cells. Evidence: XML, three invocations per cell (flake rule).
-- [ ] Any skip is reasoned and listed in the PR.
-- [ ] The fixture change is limited to the messaging record (diff shown).
+- [x] P03 to P05 pass on both topology cells. Evidence: XML, skipped 0 failures 0 errors 0, three invocations per cell (flake rule). Two reds on the way (kept, ROADMAP "M7 findings"): the first Velocity run (P04 probe, Velocity fires no event for BungeeCord-channel messages) and the first BungeeCord run (P02 address parser).
+- [x] Any skip is reasoned and listed in the PR. P04 on Velocity does not require the event probe (reason in `velocity.md`); P04 is skipped, with its reason printed, on a backend without the fixture (user cells).
+- [x] The fixture change is limited to the messaging record (diff shown).
 
 **Verify.**
 As T-M7-11.

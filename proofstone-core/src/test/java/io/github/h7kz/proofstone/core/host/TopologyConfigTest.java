@@ -33,7 +33,8 @@ class TopologyConfigTest {
                 .doesNotContain(SECRET);
         // Velocity reads both limits from [advanced] only; a top-level key is ignored (default-velocity.toml of 4.3.1).
         String advanced = toml.substring(toml.indexOf("[advanced]"));
-        assertThat(advanced).contains("command-rate-limit = 0").contains("login-ratelimit = 0");
+        assertThat(advanced).contains("command-rate-limit = 0").contains("login-ratelimit = 0")
+                .contains("bungee-plugin-message-channel = true");
         assertThat(toml.substring(0, toml.indexOf("[advanced]"))).doesNotContain("rate");
         assertThat(files.get("/server/plugins/bStats/config.txt")).isEqualTo("enabled=false\n");
     }
