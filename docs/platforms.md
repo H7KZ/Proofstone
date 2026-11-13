@@ -24,8 +24,8 @@ Each platform is at one of these status levels:
 
 | Platform | Agent | Topology | Milestone | Notes |
 |---|---|---|---|---|
-| Velocity | Velocity plugin agent (Java 17 bytecode) | proxy + N backends (Paper with the Bukkit agent) | M7 | Modern forwarding. Target row `velocity@4.3.1+paper@26.3`, experimental first ([ADR-0016](adr/0016-topology-cells.md)). Velocity 3.x rejects the newest client, so it is not a row. |
-| BungeeCord | Bungee plugin agent | proxy + N backends | M7 | Legacy forwarding. Target row `bungeecord@2111+paper@26.3`, experimental first. |
+| Velocity | Velocity plugin agent (Java 17 bytecode) | proxy + N backends (Paper with the Bukkit agent) | M7 | Modern forwarding. **Status: experimental** (`velocity@4.3.1+paper@26.3`, not promoted: ADR-0015 needs more runs than M7 has; guide: [topologies](user/topologies.md)) ([ADR-0016](adr/0016-topology-cells.md)). Velocity 3.x rejects the newest client, so it is not a row. |
+| BungeeCord | Bungee plugin agent | proxy + N backends | M7 | Legacy forwarding. **Status: experimental** (`bungeecord@2111+paper@26.3`, not promoted, same rule). |
 | Waterfall | none | — | out | End-of-life; its newest build (1.21 build 615) rejects the newest client. Not a row, not tested ([ADR-0016](adr/0016-topology-cells.md)). |
 | Gate, others | community | — | M10 | — |
 

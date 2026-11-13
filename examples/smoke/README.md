@@ -41,3 +41,11 @@ and passes only when their client observations match. The run selects it with `-
 ```bash
 PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:smoke:test -Dproofstone.differential=true --tests '*DifferentialAgreeE2E*' --no-parallel
 ```
+
+Topology example (T-M7-14): `topology/ServerSwitchE2E` runs Velocity in front of two Paper backends and switches the client
+with `transferTo`. `:examples:smoke:test` leaves it out; run it on one topology cell per invocation
+([guide](../../docs/user/topologies.md)):
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:smoke:topologyExample -Dproofstone.cells='velocity@4.3.1+paper@26.3' --no-parallel --max-workers=1
+```
