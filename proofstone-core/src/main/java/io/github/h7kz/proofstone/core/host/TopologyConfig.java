@@ -61,7 +61,12 @@ public final class TopologyConfig {
         return switch (kind) {
             case VELOCITY -> Map.of("/config/paper-global.yml",
                     "proxies:\n  velocity:\n    enabled: true\n    online-mode: false\n    secret: " + secret + "\n");
-            case BUNGEECORD -> Map.of("/data/spigot.yml", "settings:\n  bungeecord: true\n");
+            // Paper's proxies.bungee-cord.online-mode defaults to true, which makes isProxyOnlineMode() true and every
+            // login fetch the profile's properties from sessionserver.mojang.com (CraftPlayerProfile.complete): a
+            // network dependency that answered HTTP 429 in T-M7-10 (bungeecord.md, Gotchas). It matches the proxy's
+            // online_mode: false. Velocity rows already set proxies.velocity.online-mode: false.
+            case BUNGEECORD -> Map.of("/data/spigot.yml", "settings:\n  bungeecord: true\n",
+                    "/config/paper-global.yml", "proxies:\n  bungee-cord:\n    online-mode: false\n");
         };
     }
 

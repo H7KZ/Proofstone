@@ -141,6 +141,19 @@ None declared for a cell. Not a row yet. The agent itself reports `command`, `pl
   (`log_pings: true` by default).
 - **`moved too quickly!` WARNs on the lobby backend** for proxied clients (54 lines in run 4), as on a direct join. See
   the Velocity note on harness client names.
+- **A Paper backend behind legacy forwarding fetched each player's profile properties from Mojang at login** (T-M7-10,
+  run 2 of 3 red). Evidence from the `lobby` log: `GET https://sessionserver.mojang.com/session/minecraft/profile/<uuid>?unsigned=false`
+  (the properties/skin fetch, not a name-to-UUID lookup) for the offline UUID `46101010-7191-3509-...`, answered `HTTP 429`,
+  logged as an authlib `ERROR` and `WARN Couldn't look up profile properties`, stack
+  `CraftPlayerProfile.complete` <- `ServerLoginPacketListenerImpl.callPlayerPreLoginEvents`. Why: Paper calls
+  `profile.complete(true)` on every login, and it goes to the network when `GlobalConfiguration.proxies.isProxyOnlineMode()`
+  is true, which is `Bukkit.getOnlineMode() || (spigot bungeecord && proxies.bungee-cord.online-mode) || (proxies.velocity.enabled && proxies.velocity.online-mode)`.
+  `proxies.bungee-cord.online-mode` **defaults to true**, so `server.properties` `online-mode=false` was not enough. A lookup
+  that succeeds logs nothing, so green runs depended on Mojang too.
+  **Setting (harness default):** `/config/paper-global.yml` with `proxies: bungee-cord: online-mode: false` (it matches the
+  proxy's `online_mode: false`). `TopologyHost` reads the `paper-global.yml` Paper wrote and refuses to start a backend
+  whose proxy online-mode is not false. **Velocity backends** were not exposed: their copied `paper-global.yml` already sets
+  `proxies.velocity.online-mode: false`, and the same check now runs on them.
 - No `/server` command was forwarded to a backend in 20 switches with the same back-to-back command timing that hit
   Velocity's rate limit.
 

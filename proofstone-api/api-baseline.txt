@@ -17,7 +17,9 @@ public final io.github.h7kz.proofstone.api.Capability extends java.lang.Enum<io.
   field public static final io.github.h7kz.proofstone.api.Capability BUKKIT_EVENTS
   field public static final io.github.h7kz.proofstone.api.Capability CONSOLE
   field public static final io.github.h7kz.proofstone.api.Capability FOLIA_REGIONS
+  field public static final io.github.h7kz.proofstone.api.Capability PROXY
   field public static final io.github.h7kz.proofstone.api.Capability SIMULATED_BEDROCK
+  field public static final io.github.h7kz.proofstone.api.Capability TOPOLOGY
   method public static io.github.h7kz.proofstone.api.Capability io.github.h7kz.proofstone.api.Capability.valueOf(java.lang.String)
   method public static io.github.h7kz.proofstone.api.Capability[] io.github.h7kz.proofstone.api.Capability.values()
 public final io.github.h7kz.proofstone.api.CapturedEvent extends java.lang.Record
@@ -70,6 +72,7 @@ public abstract interface io.github.h7kz.proofstone.api.Client
   method public abstract java.lang.String io.github.h7kz.proofstone.api.Client.name()
   method public abstract java.util.List<io.github.h7kz.proofstone.api.ItemView> io.github.h7kz.proofstone.api.Client.inventory()
   method public abstract void io.github.h7kz.proofstone.api.Client.command(java.lang.String)
+  method public default void io.github.h7kz.proofstone.api.Client.transferTo(java.lang.String)
 public abstract interface io.github.h7kz.proofstone.api.Clients
   method public abstract io.github.h7kz.proofstone.api.Client io.github.h7kz.proofstone.api.Clients.create(java.lang.String)
 public abstract interface io.github.h7kz.proofstone.api.ControlRun implements java.lang.annotation.Annotation
@@ -158,10 +161,12 @@ public abstract interface io.github.h7kz.proofstone.api.Matrix implements java.l
   method public abstract io.github.h7kz.proofstone.api.Platform io.github.h7kz.proofstone.api.Matrix.platform()
   method public abstract java.lang.String[] io.github.h7kz.proofstone.api.Matrix.versions()
 public final io.github.h7kz.proofstone.api.Platform extends java.lang.Enum<io.github.h7kz.proofstone.api.Platform>
+  field public static final io.github.h7kz.proofstone.api.Platform BUNGEECORD
   field public static final io.github.h7kz.proofstone.api.Platform FOLIA
   field public static final io.github.h7kz.proofstone.api.Platform PAPER
   field public static final io.github.h7kz.proofstone.api.Platform PURPUR
   field public static final io.github.h7kz.proofstone.api.Platform SPIGOT
+  field public static final io.github.h7kz.proofstone.api.Platform VELOCITY
   method public static io.github.h7kz.proofstone.api.Platform io.github.h7kz.proofstone.api.Platform.valueOf(java.lang.String)
   method public static io.github.h7kz.proofstone.api.Platform[] io.github.h7kz.proofstone.api.Platform.values()
 public abstract interface io.github.h7kz.proofstone.api.PlayerHandle
@@ -200,6 +205,12 @@ public abstract interface io.github.h7kz.proofstone.api.Proofstone implements ja
   method public abstract java.lang.String[] io.github.h7kz.proofstone.api.Proofstone.plugins()
 public abstract interface io.github.h7kz.proofstone.api.Requires implements java.lang.annotation.Annotation
   method public abstract io.github.h7kz.proofstone.api.Capability[] io.github.h7kz.proofstone.api.Requires.value()
+public abstract interface io.github.h7kz.proofstone.api.Topology
+  method public abstract io.github.h7kz.proofstone.api.Agent io.github.h7kz.proofstone.api.Topology.proxy()
+  method public abstract io.github.h7kz.proofstone.api.Agent io.github.h7kz.proofstone.api.Topology.server(java.lang.String)
+  method public abstract java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Topology.servers()
+public abstract interface io.github.h7kz.proofstone.api.Topology$Backends implements java.lang.annotation.Annotation
+  method public abstract java.lang.String[] io.github.h7kz.proofstone.api.Topology$Backends.value()
 public abstract interface io.github.h7kz.proofstone.api.Window implements java.lang.AutoCloseable
   method public abstract io.github.h7kz.proofstone.api.ItemView io.github.h7kz.proofstone.api.Window.awaitSlot(int,java.util.function.Predicate<io.github.h7kz.proofstone.api.ItemView>)
   method public abstract io.github.h7kz.proofstone.api.ItemView io.github.h7kz.proofstone.api.Window.cursor()

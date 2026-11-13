@@ -24,5 +24,17 @@ public enum Capability {
      * proves nothing about the Bedrock protocol (docs/platforms.md, Bedrock Edition). A cell holds it only where the
      * prefixed login works.
      */
-    SIMULATED_BEDROCK
+    SIMULATED_BEDROCK,
+
+    /**
+     * A proxy runs in front of the server and its agent answers ({@link Topology#proxy()}). Declared by the proxy packs
+     * only (ADR-0016 section 10); a single-server cell never holds it.
+     */
+    PROXY,
+
+    /**
+     * The cell is a topology: a proxy and named backends, with {@link Topology} and {@link Client#transferTo(String)}.
+     * Declared by the proxy packs only; a single-server cell never holds it, so a test that needs it skips there.
+     */
+    TOPOLOGY
 }

@@ -2,7 +2,7 @@ package io.github.h7kz.proofstone.core.junit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import io.github.h7kz.proofstone.protocol.LogPage;
 import io.github.h7kz.proofstone.protocol.LogRecord;
 import java.util.List;
@@ -77,6 +77,15 @@ final class ErrorLogGuard {
                 Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
                 List.of());
 
+        /**
+         * The Velocity proxy pack (docs/platforms/velocity.md, Gotchas), reviewed on its own. Its log is checked per
+         * container in a topology (ADR-0016 section 7). Entries are added only from reviewed topology runs (T-M7-10).
+         */
+        static final Patterns VELOCITY = new Patterns("velocity", Map.of(), List.of());
+
+        /** The BungeeCord proxy pack (docs/platforms/bungeecord.md, Gotchas), reviewed on its own, like VELOCITY. */
+        static final Patterns BUNGEECORD = new Patterns("bungeecord", Map.of(), List.of());
+
         /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
         static Patterns of(String platform) {
             return switch (platform) {
@@ -84,6 +93,8 @@ final class ErrorLogGuard {
                 case "folia" -> FOLIA;
                 case "purpur" -> PURPUR;
                 case "spigot" -> SPIGOT;
+                case "velocity" -> VELOCITY;
+                case "bungeecord" -> BUNGEECORD;
                 default -> throw new IllegalStateException("no log patterns for platform " + platform
                         + ": its platform pack must supply its own list (robustness R9)");
             };
@@ -98,12 +109,12 @@ final class ErrorLogGuard {
     }
 
     /** The cursor of the end of the server log now: records logged later have a greater sequence number. */
-    static long cursor(PaperHost host) {
+    static long cursor(AgentEndpoint host) {
         return read(host, END, "FATAL").next();
     }
 
     /** @throws AssertionError naming every unexpected record logged since the cursor */
-    static void check(PaperHost host, long cursor, Patterns patterns) {
+    static void check(AgentEndpoint host, long cursor, Patterns patterns) {
         String problem = describe(read(host, cursor, "WARN").records(), patterns);
         if (problem != null) {
             throw new AssertionError(problem);
@@ -143,7 +154,7 @@ final class ErrorLogGuard {
         return false;
     }
 
-    private static LogPage read(PaperHost host, long since, String minLevel) {
+    private static LogPage read(AgentEndpoint host, long since, String minLevel) {
         try {
             return JSON.treeToValue(host.request("GET", "/v1/log?since=" + since + "&minLevel=" + minLevel, null),
                     LogPage.class);

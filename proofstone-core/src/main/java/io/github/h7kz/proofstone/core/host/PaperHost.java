@@ -35,7 +35,7 @@ import org.testcontainers.utility.MountableFile;
  * <p>The agent is reached by running {@code curl} inside the container, so no port is published to the host
  * unless debug mode asks for it.
  */
-public final class PaperHost implements AutoCloseable {
+public final class PaperHost implements AgentEndpoint, AutoCloseable {
 
     static final int AGENT_PORT = AgentClient.AGENT_PORT;
     /** The server's name on the cell network, where {@link PaperHostOptions#network()} is set. */

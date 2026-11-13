@@ -2,6 +2,7 @@ package io.github.h7kz.proofstone.core.junit;
 
 import io.github.h7kz.proofstone.api.Capability;
 import io.github.h7kz.proofstone.api.Requires;
+import io.github.h7kz.proofstone.api.Topology;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -28,7 +29,10 @@ final class CapabilityModel {
             // Spigot declares only what its conformance run verified (docs/platforms/spigot.md), like Purpur.
             "spigot", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE),
             // Paper's offline login accepts a '.' prefixed name with no setting changed (docs/platforms/paper.md, verified).
-            "paper", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE, Capability.SIMULATED_BEDROCK));
+            "paper", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE, Capability.SIMULATED_BEDROCK),
+            // The proxy packs declare only the topology capabilities (ADR-0016 section 10); their agents report "proxy".
+            "velocity", Set.of(Capability.PROXY, Capability.TOPOLOGY),
+            "bungeecord", Set.of(Capability.PROXY, Capability.TOPOLOGY));
 
     /**
      * The agent's report token that confirms a declared capability (docs/platforms/paper.md and folia.md, Gotchas). A
@@ -39,7 +43,9 @@ final class CapabilityModel {
             Capability.CONSOLE, "command",
             Capability.FOLIA_REGIONS, "regions",
             // Reported only when the server runs offline, where a prefixed name can log in (Agent: bedrock-prefix).
-            Capability.SIMULATED_BEDROCK, "bedrock-prefix");
+            Capability.SIMULATED_BEDROCK, "bedrock-prefix",
+            Capability.PROXY, "proxy",
+            Capability.TOPOLOGY, "proxy");
 
     private CapabilityModel() {
     }
@@ -79,9 +85,47 @@ final class CapabilityModel {
         return Collections.unmodifiableSet(held);
     }
 
-    /** The capabilities a test needs: its class's {@link Requires} and its method's, added together. */
+    /**
+     * Capabilities only a proxy pack declares. A single-server cell never holds them, whatever its agent reports, so a
+     * test that needs one is skipped there before the server boots.
+     */
+    static final Set<Capability> TOPOLOGY_ONLY = Set.of(Capability.PROXY, Capability.TOPOLOGY);
+
+    /** The skip reason of a test on a single-server cell when it needs a capability only a proxy pack declares. */
+    static Optional<String> topologyOnlyMissing(Set<Capability> required, String cellId) {
+        EnumSet<Capability> needed = EnumSet.noneOf(Capability.class);
+        required.stream().filter(TOPOLOGY_ONLY::contains).forEach(needed::add);
+        return missingReason(needed, Set.of(), cellId);
+    }
+
+    /**
+     * Not held on a topology cell until a topology run shows them working: a prefixed login through a proxy has not been
+     * run (fail closed, like {@link #NOT_HELD_BRIDGED}).
+     */
+    private static final Set<Capability> NOT_HELD_TOPOLOGY = Set.of(Capability.SIMULATED_BEDROCK);
+
+    /**
+     * The capabilities a topology cell holds: the backend pack's that the default backend's agent reports, less those not
+     * verified through a proxy, plus the proxy pack's that the proxy agent reports.
+     */
+    static Set<Capability> topologyCapabilities(String backendPlatform, List<String> backendReported, String proxy,
+            List<String> proxyReported) {
+        EnumSet<Capability> held = EnumSet.noneOf(Capability.class);
+        held.addAll(cellCapabilities(backendPlatform, backendReported, false));
+        held.removeAll(NOT_HELD_TOPOLOGY);
+        held.addAll(cellCapabilities(proxy, proxyReported, false));
+        return Collections.unmodifiableSet(held);
+    }
+
+    /**
+     * The capabilities a test needs: its class's {@link Requires} and its method's, added together, plus
+     * {@link Capability#TOPOLOGY} when the class is marked {@link Topology.Backends}.
+     */
     static Set<Capability> required(Class<?> testClass, Method test) {
         EnumSet<Capability> required = EnumSet.noneOf(Capability.class);
+        if (testClass.isAnnotationPresent(Topology.Backends.class)) {
+            required.add(Capability.TOPOLOGY);
+        }
         Requires onClass = testClass.getAnnotation(Requires.class);
         if (onClass != null) {
             required.addAll(List.of(onClass.value()));

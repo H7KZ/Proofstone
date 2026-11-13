@@ -20,10 +20,22 @@ final class SessionClient implements Client, AutoCloseable {
 
     private final String name;
     private final ClientSession session;
+    /** How this client switches servers; {@code null} on a single-server cell. */
+    private final Switcher switcher;
+
+    /** A topology's server switch for one client (TopologyInvocation). */
+    interface Switcher {
+        void transfer(String player, ClientSession session, String target);
+    }
 
     SessionClient(String name, ClientSession session) {
+        this(name, session, null);
+    }
+
+    SessionClient(String name, ClientSession session, Switcher switcher) {
         this.name = name;
         this.session = session;
+        this.switcher = switcher;
     }
 
     @Override
@@ -67,6 +79,15 @@ final class SessionClient implements Client, AutoCloseable {
     @Override
     public int experienceLevel() {
         return session.experienceLevel();
+    }
+
+    @Override
+    public void transferTo(String target) {
+        if (switcher == null) {
+            throw new IllegalStateException("transferTo(\"" + target + "\") needs a topology cell (a proxy and its "
+                    + "backends); this is a single-server cell, so there is no server to switch to (ADR-0016 section 5)");
+        }
+        switcher.transfer(name, session, target);
     }
 
     /** The driver's packet transcript, for the repro bundle. */

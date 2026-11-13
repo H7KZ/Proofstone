@@ -7,7 +7,7 @@ import io.github.h7kz.proofstone.api.ItemView;
 import io.github.h7kz.proofstone.api.PlayerHandle;
 import io.github.h7kz.proofstone.api.PlayerState;
 import io.github.h7kz.proofstone.core.await.Await;
-import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +18,10 @@ final class HostPlayer implements PlayerHandle {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final PaperHost host;
+    private final AgentEndpoint host;
     private final String name;
 
-    HostPlayer(PaperHost host, String name) {
+    HostPlayer(AgentEndpoint host, String name) {
         this.host = host;
         this.name = name;
     }

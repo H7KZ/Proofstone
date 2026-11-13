@@ -4,10 +4,12 @@ import io.github.h7kz.proofstone.api.CellTest;
 import io.github.h7kz.proofstone.api.Isolation;
 import io.github.h7kz.proofstone.api.Matrix;
 import io.github.h7kz.proofstone.api.Proofstone;
+import io.github.h7kz.proofstone.api.Topology;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.CellPlanner;
 import io.github.h7kz.proofstone.core.cell.CellSelector;
 import io.github.h7kz.proofstone.core.cell.Scope;
+import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.cell.VersionFamilies;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.host.Eula;
@@ -101,7 +103,8 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         CellSelector selector = CellSelector.parse(setting(CELLS, CELLS_ENV), CELLS_SOURCE);
         Scope scope = Scope.parse(setting(SCOPE, SCOPE_ENV), SCOPE_SOURCE);
         VersionFamilies families = VersionFamilies.load(Path.of(FAMILIES_FILE), catalog);
-        List<Cell> cells = planCells(type, matrices, selector, planner, scope, families);
+        Plan plan = plan(type, matrices, selector, planner, scope, families);
+        List<Cell> cells = plan.cells();
         Isolation.Mode isolation = AnnotationSupport.findAnnotation(type, Isolation.class).map(Isolation::value)
                 .orElse(Isolation.Mode.PER_CLASS);
         boolean differential = DifferentialRun.enabled();
@@ -131,6 +134,16 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                 }
             }
         }
+        if (!plan.topologies().isEmpty() && (differential || repeats > 1)) {
+            // One ledger and one driver pair per server; a topology has several, so these have no defined verdict yet.
+            throw new IllegalStateException(type.getName() + " plans topology cells " + plan.topologies().stream()
+                    .map(TopologyCell::identity).toList() + ": -D" + DifferentialRun.PROPERTY + " and -D"
+                    + FlakeDetector.REPEAT + " do not run on topology cells (ADR-0016); run them without it");
+        }
+        for (TopologyCell topology : plan.topologies()) {
+            runnable = true;
+            invocations.add(new TopologyInvocation(topology, config, isolation, catalog));
+        }
         if (!runnable) {
             throw new IllegalStateException(type.getName() + " has no cell for a differential run: the reference driver "
                     + DifferentialRun.REFERENCE + " must be native on a selected cell. Select its row, for example "
@@ -152,17 +165,27 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
      * A selector replaces the {@link Matrix} versions of the platforms it names; other platforms are not run.
      * Zero cells is an error, not a pass: JUnit would otherwise fail with an opaque precondition error.
      */
-    static List<Cell> planCells(Class<?> type, List<Matrix> matrices, CellSelector selector, CellPlanner planner,
+    /** The cells of one test class: single-server cells and topology cells (ADR-0016). */
+    record Plan(List<Cell> cells, List<TopologyCell> topologies) {
+    }
+
+    /** The backend platform of a topology a {@link Matrix} plans; the only backend row family in M7 (ADR-0016 section 1). */
+    static final String TOPOLOGY_BACKEND = "paper";
+
+    static Plan plan(Class<?> type, List<Matrix> matrices, CellSelector selector, CellPlanner planner,
             Scope scope, VersionFamilies families) {
         List<Cell> cells = new ArrayList<>();
-        // A topology entry selects a topology cell, which no @Matrix plans until the API names a proxy (T-M7-10). It is
-        // said out loud, never dropped silently.
-        for (CellSelector.Topology topology : selector.topologies()) {
-            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
-                    + "that plans the topology cell " + topology.entry() + " (topology tests arrive with T-M7-10)");
-        }
+        List<TopologyCell> topologies = new ArrayList<>();
+        List<String> backends = AnnotationSupport.findAnnotation(type, Topology.Backends.class)
+                .map(annotation -> List.of(annotation.value())).orElse(TopologyCell.DEFAULT_BACKENDS);
+        List<String> proxies = new ArrayList<>();
         for (Matrix matrix : matrices) {
             String platform = matrix.platform().name().toLowerCase(Locale.ROOT);
+            if (planner.isProxy(platform)) {
+                proxies.add(platform);
+                topologies.addAll(planTopologies(type, platform, matrix, selector, planner, scope, backends));
+                continue;
+            }
             List<String> requested = selector.isSet() ? selector.versions(platform) : List.of(matrix.versions());
             if (requested.isEmpty()) {
                 System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares "
@@ -171,11 +194,43 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             }
             cells.addAll(planner.plan(platform, requested, scope, families));
         }
-        if (cells.isEmpty()) {
+        // A topology entry whose proxy no @Matrix names is said out loud, never dropped silently.
+        for (CellSelector.Topology topology : selector.topologies()) {
+            if (!proxies.contains(topology.proxy())) {
+                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
+                        + "that plans the topology cell " + topology.entry());
+            }
+        }
+        if (cells.isEmpty() && topologies.isEmpty()) {
             throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
                     + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
         }
-        return cells;
+        return new Plan(List.copyOf(cells), List.copyOf(topologies));
+    }
+
+    /**
+     * The topology cells a proxy {@link Matrix} plans: without a selector, its versions paired with
+     * {@code paper@latest}; with one, the selector's entries for this proxy replace them. A malformed backend name in
+     * {@link Topology.Backends} fails the class before anything starts.
+     */
+    private static List<TopologyCell> planTopologies(Class<?> type, String proxy, Matrix matrix, CellSelector selector,
+            CellPlanner planner, Scope scope, List<String> backends) {
+        if (!selector.isSet()) {
+            return planner.planTopologies(proxy, List.of(matrix.versions()), TOPOLOGY_BACKEND, List.of("latest"), scope,
+                    backends);
+        }
+        List<TopologyCell> planned = new ArrayList<>();
+        for (CellSelector.Topology entry : selector.topologies()) {
+            if (entry.proxy().equals(proxy)) {
+                planned.addAll(planner.planTopologies(proxy, List.of(entry.proxyVersion()), entry.backend(),
+                        List.of(entry.backendVersion()), scope, backends));
+            }
+        }
+        if (planned.isEmpty()) {
+            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares "
+                    + proxy + ", which " + CELLS_SOURCE + " does not name");
+        }
+        return planned;
     }
 
     /** The system property wins over the environment variable of the same meaning (test-api spec §1). */

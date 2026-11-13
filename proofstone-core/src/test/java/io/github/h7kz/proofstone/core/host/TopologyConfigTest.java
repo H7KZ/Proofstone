@@ -69,8 +69,12 @@ class TopologyConfigTest {
     void aBungeeCordBackendGetsLegacyForwardingAndNoSecret() {
         Map<String, String> files = TopologyConfig.backendFiles(ProxyKind.BUNGEECORD, SECRET);
 
-        assertThat(files).containsOnlyKeys("/data/spigot.yml");
+        assertThat(files).containsOnlyKeys("/data/spigot.yml", "/config/paper-global.yml");
         assertThat(files.get("/data/spigot.yml")).isEqualTo("settings:\n  bungeecord: true\n");
+        // Paper's proxies.bungee-cord.online-mode defaults to true; then every login fetches the profile's properties
+        // from sessionserver.mojang.com (T-M7-10 finding, bungeecord.md Gotchas). Off, as the proxy's online_mode is.
+        assertThat(files.get("/config/paper-global.yml")).isEqualTo(
+                "proxies:\n  bungee-cord:\n    online-mode: false\n");
     }
 
     @Test

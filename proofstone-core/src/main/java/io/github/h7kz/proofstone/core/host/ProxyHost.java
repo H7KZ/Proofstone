@@ -24,7 +24,7 @@ import org.testcontainers.utility.MountableFile;
  * in, never mounted (ADR-0005). Ready means the proxy's ready line and agent health OK. Only the proxy's game port is
  * published; the agent is reached with {@code curl} inside the container.
  */
-public final class ProxyHost implements AutoCloseable {
+public final class ProxyHost implements AgentEndpoint, AutoCloseable {
 
     private static final int TAIL_LINES = 60;
 
@@ -143,6 +143,12 @@ public final class ProxyHost implements AutoCloseable {
         } catch (JsonProcessingException e) {
             throw new PaperHostException("cannot encode the body of " + call, e);
         }
+    }
+
+    /** Runs a proxy console command through the agent. Setup only; the reply is best effort (ADR-0002). */
+    @Override
+    public String command(String command) {
+        return request("POST", "/v1/command", Map.of("command", command)).path("raw").asText();
     }
 
     public ProxyKind kind() {

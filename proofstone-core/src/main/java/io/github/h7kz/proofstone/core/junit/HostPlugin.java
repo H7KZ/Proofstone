@@ -3,7 +3,7 @@ package io.github.h7kz.proofstone.core.junit;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.h7kz.proofstone.api.PluginHandle;
-import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -15,12 +15,12 @@ final class HostPlugin implements PluginHandle {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final PaperHost host;
+    private final AgentEndpoint host;
     private final String name;
     private final Set<String> patched;
 
     /** @param patched the plugins this test changed; the lifecycle restores each one after the test */
-    HostPlugin(PaperHost host, String name, Set<String> patched) {
+    HostPlugin(AgentEndpoint host, String name, Set<String> patched) {
         this.host = host;
         this.name = name;
         this.patched = patched;
@@ -54,7 +54,7 @@ final class HostPlugin implements PluginHandle {
     }
 
     /** Puts the config back to the first-patch snapshot. */
-    static void restore(PaperHost host, String name) {
+    static void restore(AgentEndpoint host, String name) {
         host.request("POST", "/v1/plugins/" + name + "/config/restore", Map.of());
     }
 

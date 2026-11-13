@@ -11,5 +11,14 @@ public enum Platform {
     PURPUR,
 
     /** Spigot, built from source by BuildTools and cached by SHA-256 (docs/platforms/spigot.md). */
-    SPIGOT
+    SPIGOT,
+
+    /**
+     * Velocity, a proxy (docs/platforms/velocity.md). A {@link Matrix} naming it plans topology cells: the proxy plus
+     * Paper backends, on the pairing {@code versions.yml} lists for {@code paper@latest} (ADR-0016).
+     */
+    VELOCITY,
+
+    /** BungeeCord, a proxy with legacy forwarding (docs/platforms/bungeecord.md). Plans topology cells like VELOCITY. */
+    BUNGEECORD
 }
