@@ -675,3 +675,10 @@ timeout, the stalled stage and hop.
   (6 of 6, 1 test each, skipped 0 failures 0 errors 0). P01 reads `events` and `players` on a real proxy, so both agents now
   report `events`. Backend game ports had been published on all addresses against ADR-0016 section 8; the maintainer's decision: a test-only
   exception bound to `127.0.0.1` (ADR-0016 section 8 amended, `GamePortBindingTest`).
+- **T-M7-12, P04 red (velocity@4.3.1+paper@26.3, first run), verdict INVALID, not a join timeout.** The fixture recorded `GetServer lobby`
+  but the proxy event probe on `PluginMessageEvent` saw no channel. Velocity answers `BungeeCord` messages itself and fires no event
+  for them. P04 on Velocity now requires the reply only (reason printed and in `velocity.md`). The probe still is required on BungeeCord.
+- **T-M7-12, P02 red (bungeecord@2111+paper@26.3, first run), verdict INVALID.** BungeeCord's `has connected` line names the player
+  (`[T7e5c0f01,/172.26.0.1:47956]`), which the address parser did not accept. Parser fixed, `bungeecord.md` updated.
+- **T-M7-12, a log-guard red in two velocity runs after P04 was fixed.** The lobby WARNed `PSConf moved too quickly!` on the switch back;
+  the allowlist only knows `T<hex>` names, so the topology conformance client was renamed to that pattern (no allowlist entry added).

@@ -5,6 +5,7 @@ import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.await.AwaitTimeoutException;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
+import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import io.github.h7kz.proofstone.core.host.TopologyHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
@@ -18,16 +19,18 @@ import java.util.function.BiFunction;
 
 /**
  * The per-cell conformance of a topology cell (ADR-0016 section 7): the readiness check T00, then P01 (join through the
- * proxy) and P02 (forwarding) from {@link TopologyScenarios}. P03 to P05 arrive with T-M7-12. A red makes every test on
- * the cell INVALID, as conformance does. Its result is cached per cell per run.
+ * proxy), P02 (forwarding), P03 (switch), P04 (plugin messaging) and P05 (proxy command) from {@link TopologyScenarios}.
+ * A red makes every test on the cell INVALID, as conformance does. Its result is cached per cell per run.
  *
- * <p>T00 stays until P05 exists: the proxy agent lists exactly the topology's backends and its own ping reaches each one,
- * which is the only check that the second backend is up before a test needs it.
+ * <p>T00 stays: the proxy agent lists exactly the topology's backends and its own ping reaches each one, which is the
+ * check that the second backend is up before P03 switches to it.
  */
 final class TopologyConformance {
 
     static final String NAME = "T00 proxy lists every backend online";
     private static final Duration WAIT = Duration.ofSeconds(20);
+    /** A switch completes in a few seconds in the spike (T-M7-01); the same bound as {@code Client.transferTo}. */
+    private static final Duration SWITCH_TIMEOUT = Duration.ofSeconds(30);
 
     /** A client joining a backend's own game port. */
     @FunctionalInterface
@@ -55,8 +58,8 @@ final class TopologyConformance {
         }
         ConformanceResult scenarios = TopologyScenarios.run(identity, proxy, topology.backendNames(),
                 new Live(proxy, topology, joinProxy, joinDirect));
-        System.err.println("PROOFSTONE CONFORMANCE " + identity + ": " + (scenarios.passed() ? "passed (T00, P01, P02; "
-                + "P03 to P05 arrive with T-M7-12)" : "failed"));
+        System.err.println("PROOFSTONE CONFORMANCE " + identity + ": " + (scenarios.passed() ? "passed (T00, P01 to P05; "
+                + "P04 is reported as skipped above when a backend has no fixture)" : "failed"));
         return scenarios;
     }
 
@@ -83,6 +86,9 @@ final class TopologyConformance {
         private final DirectJoiner joinDirect;
         private ClientSession session;
         private TopologyHost.JoinMarks marks;
+        private TopologyHost.JoinMarks switchMarks;
+        private String switchTarget;
+        private int fixtureMark;
 
         Live(String proxy, TopologyHost topology, BiFunction<TopologyHost, String, ClientSession> joinProxy,
                 DirectJoiner joinDirect) {
@@ -94,13 +100,26 @@ final class TopologyConformance {
 
         @Override
         public String subscribeJoinProbe() {
-            JsonNode reply = topology.proxy().request("POST", "/v1/events/subscribe",
-                    Map.of("class", TopologyScenarios.joinEventClass(proxy)));
+            return subscribe(TopologyScenarios.joinEventClass(proxy));
+        }
+
+        private String subscribe(String eventClass) {
+            JsonNode reply = topology.proxy().request("POST", "/v1/events/subscribe", Map.of("class", eventClass));
             JsonNode id = reply.get("probeId");
             if (id == null || !id.isTextual()) {
                 throw new IllegalStateException("the proxy agent's subscribe reply has no probeId: " + reply);
             }
             return id.asText();
+        }
+
+        private List<JsonNode> events(String probe) {
+            JsonNode events = topology.proxy().request("GET", "/v1/events/" + probe + "?since=0", null).get("events");
+            if (events == null || !events.isArray()) {
+                throw new IllegalStateException("the proxy agent's event page of " + probe + " has no events array");
+            }
+            List<JsonNode> out = new ArrayList<>();
+            events.forEach(out::add);
+            return out;
         }
 
         @Override
@@ -146,17 +165,103 @@ final class TopologyConformance {
 
         @Override
         public List<String> joinEvents(String probe) {
-            JsonNode events = topology.proxy().request("GET", "/v1/events/" + probe + "?since=0", null).get("events");
-            if (events == null || !events.isArray()) {
-                throw new IllegalStateException("the proxy agent's event page of " + probe + " has no events array");
-            }
             List<String> seen = new ArrayList<>();
-            for (JsonNode event : events) {
+            for (JsonNode event : events(probe)) {
                 JsonNode fields = event.path("fields");
                 seen.add(fields.path("getPlayer").path("name").asText("?") + "@"
                         + fields.path("getServer").path("name").asText("?"));
             }
             return seen;
+        }
+
+        @Override
+        public void typeCommand(String command) {
+            // The marks make a stalled switch name its stage and hop, as Client.transferTo does.
+            switchMarks = topology.mark();
+            switchTarget = command.startsWith("server ") ? command.substring("server ".length()) : null;
+            session.command(command);
+        }
+
+        @Override
+        public void awaitSwitch() {
+            try {
+                session.awaitServerSwitch(SWITCH_TIMEOUT);
+            } catch (JoinTimeoutException e) {
+                throw topology.describeSwitch(e, switchMarks, switchTarget);
+            }
+        }
+
+        @Override
+        public String previousServer(String player) {
+            JsonNode previous = topology.proxy().request("GET", "/v1/players/" + player, null).path("proxy")
+                    .path("previousServer");
+            return previous.isTextual() ? previous.asText() : null;
+        }
+
+        @Override
+        public boolean fixtureInstalled(String backend) {
+            JsonNode plugins = topology.backend(backend).request("GET", "/v1/snapshot", null).get("plugins");
+            if (plugins == null || !plugins.isArray()) {
+                throw new IllegalStateException("the agent's /v1/snapshot reply has no plugins list: " + plugins);
+            }
+            for (JsonNode plugin : plugins) {
+                if (TopologyScenarios.FIXTURE_PLUGIN.equals(plugin.path("name").asText())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public String subscribeMessageProbe() {
+            return subscribe(TopologyScenarios.messageEventClass(proxy));
+        }
+
+        @Override
+        public void requestServerName(String backend, String player) {
+            fixtureMark = topology.backend(backend).logs().size();
+            topology.backend(backend).command("fixture-getserver " + player);
+        }
+
+        @Override
+        public List<String> fixtureReplies(String backend) {
+            return TopologyScenarios.fixtureReplies(topology.backend(backend).logs().since(fixtureMark));
+        }
+
+        @Override
+        public List<String> messageChannels(String probe) {
+            List<String> channels = new ArrayList<>();
+            for (JsonNode event : events(probe)) {
+                JsonNode fields = event.path("fields");
+                // Velocity names the channel in getIdentifier, BungeeCord in getTag.
+                JsonNode channel = fields.has("getTag") ? fields.get("getTag") : fields.path("getIdentifier");
+                channels.add(channel.isObject() ? channel.path("value").asText("?") : channel.asText("?"));
+            }
+            return channels;
+        }
+
+        @Override
+        public String subscribeCommandProbe() {
+            return subscribe(TopologyScenarios.commandEventClass(proxy));
+        }
+
+        @Override
+        public List<String> commandEvents(String probe) {
+            List<String> seen = new ArrayList<>();
+            for (JsonNode event : events(probe)) {
+                JsonNode fields = event.path("fields");
+                // Velocity: getCommand "server" and getCommandSource; BungeeCord: getMessage "/server" and getSender.
+                JsonNode who = fields.has("getCommandSource") ? fields.get("getCommandSource") : fields.path("getSender");
+                String text = fields.has("getCommand") ? "/" + fields.get("getCommand").asText("") : fields.path("getMessage")
+                        .asText("");
+                seen.add(who.path("name").asText("?") + ":" + text);
+            }
+            return seen;
+        }
+
+        @Override
+        public String consoleCommand(String command) {
+            return topology.proxy().command(command);
         }
 
         // Log lines reach the buffer a moment after the agent can answer, so the reads below are awaited.

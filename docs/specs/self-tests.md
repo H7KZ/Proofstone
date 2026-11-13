@@ -56,8 +56,8 @@ not run. The cell's scenario timings are in the log (`PROOFSTONE CONFORMANCE <ce
 ## 1b. Topology conformance (per topology cell, ADR-0016)
 
 A topology cell ([ADR-0016](../adr/0016-topology-cells.md)) runs these instead of the C-scenarios, cached per cell per
-run. A red makes every test on that topology cell `INVALID`. The cards are T-M7-11 and T-M7-12. Until P05 exists, a readiness check
-T00 (the proxy agent lists every backend online) runs first. `:conformance:run -Dproofstone.cells=<topology cell>` runs it.
+run. A red makes every test on that topology cell `INVALID`. The cards are T-M7-11 and T-M7-12. A readiness check
+T00 (the proxy agent lists every backend online) runs first, then P01 to P05 in order. `:conformance:run -Dproofstone.cells=<topology cell>` runs it.
 
 | ID | Scenario | Proves |
 |---|---|---|

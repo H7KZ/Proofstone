@@ -49,6 +49,15 @@ val copyBedrockPrefixPlugin = tasks.register<Copy>("copyBedrockPrefixPlugin") {
     into(bedrockPrefixPlugins)
 }
 
+// The fixture plugin (T-M7-12): the topology conformance's P04 has it send GetServer on the BungeeCord channel. Built, never
+// committed, and copied under this project because plugin globs are relative to the project directory.
+val fixturePlugins = layout.buildDirectory.dir("fixture-plugins")
+val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
+    dependsOn(":platforms:bukkit:fixture:jar")
+    from(rootProject.layout.projectDirectory.file("platforms/bukkit/fixture/build/libs/proofstone-fixture.jar"))
+    into(fixturePlugins)
+}
+
 /** The setup shared by both scenario tasks: one real Paper cell, the agent jar, and a guard against silent skips. */
 fun Test.realServerScenarios(taskDescription: String) {
     group = "verification"
@@ -58,7 +67,7 @@ fun Test.realServerScenarios(taskDescription: String) {
     useJUnitPlatform()
     // The agent jar is built, never committed (AGENTS.md §3).
     dependsOn(":platforms:bukkit:agent:shadowJar", ":platforms:velocity:agent:shadowJar",
-        ":platforms:bungee:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin)
+        ":platforms:bungee:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin, copyFixturePlugin)
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     systemProperty("proofstone.velocity.agentJar", velocityAgentJar.asFile.absolutePath)
@@ -116,7 +125,7 @@ tasks.register<Test>("smoke") {
 tasks.register<Test>("run") {
     realServerScenarios("Boots the real Paper cell (newest row) and runs every conformance scenario, C01 to C06. " +
         "Needs Docker and the EULA. With a topology cell in -Dproofstone.cells (for example velocity@4.3.1+paper@26.3) " +
-        "it runs the topology conformance (T00, P01, P02) of that cell instead.")
+        "it runs the topology conformance (T00, P01 to P05) of that cell instead.")
     // A topology cell is named with a plus sign (written as char code 43: lintVersions reads a literal one in a build file as a
     // dynamic version). The single-server classes plan nothing for it (zero cells is a loud error),
     // and the topology class plans nothing for a plain selector, so each kind of run selects its own classes.

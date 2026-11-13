@@ -10,3 +10,5 @@ commands:
     description: Logs one ERROR with a stack trace straight through Log4j2, for the log capture test (T-M2-08).
   fixture-error:
     description: Logs one SEVERE record with a stack trace, for tests that provoke a server error (T-M2-08).
+  fixture-getserver:
+    description: Sends GetServer on the BungeeCord channel for the named player; the reply is logged (T-M7-12, topology P04).
