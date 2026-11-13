@@ -8,6 +8,7 @@ import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import io.github.h7kz.proofstone.core.host.PaperHost;
 import io.github.h7kz.proofstone.core.host.TopologyConfig;
+import io.github.h7kz.proofstone.core.host.TopologyFault;
 import io.github.h7kz.proofstone.core.host.TopologyHost;
 import io.github.h7kz.proofstone.core.versions.ImagePin;
 import io.github.h7kz.proofstone.core.versions.VersionsCatalog;
@@ -277,7 +278,7 @@ final class BundleWriter {
     private static Map<String, String> switches() {
         Map<String, String> switches = new LinkedHashMap<>();
         for (String name : List.of(FORCE_FAIL, DifferentialRun.PROPERTY, DRIVER_FAULT, FlakeDetector.REPEAT,
-                VerdictGate.CONTROL_RUN, CellConformance.INJECT)) {
+                VerdictGate.CONTROL_RUN, CellConformance.INJECT, TopologyFault.PROPERTY)) {
             String value = System.getProperty(name);
             if (value != null) {
                 switches.put(name, value);

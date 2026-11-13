@@ -21,6 +21,9 @@ expected to produce one verdict, and `metaTest` asserts it:
 - `requires/RequiresSkipsE2E` (T-M5-01) requires `FOLIA_REGIONS` on a Paper cell, so it must be `SKIPPED` with reason
   `missing capability FOLIA_REGIONS on cell` (`metaRequires`, asserted in `proofstone-report.json`). Its body fails if it
   runs. Its second test requires what Paper holds and must pass.
+- `topology/TopologyFaultE2E` (T-M7-13) has a body that fails if it runs, on a topology that is broken on purpose
+  (`proofstone.injectTopologyFault`), so the topology conformance must be red and every test on it `INVALID`. Seven runs,
+  one per fault per proxy (`metaTopologyTest`, below).
 
 ## Boundaries
 
@@ -78,6 +81,8 @@ other cell is refused in that task's `doFirst`, before any server starts. The re
 | `metaLeak` | `leak/LeakE2E` | `26.1.2` | `paper@26.1.2` only |
 | `metaExpect` | `expect/ExpectFailsE2E` | `latest` | any Paper cell |
 | `metaRequires` | `requires/RequiresSkipsE2E` | `latest` | any Paper cell |
+| `metaTopoVelocity*` (4 tasks) | `topology/TopologyFaultE2E` | `latest` | `velocity@4.3.1+paper@26.3` only |
+| `metaTopoBungee*` (3 tasks) | `topology/TopologyFaultE2E` | `latest` | `bungeecord@2111+paper@26.3` only |
 
 `-Dproofstone.cells=paper@26.3` on `metaTest` is therefore refused at `metaInvalidWindow`, `metaDisagree` and `metaLeak`. Run
 the cell-agnostic tasks on another cell by name, for example `:examples:bad-tests:metaVacuous -Dproofstone.cells=paper@26.3`.
@@ -92,3 +97,25 @@ use `latest`, which is not the reference driver's row. The `invalid` and `leak` 
 `metaTest` for them.
 
 Needs Docker and a Java 21+ toolchain. Run each through `scripts/dockerlock.sh`, one Docker run at a time.
+
+### Topology faults (T-M7-13)
+
+`metaTopologyTest` is separate from `metaTest` because each run boots a proxy and two backends. Each task injects one fault
+with `-Dproofstone.injectTopologyFault=<fault>` and expects `INVALID` with the fault's own reason, its container and its hop
+in the message, and never `timed out joining`: an unrelated join timeout cannot satisfy a fault run. A fault that passes
+conformance makes the body run, which is a failure of the meta test.
+
+| Fault | Proxy | What is broken | Reason the message must carry |
+|---|---|---|---|
+| `wrong-secret` | Velocity | `lobby` has another forwarding secret | `P01 failed`, `Unable to verify player details`, `hop: proxy to backend lobby` |
+| `forwarding-off` | both | the proxy forwards nothing, the backends expect it | `P01 failed`, Paper's refusal (`This server requires you to connect with Velocity` / `If you wish to use IP forwarding`), `hop: proxy to backend lobby` |
+| `backend-forwarding-off` | both | `lobby` accepts no forwarding, the proxy sends it | `P01 failed`, the proxy's or Paper's text (`Your server did not send a forwarding request to the proxy` / `Unknown data in login hostname`), `hop: proxy to backend lobby` |
+| `unreachable-backend` | both | the proxy's address for `survival` resolves to nothing | `T00 ... failed`, `backend survival is offline at the proxy`, `container server-survival`, `hop: proxy to backend survival` |
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTopologyTest --no-parallel --max-workers=1
+```
+
+One fault alone, for example `:examples:bad-tests:metaTopoVelocityWrongSecret`. The faults are not in
+`scripts/release-mutation-check.sh` (maintainer decision, M7): they are run by hand and recorded in the ROADMAP M7 findings.
+`wrong-secret` on BungeeCord is refused (it has no secret), never run as a silent no-op.

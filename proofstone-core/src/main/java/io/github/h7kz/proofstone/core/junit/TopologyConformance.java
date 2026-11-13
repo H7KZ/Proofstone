@@ -7,6 +7,7 @@ import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.host.AgentEndpoint;
+import io.github.h7kz.proofstone.core.host.TopologyConfig;
 import io.github.h7kz.proofstone.core.host.TopologyHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
 import java.time.Duration;
@@ -53,7 +54,13 @@ final class TopologyConformance {
         try {
             Await.until(NAME, () -> servers(topology), seen -> seen.equals(expected.stream()
                     .map(name -> name + " online").toList()), WAIT);
-        } catch (AwaitTimeoutException | IllegalStateException e) {
+        } catch (AwaitTimeoutException e) {
+            Object last = e.observations().isEmpty() ? null : e.observations().get(0).lastValue();
+            @SuppressWarnings("unchecked")
+            List<String> seen = last instanceof List<?> ? (List<String>) last : null;
+            return new ConformanceResult(identity, false, NAME + " failed: " + e.getMessage() + "; "
+                    + unreachable(seen, topology.backendNames()));
+        } catch (IllegalStateException e) {
             return new ConformanceResult(identity, false, NAME + " failed: " + e.getMessage());
         }
         ConformanceResult scenarios = TopologyScenarios.run(identity, proxy, topology.backendNames(),
@@ -61,6 +68,31 @@ final class TopologyConformance {
         System.err.println("PROOFSTONE CONFORMANCE " + identity + ": " + (scenarios.passed() ? "passed (T00, P01 to P05; "
                 + "P04 is reported as skipped above when a backend has no fixture)" : "failed"));
         return scenarios;
+    }
+
+    /**
+     * Which backends the proxy does not reach, named with their container and the hop (T-M7-13), from the last reading of
+     * the proxy's server list ({@code <name> online|offline}). Evidence of where, never a reason why.
+     *
+     * @param seen the last reading, or {@code null} when there was none
+     */
+    static String unreachable(List<String> seen, List<String> expected) {
+        if (seen == null) {
+            return "no reading of the proxy's server list, so no backend can be named";
+        }
+        List<String> named = new ArrayList<>();
+        for (String backend : expected) {
+            String alias = TopologyConfig.alias(backend);
+            if (seen.contains(backend + " offline")) {
+                named.add("backend " + backend + " is offline at the proxy (container " + alias
+                        + ", hop: proxy to backend " + backend + ")");
+            } else if (!seen.contains(backend + " online")) {
+                named.add("backend " + backend + " is not listed by the proxy (container " + alias
+                        + ", hop: proxy to backend " + backend + ")");
+            }
+        }
+        return named.isEmpty() ? "the proxy lists " + seen + ", not the topology's backends " + expected
+                : String.join("; ", named);
     }
 
     /** {@code <name> online|offline} per server the proxy agent lists, sorted by name. */

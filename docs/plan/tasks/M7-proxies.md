@@ -422,9 +422,9 @@ As T-M7-11.
 - Edit the mutation check without approval. Treat a join timeout caused by an injected fault as the product flake: the fault tests assert the specific reason.
 
 **Acceptance.**
-- [ ] Each injected fault gives a red with the expected verdict type and message; a run without the fault is green. Evidence: XML for both, three invocations of the clean run.
-- [ ] The existing `metaTest` set still reports all 8 verdicts as expected.
-- [ ] The mutation-check question is recorded in the PR for the maintainer.
+- [x] Each injected fault gives a red with the expected verdict type and message; a run without the fault is green. Evidence: XML for both, three invocations of the clean run. (7 fault runs, 6 clean runs, ROADMAP M7 findings.)
+- [ ] The existing `metaTest` set still reports all 8 verdicts as expected. (Open: the one run was red on a Paper download timeout at the two `paper@26.1.2` tasks; 6 of 8 verdicts given. ROADMAP M7 findings.)
+- [x] The mutation-check question is recorded in the PR for the maintainer.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel --max-workers=1`

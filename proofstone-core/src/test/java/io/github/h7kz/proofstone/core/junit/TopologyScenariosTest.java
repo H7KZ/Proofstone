@@ -234,6 +234,8 @@ class TopologyScenariosTest {
         ConformanceResult result = run(world);
         assertThat(result.passed()).isFalse();
         assertThat(result.detail()).contains("P02").contains("DISAGREE");
+        // T-M7-13: the failure names the container and the hop, so a fault run cannot be satisfied by any other red.
+        assertThat(result.detail()).contains("container server-lobby").contains("hop: proxy to backend lobby");
     }
 
     @Test

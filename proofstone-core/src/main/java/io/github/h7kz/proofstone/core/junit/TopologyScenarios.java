@@ -3,6 +3,7 @@ package io.github.h7kz.proofstone.core.junit;
 import io.github.h7kz.proofstone.api.DisagreeException;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.await.AwaitTimeoutException;
+import io.github.h7kz.proofstone.core.host.TopologyConfig;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -260,7 +261,15 @@ final class TopologyScenarios {
         Identity seenByBackend = world.backendIdentity(lobby, PLAYER);
         String proxyAddress = world.clientAddressSeenByProxy(PLAYER);
         String backendAddress = world.clientAddressSeenByBackend(lobby, PLAYER);
-        judgeForwarding(PLAYER, seenByProxy, seenByBackend, proxyAddress, backendAddress);
+        // The failure names the container and the hop, so a fault run is satisfied by this red and no other (T-M7-13).
+        String where = "; container " + TopologyConfig.alias(lobby) + ", hop: proxy to backend " + lobby;
+        try {
+            judgeForwarding(PLAYER, seenByProxy, seenByBackend, proxyAddress, backendAddress);
+        } catch (DisagreeException e) {
+            throw new DisagreeException(e.getMessage() + where, e.serverObserved(), e.clientObserved());
+        } catch (AssertionError e) {
+            throw new AssertionError(e.getMessage() + where, e);
+        }
         DirectJoin direct = world.directJoin(lobby, DIRECT_PLAYER);
         judgeDirectJoin(proxy, lobby, direct);
     }

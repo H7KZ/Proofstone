@@ -10,6 +10,7 @@ OUT=$(mktemp)
 trap 'rm -f "$OUT"' EXIT
 RC=0
 ./gradlew :examples:bad-tests:metaInvalidWindow :examples:bad-tests:metaDisagree :examples:bad-tests:metaLeak \
+  :examples:bad-tests:metaTopoVelocityWrongSecret :examples:bad-tests:metaTopoBungeeUnreachable \
   -Dproofstone.cells=paper@26.3 --continue --max-workers=1 > "$OUT" 2>&1 || RC=$?
 
 FAILS=0
@@ -27,6 +28,10 @@ check "metaInvalidWindow refused" "metaInvalidWindow cannot run on -Dproofstone.
 check "metaDisagree refused" "metaDisagree cannot run on -Dproofstone.cells=paper@26.3"
 check "metaLeak refused" "metaLeak cannot run on -Dproofstone.cells=paper@26.3"
 check "refusal names the supported cell" "Supported cells: paper@26.1.2"
+# T-M7-13: the topology fault runs are pinned to their topology cell too; the refusal names it.
+check "metaTopoVelocityWrongSecret refused" "metaTopoVelocityWrongSecret cannot run on -Dproofstone.cells=paper@26.3"
+check "metaTopoBungeeUnreachable refused" "metaTopoBungeeUnreachable cannot run on -Dproofstone.cells=paper@26.3"
+check "topology refusal names its cell" "Supported cells: velocity@4.3.1+paper@26.3"
 
 # No test ran: a server would have produced a test report or a container log before the refusal text is final.
 if grep -qE "PROOFSTONE|Testcontainers|itzg/minecraft-server" "$OUT"; then
