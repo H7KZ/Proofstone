@@ -58,11 +58,12 @@ works like this.
   | `GET /v1/log?since=&minLevel=` | Log4j2 records with stack traces |
   | `POST /v1/events/subscribe`, `GET`, `DELETE /v1/events/{probeId}` | read-only probes at `PostOrder.LAST` |
 
-- **Capabilities** in `health`: `command`, `players`, `log`, `proxy`. **`events` is withheld on purpose.** The probes pass their
-  unit tests on a mock proxy, but no real Velocity has run them, so the token waits for T-M7-11. The golden health case lists
-  `players` and `proxy`; this agent adds `command` and `log`, as the Bukkit agent adds tokens to its golden.
+- **Capabilities** in `health`: `command`, `players`, `events`, `log`, `proxy`. `events` is claimed on real-server evidence: the
+  topology conformance P01 (T-M7-11, `:conformance:run -Dproofstone.cells=velocity@4.3.1+paper@26.3`) subscribes a probe to
+  `ServerConnectedEvent`, a client joins through the proxy, and the probe reads the join back. The golden health case lists
+  `players` and `proxy`; this agent adds `command`, `events` and `log`, as the Bukkit agent adds tokens to its golden.
 - **`previousServer`** comes from two handlers (`ServerConnectedEvent`, `DisconnectEvent`) at `PostOrder.LAST` that record the
-  previous server per player. It is `null` until the player has switched. Only the mock has exercised it; a real switch is T-M7-11.
+  previous server per player. It is `null` until the player has switched. Only the mock has exercised it; a real switch is checked by P03 (T-M7-12).
 - **Log capture** reads the Log4j2 root logger by reflection (`Log4jTap`) and does not add a JUL handler: Velocity bridges JUL
   into Log4j2, which refuses `Logger.addHandler` with a WARN of its own (`LogBuffer.attachPreferringLog4j`).
 
@@ -79,5 +80,5 @@ works like this.
   `gradle/libs.versions.toml` until `versions.yml` schema 3 exists (T-M7-08). The jar is downloaded by the image from the pinned
   build, and the test checks its sha256 in the container before it runs anything. The forwarding secret and the token are
   generated in memory. The proxy log is kept in `build/velocity-it/proxy.log`.
-- Not covered here, on purpose: a joined player's proxy state, `events` on a real proxy, a server switch (T-M7-11), and a
-  forwarding fault (T-M7-13).
+- Not covered here, on purpose: a joined player, `events` and `players` on a real proxy (P01 and P02 cover them, T-M7-11), a server
+  switch and `previousServer` (P03, T-M7-12), and a forwarding fault (T-M7-13).

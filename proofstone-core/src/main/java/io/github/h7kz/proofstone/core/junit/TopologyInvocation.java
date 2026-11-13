@@ -181,7 +181,8 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
         }
         ConformanceCache cache = context.getRoot().getStore(CellInvocation.NAMESPACE).getOrComputeIfAbsent(
                 CellInvocation.CONFORMANCE, key -> new ConformanceCache(), ConformanceCache.class);
-        state.conformance = cache.get(cell.identity(), () -> TopologyConformance.run(cell.identity(), topology));
+        state.conformance = cache.get(cell.identity(), () -> TopologyConformance.run(cell.identity(), cell.proxy().id(),
+                topology, this::joinProxy, this::joinDirect));
         AssertionError invalid = VerdictGate.judgeInvalid(context.getRequiredTestMethod(), cell.identity(),
                 state.conformance);
         if (invalid != null) {
@@ -201,19 +202,8 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
      * agent both list it there (ADR-0016 section 7). A join timeout names the stalled stage and the hop.
      */
     private SessionClient connect(TopologyHost topology, String name) {
-        ClientDriver driver = CellInvocation.findDriver(driverId).orElseThrow(() -> new ParameterResolutionException(
-                "no client driver " + driverId + " on the classpath"));
         String lobby = topology.backendNames().get(0);
-        TopologyHost.JoinMarks marks = topology.mark();
-        ClientSession session;
-        try {
-            session = driver.connect(new ConnectSpec(topology.proxy().gameHost(), topology.proxy().gamePort(), name,
-                    CONNECT_TIMEOUT));
-        } catch (JoinTimeoutException e) {
-            JoinTimeoutException described = topology.describe(e, marks, lobby);
-            joinStall = described.getMessage();
-            throw described;
-        }
+        ClientSession session = joinProxy(topology, name);
         SessionClient client = new SessionClient(name, session, (player, live, target) -> transfer(topology, player,
                 live, target));
         try {
@@ -226,6 +216,30 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
             throw e;
         }
         return client;
+    }
+
+    /** The client joins the proxy and is in play when this returns; the agents are not consulted (P01 does that). */
+    private ClientSession joinProxy(TopologyHost topology, String name) {
+        String lobby = topology.backendNames().get(0);
+        TopologyHost.JoinMarks marks = topology.mark();
+        try {
+            return driver().connect(new ConnectSpec(topology.proxy().gameHost(), topology.proxy().gamePort(), name,
+                    CONNECT_TIMEOUT));
+        } catch (JoinTimeoutException e) {
+            JoinTimeoutException described = topology.describe(e, marks, lobby);
+            joinStall = described.getMessage();
+            throw described;
+        }
+    }
+
+    /** A client that joins a backend's own game port, around the proxy (P02's direct join). */
+    private ClientSession joinDirect(String host, int port, String name) {
+        return driver().connect(new ConnectSpec(host, port, name, CONNECT_TIMEOUT));
+    }
+
+    private ClientDriver driver() {
+        return CellInvocation.findDriver(driverId).orElseThrow(() -> new ParameterResolutionException(
+                "no client driver " + driverId + " on the classpath"));
     }
 
     /** {@code Client.transferTo}: the client types {@code /server}, then the dual oracle of {@link ServerSwitch}. */

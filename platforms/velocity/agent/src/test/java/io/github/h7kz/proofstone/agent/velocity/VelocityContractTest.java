@@ -57,7 +57,7 @@ class VelocityContractTest {
         // test checks the golden's tokens are all there and then compares the rest with the golden's own shape.
         List<String> expected = new ArrayList<>();
         golden.get("body").get("data").get("capabilities").forEach(token -> expected.add(token.asText()));
-        assertThat(VelocityAgent.capabilities()).containsAll(expected).doesNotContain("events");
+        assertThat(VelocityAgent.capabilities()).containsAll(expected).contains("events", "players");
         ArrayNode all = ((ObjectNode) golden.get("body").get("data")).putArray("capabilities");
         VelocityAgent.capabilities().forEach(all::add);
         replay("health/proxy-ok", golden);

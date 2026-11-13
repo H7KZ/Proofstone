@@ -36,6 +36,9 @@ tasks.test {
 }
 
 val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
+// The proxy agents of the topology conformance (T-M7-11), found by path as proofstone-core's topologyTest does.
+val velocityAgentJar = rootProject.layout.projectDirectory.file("platforms/velocity/agent/build/libs/agent-all.jar")
+val bungeeAgentJar = rootProject.layout.projectDirectory.file("platforms/bungee/agent/build/libs/agent-all.jar")
 
 // The Bedrock-prefix example plugin (T-M5-06) is the plugin under test for C-B01 only. It is built, never committed, and
 // copied under this project because plugin globs are relative to the project directory (examples/bedrock-prefix).
@@ -54,9 +57,12 @@ fun Test.realServerScenarios(taskDescription: String) {
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform()
     // The agent jar is built, never committed (AGENTS.md §3).
-    dependsOn(":platforms:bukkit:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin)
+    dependsOn(":platforms:bukkit:agent:shadowJar", ":platforms:velocity:agent:shadowJar",
+        ":platforms:bungee:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin)
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
+    systemProperty("proofstone.velocity.agentJar", velocityAgentJar.asFile.absolutePath)
+    systemProperty("proofstone.bungee.agentJar", bungeeAgentJar.asFile.absolutePath)
     // The run-time cell selector, scope, driver and flake-detector repeat count reach the test JVM from the Gradle
     // command line (test-api spec §1, self-tests section 4).
     for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.driver", "proofstone.repeat")) {
@@ -109,5 +115,17 @@ tasks.register<Test>("smoke") {
 // Every scenario, C01 to C06. Filter one with `--tests '*C03*'`; a bare `--tests C03` matches no class name.
 tasks.register<Test>("run") {
     realServerScenarios("Boots the real Paper cell (newest row) and runs every conformance scenario, C01 to C06. " +
-        "Needs Docker and the EULA.")
+        "Needs Docker and the EULA. With a topology cell in -Dproofstone.cells (for example velocity@4.3.1+paper@26.3) " +
+        "it runs the topology conformance (T00, P01, P02) of that cell instead.")
+    // A topology cell is named with a plus sign (written as char code 43: lintVersions reads a literal one in a build file as a
+    // dynamic version). The single-server classes plan nothing for it (zero cells is a loud error),
+    // and the topology class plans nothing for a plain selector, so each kind of run selects its own classes.
+    val topologySelected = providers.systemProperty("proofstone.cells").orNull?.contains(43.toChar()) == true
+    filter {
+        if (topologySelected) {
+            includeTestsMatching("*ConformanceTopologyTest")
+        } else {
+            excludeTestsMatching("*ConformanceTopologyTest")
+        }
+    }
 }

@@ -70,11 +70,10 @@ task to the plugin's executor service. The agent works like this.
   | `GET /v1/log?since=&minLevel=` | JUL records of the `BungeeCord` logger and its plugins, with stack traces |
   | `POST /v1/events/subscribe`, `GET`, `DELETE /v1/events/{probeId}` | read-only probes at `EventPriority.HIGHEST` |
 
-- **Capabilities** in `health`: `command`, `players`, `log`, `proxy`. **`events` is withheld on purpose.** The probes pass their
-  unit tests on a mock proxy with the real event bus, but no real BungeeCord has fired a player event through them (the
-  integration test has no backend and no client), so the token waits for T-M7-11. `players` is claimed because the golden
-  `health/proxy-ok` lists it, and as on the Velocity agent the real-server test covers it for the empty proxy only; a joined
-  player's proxy state is T-M7-11 as well.
+- **Capabilities** in `health`: `command`, `players`, `events`, `log`, `proxy`. `events` is claimed on real-server evidence: the
+  topology conformance P01 (T-M7-11, `:conformance:run -Dproofstone.cells=bungeecord@2111+paper@26.3`) subscribes a probe to
+  `ServerConnectedEvent`, a client joins through the proxy, and the probe reads the join back. `players` is in the golden
+  `health/proxy-ok`; this integration test covers it for the empty proxy, and P01 and P02 read a joined player's proxy state.
 - **Events a probe can watch.** BungeeCord finds handlers by scanning a listener for annotated methods, so a probe cannot attach to
   an arbitrary class by name as on Bukkit and Velocity. `EventProbes` has one handler per event: `PreLoginEvent`, `LoginEvent`,
   `PostLoginEvent`, `PlayerDisconnectEvent`, `ServerConnectEvent`, `ServerConnectedEvent`, `ServerSwitchEvent`,
@@ -83,7 +82,7 @@ task to the plugin's executor service. The agent works like this.
   payload is recorded as its size (`"3 bytes"`), not its bytes.
 - **`previousServer`** comes from two handlers (`ServerSwitchEvent#getFrom`, `PlayerDisconnectEvent`) at `EventPriority.HIGHEST` that
   record the previous server per player. It is `null` until the player has switched. Only the mock has exercised it (with the real
-  dispatch); a real switch is T-M7-11.
+  dispatch); a real switch is checked by P03 (T-M7-12).
 - **Log capture** attaches to `ProxyServer.getLogger()` (`LogBuffer.attachTo`), not to the JUL root logger. BungeeCord builds its
   `BungeeLogger` with no parent, and every plugin logger parents to it, so a handler on the root logger would see none of its
   records. BungeeCord has no Log4j2, so there is no second copy to match.
@@ -103,5 +102,5 @@ task to the plugin's executor service. The agent works like this.
   `gradle/libs.versions.toml` until `versions.yml` schema 3 exists (T-M7-08). The jar is downloaded by the image from the pinned
   Jenkins build, and the test checks its sha256 in the container (Jenkins publishes md5 only) before it runs anything. The agent
   token is generated in memory. The proxy log is kept in `build/bungee-it/proxy.log`.
-- Not covered here, on purpose: a joined player's proxy state, `events` on a real proxy, a server switch (T-M7-11), and a
-  forwarding fault (T-M7-13).
+- Not covered here, on purpose: a joined player, `events` and `players` on a real proxy (P01 and P02 cover them, T-M7-11), a server
+  switch and `previousServer` (P03, T-M7-12), and a forwarding fault (T-M7-13).

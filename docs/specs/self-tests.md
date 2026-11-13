@@ -56,12 +56,13 @@ not run. The cell's scenario timings are in the log (`PROOFSTONE CONFORMANCE <ce
 ## 1b. Topology conformance (per topology cell, ADR-0016)
 
 A topology cell ([ADR-0016](../adr/0016-topology-cells.md)) runs these instead of the C-scenarios, cached per cell per
-run. A red makes every test on that topology cell `INVALID`. The cards are T-M7-11 and T-M7-12.
+run. A red makes every test on that topology cell `INVALID`. The cards are T-M7-11 and T-M7-12. Until P05 exists, a readiness check
+T00 (the proxy agent lists every backend online) runs first. `:conformance:run -Dproofstone.cells=<topology cell>` runs it.
 
 | ID | Scenario | Proves |
 |---|---|---|
-| P01 | Join through the proxy: the proxy agent lists the player and its current server; the default backend's agent lists the same player | client to proxy and proxy to backend hops |
-| P02 | Forwarding: the UUID and name the backend sees equal the proxy's (offline UUID); the direct-join behaviour of a backend is asserted as recorded | forwarding mode configured on both sides |
+| P01 | Join through the proxy: the proxy agent lists the player and its current server; the default backend's agent lists the same player; a proxy event probe (subscribed before the join) saw the proxy connect it to that server. A client in play that an agent does not show is `DISAGREE` | client to proxy and proxy to backend hops, and the proxy `players` and `events` support |
+| P02 | Forwarding: the UUID and name the backend sees equal the proxy's, the UUID is the offline UUID of the name (online mode is off in every test cell), and the client address the backend logs is the one the proxy logs; a mismatch is `DISAGREE`. Then a client joins the backend's own port: Velocity modern must refuse with Paper's message, BungeeCord legacy is asserted as observed ([velocity.md](../platforms/velocity.md), [bungeecord.md](../platforms/bungeecord.md), Direct join) | forwarding mode configured on both sides |
 | P03 | Server switch `lobby` to `survival` and back: client, proxy agent and both backend agents agree; the source no longer lists the player | the switch and the dual oracle across agents |
 | P04 | Plugin messaging: the backend fixture sends `GetServer` on `BungeeCord`, the proxy answers, the fixture records the reply | the plugin messaging round trip |
 | P05 | Proxy command: a console command through the proxy agent runs; a client-typed `/server` is seen by the proxy agent's events | proxy command and event paths |

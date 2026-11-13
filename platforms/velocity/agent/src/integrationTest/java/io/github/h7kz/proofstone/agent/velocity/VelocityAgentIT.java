@@ -166,7 +166,7 @@ class VelocityAgentIT {
         actual.get("capabilities").forEach(token -> tokens.add(token.asText()));
         List<String> required = new ArrayList<>();
         golden.get("body").get("data").get("capabilities").forEach(token -> required.add(token.asText()));
-        assertThat(tokens).containsAll(required).doesNotContain("events");
+        assertThat(tokens).containsAll(required).contains("events", "players");
         ObjectNode data = (ObjectNode) golden.get("body").get("data");
         data.putArray("capabilities");
         tokens.forEach(((com.fasterxml.jackson.databind.node.ArrayNode) data.get("capabilities"))::add);

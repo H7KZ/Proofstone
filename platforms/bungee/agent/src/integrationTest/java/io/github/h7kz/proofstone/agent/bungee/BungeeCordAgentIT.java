@@ -183,7 +183,7 @@ class BungeeCordAgentIT {
         actual.get("capabilities").forEach(token -> tokens.add(token.asText()));
         List<String> required = new ArrayList<>();
         golden.get("body").get("data").get("capabilities").forEach(token -> required.add(token.asText()));
-        assertThat(tokens).containsAll(required).doesNotContain("events");
+        assertThat(tokens).containsAll(required).contains("events", "players");
         ObjectNode data = (ObjectNode) golden.get("body").get("data");
         // The golden is recorded for Velocity: this agent's own platform id is bungeecord (spec section 2).
         data.put("platform", "bungeecord");
