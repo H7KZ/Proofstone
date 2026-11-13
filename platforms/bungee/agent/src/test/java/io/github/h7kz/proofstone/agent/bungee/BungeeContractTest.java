@@ -56,7 +56,7 @@ class BungeeContractTest {
         // test checks the golden's tokens are all there and then compares the rest with the golden's own shape.
         List<String> expected = new ArrayList<>();
         golden.get("body").get("data").get("capabilities").forEach(token -> expected.add(token.asText()));
-        assertThat(BungeeAgent.capabilities()).containsAll(expected).doesNotContain("events");
+        assertThat(BungeeAgent.capabilities()).containsAll(expected).contains("events", "players");
         ArrayNode all = ((ObjectNode) golden.get("body").get("data")).putArray("capabilities");
         BungeeAgent.capabilities().forEach(all::add);
         // The golden's platform is Velocity's: this agent's own id is bungeecord (spec section 2).

@@ -369,9 +369,9 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Skip a scenario silently or weaken an assertion to match a quirk. A quirk is documented in `docs/platforms/` and asserted as it is.
 
 **Acceptance.**
-- [ ] P01 and P02 pass on `velocity@<row>+paper@26.3` and `bungeecord@<row>+paper@26.3`. Evidence: XML, skipped 0 failures 0 errors 0, three invocations per cell (flake rule).
-- [ ] The direct-join behaviour on each backend is recorded in the platform doc with the observed message.
-- [ ] A unit test shows a forwarding mismatch makes the scenario DISAGREE, not a pass.
+- [x] P01 and P02 pass on `velocity@<row>+paper@26.3` and `bungeecord@<row>+paper@26.3`. Evidence: XML, skipped 0 failures 0 errors 0, three invocations per cell (flake rule).
+- [x] The direct-join behaviour on each backend is recorded in the platform doc with the observed message.
+- [x] A unit test shows a forwarding mismatch makes the scenario DISAGREE, not a pass.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=<topology cell> --no-parallel --max-workers=1`

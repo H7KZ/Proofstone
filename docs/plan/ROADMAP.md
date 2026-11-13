@@ -666,3 +666,12 @@ timeout, the stalled stage and hop.
   green runs, silently). Fix: BungeeCord backends get `proxies.bungee-cord.online-mode: false`, and `TopologyHost` checks the
   written config on every backend (Velocity backends already had it off). The run 2 red stays counted as a red; the
   BungeeCord acceptance is judged on three fresh invocations after the fix (PR #108).
+- **T-M7-11 conformance P01 and P02 (2026-11-13), no join timeout; one harness red before the final runs.**
+  `:conformance:run -Dproofstone.cells=<topology cell>`, one proxy per invocation. The first Velocity run was red (`INVALID`,
+  `P02`, not a join timeout and not a flake): the direct join to the backend stalled at `UNKNOWN` with `last packet received:
+  ClientboundCustomQueryPacket`, because the mcpl driver never answered Paper's `velocity:player_info` login query, so the
+  backend's refusal was never reached. Fix: the driver answers a login query with an empty answer, as a vanilla client does
+  (`McplLoginQueryTest`). The three Velocity invocations and the three BungeeCord invocations after the fix are all green
+  (6 of 6, 1 test each, skipped 0 failures 0 errors 0). P01 reads `events` and `players` on a real proxy, so both agents now
+  report `events`. Backend game ports had been published on all addresses against ADR-0016 section 8; the maintainer's decision: a test-only
+  exception bound to `127.0.0.1` (ADR-0016 section 8 amended, `GamePortBindingTest`).

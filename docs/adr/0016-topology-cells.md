@@ -133,8 +133,12 @@ Assertions keep [ADR-0003](0003-dual-oracle.md). The server oracle splits across
   or a bundle. This extends the agent-token redaction rule: the bundle writer redacts both, any config copied into a
   bundle has the secret replaced, and a unit test greps every bundle file for the secret (T-M7-07).
 - BungeeCord legacy forwarding has no secret, so a backend trusts any forwarded identity. Backend game ports are
-  therefore never published (only the proxy's port is), and the platform doc says that `ip_forward` is not a security
-  feature.
+  therefore not published to the network (only the proxy's port is), and the platform doc says that `ip_forward` is not a
+  security feature. **Test-only exception (T-M7-11):** a backend's game port is bound to `127.0.0.1` on a host port the harness
+  picked free, never to all addresses, so conformance P02 can join a backend directly and show what it does without the proxy
+  (the direct-join control). `PaperHost.loopbackOnly` sets it (`Ports.Binding.bindIpAndPort("127.0.0.1", <free port>)` with
+  publish-all off; port 0 and Docker's own pick failed with "address already in use" on Docker Desktop), `GamePortBindingTest`
+  checks it, and the agent port stays unpublished outside debug mode. Other machines cannot reach a backend; a local process can.
 - One forwarding mode per proxy platform in M7: Velocity `modern`, BungeeCord `legacy`. A second mode as a separate cell
   needs an identity suffix and an amendment to this ADR.
 

@@ -3,38 +3,61 @@ package io.github.h7kz.proofstone.core.junit;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.await.AwaitTimeoutException;
+import io.github.h7kz.proofstone.core.driver.ClientDriverException;
+import io.github.h7kz.proofstone.core.driver.ClientSession;
+import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import io.github.h7kz.proofstone.core.host.TopologyHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiFunction;
 
 /**
- * The per-cell check of a topology cell until P01 to P05 exist (T-M7-11, T-M7-12). It is a readiness check, not those
- * scenarios: the proxy agent lists exactly the topology's backends and its own ping reaches each one. A red makes every
- * test on the cell INVALID, as conformance does (ADR-0016 section 7). Its result is cached per cell per run.
+ * The per-cell conformance of a topology cell (ADR-0016 section 7): the readiness check T00, then P01 (join through the
+ * proxy) and P02 (forwarding) from {@link TopologyScenarios}. P03 to P05 arrive with T-M7-12. A red makes every test on
+ * the cell INVALID, as conformance does. Its result is cached per cell per run.
+ *
+ * <p>T00 stays until P05 exists: the proxy agent lists exactly the topology's backends and its own ping reaches each one,
+ * which is the only check that the second backend is up before a test needs it.
  */
 final class TopologyConformance {
 
     static final String NAME = "T00 proxy lists every backend online";
     private static final Duration WAIT = Duration.ofSeconds(20);
 
+    /** A client joining a backend's own game port. */
+    @FunctionalInterface
+    interface DirectJoiner {
+        ClientSession join(String host, int port, String player);
+    }
+
     private TopologyConformance() {
     }
 
-    static ConformanceResult run(String identity, TopologyHost topology) {
+    /**
+     * @param identity the cell's display id
+     * @param proxy the proxy platform id ({@code velocity}, {@code bungeecord})
+     * @param joinProxy joins the proxy as the given player and returns once in play
+     * @param joinDirect joins a backend directly, around the proxy
+     */
+    static ConformanceResult run(String identity, String proxy, TopologyHost topology,
+            BiFunction<TopologyHost, String, ClientSession> joinProxy, DirectJoiner joinDirect) {
         Set<String> expected = new TreeSet<>(topology.backendNames());
         try {
             Await.until(NAME, () -> servers(topology), seen -> seen.equals(expected.stream()
                     .map(name -> name + " online").toList()), WAIT);
-            System.err.println("PROOFSTONE CONFORMANCE " + identity + ": " + NAME + " passed (P01 to P05 arrive with "
-                    + "T-M7-11 and T-M7-12)");
-            return ConformanceResult.pass(identity);
         } catch (AwaitTimeoutException | IllegalStateException e) {
             return new ConformanceResult(identity, false, NAME + " failed: " + e.getMessage());
         }
+        ConformanceResult scenarios = TopologyScenarios.run(identity, proxy, topology.backendNames(),
+                new Live(proxy, topology, joinProxy, joinDirect));
+        System.err.println("PROOFSTONE CONFORMANCE " + identity + ": " + (scenarios.passed() ? "passed (T00, P01, P02; "
+                + "P03 to P05 arrive with T-M7-12)" : "failed"));
+        return scenarios;
     }
 
     /** {@code <name> online|offline} per server the proxy agent lists, sorted by name. */
@@ -49,5 +72,144 @@ final class TopologyConformance {
         }
         seen.sort(null);
         return seen;
+    }
+
+    /** The real topology behind {@link TopologyScenarios.World}: agents over HTTP, container logs, the driver. */
+    private static final class Live implements TopologyScenarios.World {
+
+        private final String proxy;
+        private final TopologyHost topology;
+        private final BiFunction<TopologyHost, String, ClientSession> joinProxy;
+        private final DirectJoiner joinDirect;
+        private ClientSession session;
+        private TopologyHost.JoinMarks marks;
+
+        Live(String proxy, TopologyHost topology, BiFunction<TopologyHost, String, ClientSession> joinProxy,
+                DirectJoiner joinDirect) {
+            this.proxy = proxy;
+            this.topology = topology;
+            this.joinProxy = joinProxy;
+            this.joinDirect = joinDirect;
+        }
+
+        @Override
+        public String subscribeJoinProbe() {
+            JsonNode reply = topology.proxy().request("POST", "/v1/events/subscribe",
+                    Map.of("class", TopologyScenarios.joinEventClass(proxy)));
+            JsonNode id = reply.get("probeId");
+            if (id == null || !id.isTextual()) {
+                throw new IllegalStateException("the proxy agent's subscribe reply has no probeId: " + reply);
+            }
+            return id.asText();
+        }
+
+        @Override
+        public void join(String player) {
+            marks = topology.mark();
+            session = joinProxy.apply(topology, player);
+        }
+
+        @Override
+        public void leave(String player) {
+            if (session != null) {
+                session.close();
+                session = null;
+                Await.until("proxy agent lists no " + player, () -> names(topology.proxy()).contains(player),
+                        listed -> !listed, WAIT);
+            }
+        }
+
+        @Override
+        public String proxyServer(String player) {
+            return TopologyInvocation.proxyServer(topology, player);
+        }
+
+        @Override
+        public List<String> proxyPlayers() {
+            return names(topology.proxy());
+        }
+
+        @Override
+        public List<String> backendPlayers(String backend) {
+            return names(topology.backend(backend));
+        }
+
+        @Override
+        public TopologyScenarios.Identity proxyIdentity(String player) {
+            return identity(topology.proxy(), player);
+        }
+
+        @Override
+        public TopologyScenarios.Identity backendIdentity(String backend, String player) {
+            return identity(topology.backend(backend), player);
+        }
+
+        @Override
+        public List<String> joinEvents(String probe) {
+            JsonNode events = topology.proxy().request("GET", "/v1/events/" + probe + "?since=0", null).get("events");
+            if (events == null || !events.isArray()) {
+                throw new IllegalStateException("the proxy agent's event page of " + probe + " has no events array");
+            }
+            List<String> seen = new ArrayList<>();
+            for (JsonNode event : events) {
+                JsonNode fields = event.path("fields");
+                seen.add(fields.path("getPlayer").path("name").asText("?") + "@"
+                        + fields.path("getServer").path("name").asText("?"));
+            }
+            return seen;
+        }
+
+        // Log lines reach the buffer a moment after the agent can answer, so the reads below are awaited.
+
+        @Override
+        public String clientAddressSeenByProxy(String player) {
+            return Await.until("the " + proxy + " log shows the address " + player + " connected from",
+                    () -> TopologyScenarios.proxyAddress(proxy, player, topology.proxy().logs().since(marks.proxy())),
+                    address -> true, WAIT);
+        }
+
+        @Override
+        public String clientAddressSeenByBackend(String backend, String player) {
+            return Await.until("backend " + backend + " log shows the address " + player + " logged in from",
+                    () -> TopologyScenarios.backendAddress(backend, player,
+                            topology.backend(backend).logs().since(marks.backends().get(backend))),
+                    address -> true, WAIT);
+        }
+
+        @Override
+        public TopologyScenarios.DirectJoin directJoin(String backend, String player) {
+            ClientSession direct;
+            try {
+                direct = joinDirect.join(topology.backend(backend).gameHost(), topology.backend(backend).gamePort(),
+                        player);
+            } catch (ClientDriverException e) {
+                // A kick, or a timeout (whose message says so): the scenario judges the text, never "it threw". The text
+                // is printed so the platform doc records the message as observed.
+                System.err.println("PROOFSTONE CONFORMANCE " + proxy + " direct join to backend " + backend + ": " + e.getMessage());
+                return new TopologyScenarios.DirectJoin(false, e.getMessage());
+            }
+            direct.close();
+            return new TopologyScenarios.DirectJoin(true, player + " reached the play state on backend " + backend);
+        }
+
+        private static List<String> names(AgentEndpoint agent) {
+            JsonNode players = agent.request("GET", "/v1/players", null).get("players");
+            if (players == null || !players.isArray()) {
+                throw new IllegalStateException("the agent's /v1/players reply has no players list: " + players);
+            }
+            List<String> out = new ArrayList<>();
+            players.forEach(name -> out.add(name.asText()));
+            return out;
+        }
+
+        private static TopologyScenarios.Identity identity(AgentEndpoint agent, String player) {
+            JsonNode state = agent.request("GET", "/v1/players/" + player, null);
+            JsonNode name = state.get("name");
+            JsonNode uuid = state.get("uuid");
+            if (name == null || !name.isTextual() || uuid == null || !uuid.isTextual()) {
+                throw new IllegalStateException("the agent's reply for " + player + " has no name and uuid: " + state);
+            }
+            return new TopologyScenarios.Identity(name.asText(), uuid.asText());
+        }
     }
 }

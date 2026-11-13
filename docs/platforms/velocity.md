@@ -103,8 +103,10 @@ from building it and from three real-server runs against Velocity 4.3.1 build 45
   and flattened with the plain serializer. No log scraping.
 - **`proxy/servers` `online` is a live `RegisteredServer.ping()`**, not a cached result (Velocity keeps none). A refused
   connection completes the future exceptionally at once, so a proxy whose backends are down answers `online: false` quickly.
-- **`events` is not claimed.** The probes work on a mock; no real Velocity has run them. `previousServer` likewise comes from
-  `ServerConnectedEvent` handlers that only the mock has driven. Both wait for T-M7-11, which needs a backend.
+- **`events` is claimed (T-M7-11).** The topology conformance P01 subscribes a probe to `ServerConnectedEvent` before a client joins
+  through the proxy and reads the join back from a real Velocity 4.3.1: `getPlayer` and `getServer` serialise as `{name}`, so the probe
+  reports `<player>@lobby`. `players` and the proxy `PlayerState` (`{name, uuid, proxy: {server, previousServer}}`) are read there too.
+  `previousServer` after a real switch is still only mock-driven; it is checked by P03 (T-M7-12), not claimed here.
 - **Observe only:** every handler is `PostOrder.LAST`, no command is registered, no event result is set.
   `ObserveOnlyTest` checks it against a mock whose command registry fails on any call, and against the compiled classes.
 - **Harness config the test used:** `command-rate-limit = 0` and `login-ratelimit = 0` as ADR-0016 section 5 says, modern
@@ -112,9 +114,21 @@ from building it and from three real-server runs against Velocity 4.3.1 build 45
   `withCopyToContainer` (no bind mount), the agent port published to the host for the test only.
 
 ## Capabilities
-None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `log` and `proxy` in `health` (`events` after T-M7-11).
+None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `events`, `log` and `proxy` in `health`
+(`events` and `players` on the evidence of P01, T-M7-11).
+
+## Direct join (T-M7-11)
+P02 joins a client to a backend's own game port, around the proxy, with modern forwarding on. Paper refuses it. Observed on
+`velocity@4.3.1+paper@26.3`, the driver's message exactly (the port varies):
+`could not join PSDirect -> localhost:25993: This server requires you to connect with Velocity.`
+P02 asserts that text. The backend asks every login for `velocity:player_info`; a client that does not answer stalls instead of being
+refused, so the mcpl driver answers a login query with an empty answer, as a vanilla client does (T-M7-11, `McplSession`). Before that
+change the same join ended in `timed out joining ... last packet received: ClientboundCustomQueryPacket` after 30 s, which is a stall
+of the harness's client and not a refusal by the backend (run `velocity-1`, kept in the PR evidence).
 
 ## Gotchas
+- **A backend's game port is bound to `127.0.0.1` on a random host port** (T-M7-11, test-only exception in ADR-0016 section 8), so
+  P02's direct join can reach it; nothing else on the machine's network can. With modern forwarding the secret protects the backend: the direct join is refused. _T-M7-11_
 - **A copied `/data/config` kills a Paper backend.** `docker cp` of a staged `config/` directory into `/data/` makes it
   root-owned; the image cannot write `paper-world-defaults.yml` (`AccessDeniedException`), and Paper then crashes at
   world load with `World defaults configuration file 'config/paper-world-defaults.yml' doesn't exist`. Copy

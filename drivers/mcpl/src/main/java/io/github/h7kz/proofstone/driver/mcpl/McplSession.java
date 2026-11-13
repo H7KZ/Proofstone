@@ -73,6 +73,8 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.S
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.ServerboundAcceptTeleportationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerRotPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundUseItemOnPacket;
+import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundCustomQueryPacket;
+import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundCustomQueryAnswerPacket;
 
 /**
  * One joined player. It keeps a buffer of received chat so a reply that beats {@link #awaitMessage} is not lost,
@@ -174,6 +176,11 @@ final class McplSession implements ClientSession {
             if (newServer) {
                 completeSwitch();
             }
+        } else if (packet instanceof ClientboundCustomQueryPacket query) {
+            // A login query is the server asking whether this client speaks a custom login channel, such as a
+            // backend's Velocity forwarding. A vanilla client says it does not understand (an answer with no data); the
+            // server then refuses or carries on, and its own message reaches the caller (T-M7-11, docs/platforms/velocity.md).
+            network.send(new ServerboundCustomQueryAnswerPacket(query.getMessageId(), null));
         } else if (packet instanceof ClientboundPingPacket ping) {
             // A vanilla client answers every ping. ViaProxy turns a rejected click of a pre-1.17 server into a
             // ping, and the server ignores all further clicks until the pong comes back (T-M3-03).

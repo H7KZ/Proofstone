@@ -67,11 +67,12 @@ public final class VelocityAgent implements AutoCloseable {
     }
 
     /**
-     * The tokens the agent answers for. {@code events} is withheld on purpose: the probes are unit-tested on a mock
-     * proxy but no real Velocity has run them yet, so the token waits for T-M7-11 (docs/platforms/velocity.md).
+     * The tokens the agent answers for. {@code events} is claimed on evidence from a real Velocity: the topology conformance P01
+     * (T-M7-11) subscribes a probe to the proxy's server-connected event, a client joins through the proxy, and the probe
+     * must read that join back (docs/platforms/velocity.md).
      */
     static List<String> capabilities() {
-        return Arrays.asList("command", "players", "log", "proxy");
+        return Arrays.asList("command", "players", "events", "log", "proxy");
     }
 
     public int port() {

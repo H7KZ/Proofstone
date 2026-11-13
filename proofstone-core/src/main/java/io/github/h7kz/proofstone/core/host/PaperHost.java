@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Ports;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.await.AwaitTimeoutException;
 import io.github.h7kz.proofstone.core.cell.Cell;
@@ -150,9 +153,37 @@ public final class PaperHost implements AgentEndpoint, AutoCloseable {
         container.addExposedPort(GAME_PORT);
         if (options.network() != null) {
             container.withNetwork(options.network()).withNetworkAliases(options.networkAlias());
+            // Test-only exception to ADR-0016 section 8: a networked server's game port is reachable from the host's
+            // loopback only, so P02 can join it directly (the direct-join control) and nothing else on the machine can.
+            container.withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
+                    loopbackOnly(cmd.getHostConfig(), cmd.getExposedPorts())));
         }
         if (options.debugPorts()) {
             container.addExposedPort(AGENT_PORT);
+        }
+    }
+
+    /**
+     * The host config with every exposed port bound to 127.0.0.1 on a random host port (ADR-0016 section 8, exception).
+     * Testcontainers also asks Docker to publish all ports on every address; that would bind the same ports a second
+     * time and fail with "address already in use", so publish-all is switched off and each port is bound here. Docker's own
+     * choice of a random host port for a loopback binding failed the same way ("failed to bind host port 127.0.0.1:N:
+     * address already in use", six of six topology runs on Docker Desktop, Windows), so the harness picks a free port itself.
+     */
+    static HostConfig loopbackOnly(HostConfig config, ExposedPort[] exposed) {
+        Ports bindings = config.getPortBindings() == null ? new Ports() : config.getPortBindings();
+        for (ExposedPort port : exposed) {
+            bindings.bind(port, Ports.Binding.bindIpAndPort("127.0.0.1", freeLoopbackPort()));
+        }
+        return config.withPortBindings(bindings).withPublishAllPorts(false);
+    }
+
+    /** A host port that is free on loopback now: the OS hands one out and it is released at once for Docker to take. */
+    private static int freeLoopbackPort() {
+        try (java.net.ServerSocket socket = new java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress())) {
+            return socket.getLocalPort();
+        } catch (java.io.IOException e) {
+            throw new PaperHostException("no free loopback port for the game port binding: " + e.getMessage(), e);
         }
     }
 

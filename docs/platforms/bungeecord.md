@@ -111,12 +111,12 @@ same test was red on a wrong guess about `glist` output, see below):
   source and modelled in the unit tests; not shown against the real proxy by a failing root handler). `LogBuffer.attachTo` takes
   the one logger. The real run captured BungeeCord's own `Listening on /0.0.0.0:25577` line, with no duplicates, and no Log4j2 twin
   exists to match. A record that third-party code logs on the root logger is not captured.
-- **`events` is not claimed.** The probes work on the mock with the real event bus; no real BungeeCord has fired a player event
-  through them (the test has no backend). A probe cannot attach to an arbitrary class by name, because BungeeCord finds
-  handlers by scanning a listener for annotated methods: the agent has a handler for each of eleven events and any other class is
-  a `400`. `previousServer` likewise comes from `ServerSwitchEvent#getFrom` handlers that only the mock has driven. Both wait for
-  T-M7-11, which needs a backend. `players` is in the capability list (the golden health case requires it) and is checked on the empty
-  proxy only.
+- **`events` is claimed (T-M7-11).** The topology conformance P01 subscribes a probe to `ServerConnectedEvent` before a client joins
+  through the proxy and reads the join back from a real BungeeCord build 2111: `getPlayer` and `getServer` serialise as `{name}`, so
+  the probe reports `<player>@lobby`. A probe cannot attach to an arbitrary class by name, because BungeeCord finds handlers by
+  scanning a listener for annotated methods: the agent has a handler for each of eleven events and any other class is a `400`.
+  `players` and the proxy `PlayerState` are read on a joined player there too. `previousServer` after a real switch
+  (`ServerSwitchEvent#getFrom`) is still only mock-driven; P03 (T-M7-12) checks it, it is not claimed here.
 - **Observe only:** every handler is `EventPriority.HIGHEST`, no command is registered, no event is cancelled or changed, no intent is
   registered. `ObserveOnlyTest` checks it against the real command registry and event bus and against the compiled classes.
 - **Harness config the test used:** `online_mode: false`, `ip_forward: true`, `connection_throttle: -1` as ADR-0016 section 5 says,
@@ -129,9 +129,20 @@ same test was red on a wrong guess about `glist` output, see below):
 - **Waterfall:** not run, not a row (ADR-0016 section 4).
 
 ## Capabilities
-None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `log` and `proxy` in `health` (`events` after T-M7-11).
+None declared for a cell. Not a row yet. The agent itself reports `command`, `players`, `events`, `log` and `proxy` in `health`
+(`events` and `players` on the evidence of P01, T-M7-11).
+
+## Direct join (T-M7-11)
+P02 joins a client to a backend's own game port, around the proxy, with `ip_forward` on. `ip_forward` is not a security feature, but
+Paper with `settings.bungeecord: true` still refuses a handshake that carries no forwarded data. Observed on
+`bungeecord@2111+paper@26.3`, the driver's message exactly (the port varies):
+`could not join PSDirect -> localhost:55836: If you wish to use IP forwarding, please enable it in your BungeeCord config as well!`
+P02 asserts that text, as observed. It protects nothing: a client that sends a forged forwarded handshake to the backend port is
+accepted (legacy forwarding has no secret), which is why ADR-0016 section 8 wants backend ports unpublished; that is not asserted here.
 
 ## Gotchas
+- **A backend's game port is bound to `127.0.0.1` on a random host port** (T-M7-11, test-only exception in ADR-0016 section 8), so
+  P02's direct join can reach it; nothing else on the machine's network can. With legacy forwarding a forged forwarded handshake from a local process would still be accepted. _T-M7-11_
 - **The default `config.yml` has `max_players: 1`** on the listener, and `connection_throttle: 4000` with
   `connection_throttle_limit: 3`. The spike raised players to 20 and turned the throttle off (`-1`), because every
   test client comes from one address. Not observed with the defaults.
