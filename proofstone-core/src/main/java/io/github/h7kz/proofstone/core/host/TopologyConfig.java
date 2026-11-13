@@ -39,15 +39,26 @@ public final class TopologyConfig {
 
     /** Container path to content for the proxy. The first backend is the default server. */
     public static Map<String, String> proxyFiles(ProxyKind kind, List<String> backends, String secret) {
+        return proxyFiles(kind, backends, secret, TopologyFault.NONE);
+    }
+
+    /** As {@link #proxyFiles(ProxyKind, List, String)} with an injected fault (T-M7-13); {@code NONE} is the clean set. */
+    public static Map<String, String> proxyFiles(ProxyKind kind, List<String> backends, String secret,
+            TopologyFault fault) {
         requireBackendNames(backends);
+        fault.requireApplicable(kind);
+        // The last backend is the one the proxy never reaches, so the default server (the first) stays the lobby.
+        String unreachable = fault == TopologyFault.UNREACHABLE_BACKEND ? backends.get(backends.size() - 1) : null;
         Map<String, String> files = new LinkedHashMap<>();
         switch (kind) {
             case VELOCITY -> {
-                files.put("/server/velocity.toml", velocityToml(backends));
+                files.put("/server/velocity.toml", velocityToml(backends,
+                        fault == TopologyFault.FORWARDING_OFF ? "none" : "modern", unreachable));
                 files.put("/server/forwarding.secret", secret);
                 files.put("/server/plugins/bStats/config.txt", "enabled=false\n");
             }
-            case BUNGEECORD -> files.put("/server/config.yml", bungeeConfig(backends));
+            case BUNGEECORD -> files.put("/server/config.yml",
+                    bungeeConfig(backends, fault != TopologyFault.FORWARDING_OFF, unreachable));
         }
         return files;
     }
@@ -58,22 +69,39 @@ public final class TopologyConfig {
      * {@code online-mode} is off on the server itself through {@code ONLINE_MODE=FALSE} (PaperHost), on every row.
      */
     public static Map<String, String> backendFiles(ProxyKind kind, String secret) {
+        return backendFiles(kind, secret, TopologyFault.NONE, true);
+    }
+
+    /**
+     * As {@link #backendFiles(ProxyKind, String)} with an injected fault (T-M7-13). A backend fault hits the first backend
+     * only ({@code first}), the proxy's default server, so the join is judged on the hop the client takes.
+     */
+    public static Map<String, String> backendFiles(ProxyKind kind, String secret, TopologyFault fault, boolean first) {
+        fault.requireApplicable(kind);
+        boolean wrongSecret = first && fault == TopologyFault.WRONG_SECRET;
+        boolean accepting = !(first && fault == TopologyFault.BACKEND_FORWARDING_OFF);
         return switch (kind) {
             case VELOCITY -> Map.of("/config/paper-global.yml",
-                    "proxies:\n  velocity:\n    enabled: true\n    online-mode: false\n    secret: " + secret + "\n");
+                    "proxies:\n  velocity:\n    enabled: " + accepting + "\n    online-mode: false\n    secret: "
+                            + (wrongSecret ? newSecret() : secret) + "\n");
             // Paper's proxies.bungee-cord.online-mode defaults to true, which makes isProxyOnlineMode() true and every
             // login fetch the profile's properties from sessionserver.mojang.com (CraftPlayerProfile.complete): a
             // network dependency that answered HTTP 429 in T-M7-10 (bungeecord.md, Gotchas). It matches the proxy's
             // online_mode: false. Velocity rows already set proxies.velocity.online-mode: false.
-            case BUNGEECORD -> Map.of("/data/spigot.yml", "settings:\n  bungeecord: true\n",
+            case BUNGEECORD -> Map.of("/data/spigot.yml", "settings:\n  bungeecord: " + accepting + "\n",
                     "/config/paper-global.yml", "proxies:\n  bungee-cord:\n    online-mode: false\n");
         };
     }
 
-    private static String velocityToml(List<String> backends) {
+    /** The address the proxy dials for a backend; {@code unreachable} names the one that resolves to nothing. */
+    private static String address(String name, String unreachable) {
+        return alias(name) + (name.equals(unreachable) ? "-unreachable" : "");
+    }
+
+    private static String velocityToml(List<String> backends, String forwardingMode, String unreachable) {
         StringBuilder servers = new StringBuilder();
         for (String name : backends) {
-            servers.append(name).append(" = \"").append(alias(name)).append(':').append(PaperHost.GAME_PORT)
+            servers.append(name).append(" = \"").append(address(name, unreachable)).append(':').append(PaperHost.GAME_PORT)
                     .append("\"\n");
         }
         // Both rate limits are [advanced] keys; Velocity ignores them at the top level (default-velocity.toml, 4.3.1).
@@ -86,7 +114,7 @@ public final class TopologyConfig {
                 online-mode = false
                 force-key-authentication = false
                 prevent-client-proxy-connections = false
-                player-info-forwarding-mode = "modern"
+                player-info-forwarding-mode = "%s"
                 forwarding-secret-file = "forwarding.secret"
                 announce-forge = false
                 kick-existing-players = false
@@ -101,18 +129,19 @@ public final class TopologyConfig {
                 command-rate-limit = 0
                 bungee-plugin-message-channel = true
                 log-player-connections = true
-                """.formatted(PROXY_PORT, servers, backends.get(0));
+                """.formatted(PROXY_PORT, forwardingMode, servers, backends.get(0));
     }
 
-    private static String bungeeConfig(List<String> backends) {
+    private static String bungeeConfig(List<String> backends, boolean ipForward, String unreachable) {
         StringBuilder servers = new StringBuilder();
         for (String name : backends) {
             servers.append("  ").append(name).append(":\n    motd: ").append(name).append("\n    address: ")
-                    .append(alias(name)).append(':').append(PaperHost.GAME_PORT).append("\n    restricted: false\n");
+                    .append(address(name, unreachable)).append(':').append(PaperHost.GAME_PORT)
+                    .append("\n    restricted: false\n");
         }
         return """
                 online_mode: false
-                ip_forward: true
+                ip_forward: %b
                 enforce_secure_profile: false
                 connection_throttle: -1
                 connection_throttle_limit: 3
@@ -139,6 +168,6 @@ public final class TopologyConfig {
                   bind_local_address: true
                   force_default_server: false
                   proxy_protocol: false
-                """.formatted(servers, PROXY_PORT, PROXY_PORT, backends.get(0));
+                """.formatted(ipForward, servers, PROXY_PORT, PROXY_PORT, backends.get(0));
     }
 }

@@ -682,3 +682,27 @@ timeout, the stalled stage and hop.
   (`[T7e5c0f01,/172.26.0.1:47956]`), which the address parser did not accept. Parser fixed, `bungeecord.md` updated.
 - **T-M7-12, a log-guard red in two velocity runs after P04 was fixed.** The lobby WARNed `PSConf moved too quickly!` on the switch back;
   the allowlist only knows `T<hex>` names, so the topology conformance client was renamed to that pattern (no allowlist entry added).
+- **T-M7-13 negative controls (2026-11-13), run by hand, not in `scripts/release-mutation-check.sh` (maintainer decision).**
+  `-Dproofstone.injectTopologyFault=<fault>` on `examples/bad-tests` `topology/TopologyFaultE2E`, one cell per run, each fault once
+  per proxy, every run `tests=1 skipped=0 failures=1 errors=0` and `INVALID` by design (a red-by-design run, not a flake). XML
+  read; the message names the reason, the container and the hop, and none is a join timeout (`metaTopologyTest` fails on
+  `timed out joining`). Velocity 4.3.1: `wrong-secret` P01, `Unable to verify player details`, hop proxy to backend lobby;
+  `forwarding-off` P01, `This server requires you to connect with Velocity`, same hop; `backend-forwarding-off` P01, `Your server did
+  not send a forwarding request to the proxy`, same hop; `unreachable-backend` T00, `backend survival is offline at the proxy
+  (container server-survival, hop: proxy to backend survival)`. BungeeCord 2111 (no secret, so no `wrong-secret`, refused loudly):
+  `forwarding-off` P01, `If you wish to use IP forwarding, please enable it in your BungeeCord config as well!`;
+  `backend-forwarding-off` P01, `Unknown data in login hostname, did you forget to enable BungeeCord in spigot.yml?`;
+  `unreachable-backend` T00, as Velocity. Both proxies kick at the proxy-to-backend hop, so the hop comes from the logs, not from
+  the kick text. Clean runs, `:conformance:run -Dproofstone.cells=<cell>`, three separate `dockerlock.sh` invocations per cell:
+  Velocity 3 of 3 and BungeeCord 3 of 3 green (`tests=2 skipped=0 failures=0 errors=0`). Mutation check of the meta test itself: a
+  fault run with no failure reads `no test produced INVALID`; a message holding `timed out joining` or lacking the reason is red.
+  Observation, not examined: the `server-lobby` log tail of the `wrong-secret` run ends in a `FileOutputStream.open` stack trace
+  from `CraftServer.saveConfig` during server start, before any join.
+  **Maintainer question (mutation check):** the seven runs cost about 7 minutes in total (3 containers each). Say if they should
+  join `scripts/release-mutation-check.sh`; until then they are a by-hand pre-release step (`:examples:bad-tests:metaTopologyTest`).
+- **T-M7-13, existing `metaTest` run once: red, infrastructure, not the product (2026-11-13).** Six of eight bad tests gave their
+  verdict (VACUOUS, FLAKY, DISAGREE, INVALID, FAIL, SKIPPED). `metaInvalidWindow` and `metaLeak` (both pinned `paper@26.1.2`, bridged)
+  never booted: itzg `install-paper` failed with `SslHandshakeTimeoutException: handshake timed out after 30000ms` downloading
+  Paper, the container exited, `PaperHostException ... timed out waiting for "Done ("` after 180 s. No single-server code changed in
+  T-M7-13. Not retried (Flake rule); the card's "all 8 verdicts" acceptance stays open until a later run, kept XML in the
+  PR evidence.

@@ -11,12 +11,14 @@ import io.github.h7kz.proofstone.api.Topology;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
+import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import io.github.h7kz.proofstone.core.host.LeakDetector;
 import io.github.h7kz.proofstone.core.host.PaperHostOptions;
+import io.github.h7kz.proofstone.core.host.TopologyFault;
 import io.github.h7kz.proofstone.core.host.TopologyHost;
 import io.github.h7kz.proofstone.core.verdict.Attempt;
 import io.github.h7kz.proofstone.core.verdict.CellResult;
@@ -229,6 +231,9 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
             JoinTimeoutException described = topology.describe(e, marks, lobby);
             joinStall = described.getMessage();
             throw described;
+        } catch (ClientDriverException e) {
+            // A refusal (a kick) is not a timeout: it names the hop and the tails too, so a misconfigured hop reads as such.
+            throw topology.describeKick(e, name, marks, lobby);
         }
     }
 
@@ -471,7 +476,12 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
         }
         PaperHostOptions options = PaperHostOptions.of(Path.of(jar), true)
                 .withArtefacts(Path.of("").toAbsolutePath(), plugins);
-        return new TopologyResource(TopologyHost.start(cell, name -> options, Path.of(proxyJar)));
+        // Test-only (T-M7-13): a deliberately broken topology, so the conformance must come back red. Loud on stderr.
+        TopologyFault fault = TopologyFault.fromSystemProperty();
+        if (fault != TopologyFault.NONE) {
+            System.err.println("PROOFSTONE TOPOLOGY FAULT injected on " + cell.identity() + ": " + fault.value());
+        }
+        return new TopologyResource(TopologyHost.start(cell, name -> options, Path.of(proxyJar), fault));
     }
 
     private static String property(String name, String what) {

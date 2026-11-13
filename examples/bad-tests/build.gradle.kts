@@ -103,7 +103,10 @@ tasks.test {
     // line (self-tests sections 2, 3 and 4). The cell selector and scope come from badTestSetup, as for every run.
     // injectConformanceFault is forwarded too, so the rerun.txt of an INVALID bundle reproduces from the command line.
     forwardCommandLineProperties(
-        listOf("proofstone.controlRun", "proofstone.repeat", "proofstone.differential", "proofstone.injectConformanceFault"),
+        listOf(
+            "proofstone.controlRun", "proofstone.repeat", "proofstone.differential", "proofstone.injectConformanceFault",
+            "proofstone.injectTopologyFault",
+        ),
     )
     // The differential bad test (T-M4-06) only means something in a differential run, where its reference driver is
     // faulted. A differential run runs only that package (the other bad tests have no cell on the native row), and
@@ -121,7 +124,8 @@ tasks.test {
     // The invalid, leak and expect bad tests (T-M4-07, T-M4-15) fail on purpose in every run, so only metaTest runs them.
     // The requires bad test (T-M5-01) skips on purpose, so only metaTest runs it too.
     if (!explicitTests) {
-        exclude("**/invalid/**", "**/leak/**", "**/expect/**", "**/requires/**")
+        // The topology fault test (T-M7-13) is INVALID by design too, and boots three containers: metaTopology* only.
+        exclude("**/invalid/**", "**/leak/**", "**/expect/**", "**/requires/**", "**/topology/**")
     }
 }
 
@@ -135,6 +139,12 @@ tasks.test {
  */
 data class BadRun(
     val task: String, val include: String, val verdict: String, val switches: Map<String, String>, val pin: String? = null,
+    /** Text the failure must contain (the fault's own reason, its container and hop), so no other red satisfies the run. */
+    val mustContain: List<String> = emptyList(),
+    /** Text the failure must not contain, for example the join timeout that an injected fault must not be mistaken for. */
+    val mustNotContain: List<String> = emptyList(),
+    /** A topology run needs the proxy agent jars in the test JVM (T-M7-13). */
+    val topology: Boolean = false,
 )
 
 val badRuns = listOf(
@@ -156,20 +166,73 @@ val badRuns = listOf(
     BadRun("metaRequires", "**/requires/**", "SKIPPED", emptyMap()),
 )
 
+// T-M7-13: the topology faults, each on its own cell and with the reason it must give. The pins are the topology cells of
+// versions.yml; the plus sign is written as char code 43 because lintVersions reads a literal one in a build file as a
+// dynamic version. Not part of metaTest (it boots a proxy and two backends per run): `metaTopologyTest` runs them.
+val plus = 43.toChar()
+val velocityCell = "velocity@4.3.1${plus}paper@26.3"
+val bungeeCell = "bungeecord@2111${plus}paper@26.3"
+fun topologyFault(task: String, cell: String, fault: String, vararg reason: String) = BadRun(
+    task, "**/topology/**", "INVALID", mapOf("proofstone.injectTopologyFault" to fault), pin = cell,
+    mustContain = listOf("INVALID ") + reason, mustNotContain = listOf("timed out joining"), topology = true,
+)
+
+val topologyRuns = listOf(
+    topologyFault(
+        "metaTopoVelocityWrongSecret", velocityCell, "wrong-secret",
+        "P01 failed", "Unable to verify player details", "hop: proxy to backend lobby", "server-lobby log tail",
+    ),
+    topologyFault(
+        "metaTopoVelocityForwardingOff", velocityCell, "forwarding-off",
+        "P01 failed", "This server requires you to connect with Velocity", "hop: proxy to backend lobby",
+    ),
+    topologyFault(
+        "metaTopoVelocityBackendForwardingOff", velocityCell, "backend-forwarding-off",
+        "P01 failed", "Your server did not send a forwarding request to the proxy", "hop: proxy to backend lobby",
+        "server-lobby log tail",
+    ),
+    topologyFault(
+        "metaTopoVelocityUnreachable", velocityCell, "unreachable-backend",
+        "T00 proxy lists every backend online failed", "backend survival is offline at the proxy",
+        "container server-survival", "hop: proxy to backend survival",
+    ),
+    topologyFault(
+        "metaTopoBungeeForwardingOff", bungeeCell, "forwarding-off",
+        "P01 failed", "If you wish to use IP forwarding", "hop: proxy to backend lobby",
+    ),
+    topologyFault(
+        "metaTopoBungeeBackendForwardingOff", bungeeCell, "backend-forwarding-off",
+        "P01 failed", "Unknown data in login hostname", "hop: proxy to backend lobby", "server-lobby log tail",
+    ),
+    topologyFault(
+        "metaTopoBungeeUnreachable", bungeeCell, "unreachable-backend",
+        "T00 proxy lists every backend online failed", "backend survival is offline at the proxy",
+        "container server-survival", "hop: proxy to backend survival",
+    ),
+)
+val allRuns = badRuns + topologyRuns
+
 // The task's own JUnit XML directory, and the expectation, as plain values: the metaTest action must not capture the
 // script's objects, because the configuration cache cannot store them.
-val badRunDirs: Map<String, File> = badRuns.associate { run ->
+val badRunDirs: Map<String, File> = allRuns.associate { run ->
     run.task to layout.buildDirectory.dir("test-results/${run.task}").get().asFile
 }
-val badRunExpectations: List<Pair<String, String>> = badRuns.map { run -> run.task to run.verdict }
 
-badRuns.forEach { run ->
+allRuns.forEach { run ->
     tasks.register<Test>(run.task) {
         badTestSetup(run.pin)
         group = "verification"
         description = "Runs the bad test that must produce ${run.verdict}. Part of metaTest; not a user suite."
         include(run.include)
         run.switches.forEach { (name, value) -> systemProperty(name, value) }
+        if (run.topology) {
+            // The proxy agents are built, never committed (AGENTS.md section 3); the host finds them by these properties.
+            dependsOn(":platforms:velocity:agent:shadowJar", ":platforms:bungee:agent:shadowJar")
+            systemProperty("proofstone.velocity.agentJar",
+                rootProject.layout.projectDirectory.file("platforms/velocity/agent/build/libs/agent-all.jar").asFile.absolutePath)
+            systemProperty("proofstone.bungee.agentJar",
+                rootProject.layout.projectDirectory.file("platforms/bungee/agent/build/libs/agent-all.jar").asFile.absolutePath)
+        }
         // A bad test fails on purpose: metaTest judges its failure, so Gradle does not fail the build here.
         ignoreFailures = true
         reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/${run.task}"))
@@ -180,22 +243,25 @@ badRuns.forEach { run ->
     }
 }
 
-val badRunReportDirs: Map<String, File> = badRuns.associate { run ->
+val badRunReportDirs: Map<String, File> = allRuns.associate { run ->
     run.task to layout.buildDirectory.dir("proofstone-meta/${run.task}").get().asFile
 }
 
 // Runs every bad test with its switch and asserts its verdict. It needs Docker and the EULA; run it through
 // scripts/dockerlock.sh (examples/bad-tests/README.md). Per run: nothing skipped or errored, at least one test case, and
 // every failure starts with the expected verdict, with at least one such failure.
-tasks.register("metaTest") {
+fun registerMeta(taskName: String, taskDescription: String, runs: List<BadRun>, mergedName: String) {
+tasks.register(taskName) {
     group = "verification"
-    description = "Asserts that every bad test produces its expected verdict (vacuous, flaky, disagree, invalid, leak)."
-    dependsOn(badRuns.map { it.task })
+    description = taskDescription
+    dependsOn(runs.map { it.task })
     // Local copies, so the action captures only these values and not the script.
-    val expectations = badRunExpectations
+    val expectations = runs.map { run -> run.task to run.verdict }
+    val mustContainByTask = runs.associate { run -> run.task to run.mustContain }
+    val mustNotContainByTask = runs.associate { run -> run.task to run.mustNotContain }
     val dirsByTask = badRunDirs
     val reportDirsByTask = badRunReportDirs
-    val mergedDir = layout.buildDirectory.dir("proofstone").get().asFile
+    val mergedDir = layout.buildDirectory.dir(mergedName).get().asFile
     doLast {
         val problems = mutableListOf<String>()
         val factory = DocumentBuilderFactory.newInstance()
@@ -235,6 +301,20 @@ tasks.register("metaTest") {
                         failure.textContent.contains(Regex("Suppressed: [\\w.$]+: $verdict "))
                     if (named) {
                         verdictFailures++
+                        // The failure must give the reason this run was built for, not any other red (T-M7-13).
+                        val text = failure.getAttribute("message") + "\n" + failure.textContent
+                        for (needle in mustContainByTask.getValue(task)) {
+                            if (!text.contains(needle)) {
+                                problems += "$task: ${case.getAttribute("name")} is $verdict but its message lacks " +
+                                    "\"$needle\": " + message.take(300)
+                            }
+                        }
+                        for (needle in mustNotContainByTask.getValue(task)) {
+                            if (text.contains(needle)) {
+                                problems += "$task: ${case.getAttribute("name")} is $verdict but its message holds " +
+                                    "\"$needle\": a different red from the one this fault must give"
+                            }
+                        }
                     } else if (task == "metaFlaky" && message.contains("random draw")) {
                         // A flake's own runs fail on their draws; the FLAKY verdict is on the last run, and the draws
                         // are the evidence that the runs differ.
@@ -294,11 +374,24 @@ tasks.register("metaTest") {
         val mergedFile = File(mergedDir, "proofstone-report.json")
         mergedFile.parentFile.mkdirs()
         mergedFile.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(merged)) + "\n")
-        println("metaTest: merged report " + mergedFile)
+        println("$taskName: merged report " + mergedFile)
         if (problems.isNotEmpty()) {
-            throw GradleException("metaTest is red:\n" + problems.joinToString("\n"))
+            throw GradleException("$taskName is red:\n" + problems.joinToString("\n"))
         }
-        println("metaTest: every bad test produced its expected verdict (" +
+        println("$taskName: every bad test produced its expected verdict (" +
             expectations.joinToString { it.second } + ")")
     }
 }
+}
+
+registerMeta(
+    "metaTest", "Asserts that every bad test produces its expected verdict (vacuous, flaky, disagree, invalid, leak).",
+    badRuns, "proofstone",
+)
+// T-M7-13: every injected topology fault must be INVALID with its own reason. A fault that passes is red here.
+registerMeta(
+    "metaTopologyTest",
+    "Asserts that every injected topology fault (wrong secret, forwarding off, unreachable backend) is INVALID with " +
+        "its container and hop in the message. Boots a proxy and two backends per run; needs Docker and the EULA.",
+    topologyRuns, "proofstone-topology",
+)

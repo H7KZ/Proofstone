@@ -2,6 +2,7 @@ package io.github.h7kz.proofstone.core.host;
 
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.TopologyCell;
+import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -59,8 +60,14 @@ public final class TopologyHost implements AutoCloseable {
      */
     public static TopologyHost start(TopologyCell cell, Function<String, PaperHostOptions> backendOptions,
             Path proxyAgentJar) {
+        return start(cell, backendOptions, proxyAgentJar, TopologyFault.NONE);
+    }
+
+    /** As {@link #start(TopologyCell, Function, Path)} with an injected misconfiguration (T-M7-13); {@code NONE} is clean. */
+    public static TopologyHost start(TopologyCell cell, Function<String, PaperHostOptions> backendOptions,
+            Path proxyAgentJar, TopologyFault fault) {
         return start(cell.backend(), cell.backendNames(), backendOptions,
-                ProxyHostOptions.of(cell, proxyAgentJar));
+                ProxyHostOptions.of(cell, proxyAgentJar), fault);
     }
 
     /**
@@ -71,18 +78,24 @@ public final class TopologyHost implements AutoCloseable {
      */
     static TopologyHost start(Cell cell, List<String> backendNames,
             Function<String, PaperHostOptions> backendOptions, ProxyHostOptions proxyOptions) {
+        return start(cell, backendNames, backendOptions, proxyOptions, TopologyFault.NONE);
+    }
+
+    static TopologyHost start(Cell cell, List<String> backendNames,
+            Function<String, PaperHostOptions> backendOptions, ProxyHostOptions proxyOptions, TopologyFault fault) {
         TopologyConfig.requireBackendNames(backendNames);
+        fault.requireApplicable(proxyOptions.kind());
         String secret = TopologyConfig.newSecret();
         Network network = Network.newNetwork();
         Map<String, PaperHost> backends = new LinkedHashMap<>();
         List<ProxyHost> proxy = new ArrayList<>();
-        Map<String, String> backendFiles = TopologyConfig.backendFiles(proxyOptions.kind(), secret);
         startInOrder(backendNames, new Launcher() {
             @Override
             public Node backend(String name) {
                 PaperHostOptions options = backendOptions.apply(name);
                 Map<String, String> files = new LinkedHashMap<>(options.files());
-                files.putAll(backendFiles);
+                files.putAll(TopologyConfig.backendFiles(proxyOptions.kind(), secret, fault,
+                        name.equals(backendNames.get(0))));
                 PaperHost host = PaperHost.start(cell,
                         options.withNetwork(network, TopologyConfig.alias(name)).withFiles(files));
                 try {
@@ -99,7 +112,7 @@ public final class TopologyHost implements AutoCloseable {
             @Override
             public Node proxy() {
                 ProxyHost host = ProxyHost.start(proxyOptions, network,
-                        TopologyConfig.proxyFiles(proxyOptions.kind(), backendNames, secret));
+                        TopologyConfig.proxyFiles(proxyOptions.kind(), backendNames, secret, fault));
                 proxy.add(host);
                 return new Node(PROXY_ALIAS, host, host::logTail);
             }
@@ -238,6 +251,26 @@ public final class TopologyHost implements AutoCloseable {
         Map<String, String> tails = new LinkedHashMap<>();
         backends.forEach((name, host) -> tails.put(name, host.logTail()));
         return describe(timeout, hop(timeout.player(), marks, target), proxy.logTail(), tails, secret);
+    }
+
+    /**
+     * A join that the proxy or a backend refused (a kick, not a timeout) with the topology's side added: the hop and the
+     * proxy and backend log tails (T-M7-13). Marks come from {@link #mark()}, taken before the join. Evidence of where the
+     * join stopped, never a reason why; the driver's own text, with the kick reason, stays first.
+     */
+    public ClientDriverException describeKick(ClientDriverException kicked, String player, JoinMarks marks, String target) {
+        Map<String, String> tails = new LinkedHashMap<>();
+        backends.forEach((name, host) -> tails.put(name, host.logTail()));
+        return describeKick(kicked, hop(player, marks, target), proxy.logTail(), tails, secret);
+    }
+
+    static ClientDriverException describeKick(ClientDriverException kicked, JoinHop hop, String proxyTail,
+            Map<String, String> backendTails, String secret) {
+        StringBuilder suffix = new StringBuilder("; hop: ").append(hop.name()).append(" (").append(hop.evidence())
+                .append(")\n--- proxy log tail ---\n").append(proxyTail);
+        backendTails.forEach((name, tail) -> suffix.append("\n--- ").append(TopologyConfig.alias(name))
+                .append(" log tail ---\n").append(tail));
+        return new ClientDriverException(redact(kicked.getMessage() + suffix, secret), kicked);
     }
 
     static JoinTimeoutException describe(JoinTimeoutException timeout, JoinHop hop, String proxyTail,
