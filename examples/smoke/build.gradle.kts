@@ -39,10 +39,39 @@ val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
     into(fixturePlugins)
 }
 
+val velocityAgentJar = rootProject.layout.projectDirectory.file("platforms/velocity/agent/build/libs/agent-all.jar")
+val bungeeAgentJar = rootProject.layout.projectDirectory.file("platforms/bungee/agent/build/libs/agent-all.jar")
+
+// The topology example (T-M7-14) boots a proxy and two backends, so it has its own task and `test` leaves it out.
+// Run it on one cell per invocation: -Dproofstone.cells=velocity@4.3.1+paper@26.3 (README).
+tasks.register<Test>("topologyExample") {
+    group = "verification"
+    description = "Runs the topology example on one topology cell (-Dproofstone.cells). Needs Docker and the EULA."
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("*.topology.*")
+    }
+    dependsOn("testClasses", ":platforms:bukkit:agent:shadowJar", ":platforms:velocity:agent:shadowJar",
+        ":platforms:bungee:agent:shadowJar")
+    systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
+    systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
+    systemProperty("proofstone.velocity.agentJar", velocityAgentJar.asFile.absolutePath)
+    systemProperty("proofstone.bungee.agentJar", bungeeAgentJar.asFile.absolutePath)
+    providers.systemProperty("proofstone.cells").orNull?.let { systemProperty("proofstone.cells", it) }
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+}
+
 tasks.test {
     dependsOn(copyFixturePlugin)
     // The nested scenarios fail on purpose. Only ErrorLogFailsTheTestE2E runs them, through the JUnit launcher.
     exclude("**/nested/**")
+    exclude("**/topology/**")
     // The agent jar is built, never committed (AGENTS.md §3).
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)

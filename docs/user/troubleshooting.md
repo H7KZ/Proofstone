@@ -72,6 +72,24 @@ Every test on one cell gets one verdict. Only `PASS` and a `SKIPPED` with an all
   Run the same test alone on the same cell. A pass after a timeout is a flake. Report it with the bundle. Do not add a
   sleep or a retry.
 
+## Topology join or switch timeout names a hop
+
+- **Seen:** on a topology cell the join or `transferTo` timeout message adds `; hop: <hop> (<evidence>); stalled stage:
+  <STAGE>` and the proxy and each backend log tail. A switch timeout reads `timed out joining ... during a server switch after
+  PT..; stalled at <STAGE>`. The hop is one of:
+  - `client to proxy`: no proxy log line since the join began names the player.
+  - `proxy to backend <name>`: the proxy named the player, but that backend logged no `logged in` line for it. A switch can
+    only stop here (the client to proxy hop was up before it).
+  - `after both hops (backend <name> logged the player in)`: the backend logged the player in, so look at the stage.
+- **Cause:** not known. The hop is evidence of where it stopped, never why. The timeout is unchanged and nothing retries.
+- **What to do:** open the bundle `build/proofstone/<identity>/<Test>.<method>/`: `proxy/` and `server-<name>/` each hold a
+  log. Read the proxy log and the named backend's log around the player's name. Keep the XML and bundle before the next run.
+  Do not raise a timeout or add a retry. Report it with the hop and stage.
+- **Conformance red:** a P01 to P05 failure makes every test on the cell `INVALID`; the message names the container and the hop
+  (for example `hop: proxy to backend survival`). Fix the topology, not your test.
+- **Not observed yet:** no topology join or switch timeout was seen in the M7 runs recorded in `docs/plan/ROADMAP.md`, so there
+  is no rate for it. See [topologies](topologies.md).
+
 ## Known intermittent flakes
 
 These were seen on real servers and are **open**. None is fixed.
