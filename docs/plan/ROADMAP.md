@@ -660,6 +660,9 @@ timeout, the stalled stage and hop.
   and a `WARN` from authlib, a `sessionserver.mojang.com` profile lookup answered `HTTP 429` during
   `ServerLoginPacketListenerImpl.callPlayerPreLoginEvents`. A Paper backend behind BungeeCord legacy forwarding completes
   the forwarded profile online at each login, so the run depends on Mojang's session server and its rate limit. The log
-  guard did its job; no allowlist was added and nothing was retried. Open: decide between a backend setting that stops
-  the lookup, an allowlist entry with this reason, or accepting the network dependency (BungeeCord platform doc, Gotchas).
-  Not seen on Velocity (modern forwarding carries the profile). Evidence kept locally (XML, bundle with a log per container).
+  guard did its job; no allowlist was added and nothing was retried. Evidence kept locally (XML, bundle with a log per
+  container). **Decision (maintainer, delegated): no allowlist, no Mojang dependency.** Cause: Paper's
+  `proxies.bungee-cord.online-mode` defaults to true, so every login fetched profile properties from Mojang (also on the
+  green runs, silently). Fix: BungeeCord backends get `proxies.bungee-cord.online-mode: false`, and `TopologyHost` checks the
+  written config on every backend (Velocity backends already had it off). The run 2 red stays counted as a red; the
+  BungeeCord acceptance is judged on three fresh invocations after the fix (PR #108).

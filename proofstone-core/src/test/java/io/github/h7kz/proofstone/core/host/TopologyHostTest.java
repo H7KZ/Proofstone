@@ -204,4 +204,32 @@ class TopologyHostTest {
         assertThat(described.stage()).isEqualTo("CONFIGURATION_STALLED");
         assertThat(described.player()).isEqualTo("T1");
     }
+
+    private static final String WRITTEN = """
+            _version: 31
+            proxies:
+              bungee-cord:
+                online-mode: BUNGEE
+              proxy-protocol: false
+              velocity:
+                enabled: true
+                online-mode: VELOCITY
+                secret: s
+            unsupported-settings:
+              online-mode: false
+            """;
+
+    @Test
+    void theProfileLookupGuardReadsTheProxySectionOfTheWrittenPaperConfig() {
+        String bungeeOff = WRITTEN.replace("BUNGEE", "false").replace("VELOCITY", "true");
+        String velocityOff = WRITTEN.replace("BUNGEE", "true").replace("VELOCITY", "false");
+
+        assertThat(TopologyHost.proxyOnlineModeOff(bungeeOff, ProxyKind.BUNGEECORD)).isTrue();
+        assertThat(TopologyHost.proxyOnlineModeOff(bungeeOff, ProxyKind.VELOCITY)).isFalse();
+        assertThat(TopologyHost.proxyOnlineModeOff(velocityOff, ProxyKind.VELOCITY)).isTrue();
+        assertThat(TopologyHost.proxyOnlineModeOff(velocityOff, ProxyKind.BUNGEECORD)).isFalse();
+        // Paper's default (no section written) is online-mode true: the lookup would run, so the guard refuses it.
+        assertThat(TopologyHost.proxyOnlineModeOff("proxies:\n  proxy-protocol: false\n", ProxyKind.BUNGEECORD))
+                .isFalse();
+    }
 }

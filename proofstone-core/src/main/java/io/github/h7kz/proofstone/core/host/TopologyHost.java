@@ -87,6 +87,7 @@ public final class TopologyHost implements AutoCloseable {
                         options.withNetwork(network, TopologyConfig.alias(name)).withFiles(files));
                 try {
                     requireOfflineMode(name, host);
+                    requireNoProfileLookup(name, host, proxyOptions.kind());
                 } catch (RuntimeException e) {
                     host.close();
                     throw e;
@@ -113,6 +114,39 @@ public final class TopologyHost implements AutoCloseable {
             throw new PaperHostException("backend " + name + " does not run with online-mode=false; "
                     + "forwarding needs the backend offline (docs/platforms/velocity.md)");
         }
+    }
+
+    /**
+     * The backend must not fetch profiles from Mojang at login (T-M7-10 finding, bungeecord.md Gotchas): Paper does when
+     * its proxy online-mode for the active forwarding is true. Read from the config Paper wrote after start, so a copied
+     * file that Paper ignored is an error, never a silent network dependency.
+     */
+    static void requireNoProfileLookup(String name, PaperHost host, ProxyKind kind) {
+        String config = host.exec("cat", "/data/config/paper-global.yml");
+        if (!proxyOnlineModeOff(config, kind)) {
+            throw new PaperHostException("backend " + name + " runs with proxies." + section(kind) + ".online-mode not "
+                    + "false in paper-global.yml; Paper would fetch every profile from sessionserver.mojang.com");
+        }
+    }
+
+    /** Whether {@code proxies.<velocity|bungee-cord>.online-mode} is {@code false} in a written paper-global.yml. */
+    static boolean proxyOnlineModeOff(String paperGlobal, ProxyKind kind) {
+        // Paper writes two-space YAML: proxies: / <2 spaces>section: / <4 spaces>online-mode: false.
+        String block = null;
+        for (String line : paperGlobal.lines().toList()) {
+            if (!line.startsWith(" ")) {
+                block = line.equals("proxies:") ? "proxies" : null;
+            } else if (block != null && !line.startsWith("    ")) {
+                block = line.equals("  " + section(kind) + ":") ? "section" : "proxies";
+            } else if ("section".equals(block) && line.equals("    online-mode: false")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String section(ProxyKind kind) {
+        return kind == ProxyKind.VELOCITY ? "velocity" : "bungee-cord";
     }
 
     /**
