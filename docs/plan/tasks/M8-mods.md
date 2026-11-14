@@ -255,9 +255,9 @@ topology paths unchanged.
 - Declare the agent as required on the client side. Register commands or cancel events.
 
 **Acceptance.**
-- [ ] `./gradlew :platforms:neoforge:agent:test` passes, golden files replayed.
-- [ ] The real-server integration test passes on the NeoForge row, three invocations (Flake rule).
-- [ ] The observe-only test exists and passes. Module README and platform doc updated.
+- [x] `./gradlew :platforms:neoforge:agent:test` passes, golden files replayed.
+- [x] The real-server integration test passes on the NeoForge row, three invocations (Flake rule).
+- [x] The observe-only test exists and passes. Module README and platform doc updated.
 
 **Verify.**
 `./gradlew :platforms:neoforge:agent:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:neoforge:agent:integrationTest --no-parallel --max-workers=1`

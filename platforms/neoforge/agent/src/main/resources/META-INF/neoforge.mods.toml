@@ -1,0 +1,11 @@
+# Proofstone agent for NeoForge (T-M8-06). Server side only: no dependency entry (a side there is how a mod asks for a
+# client counterpart), no mixin, no access transformer. Installed by the harness, never by users.
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "Apache-2.0"
+
+[[mods]]
+modId = "proofstone_agent"
+version = "0.1.0"
+displayName = "Proofstone Agent"
+description = "Test harness agent for Proofstone (observe only). Installed by the harness, never by users."

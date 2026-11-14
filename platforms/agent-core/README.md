@@ -2,7 +2,7 @@
 
 ## Purpose
 The part of an in-server agent that does not touch the game: the wire envelope, bearer auth, the HTTP server with its
-routes, and the log buffer. The Bukkit, Velocity, BungeeCord and Fabric agents use it (T-M7-04, T-M7-05, T-M8-05,
+routes, and the log buffer. The Bukkit, Velocity, BungeeCord, Fabric and NeoForge agents use it (T-M7-04, T-M7-05, T-M8-05, T-M8-06,
 [ADR-0016](../../docs/adr/0016-topology-cells.md)). Spec:
 [agent protocol](../../docs/specs/agent-protocol.md) §1, §5.
 

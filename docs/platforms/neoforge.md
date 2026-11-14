@@ -1,8 +1,9 @@
 # NeoForge
 
-Status: **spike** (T-M8-01, 2026-11-14). No pin is in `versions.yml` yet (ADR-0017, T-M8-03/04 decide). Every fact below
-comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/mod-spike.sh` (joins by
-`scripts/spike/ModJoin.java` on the real `mcpl` driver), unless it says otherwise. Run outputs were kept under
+Status: **spike** (T-M8-01, 2026-11-14); row `neoforge@26.3` in `versions.yml` (T-M8-04); agent built (T-M8-06, "The
+agent" below). Every spike fact below comes from a local run under `scripts/dockerlock.sh` with
+`scripts/spike/mod-spike.sh` (joins by `scripts/spike/ModJoin.java` on the real `mcpl` driver), unless it says otherwise.
+Run outputs were kept under
 `build/spike/{A,B,D,E}/` (not committed). See [platforms.md](../platforms.md) and [fabric.md](fabric.md).
 
 ## Host
@@ -84,6 +85,32 @@ in with a server-only mod and with one added item; whether content is testable t
 - **Configuration phase:** a mod that registers no payload adds nothing the client must answer; the server's own
   configuration ping is the only extra the client must handle. T-M8-06 must keep the agent payload-free.
 
+### The agent (T-M8-06, `platforms/neoforge/agent`)
+From `NeoForgeAgentIT` runs on the neoforge@26.3 row (2026-11-14, `scripts/dockerlock.sh`; the PR lists each run):
+- **Build:** plain `javac` on a Java 25 toolchain, `--release 25`, against the vanilla 26.3 server jar (the Fabric agent's
+  pin) and NeoForge `26.3.0.103` `universal`, FancyModLoader `loader` 12.0.12, `bus` 8.0.5, `mergetool` 2.0.7 `api` (the
+  `Dist` enum) and `maven-artifact` 3.10.0 (the type of `IModInfo.getVersion()`), each checked by its catalog sha256.
+  **ModDevGradle is not used:** its NeoForm pipeline fetches the game and its libraries at build time outside the catalog,
+  each of which would need its own sha256 pin. Not run. ADR-0017 section 5 allows the `javac` fallback.
+- **Mod:** `@Mod(value = "proofstone_agent", dist = Dist.DEDICATED_SERVER)` (a NeoForge mod id allows no `-`), one
+  `[[mods]]` entry and no `[[dependencies]]`. FML listed it as `Proofstone Agent 0.1.0 (proofstone_agent)` from
+  `jar(mods/proofstone-agent.jar)`.
+- **Configuration phase:** the agent registers no payload, no channel and nothing on the mod bus, so it asks nothing of the
+  client. In each counted run the `mcpl` driver (a vanilla 777 client, no mod) completed configuration and logged in
+  (`Alex ... logged in`, 1 of 1 per run, 3 of 3 in all) with the agent loaded, and `/v1/mods` listed it at that time.
+- **Ready:** the HTTP server starts in `ServerStartedEvent` (game bus, `LOWEST`), so `health` answers once the server logged
+  `Done (`. Each counted run was a cold start (`Running NeoForge 26.3.0.103 installer`), about 17 s from the first image
+  log line to `Done`; the test class took 21.0 to 21.3 s (XML `time`). ERROR lines in each run were the two known ones
+  (`No key layers in MapLike[{}]`, `Appender DebugFile`).
+- **Server thread:** the login probe on `PlayerEvent$PlayerLoggedInEvent` recorded thread `Server thread`; every game
+  endpoint runs there through `MinecraftServer.execute`.
+- **Events:** a probe names a concrete NeoForge event class (binary name, `$` for nested). It listens at `LOWEST` with
+  cancelled events included, and records the zero-arg `get*` getters by name, as the Bukkit agent does:
+  `getEntity` of the login event is `{name: "Alex"}`. NeoForge's bus has no MONITOR priority: a listener another mod adds
+  at `LOWEST` after the probe runs after it. `DELETE` unregisters the probe's listener.
+- **`/v1/mods`** lists the mods whose jar is in `/data/mods`: only `proofstone_agent` on the row. `minecraft` and
+  `neoforge` are FML mods too, loaded from the libraries, and are left out, as Fabric leaves out its loader.
+
 ## Capabilities
 Observed in the spike, not yet tokens:
 - **Data packs (vanilla):** the same pack as on Fabric loaded (`Found new data pack file/spike-datapack.zip, loading it
@@ -92,6 +119,13 @@ Observed in the spike, not yet tokens:
 - **Resource packs:** not run on NeoForge (run on Fabric and the vanilla path; see [fabric.md](fabric.md)).
 
 ## Gotchas
+- **FML refuses a mod jar whose `META-INF/services` file names a class it does not hold** (T-M8-06, first dev run): FML
+  reads every mod jar as an automatic module, and the shaded agent kept Jackson's `META-INF/services/com.fasterxml.jackson.core.JsonFactory`
+  after relocating the class. The boot failed before any mod loaded: `Failed to start FML:
+  java.lang.module.InvalidModuleDescriptorException: Service provider file com.fasterxml.jackson.core.JsonFactory contains
+  service that is not in this Jar file`. The test then waited the full 5 min boot timeout, because waiting for `Done (`
+  does not notice the exit. Fix: `mergeServiceFiles()` in the shadow jar relocates the files with the classes. Fabric's
+  loader does not check this.
 - **A configuration ping must be answered** (`ClientboundPingPacket(id=0)`), as on Fabric with Fabric API.
 - **Boot ERROR lines on every run:** `No key layers in MapLike[{}]` (flat world, as on Paper and Fabric) and
   `Server thread ERROR An exception occurred processing Appender DebugFile` with `NoClassDefFoundError: Could not
@@ -99,7 +133,8 @@ Observed in the spike, not yet tokens:
   transport on Linux). A log-guard list for NeoForge must account for both, each with a reason (T-M8-07). With the
   network disconnected, log4j adds `main ERROR Could not determine local host name` three times.
 - **The agent's HTTP threads must be daemon threads:** on Fabric a mod that opened its port and then failed kept the
-  JVM alive after `Failed to start the minecraft server` ([fabric.md](fabric.md), Agent notes). Not reproduced on NeoForge.
+  JVM alive after `Failed to start the minecraft server` ([fabric.md](fabric.md), Agent notes). Not reproduced on NeoForge;
+  the agent's threads are daemons (`NeoForgeAgentStartTest`).
 - **`System.out` from a mod is not routed through log4j** on NeoForge (no timestamp or thread prefix in the container
   log), unlike Fabric's `[STDOUT]` wrapping. Log-line ordering against `Done` is therefore not reliable for stdout.
 - Java 25 prints `WARNING: A restricted method in java.lang.System has been called` (JNA) and `sun.misc.Unsafe` warnings at
