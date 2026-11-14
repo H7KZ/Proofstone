@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "proofstone_example",
+  "version": "0.0.1",
+  "name": "Proofstone example mod",
+  "description": "T-M8-07 test fixture: the mod under test of the loader host's real-server test. Registers nothing.",
+  "license": "Apache-2.0",
+  "environment": "server",
+  "entrypoints": { "server": ["io.github.h7kz.proofstone.example.fabric.ExampleFabricMod"] },
+  "depends": { "fabricloader": ">=0.20.1", "minecraft": "26.3", "java": ">=25" }
+}

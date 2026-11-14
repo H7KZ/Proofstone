@@ -89,6 +89,33 @@ class ErrorLogGuardTest {
     }
 
     @Test
+    void theLoaderPacksListOnlyTheirKnownBootLinesEachWithAReason() {
+        assertThat(Patterns.of("fabric")).isSameAs(Patterns.FABRIC);
+        assertThat(Patterns.of("neoforge")).isSameAs(Patterns.NEOFORGE);
+        assertThat(Patterns.FABRIC.allowlist().keySet()).extracting(Pattern::pattern)
+                .containsExactly("No key layers in MapLike");
+        assertThat(Patterns.NEOFORGE.allowlist().keySet()).extracting(Pattern::pattern)
+                .containsExactlyInAnyOrder("No key layers in MapLike", "An exception occurred processing Appender DebugFile");
+        assertThat(Patterns.FABRIC.allowlist().values()).noneMatch(String::isBlank);
+        assertThat(Patterns.NEOFORGE.allowlist().values()).noneMatch(String::isBlank);
+
+        assertThat(ErrorLogGuard.describe(List.of(record("ERROR", "No key layers in MapLike[{}]", null)),
+                Patterns.FABRIC)).isNull();
+        assertThat(ErrorLogGuard.describe(List.of(record("ERROR", "An exception occurred processing Appender DebugFile", null),
+                record("ERROR", "No key layers in MapLike[{}]", null)), Patterns.NEOFORGE)).isNull();
+    }
+
+    @Test
+    void aLoaderPackDoesNotInheritAnotherLoadersNoiseOrPapersMoveWarning() {
+        assertThat(ErrorLogGuard.describe(List.of(record("ERROR", "An exception occurred processing Appender DebugFile", null)),
+                Patterns.FABRIC)).contains("DebugFile");
+        assertThat(ErrorLogGuard.describe(List.of(record("WARN", "T9513c1c1 moved too quickly! 0.5,-60.0,-3.5", null)),
+                Patterns.FABRIC)).contains("moved too quickly");
+        assertThat(ErrorLogGuard.describe(List.of(record("ERROR", "boom in a mod", null)), Patterns.NEOFORGE))
+                .contains("boom in a mod");
+    }
+
+    @Test
     void aPackWithoutItsOwnListFailsLoudly() {
         assertThat(Patterns.of("paper")).isSameAs(PAPER);
         assertThat(Patterns.of("folia")).isSameAs(Patterns.FOLIA);

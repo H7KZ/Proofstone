@@ -283,9 +283,9 @@ topology paths unchanged.
   record it.
 
 **Acceptance.**
-- [ ] Unit tests for the rendered environment, pins and copy list.
-- [ ] A real-server test boots each loader row with the agent and one example mod and reads `health`, three invocations each.
-- [ ] No container of ours runs after any run.
+- [x] Unit tests for the rendered environment, pins and copy list.
+- [x] A real-server test boots each loader row with the agent and one example mod and reads `health`, three invocations each.
+- [x] No container of ours runs after any run.
 
 **Verify.**
 `./gradlew :proofstone-core:test`, then the card's real-server task under `scripts/dockerlock.sh`.

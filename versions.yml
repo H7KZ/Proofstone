@@ -139,10 +139,9 @@ proxies:
 
 # Schema 4 (ADR-0017): loader rows. A loader cell is a single server on one row, identity <loader>@<mc> (fabric@26.3). Hand-pinned
 # from the T-M8-01 spike runs (docs/platforms/fabric.md, neoforge.md); `updateVersions` does not touch this key. Both rows are
-# experimental: promotion is a separate decision through ADR-0015. The two TODO values below have no run behind them yet and stay
-# TODO, never guessed: the cell then fails loudly at that check (ADR-0017 section 3). `vanilla-sha256` comes from T-M8-07's first
-# install run (the spike recorded only the vanilla jar's sha1 and a truncated sha256); the Fabric API sha256 from the download
-# T-M8-07 makes (the spike did not record it).
+# experimental: promotion is a separate decision through ADR-0015. `vanilla-sha256` is the sha256 of the vanilla 26.3 server jar
+# the install fetches, read from a real install run (T-M8-07) and equal, by sha1 `33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c`, to the
+# value Mojang's manifest publishes; the host checks it in the container. A TODO would make the cell fail loudly (ADR-0017 section 3).
 loaders:
   fabric:
     host:
@@ -155,7 +154,7 @@ loaders:
         loader: "0.20.1"
         installer: "1.1.2"
         sha256: "70446947655b4f8f286aba896aa4c19a255e8ca8a730636ef2a6017ae4415d95"
-        vanilla-sha256: "TODO"
+        vanilla-sha256: "d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64"
         fabric-api: { version: "0.166.2+26.3", sha256: "e8acacc7836f39237c83c2a664b039647ee36f93822797acc40cda44666002ea" }
         protocol: 777
         status: experimental
@@ -172,7 +171,7 @@ loaders:
       - mc: "26.3"
         loader: "26.3.0.103"
         sha256: "d8a92e17cf12b5739a2518b11afd47eeec0e636a6e63f94b6400c5dbd3603e48"
-        vanilla-sha256: "TODO"
+        vanilla-sha256: "d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64"
         protocol: 777
         status: experimental
         native-drivers: [mcpl]
