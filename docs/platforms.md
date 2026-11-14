@@ -33,8 +33,8 @@ Each platform is at one of these status levels:
 
 | Platform | Agent | Host | Milestone | Notes |
 |---|---|---|---|---|
-| Fabric (server-side mods) | Fabric mod agent, multi-version via Stonecutter (to verify) | itzg `TYPE=FABRIC` (verify) | M8 | Agent per MC version, because mods compile against mappings. 26.1+ ships unobfuscated, which makes this easier. |
-| NeoForge | NeoForge mod agent | itzg (verify) | M8 | Same approach as Fabric. |
+| Fabric (server-side mods) | Fabric mod agent, newest native row only (Stonecutter out for M8, T-M8-01) | itzg `TYPE=FABRIC` with a pinned server launcher (`FABRIC_LAUNCHER`), `java25` digest (confirmed, T-M8-01) | M8 | **Spike** ([fabric.md](platforms/fabric.md)): Fabric 0.20.1 on 26.3 takes the 777 client natively with no mod, Fabric API and a server-only mod. 26.x is unobfuscated: no mappings needed. |
+| NeoForge | NeoForge mod agent | itzg `TYPE=NEOFORGE` with a pinned installer (`NEOFORGE_INSTALLER`), `java25` digest (confirmed, T-M8-01) | M8 | **Spike** ([neoforge.md](platforms/neoforge.md)): NeoForge 26.3.0.103 takes the 777 client natively with no mod and a server-only mod. |
 | Forge (legacy) | Forge mod agent | itzg | M10 | Older versions only. |
 | Quilt | Fabric agent (compatible) | — | M10 | — |
 | Sponge | Sponge plugin agent | SpongeVanilla | M10 | — |

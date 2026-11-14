@@ -1,0 +1,10 @@
+# SPIKE (T-M8-01): server-side only mod, no client counterpart.
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "Apache-2.0"
+
+[[mods]]
+modId = "proofstone_spike"
+version = "0.0.0"
+displayName = "Proofstone spike"
+description = "T-M8-01 spike: opens an HTTP port, server side only."
