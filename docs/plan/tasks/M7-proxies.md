@@ -1,7 +1,8 @@
 # M7: Proxies (Velocity, BungeeCord)
 
-Refined from the M7 epic in [M7-M10-epics.md](M7-M10-epics.md) on 2026-11-09 (after the M6 review addendum). **Not approved yet.**
-No card here is started. The maintainer approves the plan, or changes it, before any card is picked up.
+Refined from the M7 epic in [M7-M10-epics.md](M7-M10-epics.md) on 2026-11-09 (after the M6 review addendum). Approved by the maintainer
+2026-11-09; every card merged (PRs #98 to #112) and reviewed in T-M7-99 (ROADMAP "M7 review", 2026-11-14). Boxes ticked in
+T-M7-99 cite the PR or the review run behind them; a box is ticked only with evidence.
 
 **Exit criterion.** All of the following must be true, each shown by a real-server run with the XML read:
 - A Velocity topology (one proxy, two Paper backends with the Bukkit agent) passes the topology conformance scenarios P01 to P05
@@ -88,10 +89,12 @@ run one at a time.
 - Claim a combination works because the docs say so. Only a run counts.
 
 **Acceptance.**
-- [ ] Both platform docs state, per proxy: the pinnable jar source, the Java tag, the forwarding recipe for each side, and a verdict on the protocol 777 client with the command output summary.
-- [ ] A client switch between two backends was run on each proxy and its transcript is quoted (the server's own messages, not predicted).
-- [ ] Every join in the spike is counted. Any join timeout is listed with its stage (T-M6-14 message). Evidence: the counts in the PR.
-- [ ] The result says plainly if a proxy cannot accept the 777 client: the card then proposes the bridged option or drops that proxy from the required rows. It does not hide the gap.
+- [x] Both platform docs state, per proxy: the pinnable jar source, the Java tag, the forwarding recipe for each side, and a verdict on the protocol 777 client with the command output summary.
+- [x] A client switch between two backends was run on each proxy and its transcript is quoted (the server's own messages, not predicted).
+- [x] Every join in the spike is counted. Any join timeout is listed with its stage (T-M6-14 message). Evidence: the counts in the PR.
+- [x] The result says plainly if a proxy cannot accept the 777 client: the card then proposes the bridged option or drops that proxy from the required rows. It does not hide the gap.
+
+T-M7-99: ticked from PR #98, ROADMAP "M7 findings" and the platform docs (the spike was not re-run in the review).
 
 **Verify.**
 Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock.sh` and compares.
@@ -118,10 +121,10 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Change code, `versions.yml` data or any schema file. Change the Bukkit agent, or re-decide an accepted ADR (amend by a new ADR only).
 
 **Acceptance.**
-- [ ] ADR-0016 Accepted, listed in `docs/adr/README.md`, with rejected alternatives (for example "one cell per server with a shared network").
-- [ ] The glossary and `docs/specs/versions-yml.md` carry the new terms and the schema 3 additive rule; `./gradlew docsCheck` passes.
-- [ ] The ADR says what happens to the join-flake accounting (per-hop logs, which hop is named).
-- [ ] A decision list for the maintainer is in the PR: Waterfall in or out, host image choice, rows to require.
+- [x] ADR-0016 Accepted, listed in `docs/adr/README.md`, with rejected alternatives (for example "one cell per server with a shared network").
+- [x] The glossary and `docs/specs/versions-yml.md` carry the new terms and the schema 3 additive rule; `./gradlew docsCheck` passes.
+- [x] The ADR says what happens to the join-flake accounting (per-hop logs, which hop is named).
+- [x] A decision list for the maintainer is in the PR: Waterfall in or out, host image choice, rows to require.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
@@ -145,9 +148,11 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Change an existing field, remove one, or reuse a code. Touch the Bukkit agent's behaviour: the Bukkit agent must still reply to the old goldens unchanged.
 
 **Acceptance.**
-- [ ] `./gradlew :proofstone-protocol:test` passes, including a round-trip test for each new schema.
-- [ ] The Bukkit agent's `GoldenContractTest` still passes with no golden edited except additive new files and the version number.
-- [ ] `docs/specs/agent-protocol.md` §2 lists the new endpoints and §4 records the bump.
+- [x] `./gradlew :proofstone-protocol:test` passes, including a round-trip test for each new schema.
+- [x] The Bukkit agent's `GoldenContractTest` still passes with no golden edited except additive new files and the version number.
+- [x] `docs/specs/agent-protocol.md` §2 lists the new endpoints and §4 records the bump.
+
+T-M7-99: ticked; the unit tests ran green in this review's `gates.sh`.
 
 **Verify.**
 `./gradlew :proofstone-protocol:test :platforms:bukkit:agent:test`
@@ -171,10 +176,12 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Change a wire byte, a log line or an endpoint. Add a runtime dependency. Move anything to `proofstone-api`.
 
 **Acceptance.**
-- [ ] `./gradlew :platforms:agent-core:test :platforms:bukkit:agent:test` passes with no test edited except imports.
-- [ ] `AgentContractIT` on `paper@26.3` is green (one invocation, XML read, skipped 0 failures 0 errors 0), plus the flake rule's three invocations.
-- [ ] The Bukkit agent jar's content list is unchanged apart from the extracted package names (PR shows a before and after list).
-- [ ] `docsCheck` passes (module README sections present).
+- [x] `./gradlew :platforms:agent-core:test :platforms:bukkit:agent:test` passes with no test edited except imports.
+- [x] `AgentContractIT` on `paper@26.3` is green (one invocation, XML read, skipped 0 failures 0 errors 0), plus the flake rule's three invocations.
+- [x] The Bukkit agent jar's content list is unchanged apart from the extracted package names (PR shows a before and after list).
+- [x] `docsCheck` passes (module README sections present).
+
+T-M7-99: ticked from PR #101 (3 of 3 `AgentContractIT` green after PR #102; jar list 1275 to 1276 entries, only the `agent/log` move) and PR #102.
 
 **Verify.**
 `./gradlew :platforms:agent-core:test :platforms:bukkit:agent:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:bukkit:agent:integrationTest --no-parallel --max-workers=1`
@@ -200,10 +207,12 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Cancel, modify or delay a proxy event, register commands, change forwarding or touch the player list. Add a runtime dependency beyond the shaded and relocated set.
 
 **Acceptance.**
-- [ ] The golden contract test passes. Evidence: `./gradlew :platforms:velocity:agent:test`.
-- [ ] The real-server integration test passes against Velocity, with the flake rule's three invocations. `players` and `events` are NOT claimed here: they need a backend and are covered by T-M7-11.
-- [ ] A test proves the agent registers no command and no cancelling listener (observe-only rule, AGENTS.md section 3).
-- [ ] The module README and `docs/platforms/velocity.md` Agent notes are updated.
+- [x] The golden contract test passes. Evidence: `./gradlew :platforms:velocity:agent:test`.
+- [x] The real-server integration test passes against Velocity, with the flake rule's three invocations. `players` and `events` are NOT claimed here: they need a backend and are covered by T-M7-11.
+- [x] A test proves the agent registers no command and no cancelling listener (observe-only rule, AGENTS.md section 3).
+- [x] The module README and `docs/platforms/velocity.md` Agent notes are updated.
+
+T-M7-99: ticked from PR #103 (`VelocityAgentIT` 3 of 3, tests=10 each). Not re-run in the review.
 
 **Verify.**
 `./gradlew :platforms:velocity:agent:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:velocity:agent:integrationTest --no-parallel --max-workers=1`
@@ -228,10 +237,12 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Register commands, cancel events, or edit the proxy config at run time. Use Bungee-only API unavailable on the pinned row without a version check.
 
 **Acceptance.**
-- [ ] `./gradlew :platforms:bungee:agent:test` passes, golden files replayed.
-- [ ] The real-server integration test passes on BungeeCord, with the flake rule's three invocations. `players` and `events` are covered by T-M7-11.
-- [ ] The observe-only test exists and passes.
-- [ ] Module README and `docs/platforms/bungeecord.md` Agent notes updated.
+- [x] `./gradlew :platforms:bungee:agent:test` passes, golden files replayed.
+- [x] The real-server integration test passes on BungeeCord, with the flake rule's three invocations. `players` and `events` are covered by T-M7-11.
+- [x] The observe-only test exists and passes.
+- [x] Module README and `docs/platforms/bungeecord.md` Agent notes updated.
+
+T-M7-99: ticked from PR #104 (`BungeeCordAgentIT` 3 of 3, tests=12 each; one earlier red was a wrong expectation, kept). Not re-run in the review.
 
 **Verify.**
 `./gradlew :platforms:bungee:agent:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:bungee:agent:integrationTest --no-parallel --max-workers=1`
@@ -257,11 +268,13 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Touch `ohlidame-*` containers. Add a retry or raise a timeout. Mount anything. Publish a backend port beyond what debug mode already allows.
 
 **Acceptance.**
-- [ ] Unit tests cover: config rendering for each proxy and mode, the secret never reaching a bundle, start order, cleanup on a failed second backend.
-- [ ] A real-server test starts Velocity plus two Paper backends and reads `health` on all three. Same for BungeeCord. Flake rule: three invocations each.
-- [ ] A forced failure (a backend that never becomes ready) removes every container of ours and its INVALID message names the container.
-- [ ] A forced join stall (proxy up, backend stopped) yields a message that names the proxy-to-backend hop.
-- [ ] No container of ours is running after any run (`docker ps` names listed, `ohlidame-*` ignored).
+- [x] Unit tests cover: config rendering for each proxy and mode, the secret never reaching a bundle, start order, cleanup on a failed second backend.
+- [x] A real-server test starts Velocity plus two Paper backends and reads `health` on all three. Same for BungeeCord. Flake rule: three invocations each.
+- [x] A forced failure (a backend that never becomes ready) removes every container of ours and its INVALID message names the container.
+- [x] A forced join stall (proxy up, backend stopped) yields a message that names the proxy-to-backend hop.
+- [x] No container of ours is running after any run (`docker ps` names listed, `ohlidame-*` ignored).
+
+T-M7-99: ticked from PR #105 (3 of 3 per proxy, forced failure, forced stall with the hop named, `docker ps` after every run).
 
 **Verify.**
 `./gradlew :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :proofstone-core:topologyTest --no-parallel --max-workers=1` (the task name is created by this card)
@@ -286,9 +299,11 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Hand-edit a pin without a run behind it. Change how single-server cells select or run. Promote a row to `required` without the evidence.
 
 **Acceptance.**
-- [ ] The planner, selector and matrix unit tests pass, including malformed input (empty backend list, unknown proxy, duplicate server name).
-- [ ] The versions-yml schema check accepts schema 3 and still accepts the existing file (no cell changed). Evidence: `printMatrix --scope=pr` output before and after, identical for the 21 existing cells.
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The planner, selector and matrix unit tests pass, including malformed input (empty backend list, unknown proxy, duplicate server name).
+- [x] The versions-yml schema check accepts schema 3 and still accepts the existing file (no cell changed). Evidence: `printMatrix --scope=pr` output before and after, identical for the 21 existing cells.
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
+
+T-M7-99: ticked from PR #106 (`printMatrix --scope=pr` identical for the 21 cells) and this review's `gates.sh`.
 
 **Verify.**
 `./gradlew :proofstone-core:test :proofstone-core:printMatrix`, then `bash scripts/gates.sh --max-workers=1`
@@ -341,10 +356,12 @@ Reviewer re-runs the documented commands for one proxy under `scripts/dockerlock
 - Change `Client`, `Agent` or `Clients` signatures. Let `@Topology` run a test on a single-server cell. Report a test as passed when `transferTo` raced the agent view: use `await`.
 
 **Acceptance.**
-- [ ] A unit test and a real-server test show `Topology.server("lobby")` and `transferTo` work on Velocity and BungeeCord, with the flake rule's three invocations each.
-- [ ] A test on a single-server cell with `@Topology` is not run silently: it is SKIPPED with a reason (or INVALID if misdeclared), never a pass. Evidence: XML.
-- [ ] A binary and source compatibility check against the 0.1 API (the existing check, or `javap` diff listed in the PR) shows additions only.
-- [ ] A bundle written by a failing topology test lists a log per container and names no secret.
+- [x] A unit test and a real-server test show `Topology.server("lobby")` and `transferTo` work on Velocity and BungeeCord, with the flake rule's three invocations each.
+- [x] A test on a single-server cell with `@Topology` is not run silently: it is SKIPPED with a reason (or INVALID if misdeclared), never a pass. Evidence: XML.
+- [x] A binary and source compatibility check against the 0.1 API (the existing check, or `javap` diff listed in the PR) shows additions only.
+- [x] A bundle written by a failing topology test lists a log per container and names no secret.
+
+T-M7-99: ticked from PR #108 (Velocity 3 of 3; BungeeCord 2 of 3 then 3 of 3 after the online-mode fix, the red counted) and this review (`api-baseline.txt` additions only; `TopologySkipsE2E` skipped in `metaRequires`).
 
 **Verify.**
 `./gradlew :proofstone-api:test :proofstone-core:test`, then a topology run as in T-M7-09.
@@ -423,8 +440,10 @@ As T-M7-11.
 
 **Acceptance.**
 - [x] Each injected fault gives a red with the expected verdict type and message; a run without the fault is green. Evidence: XML for both, three invocations of the clean run. (7 fault runs, 6 clean runs, ROADMAP M7 findings.)
-- [ ] The existing `metaTest` set still reports all 8 verdicts as expected. (Open: the one run was red on a Paper download timeout at the two `paper@26.1.2` tasks; 6 of 8 verdicts given. ROADMAP M7 findings.)
+- [x] The existing `metaTest` set still reports all 8 verdicts as expected. (Open: the one run was red on a Paper download timeout at the two `paper@26.1.2` tasks; 6 of 8 verdicts given. ROADMAP M7 findings.)
 - [x] The mutation-check question is recorded in the PR for the maintainer.
+
+T-M7-99: the open metaTest box is ticked on this review's run: all 8 verdicts, both `paper@26.1.2` tasks booted (the T-M7-13 red was a Paper download timeout, environment). `metaTopologyTest` 7 of 7 again.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel --max-workers=1`
@@ -448,9 +467,11 @@ As T-M7-11.
 - Claim a status, a version or a flake rate that was not run.
 
 **Acceptance.**
-- [ ] `bash scripts/gates.sh --max-workers=1` passes (`docsCheck` links, glossary, card format).
-- [ ] The example runs green on one topology cell, three invocations, XML read.
-- [ ] Every claim in the new docs has a run behind it in the PR.
+- [x] `bash scripts/gates.sh --max-workers=1` passes (`docsCheck` links, glossary, card format).
+- [x] The example runs green on one topology cell, three invocations, XML read.
+- [x] Every claim in the new docs has a run behind it in the PR.
+
+T-M7-99: ticked from PR #112 (`:examples:smoke:topologyExample` 3 of 3) and this review's `gates.sh`.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
@@ -476,9 +497,9 @@ As T-M7-11.
 - Start M8, tag, or publish. Round up a partial result.
 
 **Acceptance.**
-- [ ] ROADMAP has an "M7 review" section with the exit criterion re-scored row by row, each with evidence, and a plain verdict.
-- [ ] Topology flake numbers and reasons are stated, including "none observed" only if the run count is shown.
-- [ ] `docs/plan/tasks/M8-mods.md` exists in the standard card format and `docsCheck` passes.
+- [x] ROADMAP has an "M7 review" section with the exit criterion re-scored row by row, each with evidence, and a plain verdict.
+- [x] Topology flake numbers and reasons are stated, including "none observed" only if the run count is shown.
+- [x] `docs/plan/tasks/M8-mods.md` exists in the standard card format and `docsCheck` passes.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`

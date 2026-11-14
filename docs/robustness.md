@@ -173,3 +173,16 @@ to T-M4-15. Cards are not implemented here.
    a decision. Nothing schedules today.
 2. Whether cards 09 to 13 block T-M4-99. They are not in its `depends:`, so the milestone can close without them.
 3. Whether the per-cell conformance (card 10) is worth its cost on every cell. Measure it first.
+
+### Topology review (T-M7-99, 2026-11-14)
+
+Reviewed at `origin/main` 9192c60 by reading the code, plus the T-M7-99 runs (ROADMAP "M7 review"). Only the rows M7 touched.
+
+| # | Status for topologies | What is real | Gap |
+|---|---|---|---|
+| R3 | Built | Both proxy agents observe only: every handler at the last priority (Velocity `PostOrder.LAST`, BungeeCord `EventPriority.HIGHEST`), no command registered, getters read by reflection with no setter call. `ObserveOnlyTest` in each agent checks the command registry, the handler order, an event passed through unchanged, and scans the compiled classes for state-changing API names. Golden contract tests replay every proxy golden. | BungeeCord probes are limited to 11 named event classes (reasoned, `INVALID_REQUEST` for others). Velocity fires no event for `BungeeCord`-channel messages, so P04's proxy-side oracle there is the fixture's reply only (`velocity.md`). |
+| R5 | Partly | Topology joins name the hop and the stalled stage (ADR-0016 section 9). | No topology join timeout in any M7 run, so the per-hop message has only been seen on injected faults (paused backend, unreachable backend). |
+| R6 | Built | The leak detector snapshots every backend before and compares every backend after (`TopologyInvocation`). | The proxy's own state (player list) is checked by the leave await, not by the leak detector. |
+| R9 | Built, with a hole | Log guard per container with its own pack list; the Velocity and BungeeCord lists are empty, so any proxy WARN fails the test. | The guard reads the test window only. Every topology backend logs `ERROR Could not save spigot.yml (Permission denied)` at start, outside the window: unseen by the guard (card T-M8-02). |
+| R10 | Built | Files copied in, never mounted. Proxy image by digest per Java tag, jar sha256 checked in the container. Backend game ports bound to `127.0.0.1` on a free host port (ADR-0016 section 8 exception, `GamePortBindingTest`). | The free port is picked by the harness and released before Docker binds it (a small race, not seen to fail). The loopback binding also applies to bridged single-server cells, which use the same network option. |
+| Secrets | Built | The forwarding secret is generated per cell, copied from memory, redacted from every bundle file and re-scanned after writing (`BundleWriterTest`). No secret, token or key file in the M7 diff. | None found. |

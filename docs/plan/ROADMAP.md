@@ -16,14 +16,14 @@ conformance, golden files and the verdict engine exist.
 | **M4** | Self-verification (exit demonstrated, done, reviewed in T-M4-99; gap cards T-M4-10 to 15 open) | Control run, differential run (mineflayer-ref), flake detector and repro bundles all work. Verdicts `VACUOUS`, `DISAGREE` and `FLAKY` are demonstrated on purpose-built bad tests. | 9 | 4 / 4 / 1 | 2.5 (was 2; more Docker runs and a new Node driver, see the M3 review). Actual: about 15 h wall for PRs #46 to #58 (see the M4 review) |
 | **M5** | Bukkit family complete (exit demonstrated, done, reviewed in T-M5-99) | Folia (regions), Purpur and Spigot (BuildTools cache) pass conformance. Capability model done. Bedrock-prefix simulation works. | 8 | 5 / 3 / 0 | 3 (was 2; no Folia row had booted, see the M3 review). Actual: about 7 h wall for PRs #62 to #69 and about 75 min of Docker runs for the review (see the M5 review) |
 | **M6** | Dogfood and 0.1 release | Disenchantment's full suite runs on Proofstone in its CI. Maven and Gradle example projects work. Published to Maven Central and GHCR. GitHub Action published. Licence decided. Mutation check passes. | 9 | 6 / 2 / 1 | 2 |
-| **M7** | Proxies | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | 15 (refined 2026-11-09, [M7-proxies.md](tasks/M7-proxies.md), awaiting approval) | 1 / 9 / 5 | 3 (was 2; honest range 1.5 to 3, see the card file) |
-| **M8** | Mods and data | Fabric and NeoForge agents, multi-version via Stonecutter, plus data pack and resource-pack tests. | epic | refine first (Sonnet/Opus) | 4 |
+| **M7** | Proxies (exit met locally, reviewed in T-M7-99) | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | 15 ([M7-proxies.md](tasks/M7-proxies.md)) | 1 / 9 / 5 | 3 (was 2; honest range 1.5 to 3). Actual: about 4 days of agent wall clock for PRs #98 to #112 (see the M7 review) |
+| **M8** | Mods and data | Fabric and NeoForge agents, multi-version via Stonecutter, plus data pack and resource-pack tests. | 13 (refined 2026-11-14, [M8-mods.md](tasks/M8-mods.md), awaiting approval) | 1 / 6 / 6 | 4 (range 2 to 5, see the card file) |
 | **M9** | Bedrock | Spike (offline Bedrock through Geyser). Then a Bedrock driver, the Geyser topology and the BDS Script-API agent. | epic | spike = Opus, then refine | 4 |
 | **M10** | Ecosystem | Community pack template, a TS front end (optional), more forks, a docs site, Sponge, PocketMine and others. | epic | refine | ongoing |
 
 **Cards M0–M6:** 66 in total. 40 are Haiku cards (61%), 24 Sonnet and 2 Opus (T-M3-02 moved from Haiku to Sonnet at T-M2-99).
 
-**Total to v0.1 (M0–M6): about 16 focused weeks** (sum of the estimates, M5 run after M4; was 15.5 before the M5 review, see the M5 review). Full ecosystem (M7–M10): about 10+ more weeks.
+**Total to v0.1 (M0–M6): about 16 focused weeks** (sum of the estimates, M5 run after M4; was 15.5 before the M5 review, see the M5 review). Full ecosystem (M7–M10): about 10+ more weeks (M7 done; M8 to M10 about 8+ weeks, see the M7 review).
 These are estimates, and they will be re-estimated at the end of each milestone (card `T-Mx-99`).
 
 ## Milestone rules
@@ -706,3 +706,142 @@ timeout, the stalled stage and hop.
   Paper, the container exited, `PaperHostException ... timed out waiting for "Done ("` after 180 s. No single-server code changed in
   T-M7-13. Not retried (Flake rule); the card's "all 8 verdicts" acceptance stays open until a later run, kept XML in the
   PR evidence.
+
+## M7 review (T-M7-99)
+
+Date 2026-11-14. Ran on `card/T-M7-99-review` from origin/main `9192c60` (PRs #98 to #112 merged). Local runs only, Windows 11,
+Docker Desktop 29.9.2, JDK 21 for Gradle, JDK 26 for Maven. One Docker run at a time under `scripts/dockerlock.sh`,
+`--no-parallel --max-workers=1`, EULA in the command environment only. Every XML read; every red kept, none retried. Judged from
+code and XML, not from PR text.
+
+**Verdict: M7 exit criterion MET (local evidence).** Both topologies pass P01 to P05 on `paper@26.3` backends, the topology API
+is additive, misconfigurations are loud reds, and the flake rule's three invocations were met again here (6 of 6). Not met
+elsewhere in this review: the full four-cell `:conformance:smoke` is red on the known `PSConf moved too quickly!` log-guard
+family (3 of 8 tests, folia, purpur and spigot @26.3), a single-server finding older than M7, unexplained. Both topology rows
+stay `experimental` (promotion is a maintainer decision below). Nothing was published or tagged.
+
+### Evidence from this run
+
+| Run | Result |
+|---|---|
+| `bash scripts/gates.sh --max-workers=1` at `9192c60` | `gates: OK`, exit 0 (release-gate-test 9/0, bad-tests-pin-check 0 failed, renovate unchanged) |
+| `:conformance:smoke`, no selector (paper, folia, purpur, spigot @26.3) | **RED**: tests 8, failures 3, errors 0, skipped 0. `c02` failed on folia, purpur and spigot @26.3: `ErrorLogGuard` WARN `PSConf moved too quickly! 0.5,64.0,0.5`. paper@26.3 c01 and c02 green. Not a join timeout. XML kept; the bundles were deleted by the next `:conformance:run` before they were copied (lesson in the M8 prompt) |
+| `:conformance:run -Dproofstone.cells=velocity@4.3.1+paper@26.3`, 3 separate invocations | 3 of 3 green, each tests 2, skipped 0, failures 0, errors 0; T00 and P01 to P05 passed each time; 75 to 78 s each |
+| `:conformance:run -Dproofstone.cells=bungeecord@2111+paper@26.3`, 3 separate invocations | 3 of 3 green, each tests 2, skipped 0, failures 0, errors 0; T00 and P01 to P05 passed each time; 75 to 77 s each |
+| `:examples:bad-tests:metaTest` | BUILD SUCCESSFUL, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED)", 4 m 43 s. The bad tests fail by design; `metaRequires` skips by design |
+| `:examples:bad-tests:metaTopologyTest` (7 faults, one cell each) | BUILD SUCCESSFUL, "every bad test produced its expected verdict": 7 of 7 `INVALID`, each `tests=1 failures=1` by design, 0 `timed out joining`. Velocity: `wrong-secret` (`Unable to verify player details`), `forwarding-off` (`requires you to connect with Velocity`), `backend-forwarding-off` (`did not send a forwarding request`), all `hop: proxy to backend lobby`; `unreachable-backend` (`is offline at the proxy`, `hop: proxy to backend survival`). BungeeCord: `forwarding-off`, `backend-forwarding-off`, `unreachable-backend`, same hops. 7 m 32 s |
+| `:conformance:run -Dproofstone.cells=spigot@26.3` (C04 reproduction attempt) | Green: 12 tests, failures 0, errors 0, 3 reasoned skips (missing `SIMULATED_BEDROCK`, `FOLIA_REGIONS` x2). C03 to C08 passed, C04 included; 0 join timeouts. 5 m 38 s |
+| `bash scripts/release-mutation-check.sh` (no flag), clean tree | **PASS**: head `9192c60`, dirty false, cell paper@26.3, killed 4 of 4, no allowed-missing. Gradle and Maven baselines PASS (each example's e2e suite once, green) |
+| Containers of ours left running after the runs | none (checked after every run; only Testcontainers' own reaper, which exits by itself). Other projects' containers untouched |
+
+The Gradle example and the Maven example ran once each as the mutation check's baselines (row above), not as separate runs.
+
+### Topology flake numbers (ADR-0016 section 9, counted apart from M6)
+
+Topology joins through the proxy, all M7 real-server runs with the XML read:
+
+| Source | Invocations | Red | Join timeouts (first join / switch) |
+|---|---|---|---|
+| T-M7-01 spike (by hand) | 25 client joins, 71 backend logins | 2 switch reds (Velocity rate limit, explained, fixed by ADR-0016 section 5) | 0 / 0 |
+| T-M7-07 `topologyTest` | 6 | 0 | 0 / 0 |
+| T-M7-09 switch ITs | 6 | 0 | 0 / 0 |
+| T-M7-10 topology API | 3 Velocity + 3 BungeeCord + 3 BungeeCord after fix + 1 | 1 (log guard, Mojang HTTP 429, explained, fixed) | 0 / 0 |
+| T-M7-11 P01, P02 | 6 after fix, 1 before | 1 (driver did not answer the login query, explained, fixed) | 0 / 0 |
+| T-M7-12 P03 to P05 | 6 final, plus reds before | 4 (P04 Velocity probe, P02 Bungee parser, 2 `PSConf moved too quickly!`, all explained, fixed) | 0 / 0 |
+| T-M7-13 clean runs | 6 | 0 | 0 / 0 |
+| T-M7-14 example | 3 | 0 | 0 / 0 |
+| **T-M7-99 (this run)** | **6** | **0** | **0 / 0** |
+
+**Topology join timeouts: 0 observed** on either hop, first join or switch, across every counted invocation above (at least
+51 `dockerlock` invocations plus the spike's 25 joins). Every topology red in M7 has a named cause and a fix; **no topology red
+is unexplained.** The single-server family (3 of 61 Gradle-example runs, M6) is not re-measured here.
+
+### Exit criterion, re-scored
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 1 | Velocity topology passes P01 to P05 on `paper@26.3` backends | MET | This run: 3 of 3 green (above). Earlier: T-M7-12 3 of 3, T-M7-13 clean 3 of 3. P04 on Velocity is judged on the fixture's `GetServer` reply only: Velocity answers `BungeeCord`-channel messages itself and fires no `PluginMessageEvent` (`velocity.md`), so the proxy-side event oracle is absent there (recorded, not hidden) |
+| 2 | BungeeCord topology passes the same, legacy forwarding | MET | This run: 3 of 3 green, direct join refused with BungeeCord's forwarding message. Earlier: T-M7-12 and T-M7-13 3 of 3 each |
+| 3 | `Topology.server("lobby")` and `client.transferTo("survival")`, additive to API v0 | MET | `api-baseline.txt` diff from `88ecb71`: 11 lines added, 0 removed (`Topology`, `Topology.Backends`, `Client.transferTo` default method, `Platform.VELOCITY`/`BUNGEECORD`, `Capability.PROXY`/`TOPOLOGY`). Source diff of `proofstone-api` removes only two enum trailing lines (comma added). Real server: T-M7-10 3 of 3 per proxy, T-M7-14 example 3 of 3. Caveat: new enum constants can break a user's exhaustive `switch` without `default` at compile time |
+| 4 | A forwarding misconfiguration is a loud red | MET | This run's `metaTopologyTest`: 7 of 7 faults `INVALID` with the reason, the container and the hop in the message, none a join timeout (row above); the clean runs of the same cells are green. T-M7-13 had the same 7 of 7. Every fault is a test-only system property (`-Dproofstone.injectTopologyFault`), and the bad tests are pinned to their cells (`bad-tests-pin-check`) |
+| 5 | Flake rule evidence for every acceptance | MET | Three green invocations per cell for every real-server acceptance in the card file (ROADMAP "M7 findings", PRs #101 to #112) and again here. No red was replaced by a green; reds are listed with causes above |
+
+### Code review (diff `88ecb71..9192c60`, 208 files, +14416 / -246)
+
+- **Weakened tests: none found.** Changed test files: `ErrorLogGuardTest` swaps the "unknown platform fails loudly" example
+  from `velocity` to `waterfall` (velocity now has its own list) and adds identity checks for the two new lists; the assertion is
+  kept, not weakened. `SchemaValidationTest` moves the version-mismatch case from `1.1` to `1.2` (the bump) and adds 7 invalid
+  cases. `AgentContractIT` lists the six proxy goldens as pending with the reason; the Velocity and BungeeCord contract tests
+  replay them. Other changes are additions or import moves (T-M7-04 renames, R100).
+- **New runtime dependencies: none.** Velocity and BungeeCord APIs and their POM types are `compileOnly` or test-only
+  (`gradle/libs.versions.toml`, pinned versions with reasons). The agents shade only `agent-core` and jackson, relocated.
+- **Workflows: none.** `.github/` holds only the issue and PR templates.
+- **Secrets: none committed.** No key, secret or jar file in the diff; the EULA appears only in command lines in docs.
+- **Sleeps and retries: none in harness or test code.** The only `sleep` added is a 1 s poll in `scripts/spike/proxy-spike.sh`
+  (a spike script, condition-polled).
+- **ADR-0016 conformance:** identity strings, schema 3 `proxies`, `experimental` rows, Waterfall out, native only, the
+  client-side `/server` switch with harness rate limits off, the dual oracle and `DISAGREE` across agents, per-container log
+  guard and bundle, leak detector on every backend, per-hop join messages: all present in code. Deviation: the loopback-only
+  game-port binding (section 8 exception) is applied by `PaperHost` to every server with a network, which includes bridged
+  single-server cells (`CellInvocation` puts them on the ViaProxy network). Harmless (metaTest's bridged tasks gave their
+  verdicts) but it contradicts ADR-0016 section 1 ("single-server code is unchanged"); recorded, not fixed here.
+- **Observe-only (both proxy agents):** handlers at the last priority, no command registered, no setter called, reflective
+  getters only; `ObserveOnlyTest` in each agent asserts it, including a scan of compiled classes for state-changing API names.
+- **Secret redaction:** the forwarding secret is generated per cell, copied from memory, redacted from every bundle file and the
+  bundle re-scanned (`BundleWriterTest`). The register review is in `docs/robustness.md` section 5, "Topology review".
+
+### Known open items: verdicts
+
+1. **spigot@26.3 C04 timeout seen once by an agent.** **Not reproduced: 1 run, C04 green** (row above). The earlier red left no kept XML, bundle or stage message in the repository or the evidence folders, so its verdict type and stage cannot be named. Verdict: **unexplained, unverified, kept open**, counted as 1 red of 2 known spigot@26.3 C04 runs since then. A repeat count (for example 10 C04 runs, as the M5 follow-up did for C06) is a maintainer call; not run here.
+2. **`FileOutputStream.open` stack trace in the wrong-secret `server-lobby` log: baseline, not caused by the fault.** It is
+   `ERROR Could not save bukkit.yml ... (Permission denied)` from `CraftServer.saveConfig` at start, on **every** Paper boot in
+   this review, single-server too (12 of 12 `server.log` files in this run's metaTest bundles, paper@26.3 and @26.1.2), because
+   `PaperHost` copies `/data/bukkit.yml` as root (T-M1-10). BungeeCord backends also log `Could not save spigot.yml` (their
+   copied `/data/spigot.yml`, T-M7-07). The settings are read, only the re-save fails, and the log guard does not see it (outside
+   the test window). A defect, not a flake: card **T-M8-02**.
+3. **metaTest SSL download failure (T-M7-13): environment, closed.** This run: all 8 verdicts, both `paper@26.1.2` tasks booted.
+   The T-M7-13 acceptance box "existing metaTest still reports all 8 verdicts" is now ticked on this evidence.
+4. **VelocityAgentIT rate limit and the Mojang rate limit: closed.** `VelocityAgentIT` now renders `login-ratelimit` and
+   `command-rate-limit` under `[advanced]`, as `TopologyConfig` does. The Mojang HTTP 429 (T-M7-10) cannot recur on a topology:
+   both backend kinds set proxy `online-mode: false` and `TopologyHost` checks the written config on every backend. Not re-run
+   here (`VelocityAgentIT` is not in this review's run list).
+5. **`ErrorLogGuardTest` edit: not a weakening** (see Code review).
+6. **Velocity P04, `PluginMessageEvent` not fired: accepted platform behaviour, documented.** Velocity answers `BungeeCord`
+   channel messages in its backend session and fires no event, so the probe cannot see them (`velocity.md`, Gotchas). P04 on
+   Velocity prints the reason and judges the fixture's reply only. The gap is one oracle on one scenario on one proxy; it stays
+   recorded, not papered over.
+7. **New: the full smoke `PSConf moved too quickly!` family recurred** (3 of 8 c02 tests: folia, purpur, spigot @26.3). Second
+   full four-cell red with the same three cells (first: "M6 pre-release findings" item 2). The M5 review's full smoke was green.
+   So far 2 red of 3 recorded full four-cell smoke runs. Paper passes c02 each time. Cause unknown; **unexplained, open.** The
+   allowlist covers `T<hex>` names; the single-server conformance client is `PSConf` (T-M7-12 renamed only the topology one).
+   Not allowlisted here.
+
+### Decisions needed from the maintainer
+
+1. **Promote the two topology rows to `required`?** ADR-0015 with P01 to P05 is met for each pairing (three clean
+   invocations three times over). ADR-0016 section 3 also requires the proxy row to be `required`. Recommendation: promote
+   both pairings and both proxy rows in one `versions.yml` PR with this table.
+2. **`PSConf moved too quickly!` (item 7).** Recommendation: a diagnosis card before 0.1 (name the client `T<hex>` like the
+   topology client only if the diagnosis shows it is the same reset-teleport race; never a blanket allowlist).
+3. **Approve `docs/plan/tasks/M8-mods.md`** (13 cards). Nothing in M8 is started.
+4. Unchanged from M6: Central namespace verification, Disenchantment CI, publish, tag, 0.1.0 go/no-go.
+
+### Re-estimate
+
+M7 was estimated at 3 focused weeks (range 1.5 to 3). Actual: the first M7 PR merged 2026-11-09 23:39 and the last 2026-11-13
+22:32 (+01:00), about 4 days of agent wall clock for 15 cards and 23 non-merge commits, plus this review (about 30 minutes of
+Docker runs). Remaining:
+
+| M | Estimate | Reason |
+|---|---|---|
+| M8 Mods and data | **4 weeks, range 2 to 5** (unchanged centre) | Two loaders and build tools, a driver change for mod channels and resource packs, and the open question whether the vanilla client joins a modded server at all (T-M8-01). If it cannot, add a modded-driver ADR and about 2 weeks |
+| M9 Bedrock | 4 weeks after the spike (unchanged) | The spike decides; no new evidence |
+| M10 Ecosystem | ongoing | Unchanged |
+
+Total M7 to M10 is about 8+ weeks from here (was 10+ before M7).
+
+### M8 refined
+
+`docs/plan/tasks/M8-mods.md`: exit criterion, context (what M7 left, the copy-ownership defect, external services, the driver
+question), Flake rule, 13 cards (T-M8-01 to T-M8-12 plus T-M8-99), honest estimate. **Not approved; nothing started.** Next
+session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
