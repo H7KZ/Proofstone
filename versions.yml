@@ -156,7 +156,7 @@ loaders:
         installer: "1.1.2"
         sha256: "70446947655b4f8f286aba896aa4c19a255e8ca8a730636ef2a6017ae4415d95"
         vanilla-sha256: "TODO"
-        fabric-api: { version: "0.166.2+26.3", sha256: "TODO" }
+        fabric-api: { version: "0.166.2+26.3", sha256: "e8acacc7836f39237c83c2a664b039647ee36f93822797acc40cda44666002ea" }
         protocol: 777
         status: experimental
         native-drivers: [mcpl]

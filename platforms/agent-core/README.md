@@ -2,7 +2,7 @@
 
 ## Purpose
 The part of an in-server agent that does not touch the game: the wire envelope, bearer auth, the HTTP server with its
-routes, and the log buffer. The Bukkit and Velocity agents use it, and the BungeeCord agent reuses it (T-M7-04, T-M7-05,
+routes, and the log buffer. The Bukkit, Velocity, BungeeCord and Fabric agents use it (T-M7-04, T-M7-05, T-M8-05,
 [ADR-0016](../../docs/adr/0016-topology-cells.md)). Spec:
 [agent protocol](../../docs/specs/agent-protocol.md) §1, §5.
 
@@ -20,7 +20,7 @@ routes, and the log buffer. The Bukkit and Velocity agents use it, and the Bunge
 Package names are the ones the Bukkit agent had, so nothing that shaded it is affected.
 - `io.github.h7kz.proofstone.agent.protocol`: `Health`, `ProtocolError`, `Envelope<T>`, `AgentException`.
 - `io.github.h7kz.proofstone.agent.server`: `AgentServer` (HTTP, auth, bodies, envelopes, routing), `AgentConfig`,
-  `BearerAuth`, `ObservationRoutes`, `PluginRoutes`, `ProxyRoutes` (`/v1/proxy/servers`, protocol 1.2: a `Game` that does not override `proxyServers`/`proxyServer` answers 404, so a backend agent never serves them). Endpoints and error codes are listed in the
+  `BearerAuth`, `ObservationRoutes`, `PluginRoutes`, `ProxyRoutes` (`/v1/proxy/servers`, protocol 1.2: a `Game` that does not override `proxyServers`/`proxyServer` answers 404, so a backend agent never serves them), and `GET /v1/mods` (protocol 1.3: a `Game` that does not override `mods` answers 404, so only a mod agent serves it). Endpoints and error codes are listed in the
   [Bukkit agent README](../bukkit/agent/README.md).
 - `io.github.h7kz.proofstone.agent.game`: `Game` (the state seam) and `Fields` (request body checks).
 - `io.github.h7kz.proofstone.agent.log`: `LogBuffer` (JUL and Log4j2 capture with twin matching, spec §2 `log`) and

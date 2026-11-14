@@ -229,9 +229,9 @@ topology paths unchanged.
 - Use a mixin that changes behaviour. Register commands, cancel or alter events. Add a runtime dependency beyond the shaded set.
 
 **Acceptance.**
-- [ ] `./gradlew :platforms:fabric:agent:test` passes, golden files replayed.
-- [ ] The real-server integration test passes on the Fabric row, three invocations (Flake rule).
-- [ ] The observe-only test exists and passes. Module README and `docs/platforms/fabric.md` Agent notes updated.
+- [x] `./gradlew :platforms:fabric:agent:test` passes, golden files replayed.
+- [x] The real-server integration test passes on the Fabric row, three invocations (Flake rule).
+- [x] The observe-only test exists and passes. Module README and `docs/platforms/fabric.md` Agent notes updated.
 
 **Verify.**
 `./gradlew :platforms:fabric:agent:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:fabric:agent:integrationTest --no-parallel --max-workers=1`

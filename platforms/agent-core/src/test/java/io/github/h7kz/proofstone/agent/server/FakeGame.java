@@ -15,7 +15,7 @@ import java.util.Map;
  * in slot 0, so a give followed by a read matches players/read-after-give. It knows one material and rejects
  * every other type with UNKNOWN_KEY before it stores anything, like the real game.
  */
-final class FakeGame implements Game {
+class FakeGame implements Game {
 
     private static final String KNOWN_TYPE = "minecraft:diamond_sword";
     private static final String FIXTURE_PLUGIN = "proofstone-fixture";

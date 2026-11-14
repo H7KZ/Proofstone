@@ -27,6 +27,22 @@ dependencyResolutionManagement {
                 includeGroup("com.mojang")
             }
         }
+        // The Fabric loader and Fabric API of the fabric@26.3 row, compile only for the Fabric agent (T-M8-05).
+        exclusiveContent {
+            forRepository { maven("https://maven.fabricmc.net/") }
+            filter { includeGroupByRegex("net\\.fabricmc(\\..*)?") }
+        }
+        // The vanilla server jar the Fabric agent compiles against (T-M8-05), by Mojang's content address (its sha1).
+        // Never shaded, published or committed (AGENTS.md section 3).
+        exclusiveContent {
+            forRepository {
+                ivy("https://piston-data.mojang.com/") {
+                    patternLayout { artifact("v1/objects/[revision]/[module].[ext]") }
+                    metadataSources { artifact() }
+                }
+            }
+            filter { includeGroup("com.mojang.piston-data") }
+        }
         // MCProtocolLib is published only here (ADR-0004).
         maven("https://repo.opencollab.dev/main/")
         // Spigot API 1.8.8 is published only as a snapshot here (T-M1-03). The version is a frozen timestamped build.
@@ -48,6 +64,7 @@ include(
     "platforms:bukkit:fixture",
     "platforms:bungee:agent",
     "platforms:velocity:agent",
+    "platforms:fabric:agent",
     "examples:smoke",
     "examples:disenchantment-anvil",
     "examples:bad-tests",

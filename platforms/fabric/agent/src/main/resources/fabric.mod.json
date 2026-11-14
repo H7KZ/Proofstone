@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "proofstone-agent",
+  "version": "0.1.0",
+  "name": "Proofstone Agent",
+  "description": "Test harness agent for Proofstone (observe only). Installed by the harness, never by users.",
+  "license": "Apache-2.0",
+  "environment": "server",
+  "entrypoints": {
+    "server": ["io.github.h7kz.proofstone.agent.fabric.ProofstoneFabricAgent"]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-lifecycle-events-v1": "*"
+  }
+}
