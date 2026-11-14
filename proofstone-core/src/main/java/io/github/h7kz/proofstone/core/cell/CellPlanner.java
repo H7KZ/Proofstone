@@ -1,5 +1,7 @@
 package io.github.h7kz.proofstone.core.cell;
 
+import io.github.h7kz.proofstone.core.versions.LoaderPlatform;
+import io.github.h7kz.proofstone.core.versions.LoaderRow;
 import io.github.h7kz.proofstone.core.versions.Platform;
 import io.github.h7kz.proofstone.core.versions.ProxyPlatform;
 import io.github.h7kz.proofstone.core.versions.ProxyRow;
@@ -12,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -70,6 +73,86 @@ public final class CellPlanner {
             cells.putIfAbsent(cell.mc(), cell);
         }
         return List.copyOf(cells.values());
+    }
+
+    /** Whether {@code id} names a loader of {@code versions.yml} (schema 4 {@code loaders}, ADR-0017). */
+    public boolean isLoader(String id) {
+        return catalog.loaderIds().contains(id);
+    }
+
+    /**
+     * Plans loader cells (ADR-0017 section 2). Each version is exact, {@code latest} or {@code all}. {@code latest} is
+     * the highest {@code required} row and, unlike a platform's, never falls back to an experimental one: a loader row
+     * is named until a promotion makes it required. {@code all} takes the rows in {@code scope} (PR runs
+     * {@code required}, nightly also {@code experimental}); an exact version runs in any scope. A bridged loader row
+     * never gets here: {@code VersionsCatalog.load} refuses it (ADR-0017 section 1).
+     *
+     * @return one cell per distinct row, in request order; duplicates collapse
+     * @throws VersionsException on an unknown loader or version, an empty request, a {@code latest} with no required
+     *     row, an {@code all} with no row in scope, or a {@code TODO} in the jar pin
+     */
+    public List<LoaderCell> planLoaders(String loaderId, List<String> versions, Scope scope) {
+        LoaderPlatform loader = catalog.loader(loaderId);
+        if (versions.isEmpty()) {
+            throw new VersionsException("no versions requested for " + loaderId);
+        }
+        Map<String, LoaderCell> cells = new LinkedHashMap<>();
+        for (String requested : versions) {
+            if (ALL.equals(requested)) {
+                List<LoaderRow> rows = loader.rows().stream().filter(row -> inScope(row.status(), scope)).toList();
+                if (rows.isEmpty()) {
+                    throw new VersionsException("all: " + loaderId + " has no row in scope " + scope
+                            + " (PR runs required rows, nightly runs required and experimental ones)");
+                }
+                rows.forEach(row -> cells.putIfAbsent(row.mc(), toLoaderCell(loader, row)));
+                continue;
+            }
+            LoaderRow row = LATEST.equals(requested) ? latestLoader(loader) : exactLoader(loader, requested);
+            cells.putIfAbsent(row.mc(), toLoaderCell(loader, row));
+        }
+        return List.copyOf(cells.values());
+    }
+
+    private static LoaderRow exactLoader(LoaderPlatform loader, String requested) {
+        return loader.rows().stream()
+                .filter(row -> row.mc().equals(requested))
+                .findFirst()
+                .orElseThrow(() -> new VersionsException("unknown version \"" + requested + "\" for " + loader.id()
+                        + "; valid: " + loader.rows().stream().map(LoaderRow::mc).collect(Collectors.joining(", "))));
+    }
+
+    private static LoaderRow latestLoader(LoaderPlatform loader) {
+        return loader.rows().stream()
+                .filter(row -> row.status() == Status.REQUIRED)
+                .max(Comparator.comparing(LoaderRow::mc, VersionNumber::compare))
+                .orElseThrow(() -> new VersionsException("latest: " + loader.id() + " has no required row; name the "
+                        + "version (rows: " + loader.rows().stream().map(row -> row.mc() + " " + row.status().name()
+                        .toLowerCase(Locale.ROOT)).collect(Collectors.joining(", ")) + ")"));
+    }
+
+    private LoaderCell toLoaderCell(LoaderPlatform loader, LoaderRow row) {
+        String identity = LoaderCell.identity(loader.id(), row.mc());
+        String javaTag = catalog.javaTag(row);
+        List<String> todo = new ArrayList<>();
+        if (row.sha256() == null) {
+            todo.add("sha256");
+        }
+        String hostDigest = loader.host().digest(javaTag);
+        if (hostDigest == null) {
+            todo.add("host digest for " + javaTag);
+        }
+        if (!todo.isEmpty()) {
+            throw new VersionsException(identity + " has TODO pins: " + String.join(", ", todo)
+                    + ". Pin them in versions.yml before use (AGENTS.md §3).");
+        }
+        List<String> notes = new ArrayList<>();
+        if (row.status() == Status.RETIRED) {
+            notes.add("status: retired");
+        }
+        LoaderCell.FabricApi fabricApi = row.fabricApi() == null ? null
+                : new LoaderCell.FabricApi(row.fabricApi().version(), row.fabricApi().sha256());
+        return new LoaderCell(identity, loader.id(), row.mc(), row.loader(), row.installer(), row.sha256(),
+                row.vanillaSha256(), fabricApi, javaTag, row.status(), loader.host().image(), hostDigest, notes);
     }
 
     /** Whether {@code id} names a proxy platform of {@code versions.yml} (schema 3 {@code proxies}). */

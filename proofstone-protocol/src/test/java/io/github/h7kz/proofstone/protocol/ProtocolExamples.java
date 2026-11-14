@@ -15,6 +15,14 @@ final class ProtocolExamples {
     static final String PROXY_SERVERS = """
         {"servers":[{"name":"lobby","address":"server-lobby:25565","online":true,"players":1},{"name":"survival","address":"server-survival:25565","online":false,"players":0}]}""";
 
+    /** Protocol 1.3 (ADR-0017 section 9): ids as the server names them, in the server's order. */
+    static final String DATAPACKS = """
+        {"enabled":["vanilla","file/x.zip"],"available":["vanilla","file/x.zip","file/y"]}""";
+
+    /** Protocol 1.3, mod agents only: sorted by id. */
+    static final String MODS = """
+        {"mods":[{"id":"fabric-api","version":"0.166.2+26.3"},{"id":"proofstone-agent","version":"0.1.0"}]}""";
+
     static final String PROXY_PLAYER = """
         {"name":"Alex","uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","proxy":{"server":"survival","previousServer":"lobby"}}""";
 

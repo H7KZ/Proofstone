@@ -3,6 +3,7 @@ package io.github.h7kz.proofstone.core.cell;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.h7kz.proofstone.core.versions.LoaderPlatform;
 import io.github.h7kz.proofstone.core.versions.Platform;
 import io.github.h7kz.proofstone.core.versions.ProxyPlatform;
 import io.github.h7kz.proofstone.core.versions.Status;
@@ -37,6 +38,8 @@ public final class CiMatrix {
     static final String TODO_PINS = "has TODO pins";
     /** The planner's message when a proxy has no topology cell in the scope; that only skips the proxy. */
     private static final String NO_TOPOLOGY = "no topology cell in scope";
+    /** The planner's message when a loader has no row in the scope; that only skips the loader. */
+    private static final String NO_LOADER_ROW = "has no row in scope";
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -46,9 +49,16 @@ public final class CiMatrix {
     /**
      * @param cells the single-server cells in scope, in matrix order
      * @param topologies the topology cells in scope, in proxy file order
-     * @param skipped platform or proxy id to the reason it has no cells, in file order
+     * @param skipped platform, proxy or loader id to the reason it has no cells, in file order
+     * @param loaders the loader cells in scope (ADR-0017), in loader file order
      */
-    public record Plan(List<Cell> cells, List<TopologyCell> topologies, Map<String, String> skipped) {
+    public record Plan(List<Cell> cells, List<TopologyCell> topologies, Map<String, String> skipped,
+            List<LoaderCell> loaders) {
+
+        /** A plan with no loader cell, as every schema 2 and 3 file plans. */
+        public Plan(List<Cell> cells, List<TopologyCell> topologies, Map<String, String> skipped) {
+            this(cells, topologies, skipped, List.of());
+        }
     }
 
     /**
@@ -78,7 +88,29 @@ public final class CiMatrix {
         for (String id : catalog.proxyIds()) {
             planProxy(planner, catalog.proxy(id), scope, topologies, skipped);
         }
-        return new Plan(List.copyOf(cells), List.copyOf(topologies), Map.copyOf(skipped));
+        List<LoaderCell> loaders = new ArrayList<>();
+        for (String id : catalog.loaderIds()) {
+            planLoader(planner, catalog.loader(id), scope, loaders, skipped);
+        }
+        return new Plan(List.copyOf(cells), List.copyOf(topologies), Map.copyOf(skipped), List.copyOf(loaders));
+    }
+
+    private static void planLoader(CellPlanner planner, LoaderPlatform loader, Scope scope, List<LoaderCell> out,
+            Map<String, String> skipped) {
+        // As for platforms: PR runs required rows only, so a loader with none has no PR cell.
+        if (scope == Scope.PR && loader.rows().stream().noneMatch(row -> row.status() == Status.REQUIRED)) {
+            skipped.put(loader.id(), "no required row; PR runs required rows only");
+            return;
+        }
+        try {
+            out.addAll(planner.planLoaders(loader.id(), List.of("all"), scope));
+        } catch (VersionsException e) {
+            if (e.getMessage() == null
+                    || !(e.getMessage().contains(TODO_PINS) || e.getMessage().contains(NO_LOADER_ROW))) {
+                throw e;
+            }
+            skipped.put(loader.id(), e.getMessage());
+        }
     }
 
     private static void planProxy(CellPlanner planner, ProxyPlatform proxy, Scope scope, List<TopologyCell> out,
@@ -124,6 +156,16 @@ public final class CiMatrix {
      *     {@code platform} is the proxy, and its slug joins the halves with an underscore, which no platform id holds.
      */
     public static ObjectNode matrix(List<Cell> cells, List<TopologyCell> topologies) {
+        return matrix(cells, topologies, List.of());
+    }
+
+    /**
+     * @return {@code {"include": [...]}}: the cells of {@link #matrix(List, List)}, then one object per loader cell. A
+     *     loader entry's {@code cell} is its identity ({@code fabric@26.3}), {@code platform} is the loader, {@code kind}
+     *     is {@code loader} and {@code loader} is the loader version; it has no {@code build}. A list with no loader cell
+     *     writes exactly what {@link #matrix(List, List)} wrote before schema 4.
+     */
+    public static ObjectNode matrix(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders) {
         ObjectNode root = JSON.createObjectNode();
         ArrayNode include = root.putArray("include");
         for (Cell cell : cells) {
@@ -151,6 +193,17 @@ public final class CiMatrix {
             entry.put("slug", cell.proxy().id() + "-" + cell.proxy().version() + "_" + cell.backend().platform() + "-"
                     + cell.backend().mc());
         }
+        for (LoaderCell cell : loaders) {
+            ObjectNode entry = include.addObject();
+            entry.put("cell", cell.identity());
+            entry.put("platform", cell.loader());
+            entry.put("kind", "loader");
+            entry.put("mc", cell.mc());
+            entry.put("loader", cell.loaderVersion());
+            entry.put("java", cell.java());
+            entry.put("status", cell.status().name().toLowerCase(Locale.ROOT));
+            entry.put("slug", cell.loader() + "-" + cell.mc());
+        }
         return root;
     }
 
@@ -167,10 +220,11 @@ public final class CiMatrix {
         PrintStream err = System.err;
         plan.skipped().forEach((id, reason) -> err.println(
                 "printMatrix: skipped " + id + " (" + scope.name().toLowerCase(Locale.ROOT) + "): " + reason));
-        if (scope == Scope.NIGHTLY && plan.cells().isEmpty() && plan.topologies().isEmpty()) {
+        if (scope == Scope.NIGHTLY && plan.cells().isEmpty() && plan.topologies().isEmpty()
+                && plan.loaders().isEmpty()) {
             throw new VersionsException("printMatrix: nightly plans no cell; check versions.yml statuses and pins");
         }
-        String json = JSON.writerWithDefaultPrettyPrinter().writeValueAsString(matrix(plan.cells(), plan.topologies()));
+        String json = JSON.writerWithDefaultPrettyPrinter().writeValueAsString(matrix(plan.cells(), plan.topologies(), plan.loaders()));
         Path out = Path.of(require(options, "out"));
         if (out.getParent() != null) {
             Files.createDirectories(out.getParent());

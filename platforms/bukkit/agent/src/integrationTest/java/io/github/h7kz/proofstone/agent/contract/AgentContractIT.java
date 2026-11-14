@@ -112,7 +112,12 @@ class AgentContractIT {
             "proxy/server-get",
             "proxy/server-not-found",
             "players/proxy-first-join",
-            "players/proxy-switched");
+            "players/proxy-switched",
+            // Protocol 1.3 (ADR-0017 section 9, T-M8-04). The Bukkit agent reports neither capability token yet, so it
+            // serves neither endpoint: GET /v1/datapacks comes with T-M8-09 (where the server API lists data packs),
+            // GET /v1/mods is for the Fabric and NeoForge agents only (T-M8-05, T-M8-06).
+            "datapacks/list",
+            "mods/list");
 
     private final HttpClient http = HttpClient.newHttpClient();
     /** The platform of the cell that booted last; the golden files were recorded on Paper. */

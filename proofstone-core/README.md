@@ -20,6 +20,12 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
 - `io.github.h7kz.proofstone.core.versions`: `Platform`, `Host`, `Row`, `Status`, `VersionNumber`, `VersionsException`.
 - `io.github.h7kz.proofstone.core.cell.Cell`: one resolved environment (platform, mc, build, sha256, java, host image and digest, notes).
 - `io.github.h7kz.proofstone.core.cell.CellPlanner`: `plan(platformId, versions, scope, families)`; `latest` means the highest `required` row, or the highest `experimental` row with a warning; `all` means the rows in `scope` plus the family versions.
+- Loader cells (T-M8-04, ADR-0017), package `cell`: `LoaderCell` (identity `fabric@26.3`, every pin; a `TODO` vanilla or Fabric API
+  hash stays `null` for the host to refuse), `CellPlanner.planLoaders(loader, versions, scope)` and `isLoader(id)` (`latest` is the
+  highest `required` row and never an experimental one), `CellSelector.loaders()` (`fabric@`/`neoforge@` entries, never half of a
+  `+` topology), and `CiMatrix` loader entries (`kind: "loader"`, after the topology cells). `VersionsCatalog` reads the schema 4
+  `loaders` key and refuses a bridged or malformed row at load. Paper and topology cells select and plan exactly as before. No host
+  runs a loader cell yet (T-M8-07).
 - `io.github.h7kz.proofstone.core.cell.CellSelector`: parses `-Dproofstone.cells` / `PROOFSTONE_CELLS` (`platform@version`, `latest`, `all`); `Scope` (`pr`, `nightly`) and `VersionFamilies` (the `version-families` of `proofstone.yml`).
 
 - `io.github.h7kz.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).

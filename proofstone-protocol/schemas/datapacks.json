@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/datapacks.json",
+  "title": "Data packs (GET /v1/datapacks)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. Added in protocol 1.3 (ADR-0017 section 9, T-M8-04), additive. Ids are as the server names them (vanilla, file/x.zip), in the server's order. Served by agents that report the datapacks capability token.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["enabled", "available"],
+  "properties": {
+    "enabled": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "available": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

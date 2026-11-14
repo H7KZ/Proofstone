@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schema", "java-rules", "drivers", "platforms"],
   "properties": {
-    "schema": { "enum": [2, 3] },
+    "schema": { "enum": [2, 3, 4] },
     "java-rules": {
       "type": "array",
       "items": {
@@ -32,6 +32,11 @@
       "description": "Schema 3 (ADR-0016): proxy platforms and the backend rows they are paired with. Semantic rules live in VersionsCatalog.",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/proxy" }
+    },
+    "loaders": {
+      "description": "Schema 4 (ADR-0017): Fabric and NeoForge rows. Semantic rules live in VersionsCatalog.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/loader" }
     }
   },
   "$defs": {
@@ -113,6 +118,59 @@
             }
           }
         },
+        "observed": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "loader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "rows"],
+      "properties": {
+        "host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["image", "digests"],
+          "properties": {
+            "image": { "type": "string", "minLength": 1 },
+            "digests": {
+              "description": "Image digest by Java tag (ADR-0013). TODO until pinned.",
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": { "$ref": "#/$defs/javaImage" },
+              "additionalProperties": {
+                "anyOf": [{ "type": "string", "pattern": "^sha256:[0-9a-f]+$" }, { "const": "TODO" }]
+              }
+            }
+          }
+        },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/loaderRow" } }
+      }
+    },
+    "loaderRow": {
+      "description": "A loader row (ADR-0017 section 3). installer and fabric-api are required on fabric rows by VersionsCatalog.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mc", "loader", "sha256", "vanilla-sha256", "status"],
+      "properties": {
+        "mc": { "type": "string", "minLength": 1 },
+        "loader": { "type": "string", "minLength": 1 },
+        "installer": { "type": "string", "minLength": 1 },
+        "sha256": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{64}$" }, { "const": "TODO" }] },
+        "vanilla-sha256": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{64}$" }, { "const": "TODO" }] },
+        "fabric-api": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "sha256"],
+          "properties": {
+            "version": { "type": "string", "minLength": 1 },
+            "sha256": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{64}$" }, { "const": "TODO" }] }
+          }
+        },
+        "java": { "$ref": "#/$defs/javaImage" },
+        "protocol": { "type": "integer" },
+        "status": { "$ref": "#/$defs/status" },
+        "native-drivers": { "type": "array", "items": { "type": "string" } },
         "observed": { "type": "string" },
         "notes": { "type": "string" }
       }

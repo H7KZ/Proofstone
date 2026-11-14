@@ -23,6 +23,8 @@ class ProtocolRoundTripTest {
                 Arguments.of(ProtocolExamples.PROXY_SERVER, new TypeReference<ProxyServer>() {}),
                 Arguments.of(ProtocolExamples.PROXY_SERVERS, new TypeReference<ProxyServers>() {}),
                 Arguments.of(ProtocolExamples.PROXY_PLAYER, new TypeReference<ProxyPlayer>() {}),
+                Arguments.of(ProtocolExamples.DATAPACKS, new TypeReference<DataPacks>() {}),
+                Arguments.of(ProtocolExamples.MODS, new TypeReference<Mods>() {}),
                 Arguments.of(ProtocolExamples.ERROR, new TypeReference<ProtocolError>() {}),
                 Arguments.of(ProtocolExamples.ITEM, new TypeReference<Item>() {}),
                 Arguments.of(ProtocolExamples.PLAYER_STATE, new TypeReference<PlayerState>() {}),
