@@ -20,6 +20,9 @@ session turns it into `T-Mx-NN` cards in the standard format, in a file `Mx-<nam
   - BungeeCord's Java baseline.
 
 ## M8: Mods and data (Fabric, NeoForge, data packs, resource packs)
+
+**Refined into cards on 2026-11-14 by T-M7-99: see [M8-mods.md](M8-mods.md) (awaiting maintainer approval).** The text below is the original epic.
+
 - **Agents:**
   - a Fabric mod agent and a NeoForge mod agent, built for multiple versions with Stonecutter (to verify);
   - a per-version matrix that follows the Fabric and NeoForge metadata;
