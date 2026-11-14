@@ -9,12 +9,12 @@ import io.github.h7kz.proofstone.protocol.Envelope;
 import io.github.h7kz.proofstone.protocol.Health;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -60,6 +60,7 @@ public final class ProxyHost implements AgentEndpoint, AutoCloseable {
                 host.health = host.agent.health();
                 return true;
             }, options.agentTimeout());
+            PermissionCheck.require(options.kind().id() + " proxy", host.logs.all(), configCopies(files).keySet());
             host.verify();
         } catch (RuntimeException e) {
             String tail = host.logTail();
@@ -87,9 +88,17 @@ public final class ProxyHost implements AgentEndpoint, AutoCloseable {
                     .withEnv("VELOCITY_BUILD_ID", options.build());
             case BUNGEECORD -> container.withEnv("BUNGEE_JOB_ID", options.build());
         }
-        files.forEach((path, content) -> container.withCopyToContainer(Transferable.of(content), path));
+        // Owned by the server user (T-M8-02).
+        configCopies(files).forEach((path, file) -> container.withCopyToContainer(file, path));
         container.withCopyFileToContainer(MountableFile.forHostPath(options.agentJar()),
                 "/server/plugins/proofstone-agent.jar");
+    }
+
+    /** Every config file the host copies into a proxy, by container path. */
+    static Map<String, ServerFile> configCopies(Map<String, String> files) {
+        Map<String, ServerFile> copies = new LinkedHashMap<>();
+        files.forEach((path, content) -> copies.put(path, ServerFile.of(content)));
+        return copies;
     }
 
     private void await(String what, Supplier<Boolean> probe, Duration timeout) {

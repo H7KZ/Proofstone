@@ -135,11 +135,11 @@ backends).
 - Bind-mount anything. Allowlist the line. Change what a config contains.
 
 **Acceptance.**
-- [ ] `:conformance:run` on `velocity@4.3.1+paper@26.3` and `bungeecord@2111+paper@26.3`, three invocations each: green, and
+- [x] `:conformance:run` on `velocity@4.3.1+paper@26.3` and `bungeecord@2111+paper@26.3`, three invocations each: green, and
   no backend log in the bundle or the XML holds `Permission denied`. Evidence: grep counts per run.
-- [ ] `:conformance:smoke -Dproofstone.cells=paper@26.3` green, and no bundle's `server.log` holds a `Could not save`
+- [x] `:conformance:smoke -Dproofstone.cells=paper@26.3` green, and no bundle's `server.log` holds a `Could not save`
   line (evidence: the `metaLeak` and `metaExpect` bundles of one `metaTest` run).
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
 
 **Verify.**
 `./gradlew :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=velocity@4.3.1+paper@26.3 --no-parallel --max-workers=1`

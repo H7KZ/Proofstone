@@ -798,7 +798,7 @@ is unexplained.** The single-server family (3 of 61 Gradle-example runs, M6) is 
    this review, single-server too (12 of 12 `server.log` files in this run's metaTest bundles, paper@26.3 and @26.1.2), because
    `PaperHost` copies `/data/bukkit.yml` as root (T-M1-10). BungeeCord backends also log `Could not save spigot.yml` (their
    copied `/data/spigot.yml`, T-M7-07). The settings are read, only the re-save fails, and the log guard does not see it (outside
-   the test window). A defect, not a flake: card **T-M8-02**.
+   the test window). A defect, not a flake: card **T-M8-02**, fixed there (copies owned by uid/gid 1000, start check).
 3. **metaTest SSL download failure (T-M7-13): environment, closed.** This run: all 8 verdicts, both `paper@26.1.2` tasks booted.
    The T-M7-13 acceptance box "existing metaTest still reports all 8 verdicts" is now ticked on this evidence.
 4. **VelocityAgentIT rate limit and the Mojang rate limit: closed.** `VelocityAgentIT` now renders `login-ratelimit` and
