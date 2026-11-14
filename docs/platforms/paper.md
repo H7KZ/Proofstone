@@ -38,9 +38,12 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   [PR #38](https://github.com/H7KZ/Proofstone/pull/38), [PR #39](https://github.com/H7KZ/Proofstone/pull/39)_
 - **Docker Desktop answered `InternalServerError` for one cell (26.1.2) in a nine-cell run.** The cell passed when run
   again alone. Treat a 500 from Docker as infrastructure, not a result. _26.1.2 · [PR #38](https://github.com/H7KZ/Proofstone/pull/38)_
-- **`Could not save bukkit.yml (Permission denied)` is logged at ERROR during startup.** The file `PaperHost` copies in
-  is not writable by the server user. The server still starts; not yet seen to matter. _1.21.11 ·
-  [PR #38](https://github.com/H7KZ/Proofstone/pull/38)_
+- **A file copied into a container is root-owned, so the server cannot write it: `Could not save bukkit.yml (Permission denied)`
+  at ERROR during startup (and `spigot.yml` on topology backends).** Docker unpacks a copy with the owner the tar entry names,
+  and Testcontainers names root. The host now copies every config file as uid/gid 1000 (the itzg server user), mode 0644
+  (`ServerFile`), and fails the cell at start when the log holds `Permission denied`, naming the copied file (`PermissionCheck`).
+  Plugin and server jars are still copied as before (read only). _1.21.11 first seen
+  ([PR #38](https://github.com/H7KZ/Proofstone/pull/38)); fixed in T-M8-02_
 - **`level-type` is `flat` before 1.18, `minecraft:flat` from 1.18.** 1.8.8 silently builds a default world when it sees
   the namespaced name (spawn near -1500, 1100 at y 77), so the fixture at the origin has no chunk. The host sets the
   name per version. _1.8.8 · [PR #39](https://github.com/H7KZ/Proofstone/pull/39), [961fe0c](https://github.com/H7KZ/Proofstone/commit/961fe0c)_

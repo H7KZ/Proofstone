@@ -19,14 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -100,6 +101,7 @@ public final class PaperHost implements AgentEndpoint, AutoCloseable {
             container.start();
             awaitDone();
             awaitAgent();
+            PermissionCheck.require(cell.platform() + "@" + cell.mc(), logs.all(), configCopies(options.files()).keySet());
             verifyServer();
             verifyPlugins();
             if (options.applyGameRules()) {
@@ -146,9 +148,9 @@ public final class PaperHost implements AgentEndpoint, AutoCloseable {
         artefacts.forEach(this::copyPlugin);
         // Tests join several clients from one address within seconds; Paper's default 4 s connection throttle
         // would refuse the second ("Connection throttled!"). Copied in, like every input (T-M1-10).
-        container.withCopyToContainer(Transferable.of(BUKKIT_YML), "/data/bukkit.yml");
-        // A topology backend's forwarding settings (TopologyConfig); empty for a single server.
-        options.files().forEach((path, content) -> container.withCopyToContainer(Transferable.of(content), path));
+        // Owned by the server user, or Paper cannot save it and logs a permission error (T-M8-02). A topology backend's
+        // forwarding settings (TopologyConfig) come with it; empty for a single server.
+        configCopies(options.files()).forEach((path, file) -> container.withCopyToContainer(file, path));
         // Players join over the game port, so it is the one port always published (T-M1-08).
         container.addExposedPort(GAME_PORT);
         if (options.network() != null) {
@@ -211,6 +213,14 @@ public final class PaperHost implements AgentEndpoint, AutoCloseable {
         } catch (IllegalArgumentException e) {
             throw new PaperHostException("cannot read the Minecraft version from \"" + mc + "\"", e);
         }
+    }
+
+    /** Every config file the host copies into a backend, by container path: bukkit.yml and the topology files. */
+    static Map<String, ServerFile> configCopies(Map<String, String> files) {
+        Map<String, ServerFile> copies = new LinkedHashMap<>();
+        copies.put("/data/bukkit.yml", ServerFile.of(BUKKIT_YML));
+        files.forEach((path, content) -> copies.put(path, ServerFile.of(content)));
+        return copies;
     }
 
     private void copyPlugin(Path jar) {
