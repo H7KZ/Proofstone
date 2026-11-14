@@ -67,11 +67,40 @@ ignores it, and it ignores the Velocity and BungeeCord difference otherwise.
   first server: the session stays usable and its views are untouched.
 - **The hop** comes from the harness: `TopologyHost.describeSwitch` adds it from the logs (ADR-0016 section 9).
 
+## 2b. Resource packs (ADR-0017 §7, built by T-M8-10)
+
+Design; no driver code yet. What ran (T-M8-01, Fabric 26.3, [fabric.md](../platforms/fabric.md) Capabilities): the server
+pushes `ClientboundResourcePackPushPacket(id, url, hash (sha1), required, prompt)` in the **configuration phase**; accept
+(`ACCEPTED`, `DOWNLOADED`, `SUCCESSFULLY_LOADED`) reached play, `DECLINED` was kicked with
+`multiplayer.requiredTexturePrompt.disconnect`, and no answer stalled the join at `CONFIGURATION_STALLED`.
+
+- **Answer policy, set before connect.** `ConnectSpec` carries the test's answer (`ACCEPT`, `DECLINE`, `FAIL_DOWNLOAD`) or
+  none. A push arrives during the join, before the test body, so the answer cannot be given later.
+- **No answer declared:** on the first push the driver disconnects and throws `ClientDriverException` with the URL and
+  `no resource-pack answer declared`. It never accepts silently and never lets the join stall into a timeout.
+- **Record every push and pop**, in configuration and in play, in order: `id`, `url`, `hash` (empty if the server sent
+  none), `required`, `prompt` (the text component flattened to plain text, or null), the answer given and the statuses
+  sent. A pop (`ClientboundResourcePackPopPacket`, one id or all) is recorded too. The session exposes the records
+  (`ClientSession.resourcePacks()`, additive, default throws so a driver without support fails loudly); the test reads
+  them as `Client.resourcePacks()`.
+- **Statuses sent**, as a vanilla client sends them:
+  - `ACCEPT`: `ACCEPTED`, then the download, then `DOWNLOADED` and `SUCCESSFULLY_LOADED` when the sha1 of the bytes equals
+    the pushed hash. On a mismatch the record says `hash mismatch: expected <h>, got <h>` and the driver sends
+    `FAILED_DOWNLOAD`; the test, not the driver, decides whether that is a failure.
+  - `DECLINE`: `DECLINED`.
+  - `FAIL_DOWNLOAD`: `ACCEPTED`, then `FAILED_DOWNLOAD`, without downloading.
+  - T-M8-10 checks each sequence against a real server and records what the server logs for it.
+- **Source rule: never the internet.** The driver downloads only from the harness pack source (the loopback URL the harness
+  serves for the cell). A push with any other URL is recorded; `DECLINE` and `FAIL_DOWNLOAD` are sent as declared, and
+  `ACCEPT` on it is a `ClientDriverException` naming the URL and this rule. Nothing is unpacked or rendered.
+- **Several packs** (one push per id since 1.20.3) are answered one by one with the same policy.
+- Bridged cells: not run. `RESOURCE_PACKS` is held on native cells only until a bridged run shows ViaProxy carries the push.
+
 ## 3. Packet surface for mcpl v1 (keep it minimal)
 
 | Direction | Packets |
 |---|---|
-| Login and configuration | handshake, login start, the configuration phase (registries, known packs), finish configuration |
+| Login and configuration | handshake, login start, the configuration phase (registries, known packs, ping answered, resource-pack push and pop, §2b), finish configuration |
 | Play, outbound | chat, chat command, keep-alive response, use item on, container click, container close, player position or rotation (only when needed) |
 | Play, inbound | system and player chat, open screen, container set content, container set slot, set experience, player position, keep-alive, disconnect |
 

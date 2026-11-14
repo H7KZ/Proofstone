@@ -98,6 +98,13 @@ backend row set (N named backends on one backend row), with the identity `<proxy
 `velocity@4.3.1+paper@26.3`. Backends keep their own pack (Paper with the Bukkit agent), unchanged. Waterfall has no pack
 (end-of-life; its newest build rejects the newest client).
 
+**Mod packs (M8, [ADR-0017](adr/0017-mod-platform-packs.md)).** `fabric` and `neoforge` are mod packs: the host
+(`itzg/minecraft-server`, `TYPE=FABRIC` or `NEOFORGE`, by digest per Java tag) started by `LoaderHost` next to `PaperHost`, the
+pinned launcher or installer copied in, the mod agent (Java 25 bytecode on 26.x; Fabric's needs the pinned Fabric API), and
+an empty-at-first log allowlist. Loader rows live under `loaders` in `versions.yml` (schema 4), newest native row only. A
+**loader cell** has the identity `<loader>@<mc>` (`fabric@26.3`). Artefacts: mods to `/mods`, data packs to the world's
+`datapacks` (any cell with `DATAPACKS_VANILLA`), resource packs served from the harness JVM on loopback.
+
 ### 2.4 Client drivers (L3b)
 - SPI: `ClientDriver`, which provides `connect(name, endpoint)` and returns a `ClientSession` with
   `chat`, `command`, `awaitMessage`, `useBlock`, `openWindow`, `click(slot, button, mode)`,

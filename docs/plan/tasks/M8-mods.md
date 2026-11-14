@@ -172,9 +172,9 @@ topology paths unchanged.
 - Change code, `versions.yml` data or a schema file. Re-decide an accepted ADR.
 
 **Acceptance.**
-- [ ] ADR-0017 Accepted, listed in `docs/adr/README.md`, with rejected alternatives (for example "a modded driver").
-- [ ] The glossary, `versions-yml.md` and `client-driver.md` carry the new terms; `./gradlew docsCheck` passes.
-- [ ] A decision list for the maintainer is in the PR: loader rows, image, resource-pack source, Stonecutter.
+- [x] ADR-0017 Accepted, listed in `docs/adr/README.md`, with rejected alternatives (for example "a modded driver").
+- [x] The glossary, `versions-yml.md` and `client-driver.md` carry the new terms; `./gradlew docsCheck` passes.
+- [x] A decision list for the maintainer is in the PR: loader rows, image, resource-pack source, Stonecutter.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`

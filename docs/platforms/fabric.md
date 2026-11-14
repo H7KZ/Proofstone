@@ -63,7 +63,8 @@ on exit.
   (no hash pin for the libraries). **Once installed, a restart needs no network:** the same container restarted with its
   network disconnected (`OFFLINE=1`, with Fabric API) reached `Done` in 12 s. So T-M8-07 can pre-fetch by installing
   once and copying the installed tree, or by an image per row; a cold start always reaches Mojang. Not run: placing the
-  vanilla jar in `/data` before first start to skip step 1.
+  vanilla jar in `/data` before first start to skip step 1. **Decided (ADR-0017 §6):** the cold-start fetch stays, as a
+  listed exception pinned by content (`vanilla-sha256` checked in the container); no install cache, no new image.
 - **Ready:** the log line `Done (0.351s)! For help, type "help"`. First start including install took 13 to 16 s
   (bare, with Fabric API, with the spike mod); Paper 26.3 in the same runs took 23 s.
 - **Image environment the spike set:** `ONLINE_MODE=FALSE`, `ENFORCE_SECURE_PROFILE=FALSE`, `LEVEL_TYPE=minecraft:flat`,
@@ -141,7 +142,8 @@ Revisit when the driver gains a second native row or a bridged mod row is shown 
   the spike mod logged `fabric-lifecycle-events-v1 absent: no server-started event` and `/health` stayed `ready:false`.
   So the agent either requires Fabric API on the server (a server-side dependency, still no client mod) or uses a
   mixin into the server's start, which T-M8-05 must decide; the observe-only rule forbids a mixin that changes
-  behaviour, not one that only observes.
+  behaviour, not one that only observes. **Decided ([ADR-0017](../adr/0017-mod-platform-packs.md) §5): every Fabric row
+  carries the pinned Fabric API and the agent uses `SERVER_STARTED`; no mixin.**
 - **No mappings on 26.x:** Fabric's intermediary for 26.3 is `0.0.0` (meta), and the loader logs `Mappings not present!`.
   The spike mod compiled with plain `javac` against the vanilla jar extracted from the bundler, the loader jar and Fabric
   API's nested `fabric-lifecycle-events-v1-4.1.9` jar (`scripts/spike/build-testmods.sh`), no Loom.

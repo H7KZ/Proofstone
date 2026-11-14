@@ -96,3 +96,52 @@ Validation rules for `proxies`, enforced by `VersionsCatalog.load` (run by every
 - A pairing is native only: the backend row's protocol equals the driver's (`drivers.mcpl.protocol`). A bridged
   topology is refused (ADR-0016 section 3).
 - `forwarding` is one of `modern` or `legacy`, and the proxy supports it (BungeeCord: `legacy` only).
+
+## Schema 4: loaders (additive, ADR-0017)
+
+Decision: [ADR-0017](../adr/0017-mod-platform-packs.md). Schema 4 adds one optional top-level key, `loaders`, next to
+`platforms` and `proxies`. A schema 3 file is a valid schema 4 file, `platforms` and `proxies` are read exactly as before,
+and every existing cell's `printMatrix` line stays identical. The values below are the T-M8-01 spike pins
+([fabric.md](../platforms/fabric.md), [neoforge.md](../platforms/neoforge.md)); T-M8-04 adds them as `experimental` rows.
+This page is design until then: no schema file carries `loaders` yet.
+
+```yaml
+schema: 4
+loaders:
+  fabric:
+    host:
+      image: "itzg/minecraft-server"       # TYPE=FABRIC
+      digests: { java25: "sha256:e2fabc53…" }   # per Java tag, as ADR-0013 (the digest Paper 26.x pins)
+    rows:
+      - mc: "26.3"
+        loader: "0.20.1"                   # Fabric Loader version
+        installer: "1.1.2"                 # Fabric installer version the launcher jar is built for
+        sha256: "70446947…"                # the server launcher jar (meta.fabricmc.net); computed from the download
+        vanilla-sha256: "TODO"             # the vanilla server jar the launcher fetches; checked in the container (T-M8-07)
+        fabric-api: { version: "0.166.2+26.3", sha256: "TODO" }   # required on every Fabric row (ADR-0017 §5)
+        java: java25                       # optional; java-rules apply (keyed on mc)
+        protocol: 777
+        status: experimental
+        native-drivers: [mcpl]
+        observed: "free text"
+        notes: "free text"
+  neoforge:
+    host: { image: "itzg/minecraft-server", digests: { java25: "sha256:e2fabc53…" } }   # TYPE=NEOFORGE
+    rows:
+      - { mc: "26.3", loader: "26.3.0.103", sha256: "d8a92e17…", vanilla-sha256: "TODO",
+          protocol: 777, status: experimental, native-drivers: [mcpl] }
+```
+
+- **Loader cell:** one row, written `<loader>@<mc>` (`fabric@26.3`). `pr` scope plans the `required` rows, `nightly` also
+  the `experimental` ones, as for `platforms`. `latest` is the highest `required` row; with none, `latest` is an error
+  naming the loader (name the version).
+- The `TODO` values above are not yet run-backed: `vanilla-sha256` comes from T-M8-07's first install run, and the Fabric
+  API sha256 from the download T-M8-04 or T-M8-07 makes. An `experimental` row may carry `TODO`; the cell then fails
+  loudly at that check, never skips it.
+
+Validation rules for `loaders` (T-M8-04, in `VersionsCatalog.load`). A `loaders` key in a `schema: 2` or `3` file is an error:
+- A loader id is not also a `platforms` or `proxies` id. `mc` values are unique within a loader.
+- `loader`, `sha256` and `vanilla-sha256` are present on every row; `installer` and `fabric-api` on every `fabric` row. A
+  `required` row has no `TODO`.
+- `host.digests` has a key for the row's Java tag; a `required` row's tag has a real digest.
+- Native only: the row's `protocol` equals `drivers.mcpl.protocol`. A bridged loader row is refused (ADR-0017 §1).
