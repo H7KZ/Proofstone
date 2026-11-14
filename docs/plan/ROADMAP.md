@@ -892,3 +892,15 @@ Paper and topology numbers.
   5 min boot timeout. Install hosts measured with a logging proxy as the only route out: see
   [fabric.md](../platforms/fabric.md) and [neoforge.md](../platforms/neoforge.md) "The loader host". `vanilla-sha256` is
   filled from the run (both loaders' vanilla jar is the same bytes, sha1 equal to Mojang's manifest).
+- **T-M8-08 conformance on loader rows (2026-11-14).** `:conformance:run -Dproofstone.cells=<row>` through `LoaderHost`, three
+  separate counted invocations per row, all 6 green: each 9 tests, `skipped="0" failures="0" errors="0"`. Join timeouts 0 of
+  8 joins per run on both rows (loader count, apart from Paper and topology); boot timeouts 0 (Fabric boots 14.3 to 15.6 s,
+  NeoForge 16.7 to 18.1 s, 24 each); `PSConf moved too quickly` 0. One dev run before the counted ones was a red: fabric C02
+  failed because vanilla's `/help` has no `Help` header (a finding about the test's expectation; asserted as it is now,
+  [fabric.md](../platforms/fabric.md)). Also asserted: the window-open player read is `501 NOT_SUPPORTED` on both agents.
+  Rows stay `experimental`. ADR-0015 evidence (XML read, bridged = no, all native 777):
+
+  | row | bridged | C01 | C02 | C03 | C04 | C05 | C06 | C07 | C08 | skips | runs |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | fabric@26.3 | no | pass | pass (vanilla `/help`) | pass | pass | pass | pass | pass | pass | none | 3 of 3 green |
+  | neoforge@26.3 | no | pass | pass (vanilla `/help`) | pass | pass | pass | pass | pass | pass | none | 3 of 3 green |

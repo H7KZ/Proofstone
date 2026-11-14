@@ -8,6 +8,7 @@ import io.github.h7kz.proofstone.api.Platform;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.CellPlanner;
 import io.github.h7kz.proofstone.core.cell.CellSelector;
+import io.github.h7kz.proofstone.core.cell.LoaderCell;
 import io.github.h7kz.proofstone.core.cell.Scope;
 import io.github.h7kz.proofstone.core.cell.VersionFamilies;
 import io.github.h7kz.proofstone.core.versions.VersionsFixture;
@@ -161,5 +162,99 @@ class ProofstoneExtensionPlanTest {
     void aSingleServerSelectorDoesNotSelectTheProxyMatrixAndTheClassFailsByName() {
         assertThatThrownBy(() -> planTopology(OnVelocity.class, "paper@26.3"))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining(OnVelocity.class.getName());
+    }
+
+    private static final String LOADERS = """
+            loaders:
+              fabric:
+                host: { image: "itzg/minecraft-server", digests: { java25: "sha256:a25" } }
+                rows:
+                  - { mc: "26.3", loader: "0.20.1", installer: "1.1.2", sha256: "SHA", vanilla-sha256: "SHA",
+                      fabric-api: { version: "0.166.2+26.3", sha256: "SHA" }, protocol: 777, status: experimental,
+                      native-drivers: [mcpl] }
+              neoforge:
+                host: { image: "itzg/minecraft-server", digests: { java25: "sha256:a25" } }
+                rows:
+                  - { mc: "26.3", loader: "26.3.0.103", sha256: "SHA", vanilla-sha256: "SHA", protocol: 777,
+                      status: experimental, native-drivers: [mcpl] }
+            """.replace("SHA", "cd".repeat(32));
+
+    private ProofstoneExtension.Plan planLoader(Class<?> type, String selector) throws IOException {
+        String yaml = """
+                schema: 4
+                java-rules:
+                  - { range: ">=1.20.5 <26", image: java21 }
+                  - { range: ">=26", image: java25 }
+                drivers:
+                  mcpl: { library: "g:a", version: "1.0", protocol: "26.3" }
+                platforms:
+                  paper:
+                    host: { image: "itzg/minecraft-server", digests: { java21: "sha256:21", java25: "sha256:25" } }
+                    rows:
+                      - { mc: "26.3", build: 244, sha256: "a2", protocol: 777, status: required }
+                """ + LOADERS;
+        CellPlanner planner = new CellPlanner(VersionsFixture.load(dir, yaml));
+        return ProofstoneExtension.plan(type, matrices(type), CellSelector.parse(selector, "-Dtest"), planner,
+                Scope.PR, VersionFamilies.none());
+    }
+
+    @Matrix(platform = Platform.PAPER, versions = {"26.3"})
+    @Matrix(platform = Platform.FABRIC, versions = {"26.3"})
+    @Matrix(platform = Platform.NEOFORGE, versions = {"26.3"})
+    static class PaperAndLoaders {
+    }
+
+    @Matrix(platform = Platform.FABRIC, versions = {"26.3"})
+    static class OnlyFabric {
+    }
+
+    @Test
+    void aLoaderRowIsExperimentalSoWithoutASelectorItsMatrixIsNotPlanned() throws IOException {
+        // Loader rows run only when -Dproofstone.cells names them: the default run never boots an experimental loader.
+        ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, null);
+
+        assertThat(plan.cells()).extracting(Cell::platform).containsExactly("paper");
+        assertThat(plan.loaders()).isEmpty();
+    }
+
+    @Test
+    void aLoaderSelectorPlansTheLoaderCellAndNoPaperCell() throws IOException {
+        ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, "fabric@26.3");
+
+        assertThat(plan.cells()).isEmpty();
+        assertThat(plan.loaders()).extracting(LoaderCell::identity).containsExactly("fabric@26.3");
+    }
+
+    @Test
+    void theNeoForgeSelectorPlansTheNeoForgeCell() throws IOException {
+        assertThat(planLoader(PaperAndLoaders.class, "neoforge@26.3").loaders())
+                .extracting(LoaderCell::identity).containsExactly("neoforge@26.3");
+    }
+
+    @Test
+    void aPaperSelectorLeavesTheLoaderMatrixUnplanned() throws IOException {
+        ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, "paper@26.3");
+
+        assertThat(plan.cells()).extracting(Cell::platform).containsExactly("paper");
+        assertThat(plan.loaders()).isEmpty();
+    }
+
+    @Test
+    void aLoaderOnlyClassWithoutALoaderSelectorFailsByNameInsteadOfRunningNothing() {
+        assertThatThrownBy(() -> planLoader(OnlyFabric.class, null))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining(OnlyFabric.class.getName());
+    }
+
+    @Test
+    void aLoaderSelectorNamingARowThatDoesNotExistFailsLoudly() {
+        assertThatThrownBy(() -> planLoader(OnlyFabric.class, "fabric@1.21.11"))
+                .isInstanceOf(io.github.h7kz.proofstone.core.versions.VersionsException.class)
+                .hasMessageContaining("1.21.11");
+    }
+
+    @Test
+    void aPaperClassIsNotRunOnALoaderSelectionAndFailsByName() {
+        assertThatThrownBy(() -> planLoader(Declared.class, "fabric@26.3"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining(Declared.class.getName());
     }
 }

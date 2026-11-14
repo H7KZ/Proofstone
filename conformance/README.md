@@ -17,6 +17,11 @@ itself against real vanilla behaviour, on the newest Paper row:
 - C-B01 a prefixed client (`clients.create(".BedrockBot")`) is seen as Bedrock by the example plugin, and a normal client
   is not. Held on native Paper only (`SIMULATED_BEDROCK`, `ConformanceBedrockPrefixTest`). Not Bedrock support.
 
+- Loader rows (T-M8-08): C01 to C08 also run on `fabric@26.3` and `neoforge@26.3` through `LoaderHost`, named with
+  `-Dproofstone.cells`, because loader rows are experimental and never run by default. Two loader differences are asserted as they
+  are: C02 reads the vanilla `/help` reply (`/help [<command>]`, one system message per usage) where Paper prints `Help`, and
+  `ConformanceLoaderWindowTest` pins the player-state read with a window open, `501 NOT_SUPPORTED` on both mod agents.
+
 C09 to C12 (events, config, log, reset) are not written yet. The per-cell check runs C03 to C08 on every cell in the
 bad-tests and user suites (T-M4-10b); docs/specs/self-tests.md section 1 gives the reasons C09 to C12 are deferred.
 
@@ -40,6 +45,10 @@ Two tasks, both on the same real Paper cell:
 - `:conformance:smoke`: C01 and C02 only, the quick gate.
 - `:conformance:run`: every scenario, C01 to C06. Filter with `--tests '*C03*'`. A bare `--tests C03` matches no class
   name, so Gradle reports no tests.
+
+With a loader cell in `-Dproofstone.cells` (`fabric@26.3`, `neoforge@26.3`), `:conformance:run` builds that loader's agent
+(a Java 25 toolchain and a build-time game jar download, so a Paper run never pays for it) and runs C01 to C08 plus
+`ConformanceLoaderWindowTest` on it. One cell per invocation.
 
 Both need a Java 21+ toolchain (set in `build.gradle.kts`), because the mcpl driver needs it.
 

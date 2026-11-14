@@ -39,6 +39,12 @@ val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/
 // The proxy agents of the topology conformance (T-M7-11), found by path as proofstone-core's topologyTest does.
 val velocityAgentJar = rootProject.layout.projectDirectory.file("platforms/velocity/agent/build/libs/agent-all.jar")
 val bungeeAgentJar = rootProject.layout.projectDirectory.file("platforms/bungee/agent/build/libs/agent-all.jar")
+// The mod agents of the loader conformance (T-M8-08). Built only when -Dproofstone.cells names that loader: they need a Java 25
+// toolchain and a build-time download of the game jar, which a Paper or topology run must not pay for or depend on.
+val fabricAgentJar = rootProject.layout.projectDirectory.file("platforms/fabric/agent/build/libs/agent-all.jar")
+val neoforgeAgentJar = rootProject.layout.projectDirectory.file("platforms/neoforge/agent/build/libs/agent-all.jar")
+fun loaderSelected(loader: String): Boolean =
+    providers.systemProperty("proofstone.cells").orNull?.split(",")?.any { it.trim().startsWith("$loader@") } == true
 
 // The Bedrock-prefix example plugin (T-M5-06) is the plugin under test for C-B01 only. It is built, never committed, and
 // copied under this project because plugin globs are relative to the project directory (examples/bedrock-prefix).
@@ -72,6 +78,16 @@ fun Test.realServerScenarios(taskDescription: String) {
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     systemProperty("proofstone.velocity.agentJar", velocityAgentJar.asFile.absolutePath)
     systemProperty("proofstone.bungee.agentJar", bungeeAgentJar.asFile.absolutePath)
+    systemProperty("proofstone.fabric.agentJar", fabricAgentJar.asFile.absolutePath)
+    systemProperty("proofstone.neoforge.agentJar", neoforgeAgentJar.asFile.absolutePath)
+    // The loaders' pinned downloads (launcher, installer, Fabric API), reused only when the sha256 matches (ADR-0017 section 3).
+    systemProperty("proofstone.loaderCache", layout.buildDirectory.dir("loader-cache").get().asFile.absolutePath)
+    if (loaderSelected("fabric")) {
+        dependsOn(":platforms:fabric:agent:shadowJar")
+    }
+    if (loaderSelected("neoforge")) {
+        dependsOn(":platforms:neoforge:agent:shadowJar")
+    }
     // The run-time cell selector, scope, driver and flake-detector repeat count reach the test JVM from the Gradle
     // command line (test-api spec §1, self-tests section 4).
     for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.driver", "proofstone.repeat")) {
@@ -130,11 +146,23 @@ tasks.register<Test>("run") {
     // dynamic version). The single-server classes plan nothing for it (zero cells is a loud error),
     // and the topology class plans nothing for a plain selector, so each kind of run selects its own classes.
     val topologySelected = providers.systemProperty("proofstone.cells").orNull?.contains(43.toChar()) == true
+    // A loader cell (fabric@26.3, neoforge@26.3) runs C01 to C08 only: the other classes declare no loader @Matrix, so a
+    // loader selection plans no cell for them and they would fail by name (T-M8-08).
+    val loaderRun = loaderSelected("fabric") || loaderSelected("neoforge")
     filter {
         if (topologySelected) {
             includeTestsMatching("*ConformanceTopologyTest")
+        } else if (loaderRun) {
+            includeTestsMatching("*ConformanceSmokeTest")
+            includeTestsMatching("*ConformanceLoaderWindowTest")
+            for (scenario in listOf("C03GiveRoundTripTest", "C04ChestMoveTest", "C05AnvilRenameCostTest",
+                "C06AnvilCombineTest", "C07GrindstoneTest", "C08ShiftClickCraftTest")) {
+                includeTestsMatching("*$scenario")
+            }
         } else {
             excludeTestsMatching("*ConformanceTopologyTest")
+            // Loader rows only: a Paper selection plans no cell for it (T-M8-08).
+            excludeTestsMatching("*ConformanceLoaderWindowTest")
         }
     }
 }

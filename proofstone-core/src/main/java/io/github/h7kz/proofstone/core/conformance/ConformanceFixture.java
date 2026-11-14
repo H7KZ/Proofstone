@@ -24,7 +24,7 @@ public final class ConformanceFixture {
 
     private static final int PLAYER_SLOTS = 36;
     static final BlockPos ANVIL = new BlockPos(0, 64, 2);
-    static final BlockPos CHEST = new BlockPos(-1, 64, 0);
+    public static final BlockPos CHEST = new BlockPos(-1, 64, 0);
     /** C07 only: a grindstone, placed by {@link #placeBlock} because 1.12.2 has none (docs/platforms/paper.md). */
     static final BlockPos GRINDSTONE = new BlockPos(0, 64, -2);
     /** C08 only: a crafting table, placed by {@link #placeBlock}. */

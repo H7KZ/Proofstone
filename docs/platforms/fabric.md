@@ -202,6 +202,20 @@ From `FabricLoaderHostIT` runs on the fabric@26.3 row (2026-11-14, `scripts/dock
 - **Log guard:** the `fabric` pack lists `No key layers in MapLike` (flat world without generator settings, on every
   loader boot) and nothing else.
 
+### Conformance C01 to C08 (T-M8-08, `:conformance:run -Dproofstone.cells=fabric@26.3`)
+Three separate invocations on 2026-11-14 under `scripts/dockerlock.sh`, each green: 9 tests (C01, C02, C03 to C08 and the
+window quirk test), `skipped="0" failures="0" errors="0"` in every XML, 0 join timeouts, 0 boot timeouts, 0 `PSConf moved too
+quickly`. Boot times, container start to `Done (`, install included, one boot per test class (8 per run): 14.3 to 15.6 s (24 boots).
+Quirks, each asserted as it is (never a weakened assertion):
+- **`/help` is vanilla's own.** C02 reads `/help [<command>]` (one system message per command usage); Paper prints a `Help`
+  header. `ConformanceSmokeTest` branches on the platform, each side asserting its real reply.
+- **A player-state read with a window open is `501 NOT_SUPPORTED`** (the server keeps no window title).
+  `ConformanceLoaderWindowTest` asserts the refusal while a chest is open and the read again once it is closed. C04 to C08 read
+  the player only after closing the window, so they run unchanged. A dev run before the counted ones (fabric, C02 expecting the
+  Bukkit `Help`) was red on `/help` and led to the first quirk above.
+- **Capabilities:** the loader pack holds `CONSOLE` (agent token `command`, verified by C03 and the per-cell check). Not
+  `BUKKIT_EVENTS`: the agent's `events` token is a loader probe, not a Bukkit listener. No scenario was skipped.
+
 ## Capabilities
 Observed in the spike, not yet tokens:
 - **Data packs (vanilla):** a pack copied in with the image's `DATAPACKS` (to `world/datapacks`) loaded on Fabric

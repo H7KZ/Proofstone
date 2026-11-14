@@ -358,7 +358,7 @@ class SwitchE2E {
 
 ## 13. Mods, data packs and resource packs (ADR-0017, design for T-M8-07, T-M8-09, T-M8-10)
 
-Design from [ADR-0017](../adr/0017-mod-platform-packs.md); nothing here is in `api-baseline.txt` yet. Each card adds its part
+Design from [ADR-0017](../adr/0017-mod-platform-packs.md); only `Platform.FABRIC` and `Platform.NEOFORGE` are in `api-baseline.txt` so far (T-M8-08, `api-change`, additions only). Each card adds its part
 as an `api-change`, additions only: new annotation elements with defaults, new types, new constants, default methods.
 
 ```java
@@ -381,7 +381,13 @@ class PackE2E {
 }
 ```
 
-- **New constants:** `Platform.FABRIC`, `Platform.NEOFORGE`; `Capability.MODS`, `Capability.DATAPACKS_VANILLA`,
+- **Loader cells (T-M8-08).** A `@Matrix` naming `Platform.FABRIC` or `Platform.NEOFORGE` plans a loader cell on a `loaders` row.
+  Loader rows are `experimental`, so the matrix plans a cell only when `-Dproofstone.cells` (or `PROOFSTONE_CELLS`) names it, for
+  example `fabric@26.3`; without it the class prints `NOT SELECTED (not run, not a pass)` for that platform and runs its other
+  matrices. Loader cells run with the native `mcpl` driver only, never with `-Dproofstone.differential` or `-Dproofstone.repeat`,
+  and `plugins` on one is an `INVALID test declaration`. A loader pack holds `CONSOLE` (verified by C03) and no other
+  capability yet.
+- **New constants:** `Platform.FABRIC`, `Platform.NEOFORGE` (in the API since T-M8-08); `Capability.MODS`, `Capability.DATAPACKS_VANILLA`,
   `Capability.RESOURCE_PACKS` (tokens `mods`, `datapacks`, `resource-pack-status`; ADR-0017 §8).
 - **`@Proofstone(mods, datapacks)`:** globs relative to the project directory, exactly one match each, as `plugins`. Mods go to
   `/mods`, data packs (a `.zip` or a directory with `pack.mcmeta`) to the world's `datapacks` before start. Declaring either

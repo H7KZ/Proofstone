@@ -15,6 +15,9 @@ import io.github.h7kz.proofstone.core.conformance.C06AnvilCombine;
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Matrix(platform = Platform.PURPUR, versions = {"latest"})
 @Matrix(platform = Platform.SPIGOT, versions = {"latest"})
+// Loader rows are experimental, so they run only when -Dproofstone.cells names them (fabric@26.3), T-M8-08.
+@Matrix(platform = Platform.FABRIC, versions = {"26.3"})
+@Matrix(platform = Platform.NEOFORGE, versions = {"26.3"})
 class C06AnvilCombineTest {
 
     @CellTest

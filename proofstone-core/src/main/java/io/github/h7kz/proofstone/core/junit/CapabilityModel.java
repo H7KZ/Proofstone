@@ -32,7 +32,11 @@ final class CapabilityModel {
             "paper", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE, Capability.SIMULATED_BEDROCK),
             // The proxy packs declare only the topology capabilities (ADR-0016 section 10); their agents report "proxy".
             "velocity", Set.of(Capability.PROXY, Capability.TOPOLOGY),
-            "bungeecord", Set.of(Capability.PROXY, Capability.TOPOLOGY));
+            "bungeecord", Set.of(Capability.PROXY, Capability.TOPOLOGY),
+            // A loader pack declares only what its C01 to C08 run verified (T-M8-08): the console path, which the per-cell
+            // check and C03 use. Not BUKKIT_EVENTS: its token "events" is a Bukkit listener, and a loader's probe is not.
+            "fabric", Set.of(Capability.CONSOLE),
+            "neoforge", Set.of(Capability.CONSOLE));
 
     /**
      * The agent's report token that confirms a declared capability (docs/platforms/paper.md and folia.md, Gotchas). A

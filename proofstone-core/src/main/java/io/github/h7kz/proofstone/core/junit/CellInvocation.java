@@ -7,11 +7,15 @@ import io.github.h7kz.proofstone.api.Isolation;
 import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.api.Topology;
 import io.github.h7kz.proofstone.core.cell.Cell;
+import io.github.h7kz.proofstone.core.cell.LoaderCell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import io.github.h7kz.proofstone.core.host.LoaderHost;
+import io.github.h7kz.proofstone.core.host.LoaderHostOptions;
 import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.host.LeakDetector;
 import io.github.h7kz.proofstone.core.host.PaperHostOptions;
 import io.github.h7kz.proofstone.core.host.ViaProxyHost;
@@ -63,6 +67,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     static final Namespace NAMESPACE = Namespace.create(CellInvocation.class);
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(30);
     private static final String AGENT_JAR = "proofstone.agentJar";
+    /** Where the loader pins' downloads are kept between runs (each reused only when its sha256 matches). */
+    private static final String LOADER_CACHE = "proofstone.loaderCache";
     /** The driver the cells run is chosen by id; mcpl is the primary (ADR-0004). */
     private static final String DRIVER_PROPERTY = "proofstone.driver";
     private static final String PRIMARY_DRIVER = DifferentialRun.PRIMARY;
@@ -74,6 +80,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private static final String REPORT = "report";
 
     private final Cell cell;
+    /** The loader cell this invocation boots through {@link LoaderHost}; {@code null} on a Bukkit-family cell (ADR-0017). */
+    private final LoaderCell loader;
     private final Proofstone config;
     private final Isolation.Mode isolation;
 
@@ -95,7 +103,13 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     CellInvocation(Cell cell, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog, String driverId,
             int repetition, int repeats) {
+        this(cell, null, config, isolation, catalog, driverId, repetition, repeats);
+    }
+
+    CellInvocation(Cell cell, LoaderCell loader, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog,
+            String driverId, int repetition, int repeats) {
         this.cell = cell;
+        this.loader = loader;
         this.config = config;
         this.isolation = isolation;
         this.catalog = catalog;
@@ -187,7 +201,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             throw new TestAbortedException(topologyOnly.get());
         }
         HostResource resource = resource(context);
-        PaperHost host = resource.host();
+        ServerHost host = resource.host();
         // Before the join, so anything the join or the reset logs counts for this test.
         TestState state = new TestState(host, ErrorLogGuard.cursor(host));
         state.proxy = resource.proxy();
@@ -484,6 +498,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             throw new ParameterResolutionException("system property " + AGENT_JAR + " is not set: it points at "
                     + "the shaded agent jar");
         }
+        if (loader != null) {
+            return bootLoader();
+        }
         // A control run installs no plugin jars. The agent and the fixture world are not plugins under test, so they stay.
         List<String> plugins = List.of(config.plugins());
         if (controlRun) {
@@ -527,6 +544,41 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             new HostResource(host, viaProxy, cellNetwork, bound).closeQuietly(e);
             throw e;
         }
+    }
+
+    /**
+     * Starts a loader cell through {@link LoaderHost} (ADR-0017 section 2): the loader's own agent jar, no plugin, and the
+     * native mcpl driver only (a sidecar driver or ViaProxy has no loader row, the planner refuses a bridged one). The boot
+     * time is printed as a host finding, never part of a join timeout (M8 flake rule 4).
+     */
+    private HostResource bootLoader() {
+        if (config.plugins().length > 0) {
+            throw new ParameterResolutionException("INVALID test declaration: " + config.plugins().length + " plugin(s) "
+                    + "declared on the loader cell " + cellId() + ". A " + cell.platform() + " server loads no plugin "
+                    + "(ADR-0017 section 4); remove plugins from @Proofstone for this cell");
+        }
+        for (String id : driversFor(differential)) {
+            if (!PRIMARY_DRIVER.equals(id)) {
+                throw new ParameterResolutionException("INVALID: driver " + id + " cannot run on the loader cell "
+                        + cellId() + ": only the native " + PRIMARY_DRIVER + " driver joins a loader row (ADR-0017)");
+            }
+        }
+        if (bridged) {
+            throw new ParameterResolutionException("INVALID: the loader cell " + cellId() + " would need ViaProxy for the "
+                    + "driver; a bridged loader row is refused (ADR-0017 section 1)");
+        }
+        String property = "proofstone." + loader.loader() + ".agentJar";
+        String jar = System.getProperty(property);
+        if (jar == null) {
+            throw new ParameterResolutionException("system property " + property + " is not set: it points at the shaded "
+                    + loader.loader() + " agent jar");
+        }
+        String cache = System.getProperty(LOADER_CACHE, "build/loader-cache");
+        LoaderHost host = LoaderHost.start(loader,
+                LoaderHostOptions.of(Path.of(jar), true, Path.of(cache).toAbsolutePath()));
+        System.err.println("PROOFSTONE LOADER BOOT " + loader.identity() + ": " + host.bootTime().toMillis()
+                + " ms from container start to \"Done (\" (host finding, not a join timeout)");
+        return new HostResource(host, null, null, Map.of());
     }
 
     /** Logs one client in under {@code name} through the cell's driver, at the address that driver reaches. */
@@ -601,7 +653,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * Closes the bound drivers, ViaProxy, the server and the network when the owning store closes. {@code drivers} holds
      * only the sidecar drivers that {@link ClientDriver#onNetwork} started.
      */
-    private record HostResource(PaperHost host, ViaProxyHost proxy, Network network, Map<String, ClientDriver> drivers)
+    private record HostResource(ServerHost host, ViaProxyHost proxy, Network network, Map<String, ClientDriver> drivers)
             implements AutoCloseable {
         @Override
         public void close() {
