@@ -43,6 +43,19 @@ bungee-api = "1.21-R0.4"
 # at the versions that POM declares.
 bungee-maven-resolver-provider = "3.9.6"
 bungee-resolver = "1.9.18"
+# Fabric agent (T-M8-05, ADR-0017 section 5). Compile only: the server provides all of it, nothing is shaded. Loom is not
+# used (Loom 1.18+ needs Gradle on a JVM 25, ADR-0017 keeps Gradle on 21; Loom 1.17 adds project repositories, which
+# settings refuse), so the agent compiles with javac against these jars, the fallback ADR-0017 section 5 allows.
+# The loader and Fabric API are the fabric@26.3 row of versions.yml (FabricPinsTest checks they agree). Fabric API's sha256
+# is the one maven.fabricmc.net publishes next to the jar.
+fabric-loader = "0.20.1"
+fabric-api = "0.166.2+26.3"
+fabric-api-sha256 = "e8acacc7836f39237c83c2a664b039647ee36f93822797acc40cda44666002ea"
+# The 26.3 vanilla server jar (Mojang's bundler: the game jar and its libraries inside), the same file the Fabric launcher
+# fetches at a cell's cold start (ADR-0017 section 6). The "version" is its sha1, the content address in Mojang's 26.3
+# manifest, so the URL names exactly one file; the build also checks the sha256 below before it unpacks it.
+minecraft-server = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c"
+minecraft-server-sha256 = "d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -73,6 +86,9 @@ bungee-resolver-connector-basic = { module = "org.apache.maven.resolver:maven-re
 bungee-resolver-transport-http = { module = "org.apache.maven.resolver:maven-resolver-transport-http", version.ref = "bungee-resolver" }
 adventure-text-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
 adventure-text-serializer-plain = { module = "net.kyori:adventure-text-serializer-plain", version.ref = "adventure" }
+minecraft-server = { module = "com.mojang.piston-data:server", version.ref = "minecraft-server" }
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
+fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
 
 # Build-logic only. Not on any runtime classpath.
 shadow-gradle-plugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadow" }

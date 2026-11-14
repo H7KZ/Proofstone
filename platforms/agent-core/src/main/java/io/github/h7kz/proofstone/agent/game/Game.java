@@ -90,6 +90,14 @@ public interface Game {
         throw notAProxy();
     }
 
+    /**
+     * The loaded mods, sorted by id, each {@code {id, version}} (mods.json). Mod agents only (protocol 1.3, ADR-0017
+     * section 9): every other agent leaves this default, which is a 404 {@code NOT_FOUND}.
+     */
+    default List<Map<String, Object>> mods(long timeoutMs) {
+        throw new AgentException(404, "NOT_FOUND", "this agent is not a mod agent and has no /v1/mods endpoint", null);
+    }
+
     /** The error of a proxy endpoint on an agent that is not a proxy. */
     static AgentException notAProxy() {
         return new AgentException(404, "NOT_FOUND", "this agent is not a proxy and has no /v1/proxy endpoints", null);

@@ -155,6 +155,29 @@ Revisit when the driver gains a second native row or a bridged mod row is shown 
   newer (JDK 21 `javac` fails: `class file has wrong version 69.0, should be 65.0`). The spike used JDK 26 `--release 25`.
 - The test mods are spike code under `scripts/spike/testmod/`, not the agent.
 
+### The agent (T-M8-05, `platforms/fabric/agent`)
+From `FabricAgentIT` runs on the fabric@26.3 row (2026-11-14, `scripts/dockerlock.sh`; the PR lists each run):
+- **Build:** plain `javac` on a Java 25 toolchain, `--release 25`, against the vanilla 26.3 server jar (Mojang's content
+  address, sha256 checked), the loader 0.20.1 and Fabric API 0.166.2+26.3 (sha256 `e8acacc7…`, equal to the `.sha256`
+  maven.fabricmc.net publishes). **Loom is not used:** Loom 1.18 and newer need Gradle on a JVM 25 (`Dependency requires
+  at least JVM runtime version 25`), and Loom 1.17.21 adds project repositories (`LoomLocalRemappedMods`), which
+  `FAIL_ON_PROJECT_REPOS` refuses. ADR-0017 section 5 allows the `javac` fallback.
+- **Ready:** the HTTP server starts in `SERVER_STARTED`, so `health` answers once the server logged `Done (`. Each of
+  the three counted runs was a cold start (`Downloading Minecraft server`); the whole test class took 18.9 to 19.3 s
+  (XML `time`). The only ERROR line was the known `No key layers in MapLike[{}]` (runs 1 to 3).
+- **Server thread:** the join probe on `ServerPlayConnectionEvents.JOIN` recorded thread `Server thread`; every game
+  endpoint runs there through `MinecraftServer.execute`.
+- **Events:** a probe names a Fabric API event as `<holder class>.<FIELD>`. Only `void` callbacks are accepted (a callback
+  with a result lets a listener decide). Fabric API ships no parameter names, so fields are `arg0..argN`; the join
+  callback's `arg0` (the play connection) is recorded as `{name}` of its player. Fabric API events cannot unregister a
+  listener: an unsubscribed probe stays registered and records nothing.
+- **`/v1/mods`** lists the mods whose jar is in `/data/mods`: `fabric-api` and `proofstone-agent` on the row, matching the
+  `mods/list` golden.
+- **World names** follow Bukkit (`world`, `world_nether`, `world_the_end`), so the golden fixture (`world`, spawn
+  `(0.5, 64.0, 0.5)`) replays unchanged.
+- **Not served:** plugin endpoints (`404`), `datapacks` (T-M8-09), `resource-pack-status` (ADR-0017 section 7). A player with
+  a window open is `501 NOT_SUPPORTED`: a vanilla server does not keep the window's title, and the agent will not invent one.
+
 ## Capabilities
 Observed in the spike, not yet tokens:
 - **Data packs (vanilla):** a pack copied in with the image's `DATAPACKS` (to `world/datapacks`) loaded on Fabric
@@ -198,3 +221,9 @@ Observed in the spike, not yet tokens:
   host name` (offline restart only).
 - **SLF4J warning in the client JVM** (`No SLF4J providers were found`) is the spike client's, not the server's.
 - The vanilla jar Fabric downloads lives in `/data/.fabric/server/`, the unpacked game jar in `/data/versions/26.3/`.
+- **The loader lists itself as an ordinary mod.** `FabricLoader.getAllMods()` reports `fabricloader` with metadata type
+  `fabric` (not `builtin` as `minecraft` and `java` are) and no containing mod, so filtering by type let it into
+  `/v1/mods` (T-M8-05 development run: `expected 2 items but was 3`). The agent tells mods-folder mods apart by their jar's
+  path instead.
+- **Minecraft's `log4j2.xml` rides along with the game jar.** On a unit-test classpath it writes `logs/latest.log` into the
+  working directory; the agent module's tests run in `build/test-work`.
