@@ -8,7 +8,7 @@ Continue the Proofstone project (repo C:\Users\honzi\Documents\GitHub\Proofstone
 
 STATE OF MAIN: origin/main has M0 to M7 merged (PRs up to #112, plus the T-M7-99 review PR once merged). The M7 review
 (`docs/plan/ROADMAP.md`, "M7 review (T-M7-99)", 2026-11-14) re-scores the M7 exit criterion from runs and gives the verdict.
-Velocity and BungeeCord topology rows are `experimental`. Nothing is published or tagged. There is NO CI and no workflow
+Velocity and BungeeCord topology rows are `required` (promoted in PR card/M7-followups, 2026-11-14). Nothing is published or tagged. There is NO CI and no workflow
 (maintainer decision 2026-11-08). The public 0.1.0 claim is still NO-GO for the reasons in the M6 review addendum.
 
 DECIDED (do not ask again):

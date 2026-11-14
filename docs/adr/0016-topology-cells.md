@@ -46,6 +46,7 @@
   `server-<name>`, and its own directory in the bundle (`proxy/`, `server-lobby/`, ...).
 - **Single-server code is unchanged.** A topology is planned and started by new types (`TopologyHost`, `ProxyHost`,
   T-M7-07) that own several `PaperHost`s. `PaperHost` gains nothing beyond the network options it already has.
+  *(Amended 2026-11-14, see Amendments: "unchanged" holds for identities, rows and `printMatrix` lines, not for the game-port binding.)*
 
 ### 2. `versions.yml` schema 3 (additive)
 - A new top-level key `proxies`, a sibling of `platforms`. A schema 2 file is a valid schema 3 file, and code that reads
@@ -196,3 +197,17 @@ Assertions keep [ADR-0003](0003-dual-oracle.md). The server oracle splits across
   Paper rows and needs no new code; a cache is a separate card if a pruned build is ever seen.
 - **A pinned host image of our own** (`images/`): rejected for now. `itzg/mc-proxy` ran both proxies in the spike and
   is pinned by digest like `itzg/minecraft-server`.
+
+## Amendments
+
+### 2026-11-14: the loopback-only game-port binding covers bridged single-server cells too (T-M7-99 finding)
+- Section 1 says single-server code is unchanged, and section 8 scopes the loopback-only game-port binding to a topology backend
+  (the T-M7-11 direct-join control). As built, `PaperHost` applies `loopbackOnly` to **every** server started with a network,
+  and `CellInvocation` puts a bridged single-server cell (ViaProxy in front of one server) on a network. So a bridged
+  single-server cell's game port is bound to `127.0.0.1` on a free host port, not published on all addresses.
+- Rule from now on: a game port is bound to `127.0.0.1` for every server that shares a Docker network with a proxy (ViaProxy,
+  Velocity or BungeeCord). Only a plain single server with no network publishes it the usual way. The harness, ViaProxy and the
+  proxies reach the server over the network, and the M7 review's `metaTest` bridged tasks gave their verdicts.
+- What stays true of section 1: identities, rows, `printMatrix` output and the verdict logic of single-server cells did not change.
+  What section 1 must not be read to promise: that a bridged single-server cell's published ports are as before M7.
+- No code change. This amendment corrects the ADR text only.
