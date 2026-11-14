@@ -75,10 +75,25 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `proxy/server-not-found` | 404 `SERVER_NOT_FOUND` with `detail {name}` (v1.2) |
 | `players/proxy-first-join` | proxy `GET /v1/players/Alex` on the first server: `previousServer` is an explicit `null` (v1.2) |
 | `players/proxy-switched` | the same after a switch lobby to survival (v1.2) |
+| `datapacks/list` | `GET /v1/datapacks`: `{enabled, available}` ids as the server names them (v1.3, T-M8-04). Shape only: pending, see below |
+| `mods/list` | `GET /v1/mods`: `{mods: [{id, version}]}` sorted by id (v1.3, T-M8-04). Shape only: pending, see below |
 
 **Proxy cases (T-M7-03).** The six v1.2 cases are checked against their schemas by this module's `GoldenContractTest`
 only. The Bukkit agent does not replay them (a backend never serves them), and it is not in its case list. The proxy
 agents (T-M7-05, T-M7-06) replay them.
+
+**Protocol 1.3 cases (T-M8-04, ADR-0017 section 9).** `datapacks/list` and `mods/list` are checked against their
+schemas by this module's `GoldenContractTest` only, and are pending for every agent: no agent serves them yet. The Bukkit
+agent lists both in `AgentContractIT.PENDING` (it reports neither the `datapacks` nor the `mods` token; `GET /v1/datapacks`
+comes with T-M8-09 where the server API lists data packs, `GET /v1/mods` is for the Fabric and NeoForge agents). The proxy
+agents never serve them and do not list them: their contract tests replay only the cases they name. The ids in the two files
+are the shape the endpoints return, not a recorded server's list: the card that makes an agent serve an endpoint (T-M8-05,
+T-M8-06, T-M8-09) pins its golden against a real server, moves it out of pending and may correct the values. The mods
+golden carries `fabric-api` (every Fabric row has it, ADR-0017 section 5) and `proofstone-agent` as a placeholder id.
+
+The `health/ok` golden moved from `1.2` to `1.3` for T-M8-04 (the only edit to an existing golden). The Bukkit agent's
+`PROTOCOL` is `1.3` to match. The proxy agents stay at `1.2` and so does `health/proxy-ok`: they serve nothing 1.3 adds, and
+a 1.2 agent still satisfies every 1.2 golden.
 
 **Replay order and setup (T-M2-02).** Cases that need setup:
 

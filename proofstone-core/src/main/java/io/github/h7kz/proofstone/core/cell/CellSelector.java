@@ -15,6 +15,9 @@ import java.util.regex.Pattern;
  *
  * <p>A topology entry is {@code proxy@version+platform@version}, for example {@code velocity@4.3.1+paper@26.3}
  * (ADR-0016 section 1). It selects a topology cell, never a single-server platform, so it has its own list.
+ *
+ * <p>A loader entry is {@code fabric@26.3} or {@code neoforge@latest} (ADR-0017 section 2): a single-server loader cell,
+ * kept in {@link #loaders()}, never in the platform lists. A loader id on either side of a {@code +} is an error.
  */
 public final class CellSelector {
 
@@ -23,14 +26,31 @@ public final class CellSelector {
     private static final String VERSION = "(latest|all|\\d+(?:\\.\\d+)*)";
     private static final Pattern TOPOLOGY = Pattern.compile(
             "([a-z][a-z0-9-]*)@" + VERSION + "\\+([a-z][a-z0-9-]*)@" + VERSION);
-    private static final CellSelector NONE = new CellSelector(Map.of(), List.of());
+    private static final CellSelector NONE = new CellSelector(Map.of(), List.of(), List.of());
+    /** The loader ids (ADR-0017): {@code fabric@26.3} is a loader cell, never a platform entry or half a topology. */
+    private static final List<String> LOADERS = List.of("fabric", "neoforge");
 
     private final Map<String, List<String>> versionsByPlatform;
     private final List<Topology> topologies;
+    private final List<LoaderEntry> loaders;
 
-    private CellSelector(Map<String, List<String>> versionsByPlatform, List<Topology> topologies) {
+    private CellSelector(Map<String, List<String>> versionsByPlatform, List<Topology> topologies,
+            List<LoaderEntry> loaders) {
         this.versionsByPlatform = versionsByPlatform;
         this.topologies = topologies;
+        this.loaders = loaders;
+    }
+
+    /**
+     * One loader entry: {@code fabric@26.3}, a loader id with an exact version, {@code latest} or {@code all}. Whether the
+     * row exists is the planner's error, not this one.
+     */
+    public record LoaderEntry(String loader, String version) {
+
+        /** The entry as written, for messages. */
+        public String entry() {
+            return loader + "@" + version;
+        }
     }
 
     /**
@@ -61,6 +81,7 @@ public final class CellSelector {
         }
         Map<String, List<String>> byPlatform = new LinkedHashMap<>();
         List<Topology> topologies = new ArrayList<>();
+        List<LoaderEntry> loaders = new ArrayList<>();
         for (String raw : spec.split(",", -1)) {
             String entry = raw.trim();
             if (entry.isEmpty()) {
@@ -74,6 +95,11 @@ public final class CellSelector {
                             + "proxy@version+platform@version, for example velocity@4.3.1+paper@26.3 or "
                             + "velocity@latest+paper@latest (lower case, one proxy and one backend platform)");
                 }
+                if (LOADERS.contains(topology.group(1)) || LOADERS.contains(topology.group(3))) {
+                    throw new VersionsException(source + " entry \"" + entry + "\" names a loader in a topology: a "
+                            + "loader cell is a single-server cell written fabric@26.3 or neoforge@26.3, never "
+                            + "joined with + (ADR-0017 section 2)");
+                }
                 Topology parsed = new Topology(topology.group(1), topology.group(2), topology.group(3),
                         topology.group(4));
                 if (!topologies.contains(parsed)) {
@@ -86,6 +112,13 @@ public final class CellSelector {
                 throw new VersionsException(source + " entry \"" + entry + "\" must be platform@version, for "
                         + "example paper@latest, paper@1.21.11 or paper@all (platform is lower case)");
             }
+            if (LOADERS.contains(matcher.group(1))) {
+                LoaderEntry parsed = new LoaderEntry(matcher.group(1), matcher.group(2));
+                if (!loaders.contains(parsed)) {
+                    loaders.add(parsed);
+                }
+                continue;
+            }
             List<String> versions = byPlatform.computeIfAbsent(matcher.group(1), key -> new ArrayList<>());
             if (!versions.contains(matcher.group(2))) {
                 versions.add(matcher.group(2));
@@ -93,12 +126,17 @@ public final class CellSelector {
         }
         Map<String, List<String>> frozen = new LinkedHashMap<>();
         byPlatform.forEach((platform, versions) -> frozen.put(platform, List.copyOf(versions)));
-        return new CellSelector(Map.copyOf(frozen), List.copyOf(topologies));
+        return new CellSelector(Map.copyOf(frozen), List.copyOf(topologies), List.copyOf(loaders));
     }
 
     /** @return {@code true} when the setting names at least one entry */
     public boolean isSet() {
-        return !versionsByPlatform.isEmpty() || !topologies.isEmpty();
+        return !versionsByPlatform.isEmpty() || !topologies.isEmpty() || !loaders.isEmpty();
+    }
+
+    /** @return the loader entries in the order written, without duplicates; empty when none is named */
+    public List<LoaderEntry> loaders() {
+        return loaders;
     }
 
     /** @return the topology entries in the order written, without duplicates; empty when none is named */

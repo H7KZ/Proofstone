@@ -36,15 +36,20 @@ public final class VersionsCatalog {
             "velocity", List.of("modern", "legacy"),
             "bungeecord", List.of("legacy"));
 
+    /** The loaders Proofstone can run (ADR-0017); an id not here is not a loader row family. */
+    private static final List<String> LOADERS = List.of("fabric", "neoforge");
+
     private final Map<String, Platform> platforms;
     private final Map<String, ProxyPlatform> proxies;
+    private final Map<String, LoaderPlatform> loaders;
     private final List<JavaRule> javaRules;
     private final Map<String, ImagePin> driverImages;
 
     private VersionsCatalog(Map<String, Platform> platforms, Map<String, ProxyPlatform> proxies,
-            List<JavaRule> javaRules, Map<String, ImagePin> driverImages) {
+            Map<String, LoaderPlatform> loaders, List<JavaRule> javaRules, Map<String, ImagePin> driverImages) {
         this.platforms = platforms;
         this.proxies = proxies;
+        this.loaders = loaders;
         this.javaRules = javaRules;
         this.driverImages = driverImages;
     }
@@ -124,6 +129,23 @@ public final class VersionsCatalog {
         return proxy;
     }
 
+    /** @return loader ids in file order; empty for a schema 2 or 3 file (schema 4 {@code loaders}, ADR-0017) */
+    public List<String> loaderIds() {
+        return List.copyOf(loaders.keySet());
+    }
+
+    /**
+     * @throws VersionsException when the loader is not in the matrix, naming the known ones
+     */
+    public LoaderPlatform loader(String id) {
+        LoaderPlatform loader = loaders.get(id);
+        if (loader == null) {
+            throw new VersionsException("unknown loader \"" + id + "\"; known: "
+                    + (loaders.isEmpty() ? "none (versions.yml has no loaders)" : String.join(", ", loaders.keySet())));
+        }
+        return loader;
+    }
+
     /**
      * @throws VersionsException when the platform is not in the matrix
      */
@@ -141,15 +163,24 @@ public final class VersionsCatalog {
      * @throws VersionsException when no rule matches, so an unknown version never gets a guessed Java
      */
     public String javaTag(Row row) {
-        if (row.java() != null) {
-            return row.java();
+        return javaTag(javaRules, row.mc(), row.java());
+    }
+
+    /** The Java image of a loader row, chosen as {@link #javaTag(Row)} chooses it (ADR-0017 section 3). */
+    public String javaTag(LoaderRow row) {
+        return javaTag(javaRules, row.mc(), row.java());
+    }
+
+    private static String javaTag(List<JavaRule> rules, String mc, String override) {
+        if (override != null) {
+            return override;
         }
-        for (JavaRule rule : javaRules) {
-            if (rule.matches(row.mc())) {
+        for (JavaRule rule : rules) {
+            if (rule.matches(mc)) {
                 return rule.image();
             }
         }
-        throw new VersionsException("no java-rules entry matches " + row.mc());
+        throw new VersionsException("no java-rules entry matches " + mc);
     }
 
     private static JsonNode readYaml(Path versionsFile) {
@@ -197,6 +228,72 @@ public final class VersionsCatalog {
             }
         }
         errors.addAll(proxyErrors(document));
+        errors.addAll(loaderErrors(document));
+        return errors;
+    }
+
+    /** The schema 4 rules of docs/specs/versions-yml.md; a file without {@code loaders} has none to break. */
+    private static List<String> loaderErrors(JsonNode document) {
+        List<String> errors = new ArrayList<>();
+        JsonNode loaders = document.path("loaders");
+        if (loaders.isMissingNode()) {
+            return errors;
+        }
+        if (document.path("schema").asInt() != 4) {
+            errors.add("loaders: needs \"schema: 4\" (ADR-0017); this file says schema "
+                    + document.path("schema").asText());
+        }
+        String driverMc = document.path("drivers").path("mcpl").path("protocol").asText("");
+        if (driverMc.isEmpty()) {
+            errors.add("loaders: drivers.mcpl.protocol is missing, so rows cannot be checked for being native");
+        }
+        List<JavaRule> rules = new ArrayList<>();
+        for (JsonNode rule : document.path("java-rules")) {
+            rules.add(JavaRule.parse(rule.path("range").asText(), rule.path("image").asText()));
+        }
+        Iterator<Map.Entry<String, JsonNode>> ids = loaders.fields();
+        while (ids.hasNext()) {
+            Map.Entry<String, JsonNode> loader = ids.next();
+            String id = loader.getKey();
+            String at = "loaders." + id;
+            if (!LOADERS.contains(id)) {
+                errors.add(at + ": unknown loader; Proofstone can run " + String.join(", ", LOADERS));
+            }
+            if (document.path("platforms").has(id) || document.path("proxies").has(id)) {
+                errors.add(at + ": " + id + " is also a platform or proxy id; a loader is never either");
+            }
+            Set<String> seenMc = new HashSet<>();
+            JsonNode rows = loader.getValue().path("rows");
+            for (int i = 0; i < rows.size(); i++) {
+                JsonNode row = rows.get(i);
+                String mc = row.path("mc").asText();
+                String where = at + ".rows[" + i + "] (mc " + mc + ")";
+                if (!seenMc.add(mc)) {
+                    errors.add(at + ": mc \"" + mc + "\" appears twice");
+                }
+                if ("fabric".equals(id) && !row.has("installer")) {
+                    errors.add(where + ": a fabric row needs installer (the launcher's installer version)");
+                }
+                if ("fabric".equals(id) && !row.has("fabric-api")) {
+                    errors.add(where + ": a fabric row needs fabric-api (ADR-0017 section 5)");
+                }
+                try {
+                    String tag = javaTag(rules, mc, row.has("java") ? row.path("java").asText() : null);
+                    if (!loader.getValue().path("host").path("digests").has(tag)) {
+                        errors.add(where + ": host.digests has no entry for Java tag " + tag);
+                    }
+                } catch (VersionsException e) {
+                    errors.add(where + ": " + e.getMessage());
+                }
+                if ("required".equals(row.path("status").asText()) && containsTodo(row)) {
+                    errors.add(where + ": required row must not contain TODO");
+                }
+                if (!driverMc.isEmpty() && !nativeFor(document, row, driverMc)) {
+                    errors.add(id + "@" + mc + ": a bridged loader row is not planned (the driver speaks " + driverMc
+                            + " natively and the row's protocol differs); native rows only, ADR-0017 section 1");
+                }
+            }
+        }
         return errors;
     }
 
@@ -207,8 +304,8 @@ public final class VersionsCatalog {
         if (proxies.isMissingNode()) {
             return errors;
         }
-        if (document.path("schema").asInt() != 3) {
-            errors.add("proxies: needs \"schema: 3\" (ADR-0016); this file says schema "
+        if (document.path("schema").asInt() < 3) {
+            errors.add("proxies: needs \"schema: 3\" or later (ADR-0016); this file says schema "
                     + document.path("schema").asText());
         }
         String driverMc = document.path("drivers").path("mcpl").path("protocol").asText("");
@@ -367,7 +464,46 @@ public final class VersionsCatalog {
                 driverImages.put(driver.getKey(), new ImagePin(driver.getValue().path("image").asText(), digest));
             }
         }
-        return new VersionsCatalog(platforms, proxies(document), List.copyOf(rules), Map.copyOf(driverImages));
+        return new VersionsCatalog(platforms, proxies(document), loaders(document), List.copyOf(rules),
+                Map.copyOf(driverImages));
+    }
+
+    private static Map<String, LoaderPlatform> loaders(JsonNode document) {
+        Map<String, LoaderPlatform> loaders = new LinkedHashMap<>();
+        Iterator<Map.Entry<String, JsonNode>> fields = document.path("loaders").fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            JsonNode node = entry.getValue();
+            Map<String, String> digests = new LinkedHashMap<>();
+            Iterator<Map.Entry<String, JsonNode>> tags = node.path("host").path("digests").fields();
+            while (tags.hasNext()) {
+                Map.Entry<String, JsonNode> tag = tags.next();
+                String digest = pin(tag.getValue());
+                if (digest != null) {
+                    digests.put(tag.getKey(), digest);
+                }
+            }
+            List<LoaderRow> rows = new ArrayList<>();
+            for (JsonNode row : node.path("rows")) {
+                List<String> drivers = new ArrayList<>();
+                for (JsonNode driver : row.path("native-drivers")) {
+                    drivers.add(driver.asText());
+                }
+                LoaderRow.FabricApi fabricApi = row.has("fabric-api")
+                        ? new LoaderRow.FabricApi(row.path("fabric-api").path("version").asText(),
+                                pin(row.path("fabric-api").path("sha256")))
+                        : null;
+                rows.add(new LoaderRow(row.path("mc").asText(), row.path("loader").asText(),
+                        row.has("installer") ? row.path("installer").asText() : null, pin(row.path("sha256")),
+                        pin(row.path("vanilla-sha256")), fabricApi,
+                        row.has("java") ? row.path("java").asText() : null,
+                        row.has("protocol") ? row.path("protocol").asInt() : null, status(row.path("status")),
+                        List.copyOf(drivers), row.path("observed").asText(""), row.path("notes").asText("")));
+            }
+            loaders.put(entry.getKey(), new LoaderPlatform(entry.getKey(),
+                    new Host(node.path("host").path("image").asText(), digests), List.copyOf(rows)));
+        }
+        return loaders;
     }
 
     private static Map<String, ProxyPlatform> proxies(JsonNode document) {

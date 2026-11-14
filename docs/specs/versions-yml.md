@@ -102,8 +102,8 @@ Validation rules for `proxies`, enforced by `VersionsCatalog.load` (run by every
 Decision: [ADR-0017](../adr/0017-mod-platform-packs.md). Schema 4 adds one optional top-level key, `loaders`, next to
 `platforms` and `proxies`. A schema 3 file is a valid schema 4 file, `platforms` and `proxies` are read exactly as before,
 and every existing cell's `printMatrix` line stays identical. The values below are the T-M8-01 spike pins
-([fabric.md](../platforms/fabric.md), [neoforge.md](../platforms/neoforge.md)); T-M8-04 adds them as `experimental` rows.
-This page is design until then: no schema file carries `loaders` yet.
+([fabric.md](../platforms/fabric.md), [neoforge.md](../platforms/neoforge.md)); T-M8-04 added them to `versions.yml` as
+`experimental` rows, with `versions.schema.json` accepting `schema: 4` and the `loaders` key.
 
 ```yaml
 schema: 4
@@ -136,10 +136,23 @@ loaders:
   the `experimental` ones, as for `platforms`. `latest` is the highest `required` row; with none, `latest` is an error
   naming the loader (name the version).
 - The `TODO` values above are not yet run-backed: `vanilla-sha256` comes from T-M8-07's first install run, and the Fabric
-  API sha256 from the download T-M8-04 or T-M8-07 makes. An `experimental` row may carry `TODO`; the cell then fails
-  loudly at that check, never skips it.
+  API sha256 from the download T-M8-07 makes (the T-M8-01 spike recorded only a truncated vanilla sha256 and no Fabric API
+  hash, so T-M8-04 left both `TODO` in `versions.yml` rather than guess). An `experimental` row may carry `TODO`; the cell
+  then fails loudly at that check, never skips it. The planner itself refuses only a `TODO` in `sha256` (the jar it names)
+  or in the host digest of the row's Java tag, as it does for a platform row.
+- **Planner and selector (T-M8-04):** `CellPlanner.planLoaders(loader, versions, scope)` takes an exact version, `latest`
+  or `all`. `all` follows the platform scope rule (PR: `required`, nightly: also `experimental`); an exact version runs in
+  any scope. `CellSelector` reads `fabric@26.3`, `neoforge@latest` and `fabric@all` as loader entries, never as platform
+  entries, and refuses a loader id on either side of a `+` (a loader cell is single-server, ADR-0017 §2). An unknown
+  version, an unknown loader id or an empty request is an error, never a skip. A bridged row cannot be planned: the
+  catalog refuses it at load with an error naming ADR-0017 §1.
+- **`printMatrix`:** loader cells follow the single-server and topology cells, one object each with `kind: "loader"`,
+  `platform` (the loader id), `mc`, `loader` (the loader version), `java`, `status` and `slug` (`fabric-26.3`); there is no
+  `build`. No loader row is `required`, so `--scope=pr` plans none and prints a skip line to stderr per loader; `nightly`
+  plans every `experimental` row. A file with no `loaders` prints what it printed before schema 4.
 
-Validation rules for `loaders` (T-M8-04, in `VersionsCatalog.load`). A `loaders` key in a `schema: 2` or `3` file is an error:
+Validation rules for `loaders` (T-M8-04, in `VersionsCatalog.load`). A `loaders` key in a `schema: 2` or `3` file is an error,
+and so is a loader id other than `fabric` or `neoforge`. A `proxies` key is valid in a schema 3 or 4 file:
 - A loader id is not also a `platforms` or `proxies` id. `mc` values are unique within a loader.
 - `loader`, `sha256` and `vanilla-sha256` are present on every row; `installer` and `fabric-api` on every `fabric` row. A
   `required` row has no `TODO`.

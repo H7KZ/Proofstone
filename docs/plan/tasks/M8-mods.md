@@ -200,12 +200,12 @@ topology paths unchanged.
 - Change how Paper or topology cells select or run. Hand-edit a pin without a run behind it.
 
 **Acceptance.**
-- [ ] Planner, selector and matrix unit tests pass, including malformed input.
-- [ ] `printMatrix --scope=pr` output before and after is identical for every existing single-server and topology cell.
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] Planner, selector and matrix unit tests pass, including malformed input.
+- [x] `printMatrix --scope=pr` output before and after is identical for every existing single-server and topology cell.
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
 
 **Verify.**
-`./gradlew :proofstone-core:test :proofstone-protocol:test :proofstone-core:printMatrix`, then `bash scripts/gates.sh --max-workers=1`
+`./gradlew :proofstone-core:test :proofstone-protocol:test printMatrix --scope=pr` (`printMatrix` is a root task; there is no `:proofstone-core:printMatrix`), then `bash scripts/gates.sh --max-workers=1`
 
 ### T-M8-05 · Fabric agent
 - tier: opus

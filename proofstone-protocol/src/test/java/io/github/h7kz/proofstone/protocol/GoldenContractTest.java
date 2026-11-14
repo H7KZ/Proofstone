@@ -31,6 +31,8 @@ class GoldenContractTest {
             entry("health/ok", new Schemas(null, "health.json")),
             entry("health/proxy-ok", new Schemas(null, "health.json")),
             entry("health/unauthorised", new Schemas(null, null)),
+            entry("datapacks/list", new Schemas(null, "datapacks.json")),
+            entry("mods/list", new Schemas(null, "mods.json")),
             entry("proxy/servers", new Schemas(null, "proxy.json#/$defs/servers")),
             entry("proxy/server-get", new Schemas(null, "proxy.json")),
             entry("proxy/server-not-found", new Schemas(null, null)),
@@ -60,12 +62,14 @@ class GoldenContractTest {
     /** The card's cases. The list is fixed so that a deleted golden file fails the build. */
     private static final List<String> CASES = List.of(
             "command/reply",
+            "datapacks/list",
             "events/poll",
             "events/subscribe",
             "health/ok",
             "health/proxy-ok",
             "health/unauthorised",
             "log/read",
+            "mods/list",
             "players/empty-inventory",
             "players/give-enchanted-sword",
             "players/not-found",
@@ -121,6 +125,37 @@ class GoldenContractTest {
             assertThat(ProtocolSchemas.errors(schemas.data(), concrete(response.at("/body/data"))))
                     .as("response data").isEmpty();
         }
+    }
+
+    /** Protocol 1.3 (ADR-0017 section 9): the one existing golden that moves is health/ok; proxy goldens stay at 1.2. */
+    @Test
+    void onlyHealthOkMovesToProtocolOneThree() throws IOException {
+        assertThat(JSON.readTree(read("health/ok", "response")).at("/body/data/protocol").asText()).isEqualTo("1.3");
+        assertThat(JSON.readTree(read("health/proxy-ok", "response")).at("/body/data/protocol").asText())
+                .isEqualTo("1.2");
+    }
+
+    /** The new reads are plain GETs with no body, served only where the agent reports the capability token. */
+    @Test
+    void protocolOneThreeReadsAreBodylessGets() throws IOException {
+        JsonNode datapacks = JSON.readTree(read("datapacks/list", "request"));
+        JsonNode mods = JSON.readTree(read("mods/list", "request"));
+
+        assertThat(datapacks.get("method").asText()).isEqualTo("GET");
+        assertThat(datapacks.get("path").asText()).isEqualTo("/v1/datapacks");
+        assertThat(datapacks.has("body")).isFalse();
+        assertThat(mods.get("method").asText()).isEqualTo("GET");
+        assertThat(mods.get("path").asText()).isEqualTo("/v1/mods");
+        assertThat(mods.has("body")).isFalse();
+    }
+
+    /** Mods are sorted by id (agent-protocol.md section 2), so the golden is too. */
+    @Test
+    void theModsGoldenIsSortedById() throws IOException {
+        List<String> ids = new java.util.ArrayList<>();
+        JSON.readTree(read("mods/list", "response")).at("/body/data/mods").forEach(m -> ids.add(m.get("id").asText()));
+
+        assertThat(ids).isSortedAccordingTo(String::compareTo).isNotEmpty();
     }
 
     @Test

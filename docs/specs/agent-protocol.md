@@ -88,7 +88,8 @@ A successful `give`, `reset` or `PATCH` with nothing to return replies `{"ok": t
 - **Protocol 1.2** (T-M7-03): adds `GET /v1/proxy/servers`, `GET /v1/proxy/servers/{name}`, the proxy form of
   `GET /v1/players/{name}`, the `SERVER_NOT_FOUND` code and the `proxy` capability. Nothing existing changed: the `health/ok`
   golden moved from `1.1` to `1.2` and nothing else in an existing golden did. A 1.1 agent still satisfies every 1.1 golden.
-- **Protocol 1.3** (decided in [ADR-0017](../adr/0017-mod-platform-packs.md) §9, built by T-M8-04): adds
+- **Protocol 1.3** (decided in [ADR-0017](../adr/0017-mod-platform-packs.md) §9, built by T-M8-04; schemas `datapacks.json`
+  and `mods.json`, goldens `datapacks/list` and `mods/list`, the Bukkit agent reports `1.3`, the proxy agents stay at `1.2`): adds
   `GET /v1/datapacks`, `GET /v1/mods` and the capability tokens `mods`, `datapacks` and `resource-pack-status`. Nothing
   existing changes: only the `health/ok` golden moves to `1.3`. An agent that does not serve a new endpoint lists its
   goldens as pending with the reason. The resource-pack status is read with the existing event probe, so `players` and

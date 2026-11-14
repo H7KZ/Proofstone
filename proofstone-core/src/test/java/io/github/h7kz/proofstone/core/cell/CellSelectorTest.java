@@ -191,4 +191,72 @@ class CellSelectorTest {
 
         assertThatThrownBy(() -> topologies.add(topologies.get(0))).isInstanceOf(UnsupportedOperationException.class);
     }
+
+    // ---- loader entries (ADR-0017 section 2, T-M8-04) ----
+
+    @Test
+    void aLoaderEntryIsASingleServerIdentityOfItsOwn() {
+        CellSelector selector = CellSelector.parse("fabric@26.3", SOURCE);
+
+        assertThat(selector.isSet()).isTrue();
+        assertThat(selector.loaders()).containsExactly(new CellSelector.LoaderEntry("fabric", "26.3"));
+        assertThat(selector.loaders().get(0).entry()).isEqualTo("fabric@26.3");
+        assertThat(selector.selects("fabric")).as("a loader is not a platform").isFalse();
+        assertThat(selector.topologies()).isEmpty();
+    }
+
+    @Test
+    void loaderEntriesMixWithPlatformsAndKeepOrderWithoutDuplicates() {
+        CellSelector selector = CellSelector.parse("paper@latest, neoforge@all,fabric@26.3,fabric@26.3,fabric@latest",
+                SOURCE);
+
+        assertThat(selector.versions("paper")).containsExactly("latest");
+        assertThat(selector.loaders()).extracting(CellSelector.LoaderEntry::entry)
+                .containsExactly("neoforge@all", "fabric@26.3", "fabric@latest");
+    }
+
+    @Test
+    void aSelectorNamingOnlyALoaderStillCountsAsSet() {
+        assertThat(CellSelector.parse("neoforge@latest", SOURCE).isSet()).isTrue();
+    }
+
+    @Test
+    void malformedLoaderEntriesFailLoudlyWithTheEntryQuoted() {
+        for (String bad : List.of("fabric@", "fabric", "fabric@26.x", "fabric@26.3.", "Fabric@26.3", "fabric@@26.3",
+                "fabric@26.3@1", "neoforge@v26.3", "fabric@LATEST", "@26.3", "fabric@26.3,,neoforge@26.3")) {
+            assertThatThrownBy(() -> CellSelector.parse(bad, SOURCE))
+                    .as(bad)
+                    .isInstanceOf(VersionsException.class);
+        }
+        assertThatThrownBy(() -> CellSelector.parse("fabric@26.x", SOURCE))
+                .hasMessageContaining("\"fabric@26.x\"").hasMessageContaining("platform@version");
+    }
+
+    @Test
+    void aLoaderIsNeverAHalfOfATopologyEntry() {
+        for (String bad : List.of("fabric@26.3+paper@26.3", "velocity@4.3.1+fabric@26.3", "neoforge@26.3+paper@26.3",
+                "velocity@4.3.1+neoforge@latest")) {
+            assertThatThrownBy(() -> CellSelector.parse(bad, SOURCE))
+                    .as(bad)
+                    .isInstanceOf(VersionsException.class)
+                    .hasMessageContainingAll("\"" + bad + "\"", "loader", "single-server", "ADR-0017");
+        }
+    }
+
+    @Test
+    void loadersReturnAnImmutableList() {
+        List<CellSelector.LoaderEntry> loaders = CellSelector.parse("fabric@26.3", SOURCE).loaders();
+
+        assertThatThrownBy(() -> loaders.add(loaders.get(0))).isInstanceOf(UnsupportedOperationException.class);
+        assertThat(CellSelector.none().loaders()).isEmpty();
+    }
+
+    @Test
+    void anUnknownLoaderIdIsThePlannersErrorNotASilentSkip() {
+        // "quilt" is not a loader id the selector knows, so it parses as a platform entry; the planner refuses it.
+        CellSelector selector = CellSelector.parse("quilt@26.3", SOURCE);
+
+        assertThat(selector.loaders()).isEmpty();
+        assertThat(selector.selects("quilt")).isTrue();
+    }
 }

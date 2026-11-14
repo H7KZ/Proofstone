@@ -1,7 +1,7 @@
 # Source of truth for the Proofstone version matrix. Spec: docs/specs/versions-yml.md
 # SEED DATA: rows below are the cells exercised by the 2026-11-03 prototype. Pins marked "TODO" are filled by
 # the version-watch workflow (card T-M3-01). Do not hand-edit pins once automation exists.
-schema: 3
+schema: 4
 
 java-rules:            # first match wins; observed in T-M3-02, see docs/versioning.md section 3
   - { range: "<=1.16.5",          image: java8 }
@@ -136,3 +136,45 @@ proxies:
           - { platform: paper, mc: "26.3", status: required }
         observed: "T-M7-01 2026-11-09: 10 of 10 joins on paper@26.3, native protocol 777, legacy forwarding; T-M7-06 agent test and T-M7-07 topology test green. Promoted (ADR-0015) 2026-11-14 on the M7 review: P01 to P05 green in 3 of 3 separate invocations, tests 2 skipped 0 failures 0 errors 0 each"
         notes: "Waterfall 1.21 build 615 rejects protocol 777 and is end-of-life: no row (ADR-0016 section 4). Jenkins may prune a build; a pruned pin fails loudly at download."
+
+# Schema 4 (ADR-0017): loader rows. A loader cell is a single server on one row, identity <loader>@<mc> (fabric@26.3). Hand-pinned
+# from the T-M8-01 spike runs (docs/platforms/fabric.md, neoforge.md); `updateVersions` does not touch this key. Both rows are
+# experimental: promotion is a separate decision through ADR-0015. The two TODO values below have no run behind them yet and stay
+# TODO, never guessed: the cell then fails loudly at that check (ADR-0017 section 3). `vanilla-sha256` comes from T-M8-07's first
+# install run (the spike recorded only the vanilla jar's sha1 and a truncated sha256); the Fabric API sha256 from the download
+# T-M8-07 makes (the spike did not record it).
+loaders:
+  fabric:
+    host:
+      image: "itzg/minecraft-server"
+      # TYPE=FABRIC. The java25 digest Paper 26.x pins (ADR-0013); no new image (ADR-0017 section 3).
+      digests:
+        java25: "sha256:e2fabc536673f8c6b343055c93f7a73e10caa79cd3368f645987593c65adf1e0"
+    rows:
+      - mc: "26.3"
+        loader: "0.20.1"
+        installer: "1.1.2"
+        sha256: "70446947655b4f8f286aba896aa4c19a255e8ca8a730636ef2a6017ae4415d95"
+        vanilla-sha256: "TODO"
+        fabric-api: { version: "0.166.2+26.3", sha256: "TODO" }
+        protocol: 777
+        status: experimental
+        native-drivers: [mcpl]
+        observed: "T-M8-01 2026-11-14: 20 of 20 mcpl driver joins (no mod, Fabric API, a server-only mod, both). A mod registering one item with Fabric API gets the vanilla client kicked (3 of 3): content mods are out (ADR-0017 section 1)"
+        notes: "Launcher sha256 computed from the meta.fabricmc.net download (the service publishes none), stable across two downloads. Fabric 1.21.11 refuses protocol 777 and is not a row."
+  neoforge:
+    host:
+      image: "itzg/minecraft-server"
+      # TYPE=NEOFORGE. Same java25 digest.
+      digests:
+        java25: "sha256:e2fabc536673f8c6b343055c93f7a73e10caa79cd3368f645987593c65adf1e0"
+    rows:
+      - mc: "26.3"
+        loader: "26.3.0.103"
+        sha256: "d8a92e17cf12b5739a2518b11afd47eeec0e636a6e63f94b6400c5dbd3603e48"
+        vanilla-sha256: "TODO"
+        protocol: 777
+        status: experimental
+        native-drivers: [mcpl]
+        observed: "T-M8-01 2026-11-14: 13 of 13 mcpl driver joins (no mod, a server-only mod, a mod adding one item). What the client sees of the added item was not run: content is unverified (ADR-0017 section 1)"
+        notes: "sha256 is the installer, published by maven.neoforged.net and matched against the download."

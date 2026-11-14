@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proofstone.dev/schemas/mods.json",
+  "title": "Loaded mods (GET /v1/mods)",
+  "description": "Spec: docs/specs/agent-protocol.md §2. Added in protocol 1.3 (ADR-0017 section 9, T-M8-04), additive. Served by mod agents only (capability token mods). Sorted by id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mods"],
+  "properties": {
+    "mods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "version"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "version": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

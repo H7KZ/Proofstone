@@ -34,6 +34,8 @@ Records in `io.github.h7kz.proofstone.protocol`, one per schema object:
 - Protocol 1.2 (T-M7-03): `ProxyServer(name, address, online, players)`, `ProxyServers(servers)`,
   `ProxyPlayer(name, uuid, proxy)` with `ProxyPlayer.Position(server, previousServer)` (proxy.json). Not a `PlayerState`:
   a proxy has no inventory or location.
+- Protocol 1.3 (T-M8-04, ADR-0017): `DataPacks(enabled, available)` (datapacks.json), `Mods(mods)` with
+  `Mods.Mod(id, version)` (mods.json). No agent serves them yet; their goldens are pending (golden/README.md).
 
 Decision (T-M2-01): the Java field `className` maps to JSON key `class`, which Java reserves. The round-trip test
 skips `EventSubscribe` and `ProbeEvent`, so those two are checked by schema and golden tests only. The agent
