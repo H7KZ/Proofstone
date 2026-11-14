@@ -86,6 +86,25 @@ final class ErrorLogGuard {
         /** The BungeeCord proxy pack (docs/platforms/bungeecord.md, Gotchas), reviewed on its own, like VELOCITY. */
         static final Patterns BUNGEECORD = new Patterns("bungeecord", Map.of(), List.of());
 
+        /**
+         * Fabric (docs/platforms/fabric.md, Gotchas), reviewed on its own. Starts with the one line every loader boot logs
+         * (T-M8-05 runs 1 to 3, T-M8-07); anything else is a failure, never allowlisted to turn a run green.
+         */
+        static final Patterns FABRIC = new Patterns("fabric", Map.of(
+                Pattern.compile("No key layers in MapLike"), "flat world without generator settings, logged on every loader boot"),
+                List.of());
+
+        /**
+         * NeoForge (docs/platforms/neoforge.md, Gotchas), reviewed on its own. Two known boot lines, each with its reason
+         * (T-M8-06 runs, T-M8-07). Anything else is a failure.
+         */
+        static final Patterns NEOFORGE = new Patterns("neoforge", Map.of(
+                Pattern.compile("No key layers in MapLike"), "flat world without generator settings, logged on every loader boot",
+                Pattern.compile("An exception occurred processing Appender DebugFile"),
+                "NeoForge's log4j DebugFile appender probes netty's macOS kqueue transport on Linux "
+                        + "(NoClassDefFoundError io.netty.channel.kqueue.Native), harmless and logged on every boot"),
+                List.of());
+
         /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
         static Patterns of(String platform) {
             return switch (platform) {
@@ -95,6 +114,8 @@ final class ErrorLogGuard {
                 case "spigot" -> SPIGOT;
                 case "velocity" -> VELOCITY;
                 case "bungeecord" -> BUNGEECORD;
+                case "fabric" -> FABRIC;
+                case "neoforge" -> NEOFORGE;
                 default -> throw new IllegalStateException("no log patterns for platform " + platform
                         + ": its platform pack must supply its own list (robustness R9)");
             };

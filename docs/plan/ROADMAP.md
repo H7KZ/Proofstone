@@ -885,3 +885,10 @@ Paper and topology numbers.
   green, 3 of 3 driver joins, 0 join timeouts.
 - **Log guard:** every NeoForge boot logs `Appender DebugFile` ERROR (`io.netty.channel.kqueue.Native`); every loader
   boot logs `No key layers in MapLike[{}]`. `PSConf moved too quickly!` was not seen.
+- **T-M8-07 loader host (2026-11-14).** `LoaderHost` booted both rows with the agent and an example mod, three separate
+  green cold starts each, 0 join timeouts (no join is made). Host boot times, container start to `Done (`, install
+  included: Fabric 16.3, 16.5, 16.3 s; NeoForge 19.7, 19.5, 18.9 s. A failed start (the example mod throws) fails the cell
+  after 15 s (Fabric, read `Failed to start the minecraft server`) and 17 to 18 s (NeoForge, the container exit), never the
+  5 min boot timeout. Install hosts measured with a logging proxy as the only route out: see
+  [fabric.md](../platforms/fabric.md) and [neoforge.md](../platforms/neoforge.md) "The loader host". `vanilla-sha256` is
+  filled from the run (both loaders' vanilla jar is the same bytes, sha1 equal to Mojang's manifest).

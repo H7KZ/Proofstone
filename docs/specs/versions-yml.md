@@ -117,8 +117,8 @@ loaders:
         loader: "0.20.1"                   # Fabric Loader version
         installer: "1.1.2"                 # Fabric installer version the launcher jar is built for
         sha256: "70446947…"                # the server launcher jar (meta.fabricmc.net); computed from the download
-        vanilla-sha256: "TODO"             # the vanilla server jar the launcher fetches; checked in the container (T-M8-07)
-        fabric-api: { version: "0.166.2+26.3", sha256: "TODO" }   # required on every Fabric row (ADR-0017 §5)
+        vanilla-sha256: "d052f14d…"        # the vanilla server jar the launcher fetches; checked in the container (T-M8-07)
+        fabric-api: { version: "0.166.2+26.3", sha256: "e8acacc7…" }   # required on every Fabric row (ADR-0017 §5)
         java: java25                       # optional; java-rules apply (keyed on mc)
         protocol: 777
         status: experimental
@@ -128,17 +128,17 @@ loaders:
   neoforge:
     host: { image: "itzg/minecraft-server", digests: { java25: "sha256:e2fabc53…" } }   # TYPE=NEOFORGE
     rows:
-      - { mc: "26.3", loader: "26.3.0.103", sha256: "d8a92e17…", vanilla-sha256: "TODO",
+      - { mc: "26.3", loader: "26.3.0.103", sha256: "d8a92e17…", vanilla-sha256: "d052f14d…",
           protocol: 777, status: experimental, native-drivers: [mcpl] }
 ```
 
 - **Loader cell:** one row, written `<loader>@<mc>` (`fabric@26.3`). `pr` scope plans the `required` rows, `nightly` also
   the `experimental` ones, as for `platforms`. `latest` is the highest `required` row; with none, `latest` is an error
   naming the loader (name the version).
-- The `TODO` values above are not yet run-backed: `vanilla-sha256` comes from T-M8-07's first install run, and the Fabric
-  API sha256 from the download T-M8-07 makes (the T-M8-01 spike recorded only a truncated vanilla sha256 and no Fabric API
-  hash, so T-M8-04 left both `TODO` in `versions.yml` rather than guess). An `experimental` row may carry `TODO`; the cell
-  then fails loudly at that check, never skips it. The planner itself refuses only a `TODO` in `sha256` (the jar it names)
+- The two rows in `versions.yml` carry real values now: `vanilla-sha256` was read from T-M8-07's install runs (sha256 of
+  the vanilla 26.3 jar, sha1 equal to Mojang's manifest entry), and the Fabric API sha256 equals the `.sha256` its maven
+  publishes. An `experimental` row may still carry `TODO`; the cell then fails loudly at that check (`LoaderHost` refuses
+  to start without `vanilla-sha256` and without the Fabric API sha256), never skips it. The planner itself refuses only a `TODO` in `sha256` (the jar it names)
   or in the host digest of the row's Java tag, as it does for a platform row.
 - **Planner and selector (T-M8-04):** `CellPlanner.planLoaders(loader, versions, scope)` takes an exact version, `latest`
   or `all`. `all` follows the platform scope rule (PR: `required`, nightly: also `experimental`); an exact version runs in

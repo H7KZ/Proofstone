@@ -24,8 +24,16 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
   hash stays `null` for the host to refuse), `CellPlanner.planLoaders(loader, versions, scope)` and `isLoader(id)` (`latest` is the
   highest `required` row and never an experimental one), `CellSelector.loaders()` (`fabric@`/`neoforge@` entries, never half of a
   `+` topology), and `CiMatrix` loader entries (`kind: "loader"`, after the topology cells). `VersionsCatalog` reads the schema 4
-  `loaders` key and refuses a bridged or malformed row at load. Paper and topology cells select and plan exactly as before. No host
-  runs a loader cell yet (T-M8-07).
+  `loaders` key and refuses a bridged or malformed row at load. Paper and topology cells select and plan exactly as before.
+- `io.github.h7kz.proofstone.core.host.LoaderHost` (T-M8-07, ADR-0017): `start(LoaderCell, LoaderHostOptions)` boots one Fabric or
+  NeoForge cell on the pinned itzg image, next to `PaperHost` and sharing its agent client, log buffer, copy ownership and
+  permission check. The harness downloads the loader jar (Fabric launcher, NeoForge installer) and the Fabric API, checks each
+  sha256 on the host (`LoaderPins`) and copies them in with the agent and the mods under test (`/mods`), plus config files
+  under `/config` owned by uid 1000; no bind mount, offline mode. Ready is `Done (` in the log, Java, loader and vanilla-jar
+  sha256 matching their pins (`vanilla-sha256`), and agent health. A loader's give-up line or a container exit fails the start
+  at once with the log tail and stops the container; the boot time is `bootTime()`, a host finding, and the timeout is never
+  raised. `LoaderEnvironment` renders the environment, pins, copy list and the listed install hosts (the ADR-0017 section 6
+  exception). Paper and topology code is untouched.
 - `io.github.h7kz.proofstone.core.cell.CellSelector`: parses `-Dproofstone.cells` / `PROOFSTONE_CELLS` (`platform@version`, `latest`, `all`); `Scope` (`pr`, `nightly`) and `VersionFamilies` (the `version-families` of `proofstone.yml`).
 
 - `io.github.h7kz.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).
@@ -55,6 +63,8 @@ Java tags come from `java-rules` (first match wins). A row's `java:` field overr
 `./gradlew :proofstone-core:test`
 
 The tests read the real schema and seed from the repo root (`proofstone.repoRoot`, set in `build.gradle.kts`).
+
+The loader host's real-server tests live next to the agents: `:platforms:fabric:agent:integrationTest --tests '*FabricLoaderHostIT.bootsTheFabricRow*'` and `:platforms:neoforge:agent:integrationTest --tests '*NeoForgeLoaderHostIT.bootsTheNeoForgeRow*'`, one cell per invocation under `scripts/dockerlock.sh` (docs/plan/tasks/M8-mods.md, Flake rule).
 
 `./gradlew :proofstone-core:integrationTest --tests '*PaperHostIT*'` needs Docker and `PROOFSTONE_ACCEPT_EULA=true` (read <https://aka.ms/MinecraftEULA> first; the harness never accepts it for you). Without the variable the server tests are skipped with that reason. It is not part of `check`.
 

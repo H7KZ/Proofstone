@@ -56,7 +56,7 @@ on exit.
      its sha1 `33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c` equals Mojang's 26.3 manifest entry (62,294,556 bytes).
   2. Loader libraries ("Downloading library ..."): `org.ow2.asm` asm, asm-analysis, asm-commons, asm-tree, asm-util
      9.10.1, `net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7`, `net.fabricmc:fabric-loader:0.20.1`. The log does not
-     print the host; it was not checked which maven each comes from.
+     print the host; T-M8-07 measured the hosts, see "Install hosts" below.
   3. The game libraries are unpacked from the vanilla bundler (no download). 50 jars under `/data` after a bare install
      (list with sha256 in each run's `data-jars.txt`).
 - **Can it be pinned or pre-fetched?** The launcher: yes (sha256 above). What it fetches: not by the launcher itself
@@ -177,6 +177,30 @@ From `FabricAgentIT` runs on the fabric@26.3 row (2026-11-14, `scripts/dockerloc
   `(0.5, 64.0, 0.5)`) replays unchanged.
 - **Not served:** plugin endpoints (`404`), `datapacks` (T-M8-09), `resource-pack-status` (ADR-0017 section 7). A player with
   a window open is `501 NOT_SUPPORTED`: a vanilla server does not keep the window's title, and the agent will not invent one.
+
+### The loader host (T-M8-07, `LoaderHost` in `proofstone-core`)
+From `FabricLoaderHostIT` runs on the fabric@26.3 row (2026-11-14, `scripts/dockerlock.sh`; the PR lists each run):
+- **Boots:** the launcher, the pinned Fabric API, the agent and the example mod (`exampleModJar`, built from
+  `platforms/fabric/agent/src/exampleMod`) are copied in; `health` and `/v1/mods` (`proofstone_example`, `fabric-api`,
+  `proofstone-agent`) are read. Three separate cold starts: **16.3 s, 16.5 s, 16.3 s** from container start to `Done (`
+  (the host's measured boot time, install included), 16.8 to 17.2 s to ready. These are host findings, never a join timeout.
+  The boot timeout stays at 5 minutes; it was not raised.
+- **Vanilla jar:** `/data/.fabric/server/26.3-server.jar` has sha256 `d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64`
+  and sha1 `33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c`, the value Mojang's manifest publishes. That sha256 is the row's
+  `vanilla-sha256`, and the host checks it in the container after the install and before readiness.
+- **Failed start is immediate:** the example mod throws at init when its config says `fail=true`. The host read `Failed to
+  start the minecraft server` in the log and failed the cell with the log tail after 15.1 s and 15.2 s (two runs), not the
+  5-minute boot timeout, and no container of the run was left. The config file the host copies to `/config` (not
+  `/data/config`, T-M8-02) as uid 1000 reached `/data/config`: the mod read it, and the start check found no `Permission denied`.
+- **Install hosts (ADR-0017 section 6):** measured by `scripts/spike/install-hosts.sh`: the server container sat on a Docker
+  `--internal` network whose only way out was a logging proxy (`scripts/spike/ConnectLog.java`, in a second container of the
+  same image), so a host the install reached any other way would have failed it. The cold start (14 s, reached `Done`)
+  connected to exactly: `launchermeta.mojang.com`, `piston-meta.mojang.com`, `piston-data.mojang.com` (the vanilla jar),
+  `maven.fabricmc.net` (libraries) and `meta.fabricmc.net`, even with the launcher copied in. One start was measured, so a
+  host reached only on another path (a retry, another mod) is not in this list; `LoaderEnvironmentTest` holds it, and a
+  new host is a finding. The harness JVM itself downloads the pins from `meta.fabricmc.net` and `maven.fabricmc.net`.
+- **Log guard:** the `fabric` pack lists `No key layers in MapLike` (flat world without generator settings, on every
+  loader boot) and nothing else.
 
 ## Capabilities
 Observed in the spike, not yet tokens:

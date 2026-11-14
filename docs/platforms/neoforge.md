@@ -111,6 +111,29 @@ From `NeoForgeAgentIT` runs on the neoforge@26.3 row (2026-11-14, `scripts/docke
 - **`/v1/mods`** lists the mods whose jar is in `/data/mods`: only `proofstone_agent` on the row. `minecraft` and
   `neoforge` are FML mods too, loaded from the libraries, and are left out, as Fabric leaves out its loader.
 
+### The loader host (T-M8-07, `LoaderHost` in `proofstone-core`)
+From `NeoForgeLoaderHostIT` runs on the neoforge@26.3 row (2026-11-14, `scripts/dockerlock.sh`; the PR lists each run):
+- **Boots:** the installer, the agent and the example mod (`exampleModJar`, built from
+  `platforms/neoforge/agent/src/exampleMod`) are copied in; `health` and `/v1/mods` (`proofstone_example`,
+  `proofstone_agent`) are read. Three separate cold starts: **19.7 s, 19.5 s, 18.9 s** from container start to `Done (`
+  (the host's measured boot time, install included), 19.4 to 20.5 s to ready. Host findings, never a join timeout. The boot
+  timeout stays at 5 minutes; it was not raised.
+- **Vanilla jar:** `/data/libraries/net/minecraft/server/26.3/server-26.3.jar` has sha256
+  `d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64`, the same bytes as Fabric's (sha1 `33680f5f…`, Mojang's
+  published value). It is the row's `vanilla-sha256`, checked in the container after the install and before readiness.
+- **Failed start is immediate:** the example mod's constructor throws when its config says `fail=true`. The container
+  exited, and the host failed the cell with the log tail after 17.9 s and 17.3 s (two runs), not the boot timeout, no
+  container left. Both times it was the exit that ended the wait: the host did not read `Failed to start FML` for a mod
+  that throws, a line T-M8-06 saw for the invalid module descriptor. Both signals stay in the host.
+- **Install hosts (ADR-0017 section 6):** measured as on Fabric (`scripts/spike/install-hosts.sh`, an `--internal` network
+  with a logging proxy as the only way out). The cold start (18 s, reached `Done`) connected to exactly:
+  `piston-meta.mojang.com`, `piston-data.mojang.com`, `libraries.minecraft.net`, `maven.neoforged.net`,
+  `mirrors.neoforged.net` and `neoforged.net`. One start was measured; a new host is a finding and changes
+  `LoaderEnvironmentTest`. The harness JVM itself downloads the installer from `maven.neoforged.net`.
+- **Log guard:** the `neoforge` pack lists `No key layers in MapLike` and `An exception occurred processing Appender
+  DebugFile` (log4j's DebugFile appender probes netty's macOS kqueue transport on Linux), each with its reason. The second
+  one is log4j's status logger writing straight to the container's stderr, so the agent's log capture may never see it.
+
 ## Capabilities
 Observed in the spike, not yet tokens:
 - **Data packs (vanilla):** the same pack as on Fabric loaded (`Found new data pack file/spike-datapack.zip, loading it

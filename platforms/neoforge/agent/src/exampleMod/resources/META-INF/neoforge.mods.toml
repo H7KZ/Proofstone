@@ -1,0 +1,10 @@
+# T-M8-07 test fixture: the mod under test of the loader host's real-server test. Server side only, registers nothing.
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "Apache-2.0"
+
+[[mods]]
+modId = "proofstone_example"
+version = "0.0.1"
+displayName = "Proofstone example mod"
+description = "T-M8-07 test fixture. Registers nothing."

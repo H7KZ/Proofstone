@@ -121,9 +121,23 @@ listOf("integrationTestCompileClasspath", "integrationTestRuntimeClasspath").for
 // The real-server test boots the real agent jar, built by shadowJar and never committed (AGENTS.md section 3).
 val agentJar = layout.buildDirectory.file("libs/agent-all.jar")
 
+// The example mod under test (T-M8-07): a real mod built from source under src/exampleMod by plain javac against the same
+// pinned jars as the agent, never a downloaded artefact. The loader host's real-server test copies it into /mods.
+val exampleMod = sourceSets.create("exampleMod")
+configurations.named("exampleModCompileOnly") { extendsFrom(configurations.getByName("compileOnly")) }
+tasks.named<JavaCompile>("compileExampleModJava") { options.release.set(25) }
+val exampleModJar = tasks.register<Jar>("exampleModJar") {
+    description = "Builds the example mod the loader host test puts in /mods."
+    archiveBaseName.set("proofstone-example-mod")
+    archiveVersion.set("")
+    destinationDirectory.set(layout.buildDirectory.dir("example-mod"))
+    from(exampleMod.output)
+}
+
 tasks.named<Test>("integrationTest") {
     javaLauncher.set(toolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
-    dependsOn(tasks.named("shadowJar"))
+    dependsOn(tasks.named("shadowJar"), exampleModJar)
+    systemProperty("proofstone.exampleMod", layout.buildDirectory.file("example-mod/proofstone-example-mod.jar").get().asFile.absolutePath)
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.get().asFile.absolutePath)
     // The Fabric pins are planned from versions.yml schema 4 by the test itself (ADR-0017 section 3).
