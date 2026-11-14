@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Proofstone T-M8-01 spike resource pack (26.3: resource format 97.1, from the server jar's version.json)",
+    "min_format": [97, 1],
+    "max_format": [97, 1]
+  }
+}

@@ -855,3 +855,28 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 - **Decision 2 carded, not started:** T-M7-15 (`PSConf moved too quickly!`) and T-M7-16 (spigot@26.3 C04), [M7-followups.md](tasks/M7-followups.md).
   The root-owned `bukkit.yml` copy stays with T-M8-02.
 - **ADR-0016 amended** (Amendments, 2026-11-14): the loopback-only game-port binding covers bridged single-server cells too.
+
+## M8 findings
+
+Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
+Paper and topology numbers.
+
+- **T-M8-01 spike (2026-11-14).** Fabric 0.20.1 and NeoForge 26.3.0.103 on 26.3 take the `mcpl` 777 client natively with
+  no mod and with a server-only mod (Fabric also with Fabric API). Driver joins: Fabric 28 counted, 20 ok, 3 join
+  timeouts, 5 refused; NeoForge 13 counted, 13 ok. Details in [fabric.md](../platforms/fabric.md) and
+  [neoforge.md](../platforms/neoforge.md).
+- **Join timeout, expected, stage `CONFIGURATION_STALLED` (3 of 3 on a required resource pack, Fabric).** The server
+  pushes the pack in configuration and waits; the driver does not answer. No timeout on any mod set. For T-M8-10.
+- **Refusal, not a timeout: a Fabric content mod shuts out the vanilla client.** With Fabric API and a mod that registers
+  one item, 3 of 3 joins were kicked: `This server requires Fabric Loader and Fabric API installed on your client!`. M8
+  on Fabric is limited to server-only mods and data packs unless a modded-client driver gets its own ADR. NeoForge
+  admitted the client with one added item (3 of 3); content testing through it is unverified.
+- **Refusal: Fabric on 1.21.11 rejects 777** (`multiplayer.disconnect.incompatible 1.21.11`, 2 of 2). Stonecutter is out
+  for M8 (newest native row only).
+- **Host finding, boot: a cold start always reaches Mojang** (Fabric launcher: `launchermeta.mojang.com`; NeoForge
+  installer: `piston-meta.mojang.com`; both fail with `--network none`). A restart of an installed container needs no
+  network (12 s Fabric, 11 s NeoForge). For T-M8-07.
+- **Host finding, boot: a failed Fabric start hung the container** for the 600 s spike timeout, because the spike mod's
+  non-daemon HTTP thread kept the JVM alive after `Failed to start the minecraft server`. For T-M8-05/06/07.
+- **Log guard:** every NeoForge boot logs `Appender DebugFile` ERROR (`io.netty.channel.kqueue.Native`); every loader
+  boot logs `No key layers in MapLike[{}]`. `PSConf moved too quickly!` was not seen.

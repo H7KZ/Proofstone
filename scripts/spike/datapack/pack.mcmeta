@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Proofstone T-M8-01 spike data pack (26.3: data format 121.0, from the server jar's version.json)",
+    "min_format": 121,
+    "max_format": 121
+  }
+}

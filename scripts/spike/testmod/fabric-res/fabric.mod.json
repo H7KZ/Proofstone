@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "proofstone_spike",
+  "version": "0.0.0",
+  "name": "Proofstone spike",
+  "description": "T-M8-01 spike: opens an HTTP port, server side only.",
+  "license": "Apache-2.0",
+  "environment": "server",
+  "entrypoints": { "server": ["proofstone.spike.SpikeFabric"] },
+  "depends": { "fabricloader": ">=0.20.0" }
+}
