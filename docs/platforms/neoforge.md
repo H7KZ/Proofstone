@@ -28,7 +28,8 @@ comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/mod-spi
 - **Can it be pinned or pre-fetched?** The installer: yes (sha256 above). Its downloads: not by the installer. **Once
   installed, a restart needs no network:** the same container restarted with its network disconnected (`OFFLINE=1`)
   logged `NeoForge version 26.3.0.103 for minecraft version 26.3 is already installed` and reached `Done` in 11 s.
-  Not run: the installer's offline options.
+  Not run: the installer's offline options. **Decided ([ADR-0017](../adr/0017-mod-platform-packs.md) §6):** the cold-start
+  fetch stays, as a listed exception pinned by content (`vanilla-sha256` checked in the container).
 - **Ready:** `[minecraft/DedicatedServer]: Done (0.450s)! For help, type "help"`. First start including the install
   took 17 to 18 s.
 - **Image environment the spike set:** as for Fabric: `ONLINE_MODE=FALSE`, `ENFORCE_SECURE_PROFILE=FALSE`, flat world,

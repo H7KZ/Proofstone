@@ -33,13 +33,13 @@ Each platform is at one of these status levels:
 
 | Platform | Agent | Host | Milestone | Notes |
 |---|---|---|---|---|
-| Fabric (server-side mods) | Fabric mod agent, newest native row only (Stonecutter out for M8, T-M8-01) | itzg `TYPE=FABRIC` with a pinned server launcher (`FABRIC_LAUNCHER`), `java25` digest (confirmed, T-M8-01) | M8 | **Spike** ([fabric.md](platforms/fabric.md)): Fabric 0.20.1 on 26.3 takes the 777 client natively with no mod, Fabric API and a server-only mod. 26.x is unobfuscated: no mappings needed. |
-| NeoForge | NeoForge mod agent | itzg `TYPE=NEOFORGE` with a pinned installer (`NEOFORGE_INSTALLER`), `java25` digest (confirmed, T-M8-01) | M8 | **Spike** ([neoforge.md](platforms/neoforge.md)): NeoForge 26.3.0.103 takes the 777 client natively with no mod and a server-only mod. |
+| Fabric (server-only mods) | Fabric mod agent (needs the pinned Fabric API for its ready signal), newest native row only (Stonecutter out for M8, T-M8-01) | itzg `TYPE=FABRIC` with a pinned server launcher (`FABRIC_LAUNCHER`), `java25` digest (confirmed, T-M8-01) | M8 | **Spike** ([fabric.md](platforms/fabric.md)): Fabric 0.20.1 on 26.3 takes the 777 client natively with no mod, Fabric API and a server-only mod. A content mod gets the client kicked, so content mods are out of M8. Planned row `fabric@26.3`, `experimental` ([ADR-0017](adr/0017-mod-platform-packs.md)). Capabilities `MODS`, `DATAPACKS_VANILLA`. 26.x is unobfuscated: no mappings needed. |
+| NeoForge | NeoForge mod agent | itzg `TYPE=NEOFORGE` with a pinned installer (`NEOFORGE_INSTALLER`), `java25` digest (confirmed, T-M8-01) | M8 | **Spike** ([neoforge.md](platforms/neoforge.md)): NeoForge 26.3.0.103 takes the 777 client natively with no mod and a server-only mod; with one added item it joined too, but content mods stay unverified. Planned row `neoforge@26.3`, `experimental` (ADR-0017). Capability `MODS`. |
 | Forge (legacy) | Forge mod agent | itzg | M10 | Older versions only. |
 | Quilt | Fabric agent (compatible) | — | M10 | — |
 | Sponge | Sponge plugin agent | SpongeVanilla | M10 | — |
-| Data packs | Bukkit agent (Paper host) **or** Fabric agent (vanilla-like host) | as above | M8 | Use the Fabric host when Paper's behaviour differs from vanilla. |
-| Resource packs (server-sent) | the driver checks the pack prompt and hash | any | M8 | No rendering checks. |
+| Data packs | Bukkit agent (Paper host) **or** Fabric agent (vanilla-like host) | as above | M8 | Use the Fabric host when Paper's behaviour differs from vanilla. One pack (function, recipe) worked on Paper 26.3, Fabric and NeoForge in the spike. `@Proofstone(datapacks)`, capability `DATAPACKS_VANILLA` (token `datapacks`; Paper and Fabric packs declare it, ADR-0017). |
+| Resource packs (server-sent) | the driver checks the pack prompt and hash; the Bukkit agent reads the status | Paper (native cells) | M8 | No rendering checks. The harness serves the pack from its JVM on loopback (no extra container); the driver answers as the test declares (`@ResourcePackAnswer`), never silently. Capability `RESOURCE_PACKS` (ADR-0017). |
 | Client-side mods (rendering, UI) | out of scope for core | Fabric client gametest + XVFB | later | Only through integration with Fabric's own client gametest. |
 
 ## Bedrock Edition
@@ -61,6 +61,9 @@ Each supported platform gets `docs/platforms/<id>.md` with these sections:
 
 Written so far: [paper](platforms/paper.md), [folia](platforms/folia.md), [purpur](platforms/purpur.md), [spigot](platforms/spigot.md). Bridged-row facts: [viaproxy](platforms/viaproxy.md).
 Proxy facts (T-M7-01 spike, then the M7 cards; both rows `required` since 2026-11-14, P01 to P05 green 3 of 3 per row again in the M7 review): [velocity](platforms/velocity.md), [bungeecord](platforms/bungeecord.md).
+Mod loader facts (T-M8-01 spike; design in [ADR-0017](adr/0017-mod-platform-packs.md), nothing built yet): [fabric](platforms/fabric.md), [neoforge](platforms/neoforge.md).
+A loader cell's first start fetches the vanilla server jar from Mojang and libraries from the loader's maven: a listed,
+content-pinned exception to "no Mojang dependency in runs" (ADR-0017 §6). Logins never reach Mojang (offline mode).
 
 ## Status evidence (M5, 2026-11-08; M5 follow-up, same day)
 M5 itself promoted nothing: each row had one full local run. The M5 follow-up (`fix/m5-evidence-promotion`) applies

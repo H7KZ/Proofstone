@@ -44,6 +44,8 @@ and `log`. They do not serve game-state endpoints (world, give, ticks). A backen
 | `GET /v1/log?since=&minLevel=` | captured log records with stack traces | root JUL/Log4j handler |
 | `GET /v1/proxy/servers` | proxy only (protocol 1.2): the backends the proxy knows | reply `{servers: [{name, address, online, players}]}` (`proxy.json#/$defs/servers`). `online` is the proxy's last ping result. `players` is the proxy's count for that server |
 | `GET /v1/proxy/servers/{name}` | proxy only (protocol 1.2): one backend | reply one `{name, address, online, players}` (`proxy.json`). Unknown name: `SERVER_NOT_FOUND`. Added so the code has an endpoint; it is read-only |
+| `GET /v1/datapacks` | protocol 1.3 (ADR-0017, T-M8-04): the server's data packs | reply `{enabled: [id], available: [id]}`, ids as the server names them (`vanilla`, `file/x.zip`), in the server's order. Served by agents that report `datapacks`. Read-only; the host's load check uses it, never the console |
+| `GET /v1/mods` | protocol 1.3, mod agents only: the loaded mods | reply `{mods: [{id, version}]}`, sorted by id. Served by agents that report `mods`. Read-only |
 | `GET /v1/snapshot` | full-state dump for repro bundles and the leak detector | reply `{players, plugins}` (`snapshot.json`): every online `PlayerState` and each loaded plugin's `{name, version, enabled, config}`, sorted by name; `config` maps each dotted path to its leaf value, jar defaults included. Read-only. No timestamps, never the agent token. Added within v1 (§4), so the protocol stays `1.1` |
 
 Error codes used so far (the code is an `UPPER_SNAKE` token; adding codes is allowed within v1):
@@ -86,6 +88,12 @@ A successful `give`, `reset` or `PATCH` with nothing to return replies `{"ok": t
 - **Protocol 1.2** (T-M7-03): adds `GET /v1/proxy/servers`, `GET /v1/proxy/servers/{name}`, the proxy form of
   `GET /v1/players/{name}`, the `SERVER_NOT_FOUND` code and the `proxy` capability. Nothing existing changed: the `health/ok`
   golden moved from `1.1` to `1.2` and nothing else in an existing golden did. A 1.1 agent still satisfies every 1.1 golden.
+- **Protocol 1.3** (decided in [ADR-0017](../adr/0017-mod-platform-packs.md) §9, built by T-M8-04): adds
+  `GET /v1/datapacks`, `GET /v1/mods` and the capability tokens `mods`, `datapacks` and `resource-pack-status`. Nothing
+  existing changes: only the `health/ok` golden moves to `1.3`. An agent that does not serve a new endpoint lists its
+  goldens as pending with the reason. The resource-pack status is read with the existing event probe, so `players` and
+  `player-state.json` do not change. Mod agents (Fabric, NeoForge) serve the game endpoints as the Bukkit agent does,
+  on the server thread.
 - **Golden files:** `proofstone-protocol/golden/<endpoint>/*.json` hold request and response pairs.
   Every agent's contract test replays them.
 

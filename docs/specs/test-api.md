@@ -9,8 +9,8 @@ beyond v0. After the freeze, a change to the baseline needs a card marked `api-c
 ```java
 @Proofstone(
     plugins   = {"target/MyPlugin-*.jar"},     // globs relative to project dir; exactly one match each, else error
-    mods      = {},                            // for mod packs
-    datapacks = {},
+    mods      = {},                            // loader cells only, copied to /mods (§13, ADR-0017)
+    datapacks = {},                            // copied to the world's datapacks before start (§13)
     acceptEula = true,                         // REQUIRED true, or env PROOFSTONE_ACCEPT_EULA=true; else tests are skipped with reason
     config    = "src/e2e/resources/proofstone.yml"   // optional per-project settings (version families, expectations)
 )
@@ -260,7 +260,7 @@ class EventsE2E {
 - **Removed.** `NMS` and `DATAPACKS` were declared with no agent token, so a `@Requires` on either skipped every cell.
   The fix PR (`fix/m5-capability-api`, api-change, M5 review decision 4) removed both. A capability is re-added only together
   with the agent token that reports it: NMS checks belong in the per-cell `expect` hook (section 9), and `DATAPACKS_VANILLA`
-  is an M7 item.
+  returns in M8 with the token `datapacks` (ADR-0017 §8, T-M8-09).
 - **`Cell.capabilities()` is a default method (fix PR, M5 review decision 2).** It throws
   `UnsupportedOperationException` unless overridden, so a custom `Cell` that is used with `@Requires` fails loudly. The core
   `CellView` overrides it. Source-compatible for existing implementers; the baseline line changes from abstract to default.
@@ -355,3 +355,48 @@ class SwitchE2E {
   snapshot per backend), plus the client transcript, `cell.json`, `host.json` and `rerun.txt`. Every agent token and the
   forwarding secret are redacted, and every file is read back to check.
 - **Bad test.** `examples/bad-tests/.../requires/TopologySkipsE2E` (`metaRequires`) asserts the `TOPOLOGY` skip.
+
+## 13. Mods, data packs and resource packs (ADR-0017, design for T-M8-07, T-M8-09, T-M8-10)
+
+Design from [ADR-0017](../adr/0017-mod-platform-packs.md); nothing here is in `api-baseline.txt` yet. Each card adds its part
+as an `api-change`, additions only: new annotation elements with defaults, new types, new constants, default methods.
+
+```java
+@Proofstone(mods = "build/libs/my-mod-*.jar", datapacks = "src/e2e/datapacks/my-pack")
+@Matrix(platform = Platform.FABRIC, versions = {"26.3"})
+class MyModE2E {
+    @CellTest
+    void commandWorks(Agent agent, Client client) { ... }       // server-only mod: commands, events, data
+}
+
+@Proofstone(plugins = "build/libs/MyPlugin.jar")
+@Matrix(platform = Platform.PAPER, versions = {"latest"})
+@ServerResourcePack(value = "src/e2e/packs/required.zip", required = true, prompt = "{\"text\":\"Please\"}")
+@ResourcePackAnswer(ResourcePackAnswer.Answer.ACCEPT)
+class PackE2E {
+    @CellTest
+    void accepted(Client client) {
+        ResourcePackPush push = client.resourcePacks().get(0);  // url, hash, required, prompt, answer, statuses sent
+    }
+}
+```
+
+- **New constants:** `Platform.FABRIC`, `Platform.NEOFORGE`; `Capability.MODS`, `Capability.DATAPACKS_VANILLA`,
+  `Capability.RESOURCE_PACKS` (tokens `mods`, `datapacks`, `resource-pack-status`; ADR-0017 §8).
+- **`@Proofstone(mods, datapacks)`:** globs relative to the project directory, exactly one match each, as `plugins`. Mods go to
+  `/mods`, data packs (a `.zip` or a directory with `pack.mcmeta`) to the world's `datapacks` before start. Declaring either
+  implies `@Requires(MODS)` or `@Requires(DATAPACKS_VANILLA)`: a cell without it is `SKIPPED` with `CAPABILITY_MISSING`.
+  `plugins` on a loader cell is `INVALID test declaration`. A test mod with the id `fabric-api` is refused (the Fabric cell
+  provides the pinned Fabric API).
+- **Loaded or loud.** A declared mod missing from the agent's mod list, or a declared data pack not enabled, makes the class's
+  tests on that cell `INVALID`, naming the artefact. A mod that crashes the loader is a failed boot, `INVALID` naming the
+  mod. A data pack that loads but logs an error fails the test through the log guard (`FAIL`).
+- **`@ServerResourcePack`** (class): the pack is served by the harness on loopback and pushed by `server.properties`
+  (ADR-0017 §7). Implies `@Requires(RESOURCE_PACKS)`.
+- **`@ResourcePackAnswer`** (class or method; `ACCEPT`, `DECLINE`, `FAIL_DOWNLOAD`): how every client of the test answers a push.
+  With no answer declared, a push ends the join with an error naming the URL; the driver never accepts silently.
+- **`Client.resourcePacks()`** (default method): the pushes this client saw, in order, with what it answered. Packs pushed by a
+  plugin are recorded the same way. The server's view is read with the event probe on
+  `org.bukkit.event.player.PlayerResourcePackStatusEvent` (Bukkit agent).
+- **Content mods.** On Fabric a mod that adds a synced registry entry gets the client kicked at join: the test fails with the
+  kick message. On NeoForge it is `unverified`; a mod-added item reaching the client is an error naming the item id.

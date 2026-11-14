@@ -69,6 +69,21 @@ T00 (the proxy agent lists every backend online) runs first, then P01 to P05 in 
 
 The backend row's own C-scenarios are not re-run inside a topology.
 
+## 1c. Loader cells and data packs (ADR-0017)
+
+Loader cells (`fabric@<mc>`, `neoforge@<mc>`, [ADR-0017](../adr/0017-mod-platform-packs.md)) run the same C-scenarios as
+single-server cells, cached per cell per run, with the mod agent as the server oracle (T-M8-08). A scenario that needs a
+Bukkit-only fixture is skipped with the capability named, never passed. A loader row is promoted only under ADR-0015 with
+C01 to C08 run and the M8 flake rule's three green invocations.
+
+| ID | Scenario | Needs | Proves |
+|---|---|---|---|
+| C-D01 | A data pack's function sets a score or a block; the agent reads it, the client sees it where visible | `DATAPACKS_VANILLA` | the data pack loaded and its function ran |
+| C-D02 | A data-pack recipe crafts through the client's crafting window, as C08 does | `DATAPACKS_VANILLA` | the data-pack recipe on both oracles |
+
+C-D01 and C-D02 run on `paper@26.3` and the Fabric row (T-M8-09). A cell without `DATAPACKS_VANILLA` skips them with the
+capability named.
+
 ## 2. Control run (nightly)
 
 - Run the user's suite with every `plugins` jar **removed**. The agent and fixtures stay.
