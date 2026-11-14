@@ -48,6 +48,15 @@ class CapabilityModelTest {
     }
 
     @Test
+    void aLoaderHoldsTheConsoleOnlyAndNeverTheBukkitEvents() {
+        // The Fabric and NeoForge agents report "events" and "command" (platforms/*/agent), but "events" is not a Bukkit listener.
+        List<String> tokens = List.of("command", "players", "world", "events", "log", "ticks", "mods");
+        assertThat(CapabilityModel.cellCapabilities("fabric", tokens)).containsExactly(Capability.CONSOLE);
+        assertThat(CapabilityModel.cellCapabilities("neoforge", tokens)).containsExactly(Capability.CONSOLE);
+        assertThat(CapabilityModel.cellCapabilities("fabric", List.of("players"))).isEmpty();
+    }
+
+    @Test
     void spigotHoldsOnlyWhatItsPackDeclares() {
         assertThat(CapabilityModel.cellCapabilities("spigot", List.of("command", "events", "regions")))
                 .containsExactlyInAnyOrder(Capability.BUKKIT_EVENTS, Capability.CONSOLE);

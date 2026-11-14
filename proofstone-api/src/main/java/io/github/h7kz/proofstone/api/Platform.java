@@ -20,5 +20,15 @@ public enum Platform {
     VELOCITY,
 
     /** BungeeCord, a proxy with legacy forwarding (docs/platforms/bungeecord.md). Plans topology cells like VELOCITY. */
-    BUNGEECORD
+    BUNGEECORD,
+
+    /**
+     * Fabric, a mod loader (docs/platforms/fabric.md). A {@link Matrix} naming it plans a loader cell on a
+     * {@code versions.yml} loader row (ADR-0017). Loader rows are experimental, so such a cell runs only when
+     * {@code -Dproofstone.cells} names it, for example {@code fabric@26.3}.
+     */
+    FABRIC,
+
+    /** NeoForge, a mod loader (docs/platforms/neoforge.md). Plans loader cells like FABRIC (ADR-0017). */
+    NEOFORGE
 }

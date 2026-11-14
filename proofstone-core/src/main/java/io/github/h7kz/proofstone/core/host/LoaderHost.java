@@ -38,7 +38,7 @@ import org.testcontainers.utility.MountableFile;
  * <p>The boot time, from the container start to {@code Done (}, is measured and kept ({@link #bootTime()}); it is a host
  * finding and is never part of a join timeout.
  */
-public final class LoaderHost implements AgentEndpoint, AutoCloseable {
+public final class LoaderHost implements ServerHost, AutoCloseable {
 
     /** The server's port inside its container. */
     public static final int GAME_PORT = PaperHost.GAME_PORT;
@@ -266,6 +266,11 @@ public final class LoaderHost implements AgentEndpoint, AutoCloseable {
     }
 
     @Override
+    public String mc() {
+        return cell.mc();
+    }
+
+    @Override
     public Health health() {
         return health;
     }
@@ -275,6 +280,7 @@ public final class LoaderHost implements AgentEndpoint, AutoCloseable {
         return logs;
     }
 
+    @Override
     public String logTail() {
         return logs.tail(TAIL_LINES);
     }
@@ -285,11 +291,13 @@ public final class LoaderHost implements AgentEndpoint, AutoCloseable {
     }
 
     /** The host name a driver connects to. */
+    @Override
     public String gameHost() {
         return container.getHost();
     }
 
     /** The host port mapped to the server's game port. */
+    @Override
     public int gamePort() {
         return container.getMappedPort(GAME_PORT);
     }

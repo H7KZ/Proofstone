@@ -7,7 +7,7 @@ import io.github.h7kz.proofstone.core.conformance.C05AnvilRenameCost;
 import io.github.h7kz.proofstone.core.conformance.C06AnvilCombine;
 import io.github.h7kz.proofstone.core.conformance.C07Grindstone;
 import io.github.h7kz.proofstone.core.conformance.C08ShiftClickCraft;
-import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
 import java.util.Set;
 import java.util.function.Function;
@@ -53,7 +53,7 @@ final class CellConformance {
      * @param join logs one client in under the given name, through the invocation's own driver
      * @return the cell's result; a failed scenario is a {@code false} result, never a throw
      */
-    static ConformanceResult run(String cell, PaperHost host, CellView view,
+    static ConformanceResult run(String cell, ServerHost host, CellView view,
             Function<String, SessionClient> join) {
         Fault fault = fault();
         String expected = fault == Fault.LIST ? FAULT_EXPECTED : EXPECTED;
@@ -75,7 +75,7 @@ final class CellConformance {
      * Joins one client and runs C03 on the cell, then C04 to C08 when the cell is bridged. The first failing scenario
      * decides the result, and its name is in the detail. The client is always closed.
      */
-    private static ConformanceResult scenarios(String cell, PaperHost host, CellView view,
+    private static ConformanceResult scenarios(String cell, ServerHost host, CellView view,
             Function<String, SessionClient> join, boolean windowFault) {
         Agent agent = new HostAgent(host, Set.of());
         SessionClient client;

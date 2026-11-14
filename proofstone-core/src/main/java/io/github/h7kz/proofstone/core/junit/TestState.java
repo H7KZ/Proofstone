@@ -1,6 +1,6 @@
 package io.github.h7kz.proofstone.core.junit;
 
-import io.github.h7kz.proofstone.core.host.PaperHost;
+import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.host.ViaProxyHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
 import java.util.List;
@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 final class TestState implements AutoCloseable {
 
-    final PaperHost host;
+    final ServerHost host;
     final long logCursor;
     /** {@code null} for an unbridged cell; its log goes into the repro bundle when set. */
     ViaProxyHost proxy;
@@ -33,7 +33,7 @@ final class TestState implements AutoCloseable {
     /** The {@link io.github.h7kz.proofstone.api.Clients} the test may use; it closes the clients they created. */
     TestClients clients;
 
-    TestState(PaperHost host, long logCursor) {
+    TestState(ServerHost host, long logCursor) {
         this.host = host;
         this.logCursor = logCursor;
     }

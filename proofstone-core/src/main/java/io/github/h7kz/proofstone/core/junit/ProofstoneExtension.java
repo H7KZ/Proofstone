@@ -8,6 +8,7 @@ import io.github.h7kz.proofstone.api.Topology;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.CellPlanner;
 import io.github.h7kz.proofstone.core.cell.CellSelector;
+import io.github.h7kz.proofstone.core.cell.LoaderCell;
 import io.github.h7kz.proofstone.core.cell.Scope;
 import io.github.h7kz.proofstone.core.cell.TopologyCell;
 import io.github.h7kz.proofstone.core.cell.VersionFamilies;
@@ -144,6 +145,17 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             runnable = true;
             invocations.add(new TopologyInvocation(topology, config, isolation, catalog));
         }
+        if (!plan.loaders().isEmpty() && (differential || repeats > 1)) {
+            // The reference driver has no loader row it speaks natively (ADR-0017), and a loader run is judged once per cell.
+            throw new IllegalStateException(type.getName() + " plans loader cells " + plan.loaders().stream()
+                    .map(LoaderCell::identity).toList() + ": -D" + DifferentialRun.PROPERTY + " and -D"
+                    + FlakeDetector.REPEAT + " do not run on loader cells (ADR-0017); run them without it");
+        }
+        for (LoaderCell loader : plan.loaders()) {
+            runnable = true;
+            invocations.add(new CellInvocation(asCell(loader), loader, config, isolation, catalog,
+                    CellInvocation.configuredDriver(), 1, 1));
+        }
         if (!runnable) {
             throw new IllegalStateException(type.getName() + " has no cell for a differential run: the reference driver "
                     + DifferentialRun.REFERENCE + " must be native on a selected cell. Select its row, for example "
@@ -165,8 +177,17 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
      * A selector replaces the {@link Matrix} versions of the platforms it names; other platforms are not run.
      * Zero cells is an error, not a pass: JUnit would otherwise fail with an opaque precondition error.
      */
-    /** The cells of one test class: single-server cells and topology cells (ADR-0016). */
-    record Plan(List<Cell> cells, List<TopologyCell> topologies) {
+    /** The cells of one test class: single-server cells, topology cells (ADR-0016) and loader cells (ADR-0017). */
+    record Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders) {
+    }
+
+    /**
+     * A loader cell as the {@link Cell} the lifecycle names and reports it by (platform, version, pins the bundle records).
+     * The host still boots from the {@link LoaderCell}, which keeps the loader pins.
+     */
+    static Cell asCell(LoaderCell loader) {
+        return new Cell(loader.loader(), loader.mc(), null, loader.sha256(), loader.java(), loader.status(),
+                loader.hostImage(), loader.hostDigest(), loader.notes());
     }
 
     /** The backend platform of a topology a {@link Matrix} plans; the only backend row family in M7 (ADR-0016 section 1). */
@@ -176,6 +197,8 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             Scope scope, VersionFamilies families) {
         List<Cell> cells = new ArrayList<>();
         List<TopologyCell> topologies = new ArrayList<>();
+        List<LoaderCell> loaders = new ArrayList<>();
+        List<String> declaredLoaders = new ArrayList<>();
         List<String> backends = AnnotationSupport.findAnnotation(type, Topology.Backends.class)
                 .map(annotation -> List.of(annotation.value())).orElse(TopologyCell.DEFAULT_BACKENDS);
         List<String> proxies = new ArrayList<>();
@@ -184,6 +207,11 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             if (planner.isProxy(platform)) {
                 proxies.add(platform);
                 topologies.addAll(planTopologies(type, platform, matrix, selector, planner, scope, backends));
+                continue;
+            }
+            if (planner.isLoader(platform)) {
+                declaredLoaders.add(platform);
+                loaders.addAll(planLoaders(type, platform, selector, planner, scope));
                 continue;
             }
             List<String> requested = selector.isSet() ? selector.versions(platform) : List.of(matrix.versions());
@@ -201,11 +229,38 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                         + "that plans the topology cell " + topology.entry());
             }
         }
-        if (cells.isEmpty() && topologies.isEmpty()) {
+        for (CellSelector.LoaderEntry entry : selector.loaders()) {
+            if (!declaredLoaders.contains(entry.loader())) {
+                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
+                        + "that plans the loader cell " + entry.entry());
+            }
+        }
+        if (cells.isEmpty() && topologies.isEmpty() && loaders.isEmpty()) {
             throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
                     + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
         }
-        return new Plan(List.copyOf(cells), List.copyOf(topologies));
+        return new Plan(List.copyOf(cells), List.copyOf(topologies), List.copyOf(loaders));
+    }
+
+    /**
+     * The loader cells a loader {@link Matrix} plans. A loader row is experimental (ADR-0017), so it runs only when the
+     * selector names it: without one the matrix plans nothing, and says so, so an experimental loader never boots in a
+     * default run and is never skipped silently.
+     */
+    private static List<LoaderCell> planLoaders(Class<?> type, String loader, CellSelector selector, CellPlanner planner,
+            Scope scope) {
+        List<LoaderCell> planned = new ArrayList<>();
+        for (CellSelector.LoaderEntry entry : selector.loaders()) {
+            if (entry.loader().equals(loader)) {
+                planned.addAll(planner.planLoaders(loader, List.of(entry.version()), scope));
+            }
+        }
+        if (planned.isEmpty()) {
+            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares " + loader
+                    + ", an experimental loader row that runs only when " + CELLS_SOURCE + " names it, for example "
+                    + loader + "@<mc>");
+        }
+        return planned;
     }
 
     /**

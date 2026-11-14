@@ -32,9 +32,9 @@ public final class LeakDetector {
      * @return one line per key: the world's rules, then the agent's plugins and players
      * @throws PaperHostException when a rule reads back blank, because the detector cannot tell what it holds
      */
-    public static List<String> snapshot(PaperHost host) {
+    public static List<String> snapshot(ServerHost host) {
         List<String> entries = new ArrayList<>();
-        for (String rule : GameRules.names(host.cell().mc())) {
+        for (String rule : GameRules.names(host.mc())) {
             String reply = host.command("gamerule " + rule);
             if (reply == null || reply.isBlank()) {
                 throw new PaperHostException("the leak detector read no reply for gamerule " + rule

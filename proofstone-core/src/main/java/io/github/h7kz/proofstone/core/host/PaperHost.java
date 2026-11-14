@@ -39,7 +39,7 @@ import org.testcontainers.utility.MountableFile;
  * <p>The agent is reached by running {@code curl} inside the container, so no port is published to the host
  * unless debug mode asks for it.
  */
-public final class PaperHost implements AgentEndpoint, AutoCloseable {
+public final class PaperHost implements ServerHost, AutoCloseable {
 
     static final int AGENT_PORT = AgentClient.AGENT_PORT;
     /** The server's name on the cell network, where {@link PaperHostOptions#network()} is set. */
@@ -345,6 +345,11 @@ public final class PaperHost implements AgentEndpoint, AutoCloseable {
         return cell;
     }
 
+    @Override
+    public String mc() {
+        return cell.mc();
+    }
+
     /** The agent's {@code /v1/health} reply from readiness: version, platform and capabilities. */
     public Health health() {
         return health;
@@ -354,16 +359,19 @@ public final class PaperHost implements AgentEndpoint, AutoCloseable {
         return logs;
     }
 
+    @Override
     public String logTail() {
         return logs.tail(TAIL_LINES);
     }
 
     /** The host name a driver connects to. */
+    @Override
     public String gameHost() {
         return container.getHost();
     }
 
     /** The host port mapped to the server's game port. */
+    @Override
     public int gamePort() {
         return container.getMappedPort(GAME_PORT);
     }
