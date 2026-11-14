@@ -91,7 +91,10 @@ comes with T-M8-09 where the server API lists data packs, `GET /v1/mods` is for 
 agents never serve them and do not list them: their contract tests replay only the cases they name. The ids in
 `datapacks/list` are the shape the endpoint returns, not a recorded server's list: T-M8-09 pins it against a real server.
 The mods golden's `fabric-api` (every Fabric row has it, ADR-0017 section 5) and `proofstone-agent` (the Fabric agent's mod
-id) are what the real server listed; how the NeoForge agent replays it is T-M8-06's.
+id) are what the real server listed. The NeoForge agent (T-M8-06, `NeoForgeContractTest` and `NeoForgeAgentIT`) replays
+it with the list replaced by its one entry, `proofstone_agent` (the only jar in `/mods` on the neoforge@26.3 row; a
+NeoForge mod id allows no `-`), keeping the golden's shape; the real server listed exactly that. It replays `events/subscribe`
+and `events/poll` with the class and fields replaced by a NeoForge event's, as the Fabric agent replaces the health platform.
 
 The `health/ok` golden moved from `1.2` to `1.3` for T-M8-04 (the only edit to an existing golden). The Bukkit agent's
 `PROTOCOL` is `1.3` to match. The proxy agents stay at `1.2` and so does `health/proxy-ok`: they serve nothing 1.3 adds, and

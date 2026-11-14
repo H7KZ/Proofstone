@@ -32,6 +32,18 @@ dependencyResolutionManagement {
             forRepository { maven("https://maven.fabricmc.net/") }
             filter { includeGroupByRegex("net\\.fabricmc(\\..*)?") }
         }
+        // NeoForge, FancyModLoader, the event bus and the Dist annotations of the neoforge@26.3 row, compile only for the
+        // NeoForge agent (T-M8-06), each checked by sha256 in its build. Artifact only: no POM or module metadata is read,
+        // every jar is named one by one.
+        exclusiveContent {
+            forRepository {
+                maven("https://maven.neoforged.net/releases/") { metadataSources { artifact() } }
+            }
+            filter {
+                includeGroup("net.neoforged")
+                includeGroup("net.neoforged.fancymodloader")
+            }
+        }
         // The vanilla server jar the Fabric agent compiles against (T-M8-05), by Mojang's content address (its sha1).
         // Never shaded, published or committed (AGENTS.md section 3).
         exclusiveContent {
@@ -65,6 +77,7 @@ include(
     "platforms:bungee:agent",
     "platforms:velocity:agent",
     "platforms:fabric:agent",
+    "platforms:neoforge:agent",
     "examples:smoke",
     "examples:disenchantment-anvil",
     "examples:bad-tests",

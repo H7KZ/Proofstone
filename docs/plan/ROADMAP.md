@@ -878,5 +878,10 @@ Paper and topology numbers.
   network (12 s Fabric, 11 s NeoForge). For T-M8-07.
 - **Host finding, boot: a failed Fabric start hung the container** for the 600 s spike timeout, because the spike mod's
   non-daemon HTTP thread kept the JVM alive after `Failed to start the minecraft server`. For T-M8-05/06/07.
+- **T-M8-06 NeoForge agent (2026-11-14).** Two dev runs before the counted ones: the first was a red failed boot, FML
+  refused the shaded agent jar (`InvalidModuleDescriptorException`, a Jackson service file left unrelocated; fixed with
+  `mergeServiceFiles()`, [neoforge.md](../platforms/neoforge.md) Gotchas); the test waited out the 5 min boot timeout, so
+  a host should treat `Failed to start FML` as a failed boot at once (T-M8-07). Then 3 counted `NeoForgeAgentIT` runs, 3
+  green, 3 of 3 driver joins, 0 join timeouts.
 - **Log guard:** every NeoForge boot logs `Appender DebugFile` ERROR (`io.netty.channel.kqueue.Native`); every loader
   boot logs `No key layers in MapLike[{}]`. `PSConf moved too quickly!` was not seen.

@@ -56,6 +56,26 @@ fabric-api-sha256 = "e8acacc7836f39237c83c2a664b039647ee36f93822797acc40cda44666
 # manifest, so the URL names exactly one file; the build also checks the sha256 below before it unpacks it.
 minecraft-server = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c"
 minecraft-server-sha256 = "d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64"
+# NeoForge agent (T-M8-06, ADR-0017 section 5). Compile only: the server provides all of it, nothing is shaded. Not
+# ModDevGradle: its NeoForm pipeline fetches the game and its libraries at build time outside this catalog, each of which
+# would need its own sha256 pin, so the agent compiles with javac against these jars, the fallback ADR-0017 section 5
+# allows. Each jar is checked by the sha256 below before compiling (NeoForgePinsTest checks the version against the
+# neoforge@26.3 row of versions.yml). The NeoForge sha256s are the ones maven.neoforged.net publishes; the two Maven
+# Central ones were computed from the download (its .sha1 matched) and equal the jars the 26.3 installer puts in
+# /data/libraries (T-M8-01 spike). The versions are the ones the NeoForge 26.3.0.103 POM declares.
+neoforge = "26.3.0.103"
+neoforge-sha256 = "a9c77eb071014c64fc028a40a41eec9657aae0526999c32363c7e13ed2a66dea"
+neoforge-fml = "12.0.12"
+neoforge-fml-sha256 = "24e64f915da20669431445ffab5f567552c3e01fd3c5c2cf000e5ceb75424a27"
+neoforge-bus = "8.0.5"
+neoforge-bus-sha256 = "705e24f37752809499a5cd0c7dd31eaabf3d933c5d3b2060168e94e9ef62593a"
+neoforge-mergetool = "2.0.7"
+neoforge-mergetool-sha256 = "e78f586e085206e3b5699bf0a8de3ee94c59dd34d8cd5b4033e8c58e5ac9c2ec"
+neoforge-maven-artifact = "3.10.0"
+neoforge-maven-artifact-sha256 = "5f97d58b507cd49887ce5f50e41832573ea204e9cf6705c9187a51b8ade9b543"
+# Test only: the event bus needs it at run time (bus 8.0.5 POM, compile scope).
+neoforge-typetools = "0.6.3"
+neoforge-typetools-sha256 = "408300867804be05d1083cc0287dd3a21295a9e76090e288013ba5a4182dc96d"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -89,6 +109,12 @@ adventure-text-serializer-plain = { module = "net.kyori:adventure-text-serialize
 minecraft-server = { module = "com.mojang.piston-data:server", version.ref = "minecraft-server" }
 fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
 fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
+neoforge = { module = "net.neoforged:neoforge", version.ref = "neoforge" }
+neoforge-fml = { module = "net.neoforged.fancymodloader:loader", version.ref = "neoforge-fml" }
+neoforge-bus = { module = "net.neoforged:bus", version.ref = "neoforge-bus" }
+neoforge-mergetool = { module = "net.neoforged:mergetool", version.ref = "neoforge-mergetool" }
+neoforge-maven-artifact = { module = "org.apache.maven:maven-artifact", version.ref = "neoforge-maven-artifact" }
+neoforge-typetools = { module = "net.jodah:typetools", version.ref = "neoforge-typetools" }
 
 # Build-logic only. Not on any runtime classpath.
 shadow-gradle-plugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadow" }
