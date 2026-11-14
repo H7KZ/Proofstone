@@ -845,3 +845,13 @@ Total M7 to M10 is about 8+ weeks from here (was 10+ before M7).
 `docs/plan/tasks/M8-mods.md`: exit criterion, context (what M7 left, the copy-ownership defect, external services, the driver
 question), Flake rule, 13 cards (T-M8-01 to T-M8-12 plus T-M8-99), honest estimate. **Not approved; nothing started.** Next
 session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
+
+### M7 follow-ups (2026-11-14, branch card/M7-followups)
+
+- **Decision 1 done:** `velocity@4.3.1` and `bungeecord@2111` proxy rows and their `paper@26.3` pairings are `required` in `versions.yml`
+  (ADR-0015 and ADR-0016 section 3). Evidence: the "Evidence from this run" table above, P01 to P05 green 3 of 3 per cell, each
+  tests 2, skipped 0, failures 0, errors 0. `printMatrix --scope=pr`: 21 cells before, **23 after** (adds `velocity@4.3.1+paper@26.3`
+  and `bungeecord@2111+paper@26.3`; the 21 single-server cells are identical). Post-promotion real runs are in the PR.
+- **Decision 2 carded, not started:** T-M7-15 (`PSConf moved too quickly!`) and T-M7-16 (spigot@26.3 C04), [M7-followups.md](tasks/M7-followups.md).
+  The root-owned `bukkit.yml` copy stays with T-M8-02.
+- **ADR-0016 amended** (Amendments, 2026-11-14): the loopback-only game-port binding covers bridged single-server cells too.

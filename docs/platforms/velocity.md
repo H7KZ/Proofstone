@@ -1,6 +1,6 @@
 # Velocity
 
-Status: **spike** (T-M7-01, 2026-11-09) plus the agent (T-M7-05). The pins are in `versions.yml` `proxies` (schema 3, T-M7-08, experimental); the agent real-server test plans them from there. Every fact below
+Status: **spike** (T-M7-01, 2026-11-09) plus the agent (T-M7-05). The pins are in `versions.yml` `proxies` (schema 3, T-M7-08, `required` since 2026-11-14); the agent real-server test plans them from there. Every fact below
 comes from a local run under `scripts/dockerlock.sh` with `scripts/spike/proxy-spike.sh` or
 `scripts/spike/proxy-protocol-probe.sh`, unless it says otherwise. See [platforms.md](../platforms.md).
 

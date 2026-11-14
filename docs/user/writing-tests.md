@@ -82,7 +82,7 @@ int xp = ev.getInt("xpCost");                        // an unknown getter is an 
 - `Agent.command(String)` returns the raw console reply as a `String`. It is for setup. Never assert on it.
 - Probes are read-only and listen at MONITOR priority.
 - Not in v0: `agent.world()`, `agent.awaitTicks`, `agent.logLines`, `PlayerHandle.gamemode`, `PlayerState.location`,
-  `PlayerState.openWindow`, `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md) (experimental).
+  `PlayerState.openWindow`, `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md).
   Use `agent.command(...)` for setup instead of `world()`.
 
 ## The client oracle: `Client` and `Window`

@@ -24,8 +24,8 @@ Each platform is at one of these status levels:
 
 | Platform | Agent | Topology | Milestone | Notes |
 |---|---|---|---|---|
-| Velocity | Velocity plugin agent (Java 17 bytecode) | proxy + N backends (Paper with the Bukkit agent) | M7 | Modern forwarding. **Status: experimental** (`velocity@4.3.1+paper@26.3`, not promoted: the ADR-0015 run evidence exists (ROADMAP "M7 review"), promotion is the maintainer's decision; guide: [topologies](user/topologies.md)) ([ADR-0016](adr/0016-topology-cells.md)). Velocity 3.x rejects the newest client, so it is not a row. |
-| BungeeCord | Bungee plugin agent | proxy + N backends | M7 | Legacy forwarding. **Status: experimental** (`bungeecord@2111+paper@26.3`, not promoted, same rule). |
+| Velocity | Velocity plugin agent (Java 17 bytecode) | proxy + N backends (Paper with the Bukkit agent) | M7 | Modern forwarding. **Status: required** (`velocity@4.3.1+paper@26.3`, promoted 2026-11-14 under ADR-0015 on the ROADMAP "M7 review" evidence; guide: [topologies](user/topologies.md)) ([ADR-0016](adr/0016-topology-cells.md)). Velocity 3.x rejects the newest client, so it is not a row. |
+| BungeeCord | Bungee plugin agent | proxy + N backends | M7 | Legacy forwarding. **Status: required** (`bungeecord@2111+paper@26.3`, promoted 2026-11-14, same evidence). |
 | Waterfall | none | — | out | End-of-life; its newest build (1.21 build 615) rejects the newest client. Not a row, not tested ([ADR-0016](adr/0016-topology-cells.md)). |
 | Gate, others | community | — | M10 | — |
 
@@ -60,7 +60,7 @@ Each supported platform gets `docs/platforms/<id>.md` with these sections:
 - **Gotchas**, which agents append to as they learn.
 
 Written so far: [paper](platforms/paper.md), [folia](platforms/folia.md), [purpur](platforms/purpur.md), [spigot](platforms/spigot.md). Bridged-row facts: [viaproxy](platforms/viaproxy.md).
-Proxy facts (T-M7-01 spike, then the M7 cards; both rows `experimental`, P01 to P05 green 3 of 3 per row again in the M7 review): [velocity](platforms/velocity.md), [bungeecord](platforms/bungeecord.md).
+Proxy facts (T-M7-01 spike, then the M7 cards; both rows `required` since 2026-11-14, P01 to P05 green 3 of 3 per row again in the M7 review): [velocity](platforms/velocity.md), [bungeecord](platforms/bungeecord.md).
 
 ## Status evidence (M5, 2026-11-08; M5 follow-up, same day)
 M5 itself promoted nothing: each row had one full local run. The M5 follow-up (`fix/m5-evidence-promotion`) applies

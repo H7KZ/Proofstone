@@ -1,8 +1,9 @@
 # Topologies: Velocity or BungeeCord in front of Paper backends
 
-**Status: experimental.** A topology cell is a proxy container plus N Paper backends on one Docker network
-([ADR-0016](../adr/0016-topology-cells.md)). Rows in `versions.yml` `proxies` are `experimental`, not `required`: the
-rule in [ADR-0015](../adr/0015-local-evidence-row-promotion.md) needs more runs than M7 has. What ran is listed under
+**Status: required** (promoted 2026-11-14). A topology cell is a proxy container plus N Paper backends on one Docker network
+([ADR-0016](../adr/0016-topology-cells.md)). The rows in `versions.yml` `proxies` (`velocity@4.3.1+paper@26.3`,
+`bungeecord@2111+paper@26.3`) became `required` under [ADR-0015](../adr/0015-local-evidence-row-promotion.md) on the P01 to P05
+evidence in the ROADMAP "M7 review". What ran is listed under
 [What was run](#what-was-run). Anything not listed there has not been run.
 
 ## What you get
