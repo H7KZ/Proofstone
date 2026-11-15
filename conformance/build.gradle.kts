@@ -156,7 +156,8 @@ tasks.register<Test>("run") {
             includeTestsMatching("*ConformanceSmokeTest")
             includeTestsMatching("*ConformanceLoaderWindowTest")
             for (scenario in listOf("C03GiveRoundTripTest", "C04ChestMoveTest", "C05AnvilRenameCostTest",
-                "C06AnvilCombineTest", "C07GrindstoneTest", "C08ShiftClickCraftTest")) {
+                "C06AnvilCombineTest", "C07GrindstoneTest", "C08ShiftClickCraftTest", "CD01DataPackFunctionTest",
+                "CD02DataPackRecipeTest")) {
                 includeTestsMatching("*$scenario")
             }
         } else {

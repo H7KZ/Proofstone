@@ -98,6 +98,15 @@ public interface Game {
         throw new AgentException(404, "NOT_FOUND", "this agent is not a mod agent and has no /v1/mods endpoint", null);
     }
 
+    /**
+     * The server's data packs as {@code {enabled: [id], available: [id]}} (datapacks.json), ids as the server names them
+     * ({@code vanilla}, {@code file/x.zip}), in its order. Protocol 1.3 (ADR-0017 section 9): an agent that reports the
+     * token {@code datapacks} overrides this; every other leaves the default, a 404 {@code NOT_FOUND}. Read-only.
+     */
+    default Map<String, Object> dataPacks(long timeoutMs) {
+        throw new AgentException(404, "NOT_FOUND", "this agent does not list data packs and has no /v1/datapacks endpoint", null);
+    }
+
     /** The error of a proxy endpoint on an agent that is not a proxy. */
     static AgentException notAProxy() {
         return new AgentException(404, "NOT_FOUND", "this agent is not a proxy and has no /v1/proxy endpoints", null);

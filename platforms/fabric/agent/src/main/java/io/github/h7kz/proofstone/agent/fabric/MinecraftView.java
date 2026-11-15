@@ -242,6 +242,14 @@ final class MinecraftView implements GameView {
         return out;
     }
 
+    @Override
+    public Map<String, Object> dataPacks() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", new ArrayList<>(server.getPackRepository().getSelectedIds()));
+        out.put("available", new ArrayList<>(server.getPackRepository().getAvailableIds()));
+        return out;
+    }
+
     private static <T extends Comparable<T>> BlockState with(BlockState state, Property<T> property, String value,
             String key) {
         T parsed = property.getValue(value).orElseThrow(() -> ItemJson.unknownKey(key));

@@ -174,7 +174,7 @@ class FabricAgentIT {
         ObjectNode data = (ObjectNode) golden.get("body").get("data");
         data.put("platform", "fabric");
         ArrayNode tokens = data.putArray("capabilities");
-        List.of("command", "players", "world", "events", "log", "ticks", "mods").forEach(tokens::add);
+        List.of("command", "players", "world", "events", "log", "ticks", "mods", "datapacks").forEach(tokens::add);
         HttpResponse<String> reply = call("GET", "/v1/health", null, true);
         assertMatches("health/ok", golden, reply);
         assertThat(data(reply).get("mcVersion").asText()).isEqualTo(CELL.mc());
@@ -190,6 +190,19 @@ class FabricAgentIT {
         HttpResponse<String> reply = call("GET", "/v1/mods", null, true);
         assertMatches("mods/list", golden("mods/list"), reply);
         assertThat(data(reply).get("mods").get(0).get("version").asText()).isEqualTo(CELL.fabricApi().version());
+    }
+
+    @Test
+    void datapacksListsVanillaAndTheLoadersOwnPackAsTheGoldenSays() throws IOException {
+        HttpResponse<String> reply = call("GET", "/v1/datapacks", null, true);
+        // The golden's ids are Paper's (pinned on a real Paper server); the shape is replayed with this server's ids.
+        JsonNode golden = golden("datapacks/list");
+        ObjectNode expected = (ObjectNode) golden.get("body").get("data");
+        expected.set("enabled", data(reply).get("enabled"));
+        expected.set("available", data(reply).get("available"));
+        assertMatches("datapacks/list", golden, reply);
+        assertThat(data(reply).get("enabled").get(0).asText()).isEqualTo("vanilla");
+        assertThat(data(reply).get("enabled").toString()).as("the server's enabled packs").doesNotContain("file/");
     }
 
     @Test
