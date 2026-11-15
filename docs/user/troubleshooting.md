@@ -90,6 +90,82 @@ Every test on one cell gets one verdict. Only `PASS` and a `SKIPPED` with an all
 - **Not observed yet:** no topology join or switch timeout was seen in the M7 runs recorded in `docs/plan/ROADMAP.md`, so there
   is no rate for it. See [topologies](topologies.md).
 
+## Mods, data packs and resource packs (M8)
+
+All entries below are about `experimental` rows and features; the guide is [mods-and-packs.md](mods-and-packs.md). Counts
+come from the [ROADMAP, "M8 findings"](../plan/ROADMAP.md). Mod-cell join timeouts are counted apart from the Paper and
+topology numbers.
+
+### Fabric content mods kick the vanilla client
+
+- **Seen:** with Fabric API and a mod that registers one item, 3 of 3 driver joins were refused in configuration:
+  `This server requires Fabric Loader and Fabric API installed on your client!` (Fabric API's registry sync).
+- **Cause:** known. A content mod adds synced registry entries, and the vanilla client the driver emulates cannot have them.
+  It is a refusal, not a join timeout.
+- **What to do:** none in the harness. Server-only mods (commands, events, data) and data packs work; content mods on Fabric
+  need a modded-client driver, which needs its own ADR. NeoForge admitted the client with one added item in 3 of 3 spike joins,
+  and nothing more was run on it. (Today a test cannot declare a mod at all, see the guide.)
+
+### Cold start of a loader cell reaches Mojang
+
+- **Seen:** the first start of a Fabric or NeoForge cell fetches the vanilla server jar and libraries from inside the container
+  (`launchermeta.mojang.com` and `piston-meta.mojang.com` for the install, plus the loader's maven). With `--network none` the
+  cold start fails. A restart of an installed container needs no network (12 s Fabric, 11 s NeoForge).
+- **Cause:** known and decided. It is the one listed exception to "no Mojang dependency in runs"
+  ([ADR-0017](../adr/0017-mod-platform-packs.md) section 6): the downloads are content-pinned (the row's `vanilla-sha256` is
+  checked after the install). Logins never reach Mojang: the server is in offline mode.
+- **What to do:** let the first run reach the network. A host that is not on the list in the code is a finding, not something to
+  allow silently.
+
+### Paper fires no resource-pack status event in the configuration phase
+
+- **Seen:** on `paper@26.3`, a pack from `server.properties` is pushed in the configuration phase. The event probe on
+  `PlayerResourcePackStatusEvent` stayed empty for accept, decline and a wrong hash (C-R01 development run 1). The same event
+  does fire for a pack a plugin pushes in play.
+- **Also seen:** a **wrong hash does not kick** on Paper. The client sends `ACCEPTED`, then `FAILED_DOWNLOAD`, and reaches play.
+  No WARN or ERROR is logged. Declining a **required** pack is kicked (`multiplayer.requiredTexturePrompt.disconnect`).
+- **Cause:** observed, not explained inside Paper.
+- **What to do:** do not assert a server event for a `@ServerResourcePack` push. Read `Client.resourcePacks()` (statuses,
+  `problem`) and the join's outcome. To see the server's side, push the pack from a plugin in play. A test that expects the
+  server to refuse a wrong hash will fail, and that is correct for Paper: assert what the client reported.
+
+### Loader cells: player state read with a window open is 501
+
+- **Seen:** on `fabric@26.3` and `neoforge@26.3`, `PlayerHandle.state()` while a `Window` is open throws an error containing
+  `NOT_SUPPORTED` and `window open`.
+- **Cause:** known. A vanilla server does not keep an open window's title, and the mod agents refuse to invent one. The Bukkit
+  agent answers the same read.
+- **What to do:** close the window first. The read is answered again once it is closed (`ConformanceLoaderWindowTest` asserts
+  both halves on both loaders). C04 to C08 read after closing, so they run unchanged.
+
+### Fabric: a `zombie_villager` WARN fails a test
+
+- **Seen:** once in 6 conformance invocations (3 on Paper, all green, and 3 on Fabric, one red; the verifier run of T-M8-09), C02 failed through the log guard:
+  `WARN net.minecraft.world.entity.EntityType: Skipping Entity with id minecraft:zombie_villager`, logged by
+  `Worker-Main-3` right after the join.
+- **Cause:** not known beyond the log. The world is random, so a village zombie in a generated chunk near spawn is the likely
+  source; it is vanilla and not caused by a data pack. It is **not allowlisted** and no card exists yet. The ROADMAP leaves the
+  decision (a card, or a counted rate) to the M8 review, so treat it as open.
+- **What to do:** keep the XML and bundle of the red run. Do not retry it into green. Report it with the line quoted.
+
+### `Failed to start FML` and `Failed to start the minecraft server` fail the start at once
+
+- **Seen:** a Fabric start that fails logs `Failed to start the minecraft server`; a NeoForge start that fails before any mod
+  loads logs `Failed to start FML: ...` (for example `InvalidModuleDescriptorException`). A NeoForge mod that throws at
+  construction logs `Failed to create mod instance. ModID: <id>` and the container exits, with no `Failed to start FML` line seen.
+- **What the host does:** it fails the cell after about 15 s (Fabric) or 17 to 18 s (NeoForge) on the line or on the container
+  exit, never on the 5-minute boot timeout. The test is `INVALID`, naming the mod when the loader's log names one.
+- **What to do:** read the quoted loader line in the message and `server.log` in the bundle. A start that fails without naming a
+  declared mod is not blamed on a mod. Do not raise the boot timeout.
+- **Data packs:** a pack with a function that does not parse stays enabled, and the server logs the error at boot. The harness
+  reads the whole boot log for WARN or worse lines naming the pack's namespace and makes the class `INVALID`, quoting the line.
+
+### `PSConf moved too quickly!` (unchanged)
+
+The conformance client is named `PSConf`, and the log-guard allowlist covers only harness clients named `T` plus eight hex digits
+and `.`-prefixed ones. The family described under [Known intermittent flakes](#known-intermittent-flakes) is unchanged by M8: it
+was **not seen** in the loader or resource-pack runs, and it is still unexplained. A `PSConf` hit makes the cell `INVALID`.
+
 ## Known intermittent flakes
 
 These were seen on real servers and are **open**. None is fixed.
