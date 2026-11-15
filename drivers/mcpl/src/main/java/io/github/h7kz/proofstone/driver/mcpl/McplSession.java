@@ -327,6 +327,15 @@ final class McplSession implements ClientSession {
         loadedHeld = false;
     }
 
+    /**
+     * True once the join is complete: the server's first tick showed (its first SetHealth) and the held acknowledgement is
+     * out, or the connection ended. The join waits for it, so a server that never sends SetHealth is a named join timeout
+     * and not a client that stays silent (T-M7-19).
+     */
+    boolean joinFinished() {
+        return firstTickSeen || state == State.DISCONNECTED;
+    }
+
     /** True while the join teleport's acknowledgement waits for the server's first tick (see applyPosition). */
     boolean joinAcknowledgementHeld() {
         return heldAcknowledgement != null;

@@ -52,11 +52,11 @@ public final class McplDriver implements ClientDriver {
         try {
             Await.until("play state for " + where, session::state, state -> state != McplSession.State.JOINING,
                     spec.connectTimeout());
-            // The join is not done while the teleport acknowledgement is held for the server's first tick (T-M7-19).
-            // Same budget, not a new one: a server that never sends its first SetHealth is a named join timeout.
+            // The join is not done before the server's first tick, which releases the held teleport acknowledgement
+            // (T-M7-19). Same budget, not a new one: a server that never sends its first SetHealth is a named join
+            // timeout, not a client that goes quiet and fails later with an unrelated message.
             Duration left = spec.connectTimeout().minus(Duration.between(started, Instant.now()));
-            Await.until("first tick (SetHealth) for " + where, () -> session.joinAcknowledgementHeld() && session.state() != McplSession.State.DISCONNECTED,
-                    held -> !held,
+            Await.until("first tick (SetHealth) for " + where, session::joinFinished, finished -> finished,
                     left.isNegative() || left.isZero() ? Duration.ofMillis(1) : left);
         } catch (AwaitTimeoutException e) {
             session.close();

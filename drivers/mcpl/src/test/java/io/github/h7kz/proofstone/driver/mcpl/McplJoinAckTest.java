@@ -114,6 +114,27 @@ class McplJoinAckTest {
     }
 
     @Test
+    void theJoinIsNotFinishedUntilTheFirstHealthPacket() {
+        received(login());
+        received(position(7, 64));
+        assertThat(session.joinFinished()).as("a server with no first tick is a join timeout, not a quiet client").isFalse();
+
+        received(health());
+
+        assertThat(session.joinFinished()).isTrue();
+    }
+
+    @Test
+    void aJoinWithNoPositionAndNoHealthIsNamedToo() {
+        List<String> transcript = List.of("connected", "-> ClientIntentionPacket protocol=775", "-> ServerboundHelloPacket",
+                "<- ClientboundLoginFinishedPacket", "-> ServerboundLoginAcknowledgedPacket",
+                "<- ClientboundFinishConfigurationPacket", "-> ServerboundFinishConfigurationPacket",
+                "<- ClientboundLoginPacket");
+
+        assertThat(JoinDiagnosis.classify(transcript).stage()).isEqualTo(JoinStage.JOIN_NO_FIRST_HEALTH);
+    }
+
+    @Test
     void aJoinThatNeverGetsAHealthPacketIsNamedByItsStage() {
         List<String> transcript = List.of("connected", "-> ClientIntentionPacket protocol=775", "-> ServerboundHelloPacket",
                 "<- ClientboundLoginFinishedPacket", "-> ServerboundLoginAcknowledgedPacket",
