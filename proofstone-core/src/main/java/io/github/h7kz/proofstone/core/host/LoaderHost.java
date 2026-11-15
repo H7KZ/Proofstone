@@ -56,18 +56,21 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
     private final GenericContainer<?> container;
     private final AgentClient agent;
     private final List<String> copiedMods;
+    /** The mod jars under test, kept to name the one a failed start blames (T-M8-11). */
+    private final List<Path> modJars;
     /** Data packs under test, installed by the image before the server starts (ADR-0017 section 4). */
     private final List<DataPack> dataPacks;
     private Health health;
     private Duration bootTime;
     private String failure;
 
-    private LoaderHost(LoaderCell cell, LoaderHostOptions options, List<String> copiedMods,
+    private LoaderHost(LoaderCell cell, LoaderHostOptions options, List<Path> mods,
             List<DataPack> dataPacks) {
         this.dataPacks = dataPacks;
         this.cell = cell;
         this.options = options;
-        this.copiedMods = copiedMods;
+        this.modJars = mods;
+        this.copiedMods = mods.stream().map(mod -> mod.getFileName().toString()).toList();
         this.container = new GenericContainer<>(DockerImageName.parse(cell.hostImage() + "@" + cell.hostDigest()));
         this.agent = new AgentClient(container, token);
     }
@@ -94,7 +97,7 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
                     + "jar the install fetches is not pinned (ADR-0017 section 6). Pin it from a real run and the "
                     + "published value; the cell does not start without it.");
         }
-        LoaderHost host = new LoaderHost(cell, options, mods.stream().map(mod -> mod.getFileName().toString()).toList(),
+        LoaderHost host = new LoaderHost(cell, options, mods,
                 dataPacks);
         host.boot(jars, config);
         return host;
@@ -116,6 +119,15 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
             close();
             String message = e instanceof PaperHostException ? e.getMessage()
                     : cell.identity() + " failed to start: " + e.getMessage();
+            // The loader gave up (or the container exited) with mods under test installed, and its log names one of them: the
+            // mod crashed at load. INVALID naming the mod, never a boot or join timeout (ADR-0017 section 4, T-M8-11). A
+            // failed start that names no declared mod stays a plain failed boot, a host finding.
+            if (failure != null) {
+                String modCrash = ModLoad.invalid(cell.identity(), modJars, failure, logs.all());
+                if (modCrash != null) {
+                    message = modCrash;
+                }
+            }
             throw new PaperHostException(message + "\n--- log tail ---\n" + tail, e);
         }
     }
@@ -270,6 +282,13 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
     /** Runs a command in the container; a non-zero exit is an error with its stderr. */
     String exec(String... args) {
         return agent.exec(args);
+    }
+
+    @Override
+    public java.util.Map<String, List<String>> dataPackNamespaces() {
+        java.util.Map<String, List<String>> namespaces = new java.util.LinkedHashMap<>();
+        dataPacks.forEach(pack -> namespaces.put(pack.id(), pack.namespaces()));
+        return namespaces;
     }
 
     @Override

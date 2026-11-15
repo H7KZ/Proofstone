@@ -235,6 +235,13 @@ public final class PaperHost implements ServerHost, AutoCloseable {
     }
 
     @Override
+    public java.util.Map<String, List<String>> dataPackNamespaces() {
+        java.util.Map<String, List<String>> namespaces = new java.util.LinkedHashMap<>();
+        dataPacks.forEach(pack -> namespaces.put(pack.id(), pack.namespaces()));
+        return namespaces;
+    }
+
+    @Override
     public List<String> dataPackIds() {
         return dataPacks.stream().map(DataPack::id).toList();
     }

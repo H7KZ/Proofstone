@@ -21,6 +21,14 @@ public interface ServerHost extends AgentEndpoint, AutoCloseable {
         return java.util.List.of();
     }
 
+    /**
+     * The namespaces ({@code data/<namespace>}) of each installed data pack, by its id: how a server log line about a
+     * function or a recipe is attributed to a pack (T-M8-11). Empty when none is installed.
+     */
+    default java.util.Map<String, java.util.List<String>> dataPackNamespaces() {
+        return java.util.Map.of();
+    }
+
     /** The last lines of the server log, for a failure message. */
     String logTail();
 

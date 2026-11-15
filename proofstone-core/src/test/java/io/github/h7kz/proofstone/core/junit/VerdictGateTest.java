@@ -136,6 +136,17 @@ class VerdictGateTest {
     }
 
     @Test
+    void aDeclarationThatMadeTheCellInvalidIsReportedAsInvalidNotFail() throws NoSuchMethodException {
+        // T-M8-11: a mod that crashes at load or a data pack that logs an error ends the test before conformance runs. The
+        // test's own failure starts with INVALID, and the report must say the same, not FAIL.
+        CellResult result = VerdictGate.single("Samples.plain", method("plain"), CELL, false,
+                Attempt.fail("INVALID test declaration: mod x crashed at load on fabric@26.3"), false, null);
+
+        assertThat(result.verdict()).isEqualTo(Verdict.INVALID);
+        assertThat(result.reason()).startsWith("INVALID test declaration: mod x");
+    }
+
+    @Test
     void aPassWithoutConformanceIsAnError() throws NoSuchMethodException {
         assertThatThrownBy(() -> VerdictGate.single("Samples.plain", method("plain"), CELL, false, Attempt.pass(),
                 false, null)).isInstanceOf(IllegalStateException.class);
