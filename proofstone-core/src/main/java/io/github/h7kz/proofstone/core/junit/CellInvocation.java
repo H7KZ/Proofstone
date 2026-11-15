@@ -544,11 +544,6 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * boots it for both drivers, so the shared server is bound to every driver the run uses.
      */
     private HostResource boot(Class<?> testClass) {
-        String jar = System.getProperty(AGENT_JAR);
-        if (jar == null) {
-            throw new ParameterResolutionException("system property " + AGENT_JAR + " is not set: it points at "
-                    + "the shaded agent jar");
-        }
         if (loader != null) {
             // A loader cell does not hold RESOURCE_PACKS, so a declared pack skips there with the capability named.
             return bootLoader();
@@ -572,7 +567,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     }
 
     private HostResource bootPaper(Map<String, String> packEnv, ResourcePackSource pack) {
-        String jar = System.getProperty(AGENT_JAR);
+        // Read here, not in boot: only a Bukkit-family cell loads the Bukkit agent (T-M8-14).
+        String jar = agentJar(null);
         // A control run installs no plugin jars. The agent and the fixture world are not plugins under test, so they stay.
         List<String> plugins = List.of(config.plugins());
         if (controlRun) {
@@ -642,12 +638,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             throw new ParameterResolutionException("INVALID: the loader cell " + cellId() + " would need ViaProxy for the "
                     + "driver; a bridged loader row is refused (ADR-0017 section 1)");
         }
-        String property = "proofstone." + loader.loader() + ".agentJar";
-        String jar = System.getProperty(property);
-        if (jar == null) {
-            throw new ParameterResolutionException("system property " + property + " is not set: it points at the shaded "
-                    + loader.loader() + " agent jar");
-        }
+        String jar = agentJar(loader.loader());
         String cache = System.getProperty(LOADER_CACHE, "build/loader-cache");
         LoaderHostOptions options = LoaderHostOptions.of(Path.of(jar), true, Path.of(cache).toAbsolutePath())
                 .withMods(Path.of("").toAbsolutePath(), List.of())
@@ -658,6 +649,20 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         System.err.println("PROOFSTONE LOADER BOOT " + loader.identity() + ": " + host.bootTime().toMillis()
                 + " ms from container start to \"Done (\" (host finding, not a join timeout)");
         return new HostResource(host, null, null, Map.of(), null);
+    }
+
+    /**
+     * The shaded agent jar this cell boots: {@code proofstone.agentJar} for a Bukkit-family cell ({@code loaderId} is
+     * {@code null}), {@code proofstone.<loader>.agentJar} for a loader cell. Only the property the cell uses is required.
+     */
+    static String agentJar(String loaderId) {
+        String property = loaderId == null ? AGENT_JAR : "proofstone." + loaderId + ".agentJar";
+        String jar = System.getProperty(property);
+        if (jar == null) {
+            throw new ParameterResolutionException("system property " + property + " is not set: it points at the shaded "
+                    + (loaderId == null ? "agent" : loaderId + " agent") + " jar");
+        }
+        return jar;
     }
 
     /** Logs one client in under {@code name} through the cell's driver, at the address that driver reaches. */

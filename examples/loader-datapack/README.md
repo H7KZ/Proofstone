@@ -38,5 +38,6 @@ Without `-Dproofstone.cells=fabric@26.3` the class plans no cell and prints `NOT
 
 What was run (T-M8-12, 2026-11-15, warm loader cache): three separate invocations on `fabric@26.3`, all green, 1 test each,
 `skipped="0" failures="0" errors="0"`, loader boot 14.0 to 15.0 s, 0 join timeouts. One earlier invocation was red before those
-three: the example's build did not set `proofstone.agentJar`, which `CellInvocation.boot` reads even for a loader cell
-(`ParameterResolutionException`, no server started). The build now sets it. No flake rate is claimed from three runs.
+three: the example's build did not set `proofstone.agentJar`, which `CellInvocation.boot` then read even for a loader cell
+(`ParameterResolutionException`, no server started). T-M8-14 moved that read to the Bukkit-family path, so a loader run sets only
+`proofstone.fabric.agentJar` and the example's build no longer sets the Bukkit one. No flake rate is claimed from three runs.
