@@ -861,6 +861,31 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
 Paper and topology numbers.
 
+- **T-M8-11 negative controls (2026-11-15), run by hand, not in `scripts/release-mutation-check.sh` (asked in the PR).** Four
+  red-by-design runs in `metaModTest` (`examples/bad-tests`), each judged by its own reason, none a boot or join timeout, and the
+  report's verdict equal to the XML's: `fabric@26.3` and `neoforge@26.3`, a mod that throws at init: `INVALID`, naming
+  `proofstone_example (proofstone-example-mod.jar)` and quoting the loader's line (Fabric `Could not execute entrypoint stage
+  'server'`, host fails at once on `Failed to start the minecraft server`; NeoForge `FMLModContainer ... Failed to create mod
+  instance`, the container exits, no `Failed to start FML` line seen, host fails on the exit); `paper@26.3`, a data pack whose
+  function does not parse: `INVALID`, naming `file/broken-function.zip` and quoting `Failed to load function
+  proofstone_broken:hello` and the parse error; `paper@26.3`, a required pack pushed with sha1 forty zeros while the test expects it
+  loaded: `FAIL`, `statuses=[ACCEPTED, FAILED_DOWNLOAD]` and `hash mismatch: expected 000..., got <sha1>`, no kick (T-M8-10).
+  Counted runs, one cell per invocation under the Docker lock, XML read (`tests=1 skipped=0 errors=0`, `failures=1` by design for
+  every fault): `metaModFabricTest` 3 of 3 green, `metaModNeoForgeTest` 3 of 3, `metaModPaperTest` 3 of 3 (two faults each run).
+  0 join timeouts, 0 boot timeouts, wall time per invocation 17 to 18 s (Fabric), 20 to 23 s (NeoForge), 59 s (Paper), all warm
+  (loader downloads cached, agents built); `metaModTest` all four in one go 1 min 40 s warm. Seen in the pack-hash runs: the
+  allowlisted harness-client `moved too quickly` WARN (not `PSConf`, not a failure). Mutation check of the meta test itself, one
+  run each: a data pack whose function parses reads `no test produced INVALID` with the body's own failure; a pack pushed with its
+  true hash reads `no test produced FAIL` (the test passes); the mod's config `fail=false` reads `no test produced INVALID`.
+  Findings: (1) **a data pack with a broken function stays enabled**, so the declared-pack check passed it; the server logs the
+  error at boot, before the agent's log window, so ADR-0017 section 4's "caught by the log guard" did not hold. The host's log of
+  the whole boot is now read for WARN or worse lines that name a namespace of the pack (`DataPackLoad.errorsLogged`). (2) A failure
+  before conformance (a mod crash, an unloaded or noisy data pack) was `FAIL` in `proofstone-report.json` while JUnit said `INVALID`;
+  the report now says `INVALID`. (3) `@Proofstone` has no `mods` element (test-api.md section 13 lists it; T-M8-07 built the host
+  side only), so the mod fault is a test-only switch, `-Dproofstone.injectModFault=crash-at-load`, which installs the example mod
+  with `fail=true`; the card kept the API unchanged. The existing controls after the change, one run each, XML read: `metaTest`
+  (288 s) all 8 verdicts (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED, the one skip reasoned), `metaTopologyTest`
+  (454 s) 7 of 7 `INVALID`; 0 timeouts in either. Evidence: local copies of the XML, bundles and logs (not committed).
 - **T-M8-10 resource packs (2026-11-15).** `:conformance:run -Dproofstone.cells=paper@26.3`, three separate invocations under the
   Docker lock, all green: 17 tests, 2 skipped (`FOLIA_REGIONS`, reasoned), 0 failures, 0 errors each, C-R01 and C-R02 included;
   0 join timeouts, no `moved too quickly`. Three development runs of C-R01/C-R02 alone came first. Dev run 1: accept, decline
