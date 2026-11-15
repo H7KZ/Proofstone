@@ -914,3 +914,12 @@ Paper and topology numbers.
   |---|---|---|---|---|---|---|---|---|---|---|---|
   | fabric@26.3 | no | pass | pass (vanilla `/help`) | pass | pass | pass | pass | pass | pass | none | 3 of 3 green |
   | neoforge@26.3 | no | pass | pass (vanilla `/help`) | pass | pass | pass | pass | pass | pass | none | 3 of 3 green |
+
+- **Verifier run, T-M8-09 (2026-11-15): 1 red in 6 conformance invocations, new log-guard family on Fabric.** Paper 3 of 3
+  green. Fabric `:conformance:run -Dproofstone.cells=fabric@26.3`: runs 1 and 2 green, **run 3 red** in
+  `ConformanceSmokeTest` (C02, verdict: log guard, not a join or boot timeout, not C-D01 or C-D02):
+  `WARN net.minecraft.world.entity.EntityType: Skipping Entity with id minecraft:zombie_villager`, logged by `Worker-Main-3`
+  right after the join (random world, so a village zombie in a generated chunk near spawn; vanilla, not caused by the
+  data-pack code). Seen once; not allowlisted, no card yet. XML and bundle kept aside (`C:\pw\t809-ev`, local only). The
+  T-M8-09 Fabric acceptance is therefore **not ticked as 3 of 3**: the agent's fresh set was 3 of 3 green, the verifier set
+  was 2 green and 1 red from this family. For the T-M8-99 review to decide: a card for the family, or a counted rate.
