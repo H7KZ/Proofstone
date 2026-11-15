@@ -20,6 +20,9 @@ not a Bedrock client (test-api spec section 11). The agent reports its token `be
 exists (paper@26.3 build 244: enabled `vanilla`, `paper`, plus a declared `file/<name>`; available also lists Paper's
 `minecart_improvements`, `redstone_experiments` and `trade_rebalance`). C-D01 and C-D02 run it; Folia, Purpur and Spigot do not
 declare it. The Paper API has no `org.bukkit.packs` manager in 26.3: the manager is Paper's `io.papermc.paper.datapack`.
+`RESOURCE_PACKS` (T-M8-10, token `resource-pack-status`, reported where `PlayerResourcePackStatusEvent` exists) is held on
+native Paper cells only: C-R01 and C-R02 ran it on paper@26.3 build 244. Folia, Purpur and Spigot do not declare it, and a
+bridged Paper cell does not hold it.
 
 ## Gotchas
 
@@ -295,6 +298,18 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   and `<name>[/ip:port] logged in with entity id N` (seen in the passing runs of the 30-run loop). `join-stall.txt` in the
   repro bundle holds the view. This explains nothing yet: 30 runs of `scripts/flake-loop.sh` had no join timeout, so no
   real-server stall has been classified. The first one that does is the evidence for ROADMAP item 3.
+- **A `server.properties` resource pack is pushed in configuration, and Paper 26.3 fires no Bukkit event for its answer**
+  (T-M8-10, C-R01 dev run, build 244). The probe on `PlayerResourcePackStatusEvent` stayed empty for accept, decline and a
+  wrong hash: the event needs a `Player`, which a configuration-phase connection is not (Paper's configuration events,
+  `io.papermc.paper.event.connection.configuration`, carry no pack status). The same pack pushed by a plugin in play
+  (`Player#addResourcePack`) fires the event at MONITOR with `getStatus` (`ACCEPTED`, `DOWNLOADED`, `SUCCESSFULLY_LOADED`, or
+  `ACCEPTED`, `FAILED_DOWNLOAD`), `getPlayer`, `getID` and `getHash` = null. A null getter used to make the harness drop the
+  whole event (`CapturedEvent` refused it); fixed in T-M8-10.
+- **Resource-pack answers on a required pack** (paper@26.3, T-M8-10): `DECLINED` in configuration is kicked; the client gets
+  the key `multiplayer.requiredTexturePrompt.disconnect`, the log says `Disconnecting <player> due to resource pack <id>
+  rejection` then `lost connection: This server requires a custom resource pack`. `ACCEPTED` then `FAILED_DOWNLOAD` (a wrong
+  hash) is not kicked: the client reaches play. No WARN or ERROR is logged for either. `resource-pack-id` is set by the
+  harness, so the server derives none.
 
 ## Timings (Paper 26.3, java25 image, maintainer's Windows machine, Docker Desktop, T-M1-99)
 

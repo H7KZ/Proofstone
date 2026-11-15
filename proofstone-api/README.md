@@ -22,6 +22,11 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
   `Cell.capabilities()` a default method that throws, and removed `Capability.NMS` and `Capability.DATAPACKS` (no agent token).
 - Data packs (T-M8-09, api-change, additions only, ADR-0017): `Proofstone.datapacks()` (globs, default none) and
   `Capability.DATAPACKS_VANILLA` (last constant). Declaring a pack implies the capability.
+- Resource packs (T-M8-10, api-change, additions only, ADR-0017 §7): `@ServerResourcePack` (class: `value`, `required`,
+  `prompt`, `sha1`), `@ResourcePackAnswer` (class or method, `Answer.ACCEPT`, `DECLINE`, `FAIL_DOWNLOAD`, no default),
+  `ResourcePackPush` (a record) and `Client.resourcePacks()` (default method, throws), `Capability.RESOURCE_PACKS` (last
+  constant). Declaring a pack implies the capability. `CapturedEvent` now keeps a getter that returned null (its record
+  constructor is experimental; no signature changed).
 - Injected parameters: `Cell`, `Agent` (`command`, `capabilities`, `player`) and `Client` (`name`, `command`,
   `awaitMessage`, `position`, `awaitPosition`, `openBlock`, `inventory`).
 - Setup and views (T-M2-07): `PlayerHandle` and `PlayerState` (server oracle), `Window`, `Click`, `Item` (build),

@@ -26,6 +26,11 @@ itself against real vanilla behaviour, on the newest Paper row:
   `@Proofstone(datapacks = "src/test/datapacks/proofstone-e2e")` and run on `paper@26.3`, `fabric@26.3` and `neoforge@26.3`
   (which skips with `DATAPACKS_VANILLA` named).
 
+- Resource packs (T-M8-10): C-R01 (`CR01ResourcePackTest`: accept, decline kicked, no answer refused at once) and C-R02
+  (`CR02ResourcePackWrongHashTest`: a wrong pushed sha1 reported) declare `@ServerResourcePack` with the pack that
+  `zipResourcePack` builds from `src/test/resourcepacks/proofstone-e2e` (reproducible, never committed as a zip), and the
+  fixture plugin, which pushes the pack again in play so the event probe reads the server's view. They run on `paper@26.3`.
+
 C09 to C12 (events, config, log, reset) are not written yet. The per-cell check runs C03 to C08 on every cell in the
 bad-tests and user suites (T-M4-10b); docs/specs/self-tests.md section 1 gives the reasons C09 to C12 are deferred.
 

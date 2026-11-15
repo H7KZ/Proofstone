@@ -241,7 +241,9 @@ Observed in the spike, not yet tokens:
     reached play.
   - Decline (`DECLINED`): kicked in configuration with `multiplayer.requiredTexturePrompt.disconnect`.
   - No answer (the driver today): the server waits; the join times out at `CONFIGURATION_STALLED` with keep-alives
-    flowing (3 of 3 driver joins in B and E). T-M8-10 must answer it.
+    flowing (3 of 3 driver joins in B and E). Since T-M8-10 the driver answers as the test declares, or, with no answer
+    declared, disconnects at once naming the URL (client-driver spec §2b); that was run on `paper@26.3` only, not on
+    Fabric, which does not hold `RESOURCE_PACKS`.
   - `FAILED_DOWNLOAD` (once, run C, the pack server was not up): the server still finished configuration and let the
     client into play within 0.2 s. One observation only; not explained.
 - **RCON:** not used (`ENABLE_RCON=false`). The console pipe worked for every command.

@@ -361,7 +361,9 @@ class SwitchE2E {
 
 ## 13. Mods, data packs and resource packs (ADR-0017, design for T-M8-07, T-M8-09, T-M8-10)
 
-Design from [ADR-0017](../adr/0017-mod-platform-packs.md); only `Platform.FABRIC` and `Platform.NEOFORGE` are in `api-baseline.txt` so far (T-M8-08, `api-change`, additions only). Each card adds its part
+Design from [ADR-0017](../adr/0017-mod-platform-packs.md). In `api-baseline.txt` so far: `Platform.FABRIC` and `Platform.NEOFORGE`
+(T-M8-08), `Proofstone.datapacks` and `Capability.DATAPACKS_VANILLA` (T-M8-09), and the resource-pack types below (T-M8-10), each
+`api-change`, additions only. Each card adds its part
 as an `api-change`, additions only: new annotation elements with defaults, new types, new constants, default methods.
 
 ```java
@@ -407,12 +409,27 @@ class PackE2E {
 - **Loaded or loud.** A declared mod missing from the agent's mod list, or a declared data pack not enabled, makes the class's
   tests on that cell `INVALID`, naming the artefact. A mod that crashes the loader is a failed boot, `INVALID` naming the
   mod. A data pack that loads but logs an error fails the test through the log guard (`FAIL`).
-- **`@ServerResourcePack`** (class): the pack is served by the harness on loopback and pushed by `server.properties`
-  (ADR-0017 §7). Implies `@Requires(RESOURCE_PACKS)`.
-- **`@ResourcePackAnswer`** (class or method; `ACCEPT`, `DECLINE`, `FAIL_DOWNLOAD`): how every client of the test answers a push.
-  With no answer declared, a push ends the join with an error naming the URL; the driver never accepts silently.
-- **`Client.resourcePacks()`** (default method): the pushes this client saw, in order, with what it answered. Packs pushed by a
-  plugin are recorded the same way. The server's view is read with the event probe on
-  `org.bukkit.event.player.PlayerResourcePackStatusEvent` (Bukkit agent).
+- **`@ServerResourcePack(value, required = false, prompt = "", sha1 = "")`** (class, T-M8-10): `value` is a glob relative to the
+  project directory matching exactly one `.zip`. The harness serves its bytes from the test JVM on `http://127.0.0.1:<free
+  port>/proofstone-pack/<sha1>.zip` for the life of the server, and the image writes `resource-pack`, `resource-pack-sha1`,
+  `resource-pack-id` (derived from the bytes), `require-resource-pack` and `resource-pack-prompt` into `server.properties`
+  (ADR-0017 §7). The server never fetches the pack; the client, in the same JVM, does, so no port reaches a container. `prompt`
+  must be a JSON text component (a plain string is an `INVALID test declaration`). `sha1` is the hash the server pushes
+  instead of the file's, only for testing a wrong hash (40 hex digits, else `INVALID test declaration`). Implies
+  `@Requires(RESOURCE_PACKS)`. A control run serves no pack; a differential run of such a test is refused (`INVALID`).
+- **`@ResourcePackAnswer(ACCEPT | DECLINE | FAIL_DOWNLOAD)`** (class or method, the method wins): how every client of the test
+  answers a push, its own `Client` and those from `Clients`. With no answer declared, a push ends the join at once with an error
+  naming the URL; the driver never accepts silently. Statuses per answer: [client-driver.md](client-driver.md) §2b.
+- **`Client.resourcePacks()`** (default method) returns `ResourcePackPush` records (`id`, `url`, `hash`, `required`, `prompt`,
+  `answer`, `statuses`, `problem`, `popped`): the pushes this client saw, in order, in configuration and in play. Packs a plugin
+  pushes are recorded the same way. A wrong hash is `problem` = `hash mismatch: expected <h>, got <h>`.
+- **`Capability.RESOURCE_PACKS`** (token `resource-pack-status`): declared by the Paper pack and held on native cells only, never
+  bridged and never on a topology (no run showed a push through ViaProxy or a proxy). The Bukkit agent reports the token where
+  `PlayerResourcePackStatusEvent` exists.
+- **The server's view** is read with the event probe on `org.bukkit.event.player.PlayerResourcePackStatusEvent` (fields
+  `getPlayer`, `getStatus`, `getID`, `getHash`). **Paper 26.3 fires it for a play-phase answer only**, not for the configuration-
+  phase push from `server.properties` (C-R01 dev run: the probe stayed empty for accept, decline and a wrong hash). A test
+  therefore reads the server's view of a pack a plugin pushes in play; the configuration-phase answer is shown by the client's
+  record and by the join's outcome (play, or the server's kick message). C-R01 and C-R02 do exactly that.
 - **Content mods.** On Fabric a mod that adds a synced registry entry gets the client kicked at join: the test fails with the
   kick message. On NeoForge it is `unverified`; a mod-added item reaching the client is an error naming the item id.

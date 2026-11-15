@@ -80,6 +80,8 @@ C01 to C08 run and the M8 flake rule's three green invocations.
 |---|---|---|---|
 | C-D01 | A data pack's function sets a score or a block; the agent reads it, the client sees it where visible | `DATAPACKS_VANILLA` | the data pack loaded and its function ran |
 | C-D02 | A data-pack recipe crafts through the client's crafting window, as C08 does | `DATAPACKS_VANILLA` | the data-pack recipe on both oracles |
+| C-R01 | A required resource pack: accept reaches play and the server reads it loaded; decline is kicked with the server's message; no declared answer ends the join at once | `RESOURCE_PACKS` | the driver's prompt, answer and statuses, and the server's view of them |
+| C-R02 | The same pack with a wrong pushed sha1: accept reports the mismatch and sends `FAILED_DOWNLOAD`; the server reads it | `RESOURCE_PACKS` | a wrong hash is a reported problem, never a silent load |
 
 C-D01 and C-D02 run on `paper@26.3` and the Fabric row (T-M8-09). A cell without `DATAPACKS_VANILLA` skips them with the
 capability named. As built (`conformance/src/test/java/.../CD01DataPackFunctionTest` and `CD02DataPackRecipeTest`, pack
@@ -91,6 +93,16 @@ capability named. As built (`conformance/src/test/java/.../CD01DataPackFunctionT
   does: the result shows in the window, shift-click moves it, and after the window closes the agent and the client read one
   diamond and no dirt. The Fabric and NeoForge agents answer no player read while a window is open (501 `NOT_SUPPORTED`), so
   the player is read before the window opens and after it closes only, on every cell: no assertion is weakened for them.
+
+C-R01 and C-R02 run on `paper@26.3` (T-M8-10; `conformance/src/test/java/.../CR01ResourcePackTest` and
+`CR02ResourcePackWrongHashTest`, pack zipped from `conformance/src/test/resourcepacks/proofstone-e2e` by `zipResourcePack`):
+- **C-R01:** `@ServerResourcePack(required = true, prompt = {"text": ...})`. Accept: one configuration-phase push from the
+  loopback source, its prompt and sha1, statuses `ACCEPTED`, `DOWNLOADED`, `SUCCESSFULLY_LOADED`, no problem. Paper fires no
+  status event for the configuration phase, so the fixture plugin (`fixture-resourcepack`) pushes the same pack in play and
+  the probe reads the same three statuses for the player. Decline: `Clients.create` fails with
+  `multiplayer.requiredTexturePrompt.disconnect`, not a timeout. No answer: the join fails at once naming the URL.
+- **C-R02:** `sha1` set to forty zeros. Accept: statuses `ACCEPTED`, `FAILED_DOWNLOAD`, problem `hash mismatch: expected 000...,
+  got <sha1>`; the client still reaches play; the same push in play gives the server's `ACCEPTED`, `FAILED_DOWNLOAD`.
 
 ## 2. Control run (nightly)
 
