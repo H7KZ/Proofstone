@@ -244,3 +244,35 @@ accept-teleport position before the player's first tick, when `firstGood` is sti
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke -Dproofstone.cells=purpur@26.3 --no-parallel --max-workers=1`
+
+### T-M7-20 · Diagnose the bridged `paper@1.8.8` window and cursor flake in C03 to C05
+- tier: opus
+- depends: T-M7-19
+- modules: drivers/mcpl, conformance
+- adrs: 0003, 0007
+- specs: specs/client-driver.md, specs/self-tests.md §1
+- test-first: no
+
+**Goal.** Name why `:conformance:run -Dproofstone.cells=paper@1.8.8` (bridged through ViaProxy) is red in some runs, with C04 "cursor
+after picking up slot A", C05 "renamed sword on the cursor" null, and C03 and C05 INVALID after a C04 failure (ROADMAP "T-M7-19",
+verifier run: main 2 of 5 red, PR 3 of 5; combined 2 of 11 and 6 of 11).
+
+**Do.**
+- At least 10 separate invocations per arm (main and the T-M7-19 merge), same machine and load, copying XML, bundles and container
+  logs aside before each next run. Record red or green per run and which class and assertion failed. A red is kept.
+- From red bundles compare the window packets (open window, set slot, window items, cursor slot) of a red and a green run: does the
+  cursor update (slot -1) arrive late, never, or before the click is answered; is the driver reading the cursor before the
+  server's answer arrives (a race in the harness, in the driver, or in ViaProxy's 1.8 translation)?
+- State the cause as a mechanism backed by packet or log lines, or "unexplained" with counts and what was ruled out. Propose a fix
+  card (an await for the cursor state, a driver fix, or a documented ViaProxy gotcha in `docs/platforms/viaproxy.md`).
+
+**Don't.**
+- Add a sleep, a retry or a timeout raise, weaken a C03 to C05 assertion, or change harness code in this card.
+
+**Acceptance.**
+- [ ] Per-arm red counts over at least 10 runs each, XML read, in a ROADMAP entry.
+- [ ] The cause is named with packet or log lines, or marked unexplained with counts and what was ruled out.
+- [ ] A fix card is proposed. No code changed.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8 --no-parallel --max-workers=1`

@@ -1386,3 +1386,10 @@ against 0 of 6 is not proof of a regression (p about 0.1) but is not dismissed e
 to `-6`) and `C:\pw\t719-base-ev`. Decision for the orchestrator: merge as is, or repeat on a quiet machine first.
 
 Known families, counted separately: single-server join timeouts and the zombie_villager worldgen WARN were not seen in these runs.
+
+**Verifier run, T-M7-19 (2026-11-15): bridged `paper@1.8.8` `:conformance:run`, PR against main, alternating, 5 each.** PR red 3 of 5
+(runs 2, 3, 4; C04 "cursor after picking up slot A", run 4 also C03 and C05 INVALID from the C04 failure), main red 2 of 5 (run 1
+C05 "the renamed sword on the cursor" expected `Blade` but was null, run 5 one failure). With the agent's counts (PR 3 of 6, main
+0 of 6) the totals are PR 6 of 11 and main 2 of 11. The same family (window and cursor state on the bridged 1.8.8 row) fails on
+main, so the PR is not shown to be worse, and the bridged path is unchanged by construction (`ConnectSpec.bridged` skips the hold).
+Cause unexplained. Two PR full 4-cell smokes were green (tests 8, skipped 0, failures 0, errors 0). Card T-M7-20 diagnoses the flake.
