@@ -147,3 +147,44 @@ quickly!` red found in T-M7-15 (ROADMAP "M7 follow-up findings (T-M7-15)").
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1`
+
+### T-M7-18 · Diagnose `PSConf moved too quickly!` on the first login of a fresh Purpur server
+- tier: opus
+- depends: T-M7-17
+- modules: proofstone-core, conformance
+- adrs: 0003, 0007
+- specs: specs/self-tests.md §1
+- test-first: no
+
+**Goal.** Name the cause of the `ErrorLogGuard` WARN `PSConf moved too quickly! -4.5,-60.0,4.5` that failed `c02` on
+`purpur@26.3` in 1 of 8 real smoke runs after T-M7-17 (ROADMAP "T-M7-17 host key per cell"), so the next card can fix it
+without an allowlist. Diagnosis only, so test-first does not apply.
+
+**Evidence so far.** On Purpur's own fresh server (`Resolving type given PURPUR`, no shared server, no saved player file) `PSConf`
+logged in at `-4.5, -60.0, 4.5` and in the same millisecond got the WARN, before any fixture teleport. paper, folia and spigot
+@26.3: 0 of 8. The harness `T<hex>` clients log the same WARN (allowlisted) on Paper and Purpur.
+
+**Do.**
+- Copy `build/proofstone/` and `build/test-results/` (and `docker logs` of every container) aside before each next run.
+- Reproduce: `:conformance:smoke -Dproofstone.cells=purpur@26.3`, at least 10 separate invocations, and the full four-cell smoke
+  at least 5 times. Record red or green per run with the XML read (`skipped`, `failures`, `errors`). A red is kept.
+- From every red bundle and the container logs of the greens: the login position, the WARN's numbers, Purpur settings that
+  touch movement or spawn (`purpur.yml`, `spigot.yml` `moved-too-quickly-multiplier`), timing against the server tick, and why a
+  first login at a superflat spawn (`y -60`) WARNs. Check correlation with boot warmness, port reuse and world seed.
+- Test the T-M8-16 lead (loader cells set no `SEED`, Paper pins one): does a fixed `SEED` or `LEVEL_TYPE` change the spawn?
+- State the cause as a mechanism backed by log lines, or "unexplained" with counts and what was ruled out. Add a ROADMAP
+  findings entry and propose the fix card T-M7-19 here.
+
+**Don't.**
+- Change harness code, the guard, an allowlist or `versions.yml` in this card. Throwaway experiments stay outside the repo or
+  under `scripts/spike/`, labelled.
+- Allowlist `PSConf`, rename the client, add a sleep, a retry or a timeout raise, as the diagnosis or as the proposed fix.
+
+**Acceptance.**
+- [ ] At least 10 purpur-alone and 5 full smoke invocations recorded with XML counts in the ROADMAP entry; reds kept.
+- [ ] The cause is named with log lines, or the entry says "unexplained" with the counts and what was ruled out.
+- [ ] The fix card T-M7-19 is proposed (or the card says why none is needed). No harness code changed.
+- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke -Dproofstone.cells=purpur@26.3 --no-parallel --max-workers=1`
