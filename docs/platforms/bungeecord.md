@@ -161,8 +161,9 @@ accepted (legacy forwarding has no secret), which is why ADR-0016 section 8 want
   server pvp is not defined`. The spike sets `forced_hosts: {}`.
 - **The image's health check pings the proxy**, which logs `<-> InitialHandler has pinged` repeatedly
   (`log_pings: true` by default).
-- **`moved too quickly!` WARNs on the lobby backend** for proxied clients (54 lines in run 4), as on a direct join. See
-  the Velocity note on harness client names.
+- **`moved too quickly!` WARNs on the lobby backend** for proxied clients (54 lines in run 4), as on a direct join. Cause and
+  fix: the pre-T-M7-19 driver acknowledged the join teleport before the first tick (client-driver.md section 3a); three runs on
+  `bungeecord@2111+paper@26.3` after the fix showed none.
 - **A Paper backend behind legacy forwarding fetched each player's profile properties from Mojang at login** (T-M7-10,
   run 2 of 3 red). Evidence from the `lobby` log: `GET https://sessionserver.mojang.com/session/minecraft/profile/<uuid>?unsigned=false`
   (the properties/skin fetch, not a name-to-UUID lookup) for the offline UUID `46101010-7191-3509-...`, answered `HTTP 429`,

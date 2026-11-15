@@ -40,10 +40,10 @@ and C-F02 skip on spigot with `missing capability FOLIA_REGIONS on cell spigot@<
   stays unknown below 1 in 6. _1.21.11 · T-M5-05 verify_
 - **BuildTools takes minutes.** 1.8.8 took 3m31s on java8 (Docker Desktop, Windows). The 1.21.11 and 26.3 builds were not
   timed. A cell run that has to build adds that to the boot time.
-- **The harness client logs `moved too quickly!` (WARN) on Spigot too.** The reset teleport races the client's first move
-  packets, as on Paper, Folia and Purpur. Seen on spigot@26.3 in `:conformance:smoke` (C02). The allowlist covers the
-  harness's own clients only (`^T[0-9a-f]{8} moved too quickly! `). An attempt to drop that entry failed the smoke run, so
-  it stays. _26.3 · T-M5-05_
+- **The harness client logged `moved too quickly!` (WARN) on Spigot too, fixed in T-M7-19.** Seen on spigot@26.3 in
+  `:conformance:smoke` (C02) and allowlisted (`^T[0-9a-f]{8} moved too quickly! `); an earlier attempt to drop that entry failed
+  the smoke run. The cause was the mcpl driver acknowledging the join teleport before the first tick (client-driver.md
+  section 3a). The entry was dropped in T-M7-19 and the runs stayed green (ROADMAP "T-M7-19"). _26.3 · T-M5-05, T-M7-19_
 - **Every test class that asks for the cell calls the cache.** A cache miss in a multi-class run builds the jar again for
   each class (the first run here re-built 1.8.8 per class and was stopped). Build once, then run. _T-M5-05_
 - **`Platform` is `SPIGOT` in the API, and the platform name is `spigot` everywhere** (agent, pins, ErrorLogGuard,

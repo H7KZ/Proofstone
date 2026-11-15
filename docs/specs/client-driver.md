@@ -118,6 +118,25 @@ What ran first (T-M8-01, Fabric 26.3, [fabric.md](../platforms/fabric.md) Capabi
 
 Anything else is ignored, unless a later card adds it with a conformance scenario.
 
+### 3a. Join acknowledgement (T-M7-19)
+
+The mcpl driver applies every `ClientboundPlayerPositionPacket` to `position()` at once, but it **holds the join teleport's
+`ServerboundAcceptTeleportationPacket` (and `ServerboundPlayerLoadedPacket`) until the first `ClientboundSetHealthPacket` of that
+login**, then sends the newest held position's acknowledgement. Later positions are acknowledged at once. A new
+`ClientboundLoginPacket` (a proxy switch) starts the hold again. This differs from the vanilla client, which acknowledges at
+once; the reason is that Paper and Purpur handle the acknowledgement's position before the player's first tick, when their last
+good position is still `0, 0, 0`, and log `moved too quickly!` for the whole distance to the join spot (ROADMAP "M7 follow-up
+findings (T-M7-18)"). The first `SetHealth` is sent in that first tick.
+
+It is event-driven on the netty thread: no sleep, no timer, no retry. `connect` waits, within the same connect timeout, until
+the held acknowledgement is released. A server that never sends `SetHealth` after its join position fails the join as a
+`JoinTimeoutException` at stage `JOIN_TELEPORT_HELD_NO_HEALTH`, never a silent hang.
+
+Known consequence (ROADMAP "T-M7-19"): bridged `paper@1.8.8` and `spigot@1.8.8` send no `SetHealth` before the client
+acknowledges (ViaProxy resends the position), so their join now times out with that stage. They were green before and never
+logged the WARN. Rows seen to send it: native paper, folia, purpur, spigot @26.3, both topologies, fabric, neoforge, bridged
+paper@1.21.11.
+
 ## 4. Reference driver (mineflayer-ref)
 
 - A Node and Mineflayer sidecar image exposes this SPI over JSON-RPC (WebSocket). A Java proxy class

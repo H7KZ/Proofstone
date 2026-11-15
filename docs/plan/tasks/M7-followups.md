@@ -7,8 +7,8 @@ separate card. Neither card is started.
 **Update (T-M7-15, 2026-11-15):** T-M7-15 found its cause and proposes the fix card **T-M7-17** at the end of this file (not
 started, needs approval).
 
-**Update (T-M7-18, 2026-11-15):** T-M7-18 found the cause of the first-login Purpur WARN and proposes the fix card **T-M7-19**
-at the end of this file (not started, needs approval).
+**Update (T-M7-18, 2026-11-15):** T-M7-18 found the cause of the first-login Purpur WARN and proposed the fix card **T-M7-19**
+at the end of this file (done, see ROADMAP "T-M7-19"; one open decision about 1.8.x bridged rows).
 
 IDs continue M7-proxies.md (T-M7-01 to T-M7-14, T-M7-99), so the next free IDs were T-M7-15 and T-M7-16. They do not block M8.
 
@@ -227,11 +227,16 @@ accept-teleport position before the player's first tick, when `firstGood` is sti
 - Change the world (spawn height, level type) to make the move small: the race would stay.
 
 **Acceptance.**
-- [ ] The unit test fails on main and passes with the change.
-- [ ] purpur@26.3 alone 10 of 10 and the full smoke 5 of 5 green, XML `skipped 0, failures 0, errors 0`, 0 `moved too quickly!`
-  for harness clients in the container logs.
-- [ ] Allowlist entries that no longer fire are removed, or kept with a corrected reason and the run that needs them.
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The unit test fails on main and passes with the change. Evidence: `McplJoinAckTest`; with stubs on main's behaviour 4 of the
+  first 5 tests failed, `:drivers:mcpl:test` passes (68 tests).
+- [x] purpur@26.3 alone 10 of 10 and the full smoke 5 of 5 green, XML `skipped 0, failures 0, errors 0`, 0 `moved too quickly!`
+  for harness clients in the container logs. Evidence: ROADMAP "T-M7-19" (all four server types in each full run's logs).
+- [x] Allowlist entries that no longer fire are removed, or kept with a corrected reason and the run that needs them. Evidence: the
+  four `T<hex>` entries and the pack.yml mirrors are gone; velocity x3, bungeecord x3, fabric, neoforge (1 red C08 DISAGREE, also red
+  on main 1 of 3) and each single cell ran. The `.`-prefixed entry stays (not this WARN).
+- [x] `bash scripts/gates.sh --max-workers=1` passes. Evidence: PR body.
+- [ ] Open: bridged paper@1.8.8 and spigot@1.8.8 time out the join as `JOIN_TELEPORT_HELD_NO_HEALTH` (green on main). Decision needed,
+  ROADMAP "T-M7-19".
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke -Dproofstone.cells=purpur@26.3 --no-parallel --max-workers=1`

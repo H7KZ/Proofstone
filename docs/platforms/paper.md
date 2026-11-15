@@ -245,9 +245,9 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   only before). A real run after boot logs INFO records (`ProofstoneAgent`, `spark`) and no WARN.
 - **The per-test log check reads WARN and worse, from JUL and Log4j (T-M2-08).** The fixture plugin logs one WARN at
   enable, before any test's log cursor is taken, so it never fails a test. A test that reloads the fixture logs it again
-  and must expect that. The allowlist (`ErrorLogGuard.Patterns.PAPER`) holds the `No key layers` noise and
-  `T<8 hex> moved too quickly!`: with Log4j captured, the server's anti-cheat WARN for the harness client shows up,
-  because the reset teleport races the client's first movement packets. It is allowed for harness client names only.
+  and must expect that. The allowlist (`ErrorLogGuard.Patterns.PAPER`) holds the `No key layers` noise and the `.`-prefixed Clients names. The `T<8 hex> moved too quickly!` entry was dropped in T-M7-19: the anti-cheat WARN for
+  a harness client came from the mcpl driver acknowledging the join teleport before the player's first tick (see
+  [client-driver.md](../specs/client-driver.md) section 3a). A `moved too quickly!` from a harness client now fails the test.
 - **`Agent.capabilities()` is not the list in "Capabilities" above (T-M4-15).** On 26.3 the agent reports `command`,
   `players`, `config`, `reload`, `world`, `events`, `log` and `ticks`. The `BUKKIT_EVENTS` and
   `CONSOLE` names are the cell's capability vocabulary, not what the agent answers. A per-cell expectation (test-api

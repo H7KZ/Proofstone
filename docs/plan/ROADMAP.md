@@ -1305,3 +1305,63 @@ green each time. Containers left after each run: none of ours (Ryuk exits on its
 **Fix card proposed:** T-M7-19 in [M7-followups.md](tasks/M7-followups.md): the mcpl driver acknowledges the join teleport after
 the server's first player tick (the first `ClientboundSetHealthPacket`), an ordering await on a packet, with no sleep, retry,
 allowlist or rename. Decision needed: this differs from the vanilla client, which acknowledges at once.
+
+
+## T-M7-19 acknowledge the join teleport after the first tick
+
+Date 2026-11-15. Branch `card/T-M7-19-ack-after-first-tick` from origin/main `b8d27da`. Local only, Windows 11, Docker Desktop, JDK 21,
+one invocation at a time under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the environment only. Evidence copied
+aside per run (XML, container logs captured by a read-only `docker logs -f` watcher from container start, so green runs are
+covered too). No sleep, timer, retry or timeout raise.
+
+**Change.** `McplSession` holds the join teleport's `ServerboundAcceptTeleportationPacket` and `ServerboundPlayerLoadedPacket` until
+the first `ClientboundSetHealthPacket` of a login, then sends the newest held position's acknowledgement; later positions are
+acknowledged at once; a new `ClientboundLoginPacket` starts the hold again. `McplDriver.connect` waits (same connect timeout) for that
+release, so a server without a first `SetHealth` is a `JoinTimeoutException` naming stage `JOIN_TELEPORT_HELD_NO_HEALTH` (or
+`JOIN_NO_FIRST_HEALTH` with no position either). Spec: client-driver.md section 3a. Then the `^T[0-9a-f]{8} moved too quickly! `
+entries were dropped from the Paper, Folia, Purpur and Spigot packs and the three `pack.yml` mirrors (separate commit); the
+`.`-prefixed Clients entry stays (not this card's WARN).
+
+**Test first.** `McplJoinAckTest` (7 tests, no Docker). With only method and enum stubs on main's behaviour, 4 of the first 5 tests
+failed (the hold, the newest position, the new login, the stage name); the connect-wait tests were added with the later change.
+`McplSwitchTest` scripts now send a `SetHealth` after each join position (the real servers do); without it its "player loaded
+again" assertion waits on a packet that is always there. `:drivers:mcpl:test` green (68 tests).
+
+### Runs on the final code (every run after the last code change; XML read, container logs counted for `moved too quickly!`)
+
+| Invocation | Runs | Result | XML per run | `moved too quickly!` in container logs |
+|---|---|---|---|---|
+| `:conformance:smoke -Dproofstone.cells=purpur@26.3` | 10 | 10 green | tests 2, skipped 0, failures 0, errors 0 | 0 (10 of 10 logs) |
+| `:conformance:smoke`, no selector (paper, folia, purpur, spigot @26.3) | 5 | 5 green | tests 8, skipped 0, failures 0, errors 0 | 0 (4 server logs per run, all four types seen) |
+| `:conformance:smoke` alone: paper, folia, purpur, spigot @26.3 | 1 each | 4 green | tests 2, skipped 0, failures 0, errors 0 | 0 |
+| `:conformance:run velocity@4.3.1+paper@26.3` | 3 | 3 green | tests 2, skipped 0, failures 0, errors 0 | 0 (3 logs) |
+| `:conformance:run bungeecord@2111+paper@26.3` | 3 | 3 green | tests 2, skipped 0, failures 0, errors 0 | 0 |
+| `:conformance:run fabric@26.3` | 1 | green | every suite skipped 0, failures 0, errors 0 | 0 |
+| `:conformance:run neoforge@26.3` | 4 | **1 red (C08)**, 3 green | red: `DISAGREE: present in the inventory ... no matching item among []` | 0 |
+
+Before, on main: T-M7-18 recorded purpur alone 0 of 10 red with the WARN fired and allowlisted 10 of 10, and full smoke 1 of 5 red
+(purpur c02). After: 0 WARN lines in every run above, entries dropped. The earlier iteration of this change (the hold only, before the
+connect wait) ran purpur alone 10 of 10 and full smoke 5 of 5 green with 0 WARNs, and the dropped-entry `:conformance:run` for paper
+(green), folia, purpur and spigot (red only by "has no cell to run" for six paper-only classes, the known single-cell selection
+gotcha in purpur.md; no real test failed) and velocity, bungeecord, fabric, neoforge (green).
+
+**The neoforge red is not this change.** The same C08 `DISAGREE` came on main (`a322fdb` code) in 1 of 3 runs, and the 3 later runs
+on the final code were green. It is the same family as the spigot@1.21.11 `DISAGREE: present in the inventory` (T-M5-05), not
+diagnosed here. Kept as a finding, counted separately from the WARN.
+
+**Rows that send the first `SetHealth`** (the join completes): paper, folia, purpur, spigot @26.3; the velocity and bungeecord
+topologies with paper@26.3 backends; fabric@26.3 and neoforge@26.3; bridged paper@1.21.11. A row without it can no longer finish a join.
+
+**Rows that do not (regression, decision needed):** bridged `paper@1.8.8` and `spigot@1.8.8`. The join times out as
+`stalled at JOIN_TELEPORT_HELD_NO_HEALTH` after 30 s (protocol offered 777), the loud failure the card asks for. On main both were
+green (paper@1.8.8 2 of 2, spigot@1.8.8 1 of 1). In a debug run (transcript tail widened to 400 entries, not kept) ViaProxy resent the
+1.8 server's position with `SetDefaultSpawnPosition` in a loop and no `SetHealth` arrived before the client acknowledged: the hold and
+the bridge wait on each other. Those rows logged no `moved too quickly!` on main (0 in the container logs), so they gain nothing from
+the hold. `paper@1.12.2` and `paper@1.16.5` are red the same way on main and with the change ("`list` gave a blank reply, so the
+console path is unverified", 2 of 2 each), unrelated. Not tested: other 1.8.x to 1.12.x bridged rows, spigot@1.21.11.
+
+**Decision needed.** Keep the hold for every row and accept that 1.8.x bridged rows go red, or skip the hold on bridged cells (the
+driver does not know a cell is bridged; `ConnectSpec` would need a flag from `Cell.bridged()`, a core change outside this card).
+Not done here.
+
+Known families, counted separately: single-server join timeouts and the zombie_villager worldgen WARN were not seen in these runs.
