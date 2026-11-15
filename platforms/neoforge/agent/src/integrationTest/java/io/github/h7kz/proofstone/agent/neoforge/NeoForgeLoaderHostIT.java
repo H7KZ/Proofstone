@@ -85,7 +85,9 @@ class NeoForgeLoaderHostIT {
         System.out.println("LOADER-HOST " + cell.identity() + " failure: " + failure.getMessage().lines().findFirst().orElse(""));
         assertThat(failure)
                 .isInstanceOf(PaperHostException.class)
-                .hasMessageContaining("neoforge@26.3 failed to boot")
+                // T-M8-11: a mod that throws at init is INVALID naming the mod, not a plain "failed to boot" (ModLoad).
+                .hasMessageContaining("INVALID test declaration")
+                .hasMessageContaining("mod proofstone_example (proofstone-example-mod.jar) crashed the server at load on neoforge@26.3")
                 .hasMessageContaining("--- log tail ---")
                 .message().doesNotContain("BOOT TIMEOUT");
 
