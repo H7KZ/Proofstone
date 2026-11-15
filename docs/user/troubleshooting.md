@@ -179,7 +179,9 @@ These were seen on real servers and are **open**. None is fixed.
   the first cell's Paper server, and the conformance client logged in again at its saved spot, which Paper and Purpur WARN about
   (`PSConf moved too quickly!` on C02). The shared host is now keyed by the full cell, and a server whose agent reports another
   platform than the cell is refused as `INVALID`. Not caused by that: a `PSConf moved too quickly!` on the **first** login of a
-  fresh `purpur@26.3` server was seen once in 8 runs after the fix (open, ROADMAP "T-M7-17").
+  fresh `purpur@26.3` server was seen once in 8 runs after the fix. Cause found in T-M7-18: Paper and Purpur check the client's
+  join-teleport acknowledgement before the player's first tick, so the move is measured from `0, 0, 0` (the WARN shows the login
+  position). Open until the fix card T-M7-19 (ROADMAP "M7 follow-up findings (T-M7-18)").
 - **Gradle example on `paper@26.3`.** Red in 2 of 4 runs through the action path (join timeouts, above) and in 1 of 5 plain
   Gradle runs. The plain red was `java.lang.AssertionError` at `VerdictGate.java:150` with no message. The verdict text was
   lost because a later run overwrote the XML. Keep the XML of each red run.

@@ -7,6 +7,9 @@ separate card. Neither card is started.
 **Update (T-M7-15, 2026-11-15):** T-M7-15 found its cause and proposes the fix card **T-M7-17** at the end of this file (not
 started, needs approval).
 
+**Update (T-M7-18, 2026-11-15):** T-M7-18 found the cause of the first-login Purpur WARN and proposes the fix card **T-M7-19**
+at the end of this file (not started, needs approval).
+
 IDs continue M7-proxies.md (T-M7-01 to T-M7-14, T-M7-99), so the next free IDs were T-M7-15 and T-M7-16. They do not block M8.
 
 **Flake rule.** Read the **Flake rule** in [M7-proxies.md](M7-proxies.md); it applies unchanged. In short: one cell per
@@ -147,3 +150,88 @@ quickly!` red found in T-M7-15 (ROADMAP "M7 follow-up findings (T-M7-15)").
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1`
+
+### T-M7-18 · Diagnose `PSConf moved too quickly!` on the first login of a fresh Purpur server
+- tier: opus
+- depends: T-M7-17
+- modules: proofstone-core, conformance
+- adrs: 0003, 0007
+- specs: specs/self-tests.md §1
+- test-first: no
+
+**Goal.** Name the cause of the `ErrorLogGuard` WARN `PSConf moved too quickly! -4.5,-60.0,4.5` that failed `c02` on
+`purpur@26.3` in 1 of 8 real smoke runs after T-M7-17 (ROADMAP "T-M7-17 host key per cell"), so the next card can fix it
+without an allowlist. Diagnosis only, so test-first does not apply.
+
+**Evidence so far.** On Purpur's own fresh server (`Resolving type given PURPUR`, no shared server, no saved player file) `PSConf`
+logged in at `-4.5, -60.0, 4.5` and in the same millisecond got the WARN, before any fixture teleport. paper, folia and spigot
+@26.3: 0 of 8. The harness `T<hex>` clients log the same WARN (allowlisted) on Paper and Purpur.
+
+**Do.**
+- Copy `build/proofstone/` and `build/test-results/` (and `docker logs` of every container) aside before each next run.
+- Reproduce: `:conformance:smoke -Dproofstone.cells=purpur@26.3`, at least 10 separate invocations, and the full four-cell smoke
+  at least 5 times. Record red or green per run with the XML read (`skipped`, `failures`, `errors`). A red is kept.
+- From every red bundle and the container logs of the greens: the login position, the WARN's numbers, Purpur settings that
+  touch movement or spawn (`purpur.yml`, `spigot.yml` `moved-too-quickly-multiplier`), timing against the server tick, and why a
+  first login at a superflat spawn (`y -60`) WARNs. Check correlation with boot warmness, port reuse and world seed.
+- Test the T-M8-16 lead (loader cells set no `SEED`, Paper pins one): does a fixed `SEED` or `LEVEL_TYPE` change the spawn?
+- State the cause as a mechanism backed by log lines, or "unexplained" with counts and what was ruled out. Add a ROADMAP
+  findings entry and propose the fix card T-M7-19 here.
+
+**Don't.**
+- Change harness code, the guard, an allowlist or `versions.yml` in this card. Throwaway experiments stay outside the repo or
+  under `scripts/spike/`, labelled.
+- Allowlist `PSConf`, rename the client, add a sleep, a retry or a timeout raise, as the diagnosis or as the proposed fix.
+
+**Acceptance.**
+- [x] At least 10 purpur-alone and 5 full smoke invocations recorded with XML counts in the ROADMAP entry; reds kept. Evidence:
+  ROADMAP "M7 follow-up findings (T-M7-18)": purpur alone 0 of 10 red, full smoke 1 of 5 red (purpur c02).
+- [x] The cause is named with log lines, or the entry says "unexplained" with the counts and what was ruled out. Evidence: the
+  join-teleport acknowledgement is handled before the player's first tick, so `firstGood` is `0, 0, 0` and the WARN numbers equal
+  the login position (21 of 21); spike: immediate acknowledgement WARNs 9 of 10 joins, after-first-tick 0 of 10, Paper and Purpur.
+- [x] The fix card T-M7-19 is proposed (or the card says why none is needed). No harness code changed. Evidence: T-M7-19 below.
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke -Dproofstone.cells=purpur@26.3 --no-parallel --max-workers=1`
+
+### T-M7-19 · Acknowledge the join teleport after the server's first player tick (mcpl driver)
+- tier: sonnet
+- depends: T-M7-18
+- modules: drivers/mcpl, proofstone-core
+- adrs: 0003
+- specs: specs/client-driver.md
+- test-first: yes
+
+**Goal.** No harness client triggers `moved too quickly!` on its join, so `PSConf` never fails c02 and the `T<hex>` allowlist
+entries for this WARN can go. Cause (T-M7-18, ROADMAP "M7 follow-up findings (T-M7-18)"): Paper and Purpur handle the 26.3
+accept-teleport position before the player's first tick, when `firstGood` is still `0, 0, 0`.
+
+**Do.**
+- Test first, no Docker: a `McplSession` unit test that the first `ClientboundPlayerPositionPacket` after a login is acknowledged
+  only once the first `ClientboundSetHealthPacket` has arrived (fails on main), and that later positions are acknowledged at once.
+- In `McplSession.applyPosition`, hold the join acknowledgement (and `ServerboundPlayerLoadedPacket`) until the first
+  `ClientboundSetHealthPacket` of that login; acknowledge the newest held position. Event-driven on the netty thread: no sleep,
+  no timer. Reset on a proxy switch (a new `ClientboundLoginPacket`). Note the deviation from the vanilla client in a comment.
+- Check the bridged path (ViaProxy, older rows) and the loader rows: record which rows send the health packet on the first tick;
+  a row that does not must fail loudly (join timeout naming the stage), never hang silently.
+- Run `:conformance:smoke` purpur@26.3 alone 10 times and the full smoke 5 times: 0 `moved too quickly!` lines for any harness
+  client (container logs), XML read. Then, in its own commit, drop the `^T[0-9a-f]{8} moved too quickly! ` entries that no
+  longer fire (Paper, Folia, Purpur, Spigot packs, `pack.yml` mirrors) and re-run; keep any entry a run still needs, with its reason
+  corrected (the WARN is on the join, not the reset teleport).
+- Optional, separate: report the missing `tickCount == 0` reset in `handleAcceptTeleportPacket` to Paper (with the spike).
+
+**Don't.**
+- Allowlist `PSConf`, rename the client, add a sleep, a retry or a timeout raise.
+- Change the wire protocol or `versions.yml`.
+- Change the world (spawn height, level type) to make the move small: the race would stay.
+
+**Acceptance.**
+- [ ] The unit test fails on main and passes with the change.
+- [ ] purpur@26.3 alone 10 of 10 and the full smoke 5 of 5 green, XML `skipped 0, failures 0, errors 0`, 0 `moved too quickly!`
+  for harness clients in the container logs.
+- [ ] Allowlist entries that no longer fire are removed, or kept with a corrected reason and the run that needs them.
+- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke -Dproofstone.cells=purpur@26.3 --no-parallel --max-workers=1`
