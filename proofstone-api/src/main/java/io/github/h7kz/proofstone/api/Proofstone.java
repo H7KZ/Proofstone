@@ -34,6 +34,16 @@ public @interface Proofstone {
     String[] datapacks() default {};
 
     /**
+     * Mod jar globs relative to the project directory, for a loader cell (Fabric, NeoForge). Each must match exactly one
+     * file, else the test is INVALID naming the glob. The jar is copied to the server's {@code /mods} before it starts
+     * (ADR-0017 section 4). Declaring one implies {@link Capability#MODS}: a cell without it (every Bukkit-family cell) is
+     * SKIPPED with the capability named. A declared mod the agent does not list after boot, or one that crashes the loader at
+     * load, makes the class's tests INVALID naming the mod. A mod with the id {@code fabric-api} is refused: the Fabric cell
+     * provides the pinned Fabric API. A control run installs no declared mod.
+     */
+    String[] mods() default {};
+
+    /**
      * Accepts the Minecraft EULA (https://aka.ms/MinecraftEULA) in code. Without it the environment variable
      * {@code PROOFSTONE_ACCEPT_EULA=true} is required, otherwise the tests are skipped with that reason.
      */

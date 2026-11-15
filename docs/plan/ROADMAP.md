@@ -1079,13 +1079,29 @@ player file persisted between tests) and the WARN fires on that login, before th
   `skipped="0" failures="0" errors="0"`, loader boot 14.7, 14.3, 14.6 s; `:conformance:smoke` on `paper@26.3` (2 tests) and
   `:conformance:run` on `fabric@26.3` (11 tests) green, 0 skipped; no `zombie_villager` WARN seen in those logs;
   `printMatrix --scope=pr` identical before and after.
+- **T-M8-13 `@Proofstone(mods)` and `Capability.MODS` (2026-11-15, in review).** `api-baseline.txt` diff: 2 lines added, 0 removed
+  (`Proofstone.mods`, `Capability.MODS`, last constant). `CellInvocation.bootLoader` passes the declared globs (none on a control
+  run) through `Mods.resolve` (one jar per glob, `fabric-api` refused, all before Docker) and `ModsLoaded` checks each declared
+  id against `GET /v1/mods` after the capability check. The fault switch `-Dproofstone.injectModFault` (`ModFault`) is removed:
+  no test needs it, because `metaModCrash` and `metaModCrashNeoForge` now declare the crashing example mod through `mods`
+  (`mod/BrokenFabricModE2E`, `BrokenNeoForgeModE2E`; the jar is the agent's `exampleCrashModJar`, the example mod plus one marker
+  resource). The example mod no longer fails on a missing config file (a declared mod has none). New example
+  `examples/loader-mod` (`ServerOnlyModE2E`). Unit tests (`ModsTest`, `ModsLoadedTest`, `CapabilityModelTest`): red on main (test
+  sources did not compile), green after; `:proofstone-api:test :proofstone-core:test` 484 tests, 0 skipped.
+  `:examples:loader-mod:loaderExample` 3 of 3 green on `fabric@26.3` (boot 14.6, 14.7, 14.5 s) and 3 of 3 on `neoforge@26.3`
+  (boot 18.0, 17.3, 17.7 s), 1 test each, `skipped="0" failures="0" errors="0"`. `metaModFabricTest` 3 of 3 and
+  `metaModNeoForgeTest` 3 of 3 give `INVALID` naming `proofstone_example` and `proofstone-crashing-mod.jar`, no timeout;
+  `metaModPaperTest` (INVALID, FAIL), `metaTest` and `metaTopologyTest` once each as before. `:conformance:run` `fabric@26.3`
+  11 tests 0 skipped, `neoforge@26.3` 11 tests with the two reasoned C-D01/C-D02 skips; no `zombie_villager` WARN. Not run on a
+  real server: a control run on a loader cell, and a declared mod the agent does not list (unit-tested only).
 - **No leak bad test on a loader cell** (robustness R6). Card T-M8-18.
 - **Card boxes:** T-M8-01, 08, 09, 10 and 11 acceptance boxes are still unticked in `M8-mods.md` though merged. Left as they are;
   the evidence above is what counts.
 
 ### What is NOT verified
 
-- A user-declared mod in `/mods` through the API (does not exist).
+- A user-declared mod other than the repository's example mod, and what a mod does at runtime through the API (T-M8-13 ran the
+  example mod, which registers nothing).
 - Any content mod on NeoForge reaching the client and both oracles; any content mod on Fabric (refused by design).
 - Any loader row other than 26.3; any bridged loader row (refused by the planner).
 - Data packs on NeoForge (the agent serves no `/v1/datapacks`); resource packs on any loader cell.

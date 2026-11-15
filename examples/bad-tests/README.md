@@ -25,7 +25,7 @@ expected to produce one verdict, and `metaTest` asserts it:
   (`proofstone.injectTopologyFault`), so the topology conformance must be red and every test on it `INVALID`. Seven runs,
   one per fault per proxy (`metaTopologyTest`, below).
 
-- `mod/BrokenModE2E`, `datapack/BrokenFunctionE2E` and `resourcepack/WrongHashPackE2E` (T-M8-11) are the M8 negative controls
+- `mod/BrokenFabricModE2E` and `mod/BrokenNeoForgeModE2E`, `datapack/BrokenFunctionE2E` and `resourcepack/WrongHashPackE2E` (T-M8-11) are the M8 negative controls
   (`metaModTest`, below): a mod that crashes at load, a data pack whose function does not parse, and a resource pack pushed with
   a wrong sha1. Each is red by design with its own reason.
 
@@ -87,8 +87,8 @@ other cell is refused in that task's `doFirst`, before any server starts. The re
 | `metaRequires` | `requires/RequiresSkipsE2E` | `latest` | any Paper cell |
 | `metaTopoVelocity*` (4 tasks) | `topology/TopologyFaultE2E` | `latest` | `velocity@4.3.1+paper@26.3` only |
 | `metaTopoBungee*` (3 tasks) | `topology/TopologyFaultE2E` | `latest` | `bungeecord@2111+paper@26.3` only |
-| `metaModCrash` | `mod/BrokenModE2E` | `26.3` (Fabric) | `fabric@26.3` only |
-| `metaModCrashNeoForge` | `mod/BrokenModE2E` | `26.3` (NeoForge) | `neoforge@26.3` only |
+| `metaModCrash` | `mod/BrokenFabricModE2E` | `26.3` (Fabric) | `fabric@26.3` only |
+| `metaModCrashNeoForge` | `mod/BrokenNeoForgeModE2E` | `26.3` (NeoForge) | `neoforge@26.3` only |
 | `metaModDataPack` | `datapack/BrokenFunctionE2E` | `26.3` | `paper@26.3` only |
 | `metaModPackHash` | `resourcepack/WrongHashPackE2E` | `26.3` | `paper@26.3` only |
 
@@ -136,7 +136,7 @@ boot or join timeout. The run's `proofstone-report.json` must say the same verdi
 
 | Task | Fault | Verdict | Reason the message must carry |
 |---|---|---|---|
-| `metaModCrash` | the example mod crashes at init (`-Dproofstone.injectModFault=crash-at-load`), Fabric | `INVALID` | `mod proofstone_example (proofstone-example-mod.jar) crashed the server at load`, the loader's line, `example mod was asked to fail` |
+| `metaModCrash` | the test declares the crashing example mod through `@Proofstone(mods)`; it throws at init, Fabric | `INVALID` | `mod proofstone_example (proofstone-crashing-mod.jar) crashed the server at load`, the loader's line, `example mod was asked to fail` |
 | `metaModCrashNeoForge` | the same on NeoForge | `INVALID` | the same, from `FMLModContainer` (`Failed to create mod instance`) |
 | `metaModDataPack` | a data pack whose function does not parse | `INVALID` | `data pack file/broken-function.zip logged an error`, `Failed to load function proofstone_broken:hello`, the parse error |
 | `metaModPackHash` | `@ServerResourcePack(sha1 = <not the pack's>)`, the test expects the pack to load | `FAIL` | the pack's record: `FAILED_DOWNLOAD` and `hash mismatch: expected 000..., got <sha1>` |
@@ -146,9 +146,10 @@ PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-t
 ```
 
 One fault alone, for example `:examples:bad-tests:metaModDataPack`. Notes:
-- `@Proofstone` has no `mods` element yet (the API is unchanged by T-M8-11), so a bad test cannot declare a mod. The switch
-  `-Dproofstone.injectModFault=crash-at-load` installs the example mod (`platforms/<loader>/agent` `exampleModJar`) with the
-  config that makes it throw. Test-only, like `injectTopologyFault`.
+- The crash-at-load tests declare their mod the way a user does, `@Proofstone(mods = "build/fixture-mods/<loader>/proofstone-crashing-mod.jar")`
+  (T-M8-13). The jar is the loader agent's `exampleCrashModJar`: the example mod with one marker resource that makes it throw at
+  init, built by the loader agent's build and copied under this project by `copyCrashingModFabric` and `copyCrashingModNeoforge`.
+  The earlier test-only switch `-Dproofstone.injectModFault` is gone, because no test still needs it.
 - A mod that crashes is `INVALID` only when the loader's log names a declared mod (its id from `fabric.mod.json` or
   `neoforge.mods.toml`, or its file name) on an error line. A failed start that names none stays a plain failed boot.
 - A data pack with a broken function stays enabled: the server skips the function and logs the error while it loads the pack,

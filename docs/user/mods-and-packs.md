@@ -12,25 +12,34 @@ to them), so a loader cell runs only when you name it with `-Dproofstone.cells`.
 |---|---|---|---|
 | A data pack (functions, recipes, tags) | `@Proofstone(datapacks = "...")` | `paper@26.3`, `fabric@26.3`. `neoforge@26.3` skips: it lacks `DATAPACKS_VANILLA`. | Run: C-D01 and C-D02 |
 | A server-sent resource pack (prompt, answer, hash) | `@ServerResourcePack`, `@ResourcePackAnswer`, `Client.resourcePacks()` | `paper@26.3` only | Run: C-R01 and C-R02 |
-| A server-only mod (commands, events, data) | **No annotation yet.** | `fabric@26.3`, `neoforge@26.3` | The cell boots and passes C01 to C08 with a mod in `/mods`; a test cannot declare one |
+| A server-only mod (commands, events, data) | `@Proofstone(mods = "...")` | `fabric@26.3`, `neoforge@26.3` | Run: the example mod through `examples/loader-mod`; the crash-at-load bad test |
 | A content mod (adds items, blocks, entities) | not possible with the vanilla driver | none | Out of scope for M8 |
 
-### The mod under test: `@Proofstone(mods)` does not exist yet
+### The mod under test: `@Proofstone(mods)`
 
-[test-api.md section 13](../specs/test-api.md) sketches `@Proofstone(mods = "...")`. It is **not in the API**: T-M8-07 built the
-host side (`LoaderHost` copies mod jars into `/mods`), and the annotation element was left for a later card. Today:
+```java
+@Proofstone(mods = "build/libs/my-mod-*.jar")
+@Matrix(platform = Platform.FABRIC, versions = {"26.3"})
+@Matrix(platform = Platform.NEOFORGE, versions = {"26.3"})
+class MyModE2E { ... }
+```
 
-- A user test cannot name a mod jar. A loader cell starts with the pinned Fabric API (Fabric only), the mod agent and no mod
-  under test.
-- The only mod that is ever installed is the repository's own example mod, and only by a test-only switch used by the
-  bad-test suite: `-Dproofstone.injectModFault=crash-at-load` (`examples/bad-tests`, `metaModTest`). It is not a way to
-  test your mod.
-- What the loader cell does give you today is the vanilla server with the loader, the mod agent, and any data pack your test
-  declares. That is enough to test a data pack on a Fabric server, which is what the [example](#a-data-pack-on-fabric263)
-  does.
-
-Do not write `mods = ...` in a test: the compiler rejects it. If you need a mod under test, that is a feature request, not a
-setting.
+- Each glob is relative to the project directory and must match **exactly one** jar. None, or two, is `INVALID test declaration`
+  naming the glob. The jar is copied into the server's `/mods` before the server starts.
+- Declaring a mod implies the capability `MODS`, which the Fabric and NeoForge cells hold. A cell without it (every Paper-family
+  cell, and a topology) is `SKIPPED` with `missing capability MODS`, never a pass.
+- **Loaded or loud.** After boot the harness reads the mod's id from its own descriptor (`fabric.mod.json`,
+  `META-INF/neoforge.mods.toml`) and checks the agent lists it (`GET /v1/mods`). A mod the agent does not list is `INVALID`,
+  naming the mod, with the agent's list and the log tail. A mod that crashes the loader at load is a failed boot that is
+  `INVALID` naming the mod and quoting the loader's line, never a boot or join timeout.
+- A jar with the id `fabric-api` is refused (`INVALID test declaration`): the Fabric cell already carries the pinned Fabric API.
+  A jar that is neither a Fabric nor a NeoForge mod is refused too.
+- A control run installs no declared mod (unit-tested; no control run was run on a loader cell).
+- **You cannot give the mod a config file.** The mod runs with the defaults it has on the server. Server-only mods only: a mod
+  that adds items, blocks or entities is out of scope (see below).
+- The [`examples/loader-mod`](../../examples/loader-mod/README.md) example is one test class on both loader rows, with the
+  repository's own example mod built by the loader agent's build. The crash case is the bad test
+  `examples/bad-tests` `mod/Broken{Fabric,NeoForge}ModE2E`.
 
 ## Loader cells
 
@@ -39,7 +48,7 @@ setting.
 - Declare the platform in the test: `@Matrix(platform = Platform.FABRIC, versions = {"26.3"})`. `Platform.NEOFORGE` works the
   same.
 - A loader cell uses the native `mcpl` driver only. It does not run bridged, differential (`-Dproofstone.differential`) or
-  repeated (`-Dproofstone.repeat`), and `plugins` on a loader cell is an `INVALID test declaration`.
+  repeated (`-Dproofstone.repeat`), and `plugins` on a loader cell is an `INVALID test declaration`; use `mods`.
 - The mod agent serves the same wire protocol as the Bukkit agent, with fewer capabilities. `Agent.command`, player state, the
   event probe and the log are there. A read of a player's state **while a window is open** is `501 NOT_SUPPORTED` on both
   loaders (see [troubleshooting](troubleshooting.md#loader-cells-player-state-read-with-a-window-open-is-501)).
@@ -134,7 +143,8 @@ Read <https://aka.ms/MinecraftEULA> first. See the example's README for what it 
 
 ## What was not run
 
-- A user-declared mod, on any loader. No annotation exists.
+- A user mod other than the repository's example mod. The example mod registers nothing, so what a mod does at runtime
+  (commands, events) has not been tested through this API.
 - A content mod through any driver. Fabric kicks the vanilla client; on NeoForge one added item joined 3 of 3 in the spike and
   nothing more was run.
 - Resource packs on Fabric, NeoForge, a bridged cell or a topology.

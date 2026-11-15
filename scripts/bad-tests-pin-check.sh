@@ -19,8 +19,9 @@ RC=0
 RC2=0
 OUT2=$(mktemp)
 trap 'rm -f "$OUT" "$OUT2"' EXIT
-LOADER_BUILD=(-x :platforms:fabric:agent:shadowJar -x :platforms:fabric:agent:exampleModJar
-  -x :platforms:neoforge:agent:shadowJar -x :platforms:neoforge:agent:exampleModJar)
+LOADER_BUILD=(-x :platforms:fabric:agent:shadowJar -x :platforms:fabric:agent:exampleCrashModJar
+  -x :platforms:neoforge:agent:shadowJar -x :platforms:neoforge:agent:exampleCrashModJar
+  -x :examples:bad-tests:copyCrashingModFabric -x :examples:bad-tests:copyCrashingModNeoforge)
 ./gradlew :examples:bad-tests:metaModCrash :examples:bad-tests:metaModCrashNeoForge "${LOADER_BUILD[@]}" \
   -Dproofstone.cells=paper@26.3 --continue --max-workers=1 > "$OUT2" 2>&1 || RC2=$?
 cat "$OUT2" >> "$OUT"

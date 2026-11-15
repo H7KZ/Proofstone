@@ -16,7 +16,6 @@ import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import io.github.h7kz.proofstone.core.host.LoaderHost;
 import io.github.h7kz.proofstone.core.host.LoaderHostOptions;
-import io.github.h7kz.proofstone.core.host.ModFault;
 import io.github.h7kz.proofstone.core.host.PaperHost;
 import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.host.LeakDetector;
@@ -222,6 +221,17 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (missing.isPresent()) {
             state.skipped = missing.get();
             throw new TestAbortedException(missing.get());
+        }
+        // Loaded or loud for mods (ADR-0017 section 4): a declared mod the agent does not list is INVALID, naming it. A mod
+        // that crashed the loader never got here (a failed boot, INVALID naming the mod, T-M8-11). Also after the skip.
+        List<String> declaredMods = host.modIds();
+        if (!declaredMods.isEmpty()) {
+            String notLoaded = ModsLoaded.invalid(declaredMods, host.request("GET", "/v1/mods", null), cellId(),
+                    host.logTail());
+            if (notLoaded != null) {
+                state.invalid = new AssertionError(notLoaded);
+                throw state.invalid;
+            }
         }
         // Loaded or loud (ADR-0017 section 4): a declared data pack the server did not enable is INVALID, naming it. After the
         // capability skip, so a cell without the capability skips with it named and is never judged on a pack it cannot load.
@@ -641,10 +651,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         String jar = agentJar(loader.loader());
         String cache = System.getProperty(LOADER_CACHE, "build/loader-cache");
         LoaderHostOptions options = LoaderHostOptions.of(Path.of(jar), true, Path.of(cache).toAbsolutePath())
-                .withMods(Path.of("").toAbsolutePath(), List.of())
+                // A mod is an artefact under test: a control run installs none (self-tests section 2, ADR-0017 section 4).
+                .withMods(Path.of("").toAbsolutePath(), ModsLoaded.globsToInstall(config.mods(), controlRun))
                 .withDataPacks(controlRun ? List.of() : List.of(config.datapacks()));
-        // T-M8-11: a mod under test that crashes at load, for the bad test. Never set in a user suite.
-        options = ModFault.fromSystemProperty().apply(options, System.getProperty(ModFault.EXAMPLE_MOD));
         LoaderHost host = LoaderHost.start(loader, options);
         System.err.println("PROOFSTONE LOADER BOOT " + loader.identity() + ": " + host.bootTime().toMillis()
                 + " ms from container start to \"Done (\" (host finding, not a join timeout)");

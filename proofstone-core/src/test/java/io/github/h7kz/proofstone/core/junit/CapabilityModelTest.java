@@ -48,11 +48,14 @@ class CapabilityModelTest {
     }
 
     @Test
-    void aLoaderHoldsTheConsoleOnlyAndNeverTheBukkitEvents() {
+    void aLoaderHoldsTheConsoleAndModsAndNeverTheBukkitEvents() {
         // The Fabric and NeoForge agents report "events" and "command" (platforms/*/agent), but "events" is not a Bukkit listener.
+        // They also report "mods" (GET /v1/mods), which is what makes a cell hold MODS (T-M8-13).
         List<String> tokens = List.of("command", "players", "world", "events", "log", "ticks", "mods");
-        assertThat(CapabilityModel.cellCapabilities("fabric", tokens)).containsExactly(Capability.CONSOLE);
-        assertThat(CapabilityModel.cellCapabilities("neoforge", tokens)).containsExactly(Capability.CONSOLE);
+        assertThat(CapabilityModel.cellCapabilities("fabric", tokens)).containsExactlyInAnyOrder(Capability.CONSOLE,
+                Capability.MODS);
+        assertThat(CapabilityModel.cellCapabilities("neoforge", tokens)).containsExactlyInAnyOrder(Capability.CONSOLE,
+                Capability.MODS);
         assertThat(CapabilityModel.cellCapabilities("fabric", List.of("players"))).isEmpty();
     }
 
@@ -227,5 +230,33 @@ class CapabilityModelTest {
     void declaringAResourcePackImpliesTheCapability() throws NoSuchMethodException {
         assertThat(CapabilityModel.required(DeclaresResourcePack.class,
                 DeclaresResourcePack.class.getDeclaredMethod("plain"))).containsExactly(Capability.RESOURCE_PACKS);
+    }
+
+    @io.github.h7kz.proofstone.api.Proofstone(mods = "build/mods/my-mod-*.jar")
+    static class DeclaresMod {
+        void plain() {
+        }
+    }
+
+    @Test
+    void onlyALoaderHoldsModsAndOnlyWithTheModsToken() {
+        List<String> with = List.of("command", "events", "mods");
+        assertThat(CapabilityModel.cellCapabilities("fabric", with)).contains(Capability.MODS);
+        assertThat(CapabilityModel.cellCapabilities("neoforge", with)).contains(Capability.MODS);
+        assertThat(CapabilityModel.cellCapabilities("fabric", List.of("command"))).doesNotContain(Capability.MODS);
+        for (String platform : List.of("paper", "folia", "purpur", "spigot")) {
+            assertThat(CapabilityModel.cellCapabilities(platform, with)).as(platform).doesNotContain(Capability.MODS);
+        }
+    }
+
+    @Test
+    void declaringAModImpliesTheCapabilityAndACellWithoutItSkipsNamingIt() throws NoSuchMethodException {
+        assertThat(CapabilityModel.required(DeclaresMod.class, DeclaresMod.class.getDeclaredMethod("plain")))
+                .containsExactly(Capability.MODS);
+        assertThat(CapabilityModel.required(MethodOnly.class, MethodOnly.class.getDeclaredMethod("needsTwo")))
+                .doesNotContain(Capability.MODS);
+        assertThat(CapabilityModel.missingReason(Set.of(Capability.MODS),
+                CapabilityModel.cellCapabilities("paper", List.of("command", "mods")), "paper@26.3"))
+                .hasValue("missing capability MODS on cell paper@26.3");
     }
 }
