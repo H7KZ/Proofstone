@@ -1241,3 +1241,67 @@ PURPUR`, no shared server, no saved player file). So the T-M7-15 note that the f
 the fix: Purpur c02 red 1 of 8 real runs (7 full, 1 alone); Folia, Spigot and Paper 0 of 8 each (Folia and Spigot c02 now really run). The
 mechanism is not diagnosed: the log shows the player logged in at `-4.5 -60.0 4.5` (not the `0, 64, 0` spawn set at boot) and the
 WARN on that login, before the fixture teleport. Not allowlisted, not worked around. Decision needed: a card to diagnose it (counted Purpur-only runs) before any harness-side change.
+**Diagnosed in T-M7-18, next section.**
+
+## M7 follow-up findings (T-M7-18)
+
+Date 2026-11-15. Branch `card/T-M7-18-purpur-psconf-diagnosis` from origin/main `ddb8442`. Local only, Windows 11, Docker Desktop
+29.9.2, JDK 21 for Gradle. One invocation at a time under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the
+command environment only. Per run: XML, bundle and `docker logs -t` of every container copied aside before the next run (local
+only, not committed). No red retried. No harness code changed. Spike: `scripts/spike/AckRace.java` and `ack-race.sh` (labelled).
+
+**Cause (named, from bytecode and log lines): the client's join-teleport acknowledgement is handled before the player's first
+server tick, so the movement check measures the move from `0, 0, 0`.**
+
+- Paper and Purpur 26.3 (`javap` of `ServerGamePacketListenerImpl` in the pinned jars): `firstGoodX/Y/Z` are written only by
+  `resetPosition()`, which runs at the start of `tickPlayer()` (the player's tick), in `handleMovePlayer` when `tickCount == 0`,
+  and on respawn. In 26.3 the accept-teleport packet carries a position, and `handleAcceptTeleportPacket` passes it straight to
+  `handlePlayerPositionChange`, which computes the move as `position - firstGood` **without** the `tickCount == 0` reset that
+  `handleMovePlayer` has. Before the first tick `firstGood` is still `0, 0, 0`, so the move is the whole spawn position (at least
+  60 blocks: the flat world's surface is `y -60`), and the server logs `moved too quickly!` with the spawn coordinates and
+  teleports the player back.
+- Every WARN in this card's harness logs has numbers equal to that player's login position (21 of 21 WARN lines), for example
+  `PSConf ... logged in ... at ([minecraft:overworld]-8.5, -60.0, -5.5)` then `PSConf moved too quickly! -8.5,-60.0,-5.5` (full
+  run 3). The T-M7-15 WARN `0.5,64.0,0.5` was the same at a saved spot.
+- The mcpl driver sends `ServerboundAcceptTeleportationPacket` at once on the join `ClientboundPlayerPositionPacket`
+  (`McplSession.applyPosition`). The T-M7-17 red bundle's driver transcript (the `T` client) shows the order: accept at
+  `.966997`, a second `ClientboundPlayerPositionPacket` (the server's correction) at `.968629`, and the first-tick packets
+  (`ClientboundSetHealthPacket`, `ClientboundSetExperiencePacket`) only at `45.008`, 40 ms later.
+- Spike, direct test (`ack-race.sh`: one fresh server, 20 joins, modes alternating; I = acknowledge at once, as the driver does;
+  T = acknowledge only after the first `ClientboundSetHealthPacket`, which the player's first tick sends):
+
+  | Server | I joins with WARN | WARN lines (I) | T joins with WARN |
+  |---|---|---|---|
+  | purpur@26.3 (build 2657) | 9 of 10 (all but the first join) | 54 | **0 of 10** |
+  | paper@26.3 (build 244) | 9 of 10 (all but the first join) | 54 | **0 of 10** |
+
+  The first join of each server (cold server and cold client: 17 to 20 ms from the login packet to the position packet, against
+  about 1 ms later) did not WARN, as `PSConf`, the first login of every cell, usually does not.
+- Why only Purpur in the harness. Folia and Spigot did not WARN in any run (Folia: 0 of 5 `PSConf`, 0 of 5 `T` logins; it has
+  the same accept code, so its scheduling differs, not proven how. Spigot's check is CraftBukkit's wall-clock
+  `allowedPlayerTicks`, whose `lastTick` starts at the server tick count, not milliseconds / 50, so the first move gets a huge
+  allowance). Paper and Purpur share the code. The full smoke always runs paper, folia, purpur, spigot, so Paper's `PSConf` is the
+  test JVM's first client and Purpur's comes on a warm JVM: Purpur's `PSConf` logged in 1.35 to 1.66 s after `Done` in the full
+  runs and 2.11 to 2.52 s alone. Reds follow that: Purpur c02 red in 2 of 12 full runs (T-M7-17 and here), 0 of 11 alone. That
+  is a correlation with small counts; which warm-up (client or server) usually closes the race on a first login is not proven.
+- The harness `T<hex>` clients hit the same race on every Paper and Purpur login (20 of 20 here); the guard allows them
+  (`^T[0-9a-f]{8} moved too quickly! `). The allowlist reason "the reset teleport races the client's move" is wrong: the WARN is
+  on the join, before any reset.
+- Ruled out: the world seed (Paper and Purpur cells already pin `SEED=1234567`; the spawn still moves by up to about 15 blocks per
+  boot through the spawn radius, and any spot on the flat world is at least 60 blocks from `0, 0, 0`); the level type as a cause
+  (flat only makes the move large); port reuse (every server is a new container on a new port, and `T` clients WARN on every
+  one); a Purpur-only setting (Paper behaves the same in the spike; the harness writes no `spigot.yml` or `purpur.yml`). T-M8-16
+  lead (loader cells set no seed): the seed does not decide this WARN, so it is no lead for it.
+
+| Invocation | Runs | Red | XML per run | Red tests |
+|---|---|---|---|---|
+| `:conformance:smoke -Dproofstone.cells=purpur@26.3` | 10 | 0 | tests 2, skipped 0, failures 0, errors 0 | none; `T8257c763` WARN 10 of 10 (allowlisted), `PSConf` 0 of 10 |
+| `:conformance:smoke`, no selector (paper, folia, purpur, spigot @26.3) | 5 | **1** (run 3) | runs 1, 2, 4, 5: tests 8, skipped 0, failures 0, errors 0; run 3: tests 8, skipped 0, failures 1, errors 0 | run 3, purpur c02: `PSConf moved too quickly! -8.5,-60.0,-5.5` |
+
+Per cell over the 5 full runs: purpur 1 of 5 red; paper, folia, spigot 0 of 5. `PSConf` WARN: purpur 1 of 15 logins, paper 0 of
+5, folia 0 of 5. Spigot container logs were not captured (the watcher attached before the container started); its c02 XML is
+green each time. Containers left after each run: none of ours (Ryuk exits on its own).
+
+**Fix card proposed:** T-M7-19 in [M7-followups.md](tasks/M7-followups.md): the mcpl driver acknowledges the join teleport after
+the server's first player tick (the first `ClientboundSetHealthPacket`), an ordering await on a packet, with no sleep, retry,
+allowlist or rename. Decision needed: this differs from the vanilla client, which acknowledges at once.
