@@ -164,7 +164,8 @@ topology numbers.
 
 The conformance client is named `PSConf`, and the log-guard allowlist covers only harness clients named `T` plus eight hex digits
 and `.`-prefixed ones. The family described under [Known intermittent flakes](#known-intermittent-flakes) is unchanged by M8: it
-was **not seen** in the loader or resource-pack runs, and it is still unexplained. A `PSConf` hit makes the cell `INVALID`.
+was **not seen** in the loader or resource-pack runs. Cause found in T-M7-15: see the next section. A `PSConf` hit makes the cell
+`INVALID`.
 
 ## Known intermittent flakes
 
@@ -173,9 +174,11 @@ These were seen on real servers and are **open**. None is fixed.
 - **`moved too quickly!` (WARN).** The reset teleport races the client's first move packets. It is seen on Paper, Folia,
   Purpur and Spigot. The log guard allows it only from harness clients (`^T[0-9a-f]{8} moved too quickly! `). Your plugin's
   own copy of this WARN fails the test.
-- **`PSConf moved too quickly!` on C02.** Seen in one full four-platform run on folia, purpur and spigot. The conformance
-  client is named `PSConf`, and the allowlist covers only `T`-prefixed and `.`-prefixed harness clients. Not reproduced on a
-  single cell. Unexplained. The result is `INVALID` on that cell.
+- **`PSConf moved too quickly!` on C02, and two platforms of one version sharing a server.** Cause known (T-M7-15), fix not
+  merged (T-M7-17): a class with the default `PER_CLASS` isolation shares one server per **Minecraft version**, not per cell.
+  When one run selects two platforms of the same version (for example `paper@26.3` and `folia@26.3`), the second cell runs on
+  the first cell's server, and the conformance client logs in again at its saved spot, which Paper and Purpur WARN about. Run
+  one cell per invocation (`-Dproofstone.cells=folia@26.3`) until T-M7-17 lands; a single cell is not affected.
 - **Gradle example on `paper@26.3`.** Red in 2 of 4 runs through the action path (join timeouts, above) and in 1 of 5 plain
   Gradle runs. The plain red was `java.lang.AssertionError` at `VerdictGate.java:150` with no message. The verdict text was
   lost because a later run overwrote the XML. Keep the XML of each red run.
