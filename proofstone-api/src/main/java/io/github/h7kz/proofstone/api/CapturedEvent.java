@@ -1,5 +1,7 @@
 package io.github.h7kz.proofstone.api;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -9,7 +11,8 @@ import java.util.Map;
 public record CapturedEvent(String className, long tick, String thread, Map<String, Object> fields) {
 
     public CapturedEvent {
-        fields = Map.copyOf(fields);
+        // Not Map.copyOf: a getter that returned null is a value the agent captured, and copyOf refuses it (T-M8-10).
+        fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
     }
 
     /**
@@ -25,16 +28,19 @@ public record CapturedEvent(String className, long tick, String thread, Map<Stri
         throw new IllegalStateException(className + "." + name + " is not an integer: " + value);
     }
 
-    /** The getter value, by getter name or property name. Fails loudly when the event has no such getter. */
+    /**
+     * The getter value, by getter name or property name; {@code null} when the getter returned null. Fails loudly when the
+     * event has no such getter.
+     */
     public Object field(String name) {
-        Object value = fields.get(name);
-        if (value == null && !name.startsWith("get") && !name.isEmpty()) {
-            value = fields.get("get" + Character.toUpperCase(name.charAt(0)) + name.substring(1));
+        if (fields.containsKey(name)) {
+            return fields.get(name);
         }
-        if (value == null) {
-            throw new IllegalStateException(className + " has no getter \"" + name + "\"; captured: "
-                    + fields.keySet());
+        String getter = name.isEmpty() || name.startsWith("get") ? null
+                : "get" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        if (getter != null && fields.containsKey(getter)) {
+            return fields.get(getter);
         }
-        return value;
+        throw new IllegalStateException(className + " has no getter \"" + name + "\"; captured: " + fields.keySet());
     }
 }
