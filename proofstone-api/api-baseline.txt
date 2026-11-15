@@ -16,6 +16,7 @@ public final io.github.h7kz.proofstone.api.BlockPos extends java.lang.Record
 public final io.github.h7kz.proofstone.api.Capability extends java.lang.Enum<io.github.h7kz.proofstone.api.Capability>
   field public static final io.github.h7kz.proofstone.api.Capability BUKKIT_EVENTS
   field public static final io.github.h7kz.proofstone.api.Capability CONSOLE
+  field public static final io.github.h7kz.proofstone.api.Capability DATAPACKS_VANILLA
   field public static final io.github.h7kz.proofstone.api.Capability FOLIA_REGIONS
   field public static final io.github.h7kz.proofstone.api.Capability PROXY
   field public static final io.github.h7kz.proofstone.api.Capability SIMULATED_BEDROCK
@@ -204,6 +205,7 @@ public final io.github.h7kz.proofstone.api.Position extends java.lang.Record
   method public final java.lang.String io.github.h7kz.proofstone.api.Position.toString()
 public abstract interface io.github.h7kz.proofstone.api.Proofstone implements java.lang.annotation.Annotation
   method public abstract boolean io.github.h7kz.proofstone.api.Proofstone.acceptEula()
+  method public abstract java.lang.String[] io.github.h7kz.proofstone.api.Proofstone.datapacks()
   method public abstract java.lang.String[] io.github.h7kz.proofstone.api.Proofstone.plugins()
 public abstract interface io.github.h7kz.proofstone.api.Requires implements java.lang.annotation.Annotation
   method public abstract io.github.h7kz.proofstone.api.Capability[] io.github.h7kz.proofstone.api.Requires.value()

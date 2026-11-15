@@ -36,5 +36,12 @@ public enum Capability {
      * The cell is a topology: a proxy and named backends, with {@link Topology} and {@link Client#transferTo(String)}.
      * Declared by the proxy packs only; a single-server cell never holds it, so a test that needs it skips there.
      */
-    TOPOLOGY
+    TOPOLOGY,
+
+    /**
+     * The cell loads vanilla data packs from the world's {@code datapacks} folder and its agent lists them
+     * ({@code GET /v1/datapacks}, token {@code datapacks}), so {@link Proofstone#datapacks()} can ship one. Declared by the
+     * Paper and Fabric packs (ADR-0017 section 8).
+     */
+    DATAPACKS_VANILLA
 }
