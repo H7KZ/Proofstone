@@ -30,9 +30,10 @@ class ErrorLogGuardTest {
     }
 
     @Test
-    void theHarnessClientsMoveWarningIsAllowedButAnotherPlayersIsNot() {
+    void aMovedTooQuicklyWarningFromAnyPlayerFailsEvenForAHarnessClientName() {
         assertThat(ErrorLogGuard.describe(List.of(
-                record("WARN", "T9513c1c1 moved too quickly! 0.5,-60.0,-3.5", null)), PAPER)).isNull();
+                record("WARN", "T9513c1c1 moved too quickly! 0.5,-60.0,-3.5", null)), PAPER))
+                .contains("T9513c1c1 moved too quickly");
         assertThat(ErrorLogGuard.describe(List.of(
                 record("WARN", "Steve moved too quickly! 0.5,-60.0,-3.5", null)), PAPER))
                 .contains("Steve moved too quickly");
@@ -78,9 +79,10 @@ class ErrorLogGuardTest {
     }
 
     @Test
-    void foliaAllowsOnlyTheHarnessClientsMovedTooQuicklyAndNotTheBootErrors() {
+    void foliaAllowsNoMovedTooQuicklyAndNotTheBootErrors() {
         assertThat(ErrorLogGuard.describe(List.of(
-                record("WARN", "T94d99d12 moved too quickly! -1.5,-60.0,2.5", null)), Patterns.FOLIA)).isNull();
+                record("WARN", "T94d99d12 moved too quickly! -1.5,-60.0,2.5", null)), Patterns.FOLIA))
+                .contains("T94d99d12 moved too quickly");
         assertThat(ErrorLogGuard.describe(List.of(
                 record("WARN", "Steve moved too quickly! -1.5,-60.0,2.5", null),
                 record("ERROR", "No key layers in MapLike[{}]", null),

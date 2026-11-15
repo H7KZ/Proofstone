@@ -12,6 +12,4 @@ capabilities:                    # declared; a cell holds one only when the agen
   CONSOLE: command
 log-patterns:
   errors: []                     # no Spigot error pattern observed yet (docs/platforms/spigot.md, Gotchas)
-  allowlist:                     # only noise that a reviewed Spigot run showed; each entry says why
-    - pattern: "^T[0-9a-f]{8} moved too quickly! "
-      why: Reset teleport races the harness client's first move packets (seen on spigot@26.3, :conformance:smoke). Harness clients only.
+  allowlist: []                  # the harness client's "moved too quickly!" entry was dropped in T-M7-19 (join teleport acknowledged after the first tick)

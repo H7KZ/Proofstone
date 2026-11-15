@@ -31,10 +31,6 @@ final class ErrorLogGuard {
          */
         static final Patterns PAPER = new Patterns("paper", Map.of(
                 Pattern.compile("No key layers in MapLike"), "flat world without generator settings, 1.21.11+",
-                // Only the harness's own clients, named by CellInvocation.joinClient ("T" and 8 hex digits). The reset
-                // teleport races the client's first movement packets, and the Log4j capture (T-M2-08) shows the
-                // server's anti-cheat WARN for it. Any other player, or a plugin's own message, still fails the test.
-                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move",
                 // A Clients client (SIMULATED_BEDROCK) is named with a leading '.' and never reset, so its first move
                 // packets race the join position. Only the prefixed names a test chose match, never a plain player.
                 Pattern.compile("^\\.[A-Za-z0-9_]{1,15} moved too quickly! "), "first move of a prefixed harness client"),
@@ -47,12 +43,10 @@ final class ErrorLogGuard {
          * that a reviewed Folia run showed and the vanilla server also produces.
          */
         static final Patterns FOLIA = new Patterns("folia", Map.of(
-                // Observed on folia@26.3 in :conformance:smoke (T-M5-03): "T94d99d12 moved too quickly! -1.5,-60.0,2.5".
-                // Same anti-cheat WARN as Paper: the reset teleportAsync races the client's first movement packets. Only
-                // the harness's own clients ("T" and 8 hex digits, CellInvocation.joinClient); any other player, or a
-                // plugin's own message, still fails the test. The boot ERRORs (No key layers, bukkit.yml) are logged
+                // The harness client's "moved too quickly!" entry is gone (T-M7-19): the driver acknowledges the join teleport
+                // after the first tick, so the WARN no longer fires. The boot ERRORs (No key layers, bukkit.yml) are logged
                 // before the test window and are not allowed here.
-                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                ),
                 List.of(Pattern.compile("Thread failed main thread check"),
                         Pattern.compile("Must use teleportAsync while in region threading")));
 
@@ -61,9 +55,8 @@ final class ErrorLogGuard {
          * what a reviewed Purpur run showed; the entries are filled in from observed runs (T-M5-04).
          */
         static final Patterns PURPUR = new Patterns("purpur", Map.of(
-                // Observed on purpur@26.3 (T-M5-04): "T0cd7aebd moved too quickly! 6.5,-60.0,-2.5" in C02, C04, C07, C08.
-                // The same anti-cheat WARN as Paper and Folia, for the harness's own clients only (CellInvocation.joinClient).
-                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                // The "moved too quickly!" entry for harness clients is gone (T-M7-19, ack after the first tick).
+                ),
                 List.of());
 
         /**
@@ -71,10 +64,8 @@ final class ErrorLogGuard {
          * allowlist holds only what a reviewed Spigot run showed (T-M5-05).
          */
         static final Patterns SPIGOT = new Patterns("spigot", Map.of(
-                // Observed on spigot@26.3 in :conformance:smoke (T-M5-05): "T94d99d50 moved too quickly! -7.5,-60.0,6.5".
-                // The same anti-cheat WARN as Paper, Folia and Purpur: the reset teleport races the harness client's first
-                // movement packets. Harness clients only (CellInvocation.joinClient).
-                Pattern.compile("^T[0-9a-f]{8} moved too quickly! "), "reset teleport races the harness client's move"),
+                // The "moved too quickly!" entry for harness clients is gone (T-M7-19, ack after the first tick).
+                ),
                 List.of());
 
         /**
