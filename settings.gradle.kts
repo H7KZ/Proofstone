@@ -80,6 +80,7 @@ include(
     "platforms:neoforge:agent",
     "examples:smoke",
     "examples:loader-datapack",
+    "examples:loader-mod",
     "examples:disenchantment-anvil",
     "examples:bad-tests",
     "examples:bedrock-prefix",

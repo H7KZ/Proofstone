@@ -362,8 +362,8 @@ class SwitchE2E {
 ## 13. Mods, data packs and resource packs (ADR-0017, design for T-M8-07, T-M8-09, T-M8-10)
 
 Design from [ADR-0017](../adr/0017-mod-platform-packs.md). In `api-baseline.txt` so far: `Platform.FABRIC` and `Platform.NEOFORGE`
-(T-M8-08), `Proofstone.datapacks` and `Capability.DATAPACKS_VANILLA` (T-M8-09), and the resource-pack types below (T-M8-10), each
-`api-change`, additions only. Each card adds its part
+(T-M8-08), `Proofstone.datapacks` and `Capability.DATAPACKS_VANILLA` (T-M8-09), the resource-pack types below (T-M8-10), and
+`Proofstone.mods` and `Capability.MODS` (T-M8-13), each `api-change`, additions only. Each card adds its part
 as an `api-change`, additions only: new annotation elements with defaults, new types, new constants, default methods.
 
 ```java
@@ -399,6 +399,19 @@ class PackE2E {
   implies `@Requires(MODS)` or `@Requires(DATAPACKS_VANILLA)`: a cell without it is `SKIPPED` with `CAPABILITY_MISSING`.
   `plugins` on a loader cell is `INVALID test declaration`. A test mod with the id `fabric-api` is refused (the Fabric cell
   provides the pinned Fabric API).
+- **Mods, as built (T-M8-13).** `@Proofstone(mods = ...)` and `Capability.MODS` (token `mods`, declared by the Fabric and NeoForge
+  packs) are in the API. Each glob matches exactly one jar (none, or more than one, is `INVALID test declaration` naming the
+  glob), read from the project directory; the jar is copied to `/mods` before start. Its ids come from its own descriptor
+  (`fabric.mod.json`, `META-INF/neoforge.mods.toml`), and after the capability check each must be in `GET /v1/mods`: a mod the
+  agent does not list is `INVALID test declaration` naming it, with the agent's list and the log tail. A mod that crashes the
+  loader is a failed boot, `INVALID` naming the mod and quoting the loader's line (T-M8-11). A jar with the id `fabric-api` (or
+  one that is no Fabric or NeoForge mod) is `INVALID test declaration` before any container starts. A cell without `MODS` (every
+  Bukkit-family cell) skips with `missing capability MODS`, `CAPABILITY_MISSING`. A control run installs no declared mod. A
+  topology cell holds no `MODS`, so it skips. The mod config is not declarable: a mod under test runs with the defaults it has.
+  Fixtures: the example mod (`platforms/{fabric,neoforge}/agent/src/exampleMod`, built by `exampleModJar`) passes in
+  `examples/loader-mod` (`ServerOnlyModE2E`); its crashing variant (`exampleCrashModJar`, the same mod with one marker resource)
+  is the mod of the `examples/bad-tests` `mod/Broken{Fabric,NeoForge}ModE2E`. The test-only `-Dproofstone.injectModFault` switch
+  is gone: no test needs it.
 - **Data packs, as built (T-M8-09).** `@Proofstone(datapacks = ...)` is in the API. Each glob matches exactly one `.zip` (with
   `pack.mcmeta` at its top) or one directory holding `pack.mcmeta`; a directory is zipped deterministically and named
   `<directory>.zip`. The zip is copied into the container before start and installed by the image's `DATAPACKS` setting into

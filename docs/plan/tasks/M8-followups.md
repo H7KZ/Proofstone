@@ -41,9 +41,9 @@ switch `-Dproofstone.injectModFault`. test-api.md §13 documents `mods = {}` as 
 - Change an existing signature or the meaning of `plugins` or `datapacks`. Let a mod that did not load pass.
 
 **Acceptance.**
-- [ ] `api-baseline.txt` diff shows additions only (`mods`, `MODS`).
-- [ ] Unit tests for the glob resolution, the skip, the `fabric-api` refusal and the control run.
-- [ ] A test that declares a server-only mod through `mods` passes on `fabric@26.3` and on `neoforge@26.3`, three invocations
+- [x] `api-baseline.txt` diff shows additions only (`mods`, `MODS`).
+- [x] Unit tests for the glob resolution, the skip, the `fabric-api` refusal and the control run.
+- [x] A test that declares a server-only mod through `mods` passes on `fabric@26.3` and on `neoforge@26.3`, three invocations
   each, and the crash-at-load bad test (declared through `mods`) is `INVALID` naming the mod on both rows.
 
 **Verify.**

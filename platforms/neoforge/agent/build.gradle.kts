@@ -151,6 +151,19 @@ val exampleModJar = tasks.register<Jar>("exampleModJar") {
     from(exampleMod.output)
 }
 
+// The same mod with one marker resource that makes it throw at load: the mod under test of the crash-at-load bad test, declared
+// through @Proofstone(mods) (T-M8-13). Built here, never downloaded or committed as a binary.
+val exampleCrashModJar = tasks.register<Jar>("exampleCrashModJar") {
+    description = "Builds the example mod that crashes at load, for the crash-at-load bad test."
+    archiveBaseName.set("proofstone-crashing-mod")
+    archiveVersion.set("")
+    destinationDirectory.set(layout.buildDirectory.dir("example-mod"))
+    from(exampleMod.output)
+    from(resources.text.fromString("the example mod throws at load when this resource is in its jar").asFile()) {
+        rename { "proofstone-example-fail" }
+    }
+}
+
 tasks.named<Test>("integrationTest") {
     javaLauncher.set(toolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
     dependsOn(tasks.named("shadowJar"), exampleModJar)

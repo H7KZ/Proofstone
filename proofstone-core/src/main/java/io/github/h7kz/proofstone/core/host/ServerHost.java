@@ -16,6 +16,11 @@ public interface ServerHost extends AgentEndpoint, AutoCloseable {
     /** The host port mapped to the server's game port. */
     int gamePort();
 
+    /** The mod ids the agent must list for the mods this host installed ({@code GET /v1/mods}); empty when none. */
+    default java.util.List<String> modIds() {
+        return java.util.List.of();
+    }
+
     /** The ids the server must list for the data packs this host installed ({@code file/<name>}); empty when none. */
     default java.util.List<String> dataPackIds() {
         return java.util.List.of();

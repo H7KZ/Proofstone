@@ -50,5 +50,11 @@ public enum Capability {
      * event probe (token {@code resource-pack-status}). Declared by the Paper pack, on native cells only (ADR-0017
      * sections 7 and 8).
      */
-    RESOURCE_PACKS
+    RESOURCE_PACKS,
+
+    /**
+     * The cell loads mods from {@code /mods} and its agent lists the loaded ones ({@code GET /v1/mods}, token {@code mods}),
+     * so {@link Proofstone#mods()} can put a mod under test. Declared by the Fabric and NeoForge packs (ADR-0017 section 8).
+     */
+    MODS
 }

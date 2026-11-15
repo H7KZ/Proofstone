@@ -8,7 +8,7 @@ runs the pack's function with `agent.command`, and reads the result on both orac
 emeralds, and the client sees the chat line. It is C-D01 of the conformance suite cut down to a user-sized test, and uses only
 what ran there. Guide: [mods, data packs and resource packs](../../docs/user/mods-and-packs.md).
 
-It does **not** test a mod. `@Proofstone(mods)` does not exist yet, so a user test cannot declare a mod under test.
+It does **not** test a mod: for a server-only mod declared through `@Proofstone(mods)` see [`examples/loader-mod`](../loader-mod/README.md).
 
 ## Boundaries
 

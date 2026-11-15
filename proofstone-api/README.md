@@ -22,6 +22,8 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
   `Cell.capabilities()` a default method that throws, and removed `Capability.NMS` and `Capability.DATAPACKS` (no agent token).
 - Data packs (T-M8-09, api-change, additions only, ADR-0017): `Proofstone.datapacks()` (globs, default none) and
   `Capability.DATAPACKS_VANILLA` (last constant). Declaring a pack implies the capability.
+- Mods (T-M8-13, api-change, additions only, ADR-0017): `Proofstone.mods()` (globs, one jar each, default none) and
+  `Capability.MODS` (last constant). Declaring a mod implies the capability; a cell without it skips.
 - Resource packs (T-M8-10, api-change, additions only, ADR-0017 §7): `@ServerResourcePack` (class: `value`, `required`,
   `prompt`, `sha1`), `@ResourcePackAnswer` (class or method, `Answer.ACCEPT`, `DECLINE`, `FAIL_DOWNLOAD`, no default),
   `ResourcePackPush` (a record) and `Client.resourcePacks()` (default method, throws), `Capability.RESOURCE_PACKS` (last

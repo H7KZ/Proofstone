@@ -109,7 +109,7 @@ load is `INVALID` naming the mod and quoting the loader's line (Fabric and NeoFo
 `INVALID` naming the pack and quoting the server's line, read from the host's log of the boot (the pack stays enabled, so the
 declared-pack check alone passes it); a resource pack pushed with a wrong sha1 is a `FAIL` of the test that expects it to load,
 with `FAILED_DOWNLOAD` and the hash mismatch in the message. A failure before conformance whose message starts with `INVALID` is
-`INVALID` in the report too. Each bad test is pinned to its cell and refused on another; none is a boot or join timeout.
+`INVALID` in the report too. Each bad test is pinned to its cell and refused on another; none is a boot or join timeout. Since T-M8-13 the crashing mod is declared through `@Proofstone(mods)` (the agent's `exampleCrashModJar`), not injected by a switch.
 
 ## 2. Control run (nightly)
 

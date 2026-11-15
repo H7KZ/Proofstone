@@ -156,7 +156,7 @@ data class BadRun(
     val mustNotContain: List<String> = emptyList(),
     /** A topology run needs the proxy agent jars in the test JVM (T-M7-13). */
     val topology: Boolean = false,
-    /** A loader run needs this loader's agent jar and the example mod in the test JVM (T-M8-11): `fabric`. */
+    /** A loader run needs this loader's agent jar in the test JVM and its crashing example mod under build/fixture-mods (T-M8-13). */
     val loader: String? = null,
     /** The failure is the test body's own assertion (a plain FAIL), not a message the harness prefixes with the verdict. */
     val plainFailure: Boolean = false,
@@ -233,14 +233,14 @@ val fabricCell = "fabric@26.3"
 val paperCell = "paper@26.3"
 val modRuns = listOf(
     BadRun(
-        "metaModCrash", "**/mod/**", "INVALID", mapOf("proofstone.injectModFault" to "crash-at-load"), pin = fabricCell,
-        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-example-mod.jar", "example mod was asked to fail"),
+        "metaModCrash", "**/mod/BrokenFabricModE2E*", "INVALID", emptyMap(), pin = fabricCell,
+        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-crashing-mod.jar", "example mod was asked to fail"),
         mustNotContain = listOf("timed out", "BOOT TIMEOUT", "the body ran"), loader = "fabric", reportVerdict = "INVALID",
     ),
     BadRun(
-        "metaModCrashNeoForge", "**/mod/**", "INVALID", mapOf("proofstone.injectModFault" to "crash-at-load"),
+        "metaModCrashNeoForge", "**/mod/BrokenNeoForgeModE2E*", "INVALID", emptyMap(),
         pin = "neoforge@26.3",
-        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-example-mod.jar", "example mod was asked to fail"),
+        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-crashing-mod.jar", "example mod was asked to fail"),
         mustNotContain = listOf("timed out", "BOOT TIMEOUT", "the body ran"), loader = "neoforge", reportVerdict = "INVALID",
     ),
     BadRun(
@@ -262,6 +262,16 @@ val badRunDirs: Map<String, File> = allRuns.associate { run ->
     run.task to layout.buildDirectory.dir("test-results/${run.task}").get().asFile
 }
 
+// The crashing example mod of each loader row (T-M8-13), copied under this project because mod globs are relative to the
+// project directory, as plugin globs are. One folder per loader, so two runs in one build never share a path.
+val copyCrashingMod: Map<String, TaskProvider<Copy>> = listOf("fabric", "neoforge").associateWith { loader ->
+    tasks.register<Copy>("copyCrashingMod${loader.replaceFirstChar { it.uppercase() }}") {
+        dependsOn(":platforms:$loader:agent:exampleCrashModJar")
+        from(rootProject.layout.projectDirectory.file("platforms/$loader/agent/build/example-mod/proofstone-crashing-mod.jar"))
+        into(layout.buildDirectory.dir("fixture-mods/$loader"))
+    }
+}
+
 allRuns.forEach { run ->
     tasks.register<Test>(run.task) {
         badTestSetup(run.pin)
@@ -270,12 +280,12 @@ allRuns.forEach { run ->
         include(run.include)
         run.switches.forEach { (name, value) -> systemProperty(name, value) }
         if (run.loader != null) {
-            // The loader agent and the example mod are built, never committed (AGENTS.md section 3). Built only for this run:
-            // they need a Java 25 toolchain and a build-time download that no Paper run must pay for or depend on.
+            // The loader agent and the crashing example mod are built, never committed (AGENTS.md section 3). Built only for this
+            // run: they need a Java 25 toolchain and a build-time download that no Paper run must pay for or depend on. The mod
+            // is the test's own @Proofstone(mods) declaration, copied to the path the test names (T-M8-13).
             val agent = rootProject.layout.projectDirectory.dir("platforms/${run.loader}/agent")
-            dependsOn(":platforms:${run.loader}:agent:shadowJar", ":platforms:${run.loader}:agent:exampleModJar")
+            dependsOn(":platforms:${run.loader}:agent:shadowJar", copyCrashingMod.getValue(run.loader))
             systemProperty("proofstone.${run.loader}.agentJar", agent.file("build/libs/agent-all.jar").asFile.absolutePath)
-            systemProperty("proofstone.exampleMod", agent.file("build/example-mod/proofstone-example-mod.jar").asFile.absolutePath)
             systemProperty("proofstone.loaderCache", layout.buildDirectory.dir("loader-cache").get().asFile.absolutePath)
         }
         if (run.topology) {

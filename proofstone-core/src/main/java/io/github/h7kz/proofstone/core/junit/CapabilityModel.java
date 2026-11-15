@@ -39,8 +39,9 @@ final class CapabilityModel {
             "bungeecord", Set.of(Capability.PROXY, Capability.TOPOLOGY),
             // A loader pack declares only what its C01 to C08 run verified (T-M8-08): the console path, which the per-cell
             // check and C03 use. Not BUKKIT_EVENTS: its token "events" is a Bukkit listener, and a loader's probe is not.
-            "fabric", Set.of(Capability.CONSOLE, Capability.DATAPACKS_VANILLA),
-            "neoforge", Set.of(Capability.CONSOLE));
+            // MODS: GET /v1/mods lists what /mods loaded; a declared mod ran on both rows (T-M8-13, docs/platforms).
+            "fabric", Set.of(Capability.CONSOLE, Capability.DATAPACKS_VANILLA, Capability.MODS),
+            "neoforge", Set.of(Capability.CONSOLE, Capability.MODS));
 
     /**
      * The agent's report token that confirms a declared capability (docs/platforms/paper.md and folia.md, Gotchas). A
@@ -57,7 +58,9 @@ final class CapabilityModel {
             // GET /v1/datapacks (protocol 1.3, ADR-0017 section 8): Bukkit agent where the server API lists packs, Fabric agent.
             Capability.DATAPACKS_VANILLA, "datapacks",
             // The Bukkit agent's event probe can read PlayerResourcePackStatusEvent (ADR-0017 section 8).
-            Capability.RESOURCE_PACKS, "resource-pack-status");
+            Capability.RESOURCE_PACKS, "resource-pack-status",
+            // GET /v1/mods (protocol 1.3): only the Fabric and NeoForge agents serve it (ADR-0017 section 8).
+            Capability.MODS, "mods");
 
     private CapabilityModel() {
     }
@@ -146,6 +149,10 @@ final class CapabilityModel {
         Proofstone declared = testClass.getAnnotation(Proofstone.class);
         if (declared != null && declared.datapacks().length > 0) {
             required.add(Capability.DATAPACKS_VANILLA);
+        }
+        // A declared mod needs a cell that loads mods and lists them (ADR-0017 section 4).
+        if (declared != null && declared.mods().length > 0) {
+            required.add(Capability.MODS);
         }
         // A declared resource pack needs the cell that pushes it and reads the status (ADR-0017 section 4).
         if (testClass.isAnnotationPresent(ServerResourcePack.class)) {

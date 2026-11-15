@@ -87,7 +87,7 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
                     + " (build it with the loader agent's shadowJar task)");
         }
         // Everything that can fail without Docker fails first, so a bad glob or pin never leaves a container behind.
-        List<Path> mods = Artefacts.resolve(options.artefactBase(), options.modGlobs());
+        List<Path> mods = Mods.resolve(options.artefactBase(), options.modGlobs());
         List<DataPack> dataPacks = DataPack.resolve(options.artefactBase(), options.datapackGlobs());
         List<PinnedFile> pins = LoaderPins.resolve(LoaderEnvironment.downloads(cell), options.cacheDir(), LoaderPins.http());
         Map<String, Path> jars = LoaderEnvironment.jarCopies(pins, options.agentJar(), mods);
@@ -289,6 +289,12 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
         java.util.Map<String, List<String>> namespaces = new java.util.LinkedHashMap<>();
         dataPacks.forEach(pack -> namespaces.put(pack.id(), pack.namespaces()));
         return namespaces;
+    }
+
+    /** The ids the mod jars under test declare (from their own descriptors), which {@code GET /v1/mods} must list. */
+    @Override
+    public List<String> modIds() {
+        return modJars.stream().flatMap(jar -> ModLoad.ids(jar).stream()).toList();
     }
 
     @Override
