@@ -25,6 +25,10 @@ expected to produce one verdict, and `metaTest` asserts it:
   (`proofstone.injectTopologyFault`), so the topology conformance must be red and every test on it `INVALID`. Seven runs,
   one per fault per proxy (`metaTopologyTest`, below).
 
+- `mod/BrokenModE2E`, `datapack/BrokenFunctionE2E` and `resourcepack/WrongHashPackE2E` (T-M8-11) are the M8 negative controls
+  (`metaModTest`, below): a mod that crashes at load, a data pack whose function does not parse, and a resource pack pushed with
+  a wrong sha1. Each is red by design with its own reason.
+
 ## Boundaries
 
 - Must stay out of user-facing suites. These tests exist to fail in the expected way, not to be green. `invalid`, `leak`,
@@ -83,6 +87,10 @@ other cell is refused in that task's `doFirst`, before any server starts. The re
 | `metaRequires` | `requires/RequiresSkipsE2E` | `latest` | any Paper cell |
 | `metaTopoVelocity*` (4 tasks) | `topology/TopologyFaultE2E` | `latest` | `velocity@4.3.1+paper@26.3` only |
 | `metaTopoBungee*` (3 tasks) | `topology/TopologyFaultE2E` | `latest` | `bungeecord@2111+paper@26.3` only |
+| `metaModCrash` | `mod/BrokenModE2E` | `26.3` (Fabric) | `fabric@26.3` only |
+| `metaModCrashNeoForge` | `mod/BrokenModE2E` | `26.3` (NeoForge) | `neoforge@26.3` only |
+| `metaModDataPack` | `datapack/BrokenFunctionE2E` | `26.3` | `paper@26.3` only |
+| `metaModPackHash` | `resourcepack/WrongHashPackE2E` | `26.3` | `paper@26.3` only |
 
 `-Dproofstone.cells=paper@26.3` on `metaTest` is therefore refused at `metaInvalidWindow`, `metaDisagree` and `metaLeak`. Run
 the cell-agnostic tasks on another cell by name, for example `:examples:bad-tests:metaVacuous -Dproofstone.cells=paper@26.3`.
@@ -119,3 +127,34 @@ PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-t
 One fault alone, for example `:examples:bad-tests:metaTopoVelocityWrongSecret`. The faults are not in
 `scripts/release-mutation-check.sh` (maintainer decision, M7): they are run by hand and recorded in the ROADMAP M7 findings.
 `wrong-secret` on BungeeCord is refused (it has no secret), never run as a silent no-op.
+
+### M8 negative controls (T-M8-11)
+
+`metaModTest` is separate from `metaTest` because the mod run builds the loader agent (a Java 25 toolchain and a build-time
+download of the game jar), which `metaTest` must not depend on. Each task expects one verdict with its own reason, and never a
+boot or join timeout. The run's `proofstone-report.json` must say the same verdict as the JUnit XML.
+
+| Task | Fault | Verdict | Reason the message must carry |
+|---|---|---|---|
+| `metaModCrash` | the example mod crashes at init (`-Dproofstone.injectModFault=crash-at-load`), Fabric | `INVALID` | `mod proofstone_example (proofstone-example-mod.jar) crashed the server at load`, the loader's line, `example mod was asked to fail` |
+| `metaModCrashNeoForge` | the same on NeoForge | `INVALID` | the same, from `FMLModContainer` (`Failed to create mod instance`) |
+| `metaModDataPack` | a data pack whose function does not parse | `INVALID` | `data pack file/broken-function.zip logged an error`, `Failed to load function proofstone_broken:hello`, the parse error |
+| `metaModPackHash` | `@ServerResourcePack(sha1 = <not the pack's>)`, the test expects the pack to load | `FAIL` | the pack's record: `FAILED_DOWNLOAD` and `hash mismatch: expected 000..., got <sha1>` |
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaModTest --no-parallel --max-workers=1
+```
+
+One fault alone, for example `:examples:bad-tests:metaModDataPack`. Notes:
+- `@Proofstone` has no `mods` element yet (the API is unchanged by T-M8-11), so a bad test cannot declare a mod. The switch
+  `-Dproofstone.injectModFault=crash-at-load` installs the example mod (`platforms/<loader>/agent` `exampleModJar`) with the
+  config that makes it throw. Test-only, like `injectTopologyFault`.
+- A mod that crashes is `INVALID` only when the loader's log names a declared mod (its id from `fabric.mod.json` or
+  `neoforge.mods.toml`, or its file name) on an error line. A failed start that names none stays a plain failed boot.
+- A data pack with a broken function stays enabled: the server skips the function and logs the error while it loads the pack,
+  before the agent's log window starts. The check therefore reads the host's log of the whole boot for WARN or worse lines that
+  name a namespace of the pack.
+- On Paper a wrong hash does not kick: the client reaches play and reports `FAILED_DOWNLOAD` (T-M8-10). The bad test's
+  assertion is the test author's own (the pack must load), so a wrong hash is a plain `FAIL` there.
+- Not in `scripts/release-mutation-check.sh` (T-M8-11 asks the maintainer; the PR holds the measured runtime). The pin refusals
+  are checked by `scripts/bad-tests-pin-check.sh`.

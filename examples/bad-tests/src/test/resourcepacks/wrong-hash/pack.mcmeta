@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Proofstone T-M8-11 resource pack, pushed with a sha1 that is not its own. Nothing to render.",
+    "min_format": [97, 1],
+    "max_format": [97, 1]
+  }
+}
