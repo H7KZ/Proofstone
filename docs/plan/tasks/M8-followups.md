@@ -139,12 +139,17 @@ never logged it.
 - Allowlist the line, raise a timeout, add a retry or a sleep, or change harness code in this card.
 
 **Acceptance.**
-- [ ] Per-row red counts over at least 5 runs each, XML read, with the seed per run.
-- [ ] The cause named with log lines, or "unexplained" with the counts and what was ruled out.
-- [ ] A fix card proposed, or the reason none is needed.
+- [x] Per-row red counts over at least 5 runs each, XML read, with the seed per run. (11 Fabric and 10 NeoForge invocations, 0 red by
+  a WARN; seeds in ROADMAP "M8 findings", "T-M8-16 loader WARN diagnosis".)
+- [x] The cause named with log lines, or "unexplained" with the counts and what was ruled out. (Peaceful difficulty plus the zombie
+  village variant, reproduced by hand; and the second WARN family, `handleDisconnection() called twice`, a vanilla race.)
+- [x] A fix card proposed, or the reason none is needed. (T-M8-21 and T-M8-22 below.)
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=fabric@26.3 --no-parallel --max-workers=1`
+
+**Result (2026-11-15).** Scope extended by the orchestrator to the second loader WARN family. Both causes are named in ROADMAP
+"M8 findings"; no harness code changed.
 
 ### T-M8-17 · Amend ADR-0017 to what ran (§4 data-pack check, §5 build, §7 resource-pack status, §8 `MODS`)
 - tier: sonnet
@@ -239,3 +244,87 @@ because the verifier checklist did not say to.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:fabric:agent:integrationTest --tests '*LoaderHostIT*' --no-parallel --max-workers=1`
+
+### T-M8-21 · Pin the world seed on loader cells (the `zombie_villager` WARN)
+- tier: haiku
+- depends: T-M8-16
+- modules: proofstone-core, docs/platforms
+- adrs: 0017
+- specs: specs/self-tests.md §1
+- test-first: yes
+
+**Goal.** A loader cell generates the same world every boot, so a zombie village near spawn cannot turn a test red through the log
+guard (ROADMAP "M8 findings", T-M8-16: `DIFFICULTY=peaceful` makes `EntityType.create` return null for the zombie villager of a
+zombie village template, 1 in about 430 boots, and only a village in the generated area can do it).
+
+**Do.**
+- Test first: `LoaderEnvironmentTest` asserts that `LoaderEnvironment.env` sets `SEED` for a Fabric cell and a NeoForge cell, and that
+  it equals the value `PaperHost` pins. It fails on main (no `SEED`).
+- Make `PaperHost`'s `SEED` one package-visible constant and put it into `LoaderEnvironment.env`. Same value, `1234567`: it was
+  checked on Fabric (`locate structure #minecraft:village`: nearest village 353 blocks from spawn, the generated area is about
+  64 blocks) and Paper never logged the WARN with it.
+- Documentation, in the same PR: the Fabric and NeoForge Gotchas (mechanism, the seed and its nearest village), the troubleshooting
+  entry (cause known, fixed), `docs/robustness.md` R9 and `docs/platforms.md` (no "open" for this WARN).
+
+**Don't.**
+- Change `DIFFICULTY` (a hostile mob would then spawn in tests), allowlist the line, raise a timeout, add a retry or a sleep.
+- Set `GENERATE_STRUCTURES=false` in this card. It would also remove the whole family regardless of seed, but it makes the cell's
+  world differ from Paper's; it stays the fallback if a mod under test (T-M8-13) moves worldgen and brings a village near spawn.
+
+**Acceptance.**
+- [ ] The new `LoaderEnvironmentTest` cases fail before the change and pass after.
+- [ ] By hand, on both loaders, the console `seed` answers `Seed: [1234567]` and `locate structure #minecraft:village` is at least
+  250 blocks away (one line in the PR for each).
+- [ ] `:conformance:run` on `fabric@26.3` and `neoforge@26.3`, three invocations each, XML read: no WARN-guard red, and 0 lines
+  `Skipping Entity with id` in every container log (a read-only `docker logs -f` watcher, as T-M8-16). Reds of the known
+  `no matching item among []` DISAGREE family are counted apart.
+- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`./gradlew :proofstone-core:test --tests '*LoaderEnvironmentTest*'`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=neoforge@26.3 --no-parallel --max-workers=1`
+
+### T-M8-22 · A client's own leave no longer reds a test (`handleDisconnection() called twice`)
+- tier: sonnet
+- depends: T-M8-16
+- modules: proofstone-core, docs/platforms
+- adrs: 0003, 0017
+- specs: specs/self-tests.md §1
+- test-first: yes
+
+**Goal.** The vanilla race in `ServerConnectionListener.tick` and `Connection.tick` (T-M8-16: the second `handleDisconnection()` runs
+one tick after the first, about 0.4% of client closes, both loaders, not in Paper-family logs) cannot fail a test. It reds one only
+when the closing client is `PSConf`, because the conformance runs inside the first test's guard window.
+
+**Decision for the maintainer first.** (A) A pack-scoped allowlist entry on the Fabric and NeoForge packs, anchored to the exact
+line, with the reason (vanilla noise; the guard cannot tell it from a real double handling). Smallest, but it hides that line
+for good. (B) This card as written: no allowlist, the guard window moves. Pick one before the card starts; the steps below are B.
+
+**Do.**
+- Test first, no Docker, with a fake host log: (1) a `handleDisconnection() called twice` record after the conformance client's
+  `left the game` does not fail the first test; (2) the same record inside the conformance window **before** the client closes
+  fails the conformance, naming the line; (3) any other WARN after the new cursor fails the test as before; (4) a Paper cell
+  takes the same path and its tests are unchanged.
+- In `CellConformance.scenarios`, check the log (`ErrorLogGuard`, the cell's pack) from the conformance start up to just before
+  `client.close()`, and report a hit as the conformance's own failure.
+- After `client.close()`: await (the `Await` helper, no sleep) the host log line `<name> left the game`, then await two more global
+  ticks (`GET /v1/ticks/await`, agent-core `Game.awaitTicks`; the first handling is on the tick that sees the close, the second on
+  the next). Only then return, and take the first test's log cursor after that, not before the conformance
+  (`CellInvocation.beforeEach`, `new TestState(host, ErrorLogGuard.cursor(host))`).
+- Fail loudly if the line or the ticks do not arrive in the existing await budget: a conformance that cannot confirm its own leave
+  is a failed conformance, never a pass.
+
+**Don't.**
+- Allowlist the line (that is option A), add a sleep, a retry, or raise a timeout; guard less than today (every record outside the
+  two-tick gap is still checked).
+- Change the driver's close (`network.disconnect`): every real client closes the same way and the race is the server's.
+
+**Acceptance.**
+- [ ] The four unit cases fail before and pass after (cases 2 and 3 are the ones that keep the guard honest).
+- [ ] `:conformance:run` on `fabric@26.3` and `neoforge@26.3`, three invocations each, XML read: no WARN-guard red. A run cannot
+  prove the fix (the race is about 1 in 100 invocations); the unit cases do. By hand, `scripts/spike/DisconnectRace.java` through
+  `scripts/spike/loader-hand.sh` (`RACE="600 0 help"`) shows how often the line still appears in the server log (expected: as before,
+  about 0.4%), with every hit outside a failed test.
+- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`./gradlew :proofstone-core:test --tests '*ErrorLogGuardTest*'`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=fabric@26.3 --no-parallel --max-workers=1`

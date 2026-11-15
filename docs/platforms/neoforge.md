@@ -159,6 +159,11 @@ Observed in the spike, not yet tokens:
 - **Resource packs:** not run on NeoForge (run on Fabric and the vanilla path; see [fabric.md](fabric.md)).
 
 ## Gotchas
+- **Both loader WARN families are vanilla** (T-M8-16): `Skipping Entity with id minecraft:zombie_villager` (peaceful difficulty plus
+  a zombie village, `SEED` not pinned; NeoForge reproduces it with `place template` on peaceful, same logger) and
+  `handleDisconnection() called twice` (a race between `Connection.tick` and `ServerConnectionListener.tick`, seen once on this row
+  in a conformance run, 0 in 10 later runs). The mechanisms are in [fabric.md](fabric.md) and the ROADMAP "M8 findings"; cards
+  T-M8-21 and T-M8-22.
 - **A mod that throws at construction ends the container, with no `Failed to start FML` line seen** (T-M8-11, `metaModCrashNeoForge`,
   dev run). FML logs `[modloading-worker-0/ERROR] [ne.ne.fm.ja.FMLModContainer/LOADING]: Failed to create mod instance.
   ModID: <id>, class <mod class>` and the exception's message, then the container exits. The host fails on the exit (not the

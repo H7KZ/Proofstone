@@ -143,10 +143,24 @@ topology numbers.
 - **Seen:** once in 6 conformance invocations (3 on Paper, all green, and 3 on Fabric, one red; the verifier run of T-M8-09), C02 failed through the log guard:
   `WARN net.minecraft.world.entity.EntityType: Skipping Entity with id minecraft:zombie_villager`, logged by
   `Worker-Main-3` right after the join.
-- **Cause:** not known beyond the log. The world is random, so a village zombie in a generated chunk near spawn is the likely
-  source; it is vanilla and not caused by a data pack. It is **not allowlisted** and no card exists yet. The ROADMAP leaves the
-  decision (a card, or a counted rate) to the M8 review, so treat it as open.
+- **Cause (T-M8-16, reproduced by hand):** the cell runs on `DIFFICULTY=peaceful`, and vanilla's `EntityType.create` returns null
+  for a mob that is not allowed in peaceful, so a structure template that holds a zombie villager (the zombie variant of a
+  village, about 2% of villages) logs the WARN once per entity. Loader cells set no `SEED`, so each boot is a new random world
+  and a zombie village near spawn shows up in about 1 boot in 430. It is vanilla, not a data pack, and **not allowlisted**.
+  Card T-M8-21 pins the seed (as Paper does); until it is merged the rate stands.
 - **What to do:** keep the XML and bundle of the red run. Do not retry it into green. Report it with the line quoted.
+
+### Fabric and NeoForge: `handleDisconnection() called twice` fails the first test
+
+- **Seen:** once, `neoforge@26.3` C03 (T-M8-15 verifier): `WARN net.minecraft.network.Connection: handleDisconnection() called
+  twice`, right after `PSConf left the game`. In the T-M8-16 runs it was in the server log of 2 of 210 boots (Fabric), both green,
+  because it came after a test's log check.
+- **Cause (T-M8-16):** a vanilla race, not a double close by the harness. `Connection.tick` and `ServerConnectionListener.tick` can
+  both handle the same disconnect when the client's close lands in the middle of that connection's tick; the second call runs one
+  tick later. About 0.4% of client closes in a hand loop, on both loaders. It fails a test only when the closing client is the
+  conformance client `PSConf`, whose close is inside the first test's log window. It is **not allowlisted**; card T-M8-22 holds
+  the options.
+- **What to do:** as above: keep the evidence, do not retry it into green, report it with the line quoted.
 
 ### `Failed to start FML` and `Failed to start the minecraft server` fail the start at once
 
