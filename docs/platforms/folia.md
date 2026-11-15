@@ -80,11 +80,12 @@ M5 follow-up_
   selection plans a cell and reports a capability skip with its reason (zero cells stays a loud error). _paper, purpur_
 - **Any other boot ERROR on a new Folia row is invisible to the log guard** (it runs only inside the test window). Read the
   server log by hand after a new row boots.
-- **`PSConf moved too quickly!` fails c02 in the full smoke: not a Folia behaviour.** Cause found in T-M7-15 (ROADMAP "M7
-  follow-up findings (T-M7-15)"): the harness keys the class-shared server by mc version only, so in the full four-cell smoke
-  `folia@26.3` runs on the Paper server booted for `paper@26.3`, and the conformance client logs in again at its saved spot. A
-  `folia@26.3` run alone was 0 of 5 red. Fix card T-M7-17. Until it lands, a full-smoke result for this row did not run on Folia.
-  _26.3_
+- **`PSConf moved too quickly!` failed c02 in the full smoke: not a Folia behaviour, fixed in T-M7-17.** Cause found in T-M7-15
+  (ROADMAP "M7 follow-up findings (T-M7-15)"): the harness keyed the class-shared server by mc version only, so in the full
+  four-cell smoke `folia@26.3` ran on the Paper server booted for `paper@26.3`. The host is now keyed by the full cell and the
+  harness refuses a server whose agent reports another platform than the cell. Full smoke runs before T-M7-17 did not run this
+  row on Folia. After the fix `folia@26.3` booted its own server (`Resolving type given FOLIA`) in the full smoke and alone, 0
+  `PSConf` WARN (ROADMAP "T-M7-17"). _26.3_
 
 ### Prototype notes (1.21.11, RCON only)
 - `/data` does **not exist** on Folia; the server replies "Unknown or incomplete command".

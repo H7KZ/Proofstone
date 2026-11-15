@@ -139,10 +139,11 @@ quickly!` red found in T-M7-15 (ROADMAP "M7 follow-up findings (T-M7-15)").
   hide the shared server.
 
 **Acceptance.**
-- [ ] The unit test and the C01 platform assertion fail on main and pass with the fix (both runs recorded in the PR).
+- [x] The unit test and the C01 platform assertion fail on main and pass with the fix (both runs recorded in the PR).
 - [ ] Full four-cell `:conformance:smoke`, 5 separate invocations: each `tests 8, skipped 0, failures 0, errors 0`, four
-  distinct server types in the bundles' logs, 0 `PSConf moved too quickly!`.
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+  distinct server types in the bundles' logs, 0 `PSConf moved too quickly!`. **Not met as stated:** 7 invocations, 6 green, 1 red
+  (a first-login `PSConf` WARN on a fresh Purpur server), ROADMAP "T-M7-17 host key per cell".
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1`

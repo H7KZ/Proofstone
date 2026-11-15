@@ -1195,6 +1195,49 @@ four-cell smoke is now 8 red of 9 (M5 review green; the shared-server cause was 
 `577480f`, so that green was a login that did not WARN, not a different setup). Containers left after each run: none.
 
 **Fix card proposed:** T-M7-17 in [M7-followups.md](tasks/M7-followups.md) (key the shared host by the full cell, test-first with a
-unit test and a C01 platform check; no allowlist, sleep, retry or timeout). **Not started; needs approval.** Side note, not this
+unit test and a C01 platform check; no allowlist, sleep, retry or timeout). **Done in T-M7-17, next section.** Side note, not this
 card: the itzg image downloads `paper-global.yml`, `paper-world-defaults.yml` and `spigot.yml` at boot from an unpinned GitHub
 branch (`Downloaded /data/config/paper-global.yml from https://raw.githubusercontent.com/Shonz1/minecraft-default-configs/main/...`).
+
+## T-M7-17 host key per cell
+
+Date 2026-11-15. Branch `card/T-M7-17-host-key-per-cell` from origin/main `d49c1da`. Local only, Windows 11, JDK 21 for Gradle, one
+invocation at a time under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the command environment only. Every
+run's XML, bundle and `docker logs` copied aside before the next run (local only, not committed).
+
+**Change.** `CellInvocation.hostKey(cell)` keys the class-shared host by platform, mc, build, Java tag and jar sha256 (was
+`"host:" + cell.mc()`); `differentialKey` is keyed by platform and mc (was mc only). `TopologyInvocation` already keyed by
+`cell.identity()` and `LoaderHost` cells go through the same `hostKey` (platform is the loader id), so no change there. C01 platform
+check: the harness reads `/v1/health` at readiness already, so `CellInvocation.resource` now compares `health.platform()` with the
+cell's platform on every use of the shared host and throws `INVALID: cell folia@26.3 is running on a paper server ...`. Chosen over
+asserting the `version` command reply because `Agent.command` replies are best effort and never asserted (ADR-0002), and `Agent` has
+no platform getter (no API change). It fails every test of the mismatched cell, c01 included.
+
+**Before (main plus the unit test and the check, no key fix, commit `6185e6c`).** `HostKeyTest`: tests 5, failures 3. Full
+`:conformance:smoke`: tests 8, skipped 0, failures 6, errors 0 (c01 and c02 on folia, purpur, spigot, all `INVALID: cell
+<platform>@26.3 is running on a paper server`; paper green).
+
+**After (fix).** `HostKeyTest`: tests 6, failures 0.
+
+| Invocation | Result | XML | Server types in container logs |
+|---|---|---|---|
+| `:conformance:smoke` full, run 1 | green | tests 8, skipped 0, failures 0, errors 0 | not captured (green run writes no bundle, no watcher yet) |
+| full, run 2 | **red** | tests 8, skipped 0, failures 1, errors 0 | bundle: purpur, `Resolving type given PURPUR`; c02 purpur red: `PSConf moved too quickly! -4.5,-60.0,4.5` (see finding) |
+| full, run 3 | green | tests 8, skipped 0, failures 0, errors 0 | not captured (no watcher yet) |
+| full, runs 4, 5, 6, 7 (watcher added) | 4 green | tests 8, skipped 0, failures 0, errors 0 each | runs 4 and 7: PAPER, FOLIA, PURPUR and CUSTOM (Spigot jar) all four; run 5: three of four; run 6: none (the 2 s `docker logs` poll missed short-lived containers) |
+| each cell alone (`paper`, `folia`, `purpur`, `spigot` @26.3) | 4 green | tests 2, skipped 0, failures 0, errors 0 each | paper PAPER, purpur PURPUR, spigot CUSTOM; folia not captured |
+| `:conformance:run` `fabric@26.3` | green | 10 suites, failures 0, errors 0, skipped 0 | n/a |
+| `:conformance:run` `neoforge@26.3` | green | failures 0, errors 0, 2 skipped (CD01, CD02: `missing capability DATAPACKS_VANILLA`, reasoned) | n/a |
+| `:conformance:run` `velocity@4.3.1+paper@26.3` | green | tests 2 and 2, skipped 0, failures 0, errors 0; T00, P01 to P05 passed | n/a |
+
+The card's "5 separate invocations, each green" is **not met as stated**: 7 full invocations, 6 green, 1 red (a finding below). 0
+`PSConf moved too quickly!` on a shared Paper server; 0 in the 6 green runs. Server types were not captured in runs 1 and 3 (a green run writes
+no bundle); in runs 4 and 7 all four server types booted, one container each.
+
+**New finding (open, not fixed here): `PSConf moved too quickly!` on the first login of a fresh Purpur server.** Full run 2, purpur
+bundle: `Done (5.912s)`, then `PSConf ... logged in with entity id 1 at ([minecraft:overworld]-4.5, -60.0, 4.5)` and, in the same
+millisecond, `WARN: PSConf moved too quickly! -4.5,-60.0,4.5`, one login on a server that is Purpur's own (`Resolving type given
+PURPUR`, no shared server, no saved player file). So the T-M7-15 note that the first `PSConf` join never WARNs was Paper-only. Count after
+the fix: Purpur c02 red 1 of 8 real runs (7 full, 1 alone); Folia, Spigot and Paper 0 of 8 each (Folia and Spigot c02 now really run). The
+mechanism is not diagnosed: the log shows the player logged in at `-4.5 -60.0 4.5` (not the `0, 64, 0` spawn set at boot) and the
+WARN on that login, before the fixture teleport. Not allowlisted, not worked around. Decision needed: a card to diagnose it (counted Purpur-only runs) before any harness-side change.
