@@ -30,6 +30,7 @@ import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
 import io.github.h7kz.proofstone.core.verdict.SkipReason;
 import io.github.h7kz.proofstone.core.verdict.Verdict;
 import io.github.h7kz.proofstone.core.versions.VersionsCatalog;
+import io.github.h7kz.proofstone.protocol.Health;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -510,8 +511,27 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 owner = owner.getParent().orElseThrow();
             }
         }
-        return owner.getStore(NAMESPACE).getOrComputeIfAbsent(
-                "host:" + cell.mc(), key -> boot(context.getRequiredTestClass()), HostResource.class);
+        HostResource resource = owner.getStore(NAMESPACE).getOrComputeIfAbsent(
+                hostKey(cell), key -> boot(context.getRequiredTestClass()), HostResource.class);
+        // A shared host that is another platform's server is a harness defect, never a result (T-M7-17).
+        requirePlatform(cell, resource.host().health());
+        return resource;
+    }
+
+    /**
+     * The store key of a class-shared host. It is the cell's whole identity, not its Minecraft version: cells of one
+     * version on different platforms are different servers (T-M7-17, ADR-0003).
+     */
+    static String hostKey(Cell cell) {
+        return "host:" + cell.mc();
+    }
+
+    /** The server the cell resolved to must be the server that answers: the agent's own platform id is the oracle. */
+    static void requirePlatform(Cell cell, Health health) {
+        if (!cell.platform().equals(health.platform())) {
+            throw new IllegalStateException("INVALID: cell " + cell.platform() + "@" + cell.mc() + " is running on a "
+                    + health.platform() + " server (a host shared across cells of one Minecraft version)");
+        }
     }
 
     /**
