@@ -1071,7 +1071,8 @@ player file persisted between tests) and the WARN fires on that login, before th
 - **Diff sizes over the 400-line guide** (non-test, non-doc lines per PR): #116 682 (spike scripts), #118 617, #119 1452, #120 1422,
   #121 972, #123 493, #124 838, #125 438. #120, #121 and #124 said so in the PR; #118, #119, #123 and #125 did not. No split was made.
 - **About 950 duplicated lines** between the Fabric and NeoForge agents (`MinecraftView`, `ItemJson`, `TickCounter`, `ServerThread`,
-  `Values`, `GameView`, test `MockView`, `AgentClient`; 2 to 44 changed lines per file). Card T-M8-15.
+  `Values`, `GameView`, test `MockView`, `AgentClient`; 2 to 44 changed lines per file). Card T-M8-15. Done 2026-11-15 (PR pending): `platforms:vanilla-view` holds one copy (709 main lines, 227 fixture lines);
+  both agents shade it. Known leftovers: `FabricLoaderHostIT`/`NeoForgeLoaderHostIT.aFailedStart...` red on main too (T-M8-11 message), `FabricGame`/`NeoForgeGame` and `FabricAgent`/`NeoForgeAgent` are still near-copies (about 250 lines, 24 differing).
 - **`proofstone.agentJar` was required on the loader path** though no loader loads it (T-M8-12 run 1). Card T-M8-14, done
   2026-11-15: `CellInvocation.agentJar(loaderId)` reads only the property the cell uses (the Bukkit one for `bootPaper`, the
   loader's own for `bootLoader`), the example's workaround is removed, and `AgentJarPropertyTest` (4 tests) covers both paths.

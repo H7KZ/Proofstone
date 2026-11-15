@@ -1,4 +1,4 @@
-package io.github.h7kz.proofstone.agent.fabric;
+package io.github.h7kz.proofstone.agent.vanilla;
 
 import io.github.h7kz.proofstone.agent.game.Fields;
 import io.github.h7kz.proofstone.agent.protocol.AgentException;

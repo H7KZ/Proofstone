@@ -3,6 +3,8 @@ package io.github.h7kz.proofstone.agent.fabric;
 import io.github.h7kz.proofstone.agent.game.Game;
 import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
+import io.github.h7kz.proofstone.agent.vanilla.ServerThread;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -17,12 +19,12 @@ import java.util.Map;
 final class FabricGame implements Game {
 
     private final ServerThread thread;
-    private final GameView view;
+    private final FabricView view;
     private final FabricEventProbes probes;
     private final LogBuffer logs;
     private final TickCounter ticks;
 
-    FabricGame(ServerThread thread, GameView view, FabricEventProbes probes, LogBuffer logs, TickCounter ticks) {
+    FabricGame(ServerThread thread, FabricView view, FabricEventProbes probes, LogBuffer logs, TickCounter ticks) {
         this.thread = thread;
         this.view = view;
         this.probes = probes;

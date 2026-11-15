@@ -132,6 +132,10 @@ Decision: **M8 is newest-row only; Stonecutter (a multi-version agent build) is 
 Revisit when the driver gains a second native row or a bridged mod row is shown to work.
 
 ## Agent notes
+- **Vanilla reads are shared with NeoForge (T-M8-15).** Players, inventories, windows, blocks, item JSON, ticks and the
+  server-thread hop live in `platforms/vanilla-view`, one copy for both loader agents (26.x is unobfuscated, the calls are the
+  same bytes). This agent keeps what needs Fabric: the mod list, the data packs, the event probes and the entrypoint. A fix to
+  a vanilla read lands in both agents; the `openWindow` error names the loader, so the wire text is unchanged.
 - **Entrypoint:** `fabric.mod.json` with `"environment": "server"` and `"entrypoints": {"server": [...]}` implementing
   `net.fabricmc.api.DedicatedServerModInitializer`. It runs on the `main` thread before the server starts, so an HTTP
   port can open there: `[proofstone-spike] fabric mod init, HTTP on port 25590 (thread main)`, and `/health` answered

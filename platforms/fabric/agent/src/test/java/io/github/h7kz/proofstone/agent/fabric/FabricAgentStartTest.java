@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.server.AgentConfig;
+import io.github.h7kz.proofstone.agent.vanilla.AgentClient;
+import io.github.h7kz.proofstone.agent.vanilla.MockView;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.HashSet;
@@ -23,7 +26,7 @@ class FabricAgentStartTest {
     @Test
     void everyThreadTheAgentStartsIsADaemon() throws IOException {
         Set<Thread> before = new HashSet<>(Thread.getAllStackTraces().keySet());
-        MockView mock = new MockView();
+        FabricMockView mock = new FabricMockView();
         LogBuffer logs = LogBuffer.attach();
         TickCounter ticks = new TickCounter();
         FabricAgent agent = FabricAgent.start(new AgentConfig(AgentClient.TOKEN, 0), mock::execute, mock,
@@ -47,7 +50,7 @@ class FabricAgentStartTest {
     @Test
     void aPortInUseIsALoudStartFailure() throws IOException {
         try (ServerSocket taken = new ServerSocket(0)) {
-            MockView mock = new MockView();
+            FabricMockView mock = new FabricMockView();
             TickCounter ticks = new TickCounter();
             assertThatThrownBy(() -> FabricAgent.start(new AgentConfig(AgentClient.TOKEN, taken.getLocalPort()),
                     mock::execute, mock, new FabricEventProbes(ticks::current), LogBuffer.attach(), ticks, "0.1.0",

@@ -35,7 +35,7 @@ other agents and binds all interfaces inside the container network.
 
 ## Public surface
 - **Entry point:** `ProofstoneFabricAgent` (`DedicatedServerModInitializer`, `fabric.mod.json`, environment `server`).
-- **`FabricAgent.start(config, serverThread, view, probes, logs, ticks, version, mcVersion)`:** the agent on any `GameView`,
+- **`FabricAgent.start(config, serverThread, view, probes, logs, ticks, version, mcVersion)`:** the agent on any `FabricView`,
   which is how the contract test runs it on a mock.
 - **Endpoints** (envelope and error codes: [Bukkit agent README](../../bukkit/agent/README.md)):
 

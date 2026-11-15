@@ -77,10 +77,14 @@ dependencies {
 
     // Envelope, auth, HTTP server and log buffer, shared with the other agents (T-M7-04). Shaded into this jar.
     implementation(project(":platforms:agent-core"))
+    // The code that reads the vanilla server, shared with the NeoForge agent (T-M8-15). Ours, so shaded here, not relocated.
+    implementation(project(":platforms:vanilla-view"))
 
     // The unit tests run the agent's Fabric API code (events, phases) on the real classes, against a mock server view.
     testImplementation(gameJars)
     testImplementation(libs.fabric.loader) { isTransitive = false }
+    // MockView, AgentClient and ClassScan, shared by both loaders' agent tests.
+    testImplementation(testFixtures(project(":platforms:vanilla-view")))
     testImplementation(platform(libs.jackson.bom))
     testImplementation(libs.jackson.databind)
     // GoldenMatcher: the same shape check the real-server replay uses.
@@ -114,6 +118,9 @@ tasks.named<JavaCompile>("compileIntegrationTestJava") {
 
 listOf("integrationTestCompileClasspath", "integrationTestRuntimeClasspath").forEach { name ->
     configurations.named(name) {
+        // The shared vanilla-view is Java 25 bytecode and the real-server test runs on 21; it never loads game code, it talks to
+        // the agent over HTTP (T-M8-15). The agent's main classes are on this classpath already, as before.
+        exclude(module = "vanilla-view")
         attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
     }
 }

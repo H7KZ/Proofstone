@@ -2,6 +2,7 @@ package io.github.h7kz.proofstone.agent.fabric;
 
 import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.server.AgentConfig;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import net.fabricmc.api.DedicatedServerModInitializer;
@@ -40,7 +41,7 @@ public final class ProofstoneFabricAgent implements DedicatedServerModInitialize
                 .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
                 .orElseThrow(() -> new IllegalStateException(MOD_ID + " is not in the loader's mod list"));
         try {
-            agent = FabricAgent.start(config, server, new MinecraftView(server), probes, logs, ticks, version,
+            agent = FabricAgent.start(config, server, new FabricMinecraftView(server), probes, logs, ticks, version,
                     server.getServerVersion());
         } catch (IOException e) {
             throw new UncheckedIOException("Proofstone agent could not open port " + config.port(), e);

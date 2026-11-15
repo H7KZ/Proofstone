@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.agent.neoforge;
 
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
+import io.github.h7kz.proofstone.agent.vanilla.Values;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

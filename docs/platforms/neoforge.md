@@ -72,6 +72,8 @@ network payload, or blocks, entities and other registries. So the verdict is nar
 in with a server-only mod and with one added item; whether content is testable through it is unverified.**
 
 ## Agent notes
+- **Vanilla reads are shared with Fabric (T-M8-15).** The agent shades `platforms/vanilla-view`, the same module as the Fabric
+  agent ([fabric.md](fabric.md), Agent notes); only the mod list (FML), the probes and the entrypoint are NeoForge's.
 - **Entrypoint:** a class annotated `@Mod(value = "<id>", dist = Dist.DEDICATED_SERVER)` with a constructor taking the mod
   `IEventBus`; `META-INF/neoforge.mods.toml` with `modLoader = "javafml"` and one `[[mods]]` entry (no client side
   declared). The constructor ran on `modloading-worker-0` during mod loading and opened the HTTP port there; `/health`

@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.server.AgentConfig;
+import io.github.h7kz.proofstone.agent.vanilla.AgentClient;
+import io.github.h7kz.proofstone.agent.vanilla.MockView;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import io.github.h7kz.proofstone.protocol.testing.GoldenMatcher;
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +34,7 @@ class FabricContractTest {
 
     private static final File GOLDEN = new File(System.getProperty("proofstone.golden"));
 
-    private MockView mock;
+    private FabricMockView mock;
     private LogBuffer logs;
     private TickCounter ticks;
     private FabricAgent agent;
@@ -39,7 +42,7 @@ class FabricContractTest {
 
     @BeforeEach
     void start() throws IOException {
-        mock = new MockView();
+        mock = new FabricMockView();
         logs = LogBuffer.attach();
         ticks = new TickCounter();
         agent = FabricAgent.start(new AgentConfig(AgentClient.TOKEN, 0), mock::execute, mock,

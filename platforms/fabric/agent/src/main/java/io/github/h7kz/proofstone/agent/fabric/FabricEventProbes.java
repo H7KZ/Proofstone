@@ -189,7 +189,7 @@ final class FabricEventProbes {
             }
             Map<String, Object> fields = new LinkedHashMap<>();
             for (int i = 0; i < args.length; i++) {
-                fields.put("arg" + i, Values.json(args[i]));
+                fields.put("arg" + i, FabricValues.json(args[i]));
             }
             Map<String, Object> captured = new LinkedHashMap<>();
             captured.put("class", name);

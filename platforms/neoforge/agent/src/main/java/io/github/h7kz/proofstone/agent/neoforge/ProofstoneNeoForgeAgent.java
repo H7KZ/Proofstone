@@ -2,6 +2,7 @@ package io.github.h7kz.proofstone.agent.neoforge;
 
 import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.server.AgentConfig;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import net.minecraft.server.MinecraftServer;
@@ -49,7 +50,7 @@ public final class ProofstoneNeoForgeAgent {
                 .map(mod -> mod.getModInfo().getVersion().toString())
                 .orElseThrow(() -> new IllegalStateException(MOD_ID + " is not in the loader's mod list"));
         try {
-            agent = NeoForgeAgent.start(config, server, new MinecraftView(server), probes, logs, ticks, version,
+            agent = NeoForgeAgent.start(config, server, new NeoForgeMinecraftView(server), probes, logs, ticks, version,
                     server.getServerVersion());
         } catch (IOException e) {
             throw new UncheckedIOException("Proofstone agent could not open port " + config.port(), e);

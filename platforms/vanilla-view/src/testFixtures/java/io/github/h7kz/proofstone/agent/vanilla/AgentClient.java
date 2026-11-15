@@ -1,4 +1,4 @@
-package io.github.h7kz.proofstone.agent.neoforge;
+package io.github.h7kz.proofstone.agent.vanilla;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,26 +11,26 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /** Calls the agent over HTTP, the way the harness does. */
-final class AgentClient {
+public final class AgentClient {
 
-    static final String TOKEN = "s3cret";
-    static final ObjectMapper JSON = new ObjectMapper();
+    public static final String TOKEN = "s3cret";
+    public static final ObjectMapper JSON = new ObjectMapper();
 
     /** Status and raw body of one reply. */
-    static final class Reply {
-        final int status;
-        final String body;
+    public static final class Reply {
+        public final int status;
+        public final String body;
 
         Reply(int status, String body) {
             this.status = status;
             this.body = body;
         }
 
-        JsonNode json() throws IOException {
+        public JsonNode json() throws IOException {
             return JSON.readTree(body);
         }
 
-        String errorCode() throws IOException {
+        public String errorCode() throws IOException {
             return json().get("error").get("code").asText();
         }
     }
@@ -38,11 +38,11 @@ final class AgentClient {
     private final HttpClient http = HttpClient.newHttpClient();
     private final int port;
 
-    AgentClient(int port) {
+    public AgentClient(int port) {
         this.port = port;
     }
 
-    Reply send(String method, String path, String authorization, String body) throws IOException {
+    public Reply send(String method, String path, String authorization, String body) throws IOException {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(20));
         if (authorization != null) {
@@ -59,11 +59,11 @@ final class AgentClient {
         }
     }
 
-    Reply get(String path) throws IOException {
+    public Reply get(String path) throws IOException {
         return send("GET", path, "Bearer " + TOKEN, null);
     }
 
-    Reply post(String path, String body) throws IOException {
+    public Reply post(String path, String body) throws IOException {
         return send("POST", path, "Bearer " + TOKEN, body);
     }
 }

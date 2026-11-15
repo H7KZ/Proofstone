@@ -1,19 +1,14 @@
-package io.github.h7kz.proofstone.agent.fabric;
+package io.github.h7kz.proofstone.agent.vanilla;
 
 import io.github.h7kz.proofstone.agent.game.Fields;
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.ModContainer;
-import net.fabricmc.loader.api.metadata.ModOrigin;
 import net.minecraft.commands.CommandSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -41,14 +36,18 @@ import net.minecraft.world.level.storage.LevelData;
  * Inventory slots are the vanilla player-inventory indexes, which are Bukkit's raw ones: 0-35 storage, 36-39 armour
  * (feet to head), 40 offhand.
  */
-final class MinecraftView implements GameView {
+public abstract class MinecraftView implements GameView {
 
     private static final List<String> PATCH_FIELDS = Arrays.asList("level", "exp", "gamemode", "location", "op");
 
-    private final MinecraftServer server;
+    /** The same server the loader gave the agent; the loader's own view adds what only its API can read (mods, packs). */
+    protected final MinecraftServer server;
+    private final String agentName;
 
-    MinecraftView(MinecraftServer server) {
+    /** {@code agentName} is the loader's name ({@code Fabric}, {@code NeoForge}) in the one message that names the agent. */
+    protected MinecraftView(MinecraftServer server, String agentName) {
         this.server = server;
+        this.agentName = agentName;
     }
 
     @Override
@@ -216,40 +215,6 @@ final class MinecraftView implements GameView {
         return block(world, x, y, z);
     }
 
-    /**
-     * The mods loaded from the mods folder, told apart by their jar's path: not the game, Java or the loader (the
-     * loader reports itself as an ordinary mod of type {@code fabric}, docs/platforms/fabric.md), and not a mod nested
-     * in another jar (Fabric API's modules).
-     */
-    @Override
-    public List<Map<String, Object>> mods() {
-        Path folder = FabricLoader.getInstance().getGameDir().resolve("mods").toAbsolutePath().normalize();
-        List<ModContainer> top = new ArrayList<>();
-        for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
-            if (mod.getOrigin().getKind() == ModOrigin.Kind.PATH && mod.getOrigin().getPaths().stream()
-                    .anyMatch(path -> path.toAbsolutePath().normalize().startsWith(folder))) {
-                top.add(mod);
-            }
-        }
-        top.sort(Comparator.comparing(mod -> mod.getMetadata().getId()));
-        List<Map<String, Object>> out = new ArrayList<>();
-        for (ModContainer mod : top) {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("id", mod.getMetadata().getId());
-            entry.put("version", mod.getMetadata().getVersion().getFriendlyString());
-            out.add(entry);
-        }
-        return out;
-    }
-
-    @Override
-    public Map<String, Object> dataPacks() {
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("enabled", new ArrayList<>(server.getPackRepository().getSelectedIds()));
-        out.put("available", new ArrayList<>(server.getPackRepository().getAvailableIds()));
-        return out;
-    }
-
     private static <T extends Comparable<T>> BlockState with(BlockState state, Property<T> property, String value,
             String key) {
         T parsed = property.getValue(value).orElseThrow(() -> ItemJson.unknownKey(key));
@@ -321,15 +286,15 @@ final class MinecraftView implements GameView {
     /**
      * Null when only the player's own inventory is open. A vanilla server does not keep an open window's title (it is
      * sent to the client once, at open), so a window cannot be reported as player-state.json requires: that is a loud
-     * error, never a made-up title (AGENTS.md section 3, docs/platforms/fabric.md Agent notes).
+     * error, never a made-up title (AGENTS.md section 3, docs/platforms/fabric.md Agent notes, the same on NeoForge).
      */
-    private static Map<String, Object> openWindow(ServerPlayer player) {
+    private Map<String, Object> openWindow(ServerPlayer player) {
         AbstractContainerMenu menu = player.containerMenu;
         if (menu == player.inventoryMenu) {
             return null;
         }
         throw new AgentException(501, "NOT_SUPPORTED", "player " + player.getPlainTextName() + " has a window open "
-                + "and the Fabric agent cannot read its title; close it first",
+                + "and the " + agentName + " agent cannot read its title; close it first",
                 Collections.singletonMap("name", player.getPlainTextName()));
     }
 

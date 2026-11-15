@@ -4,17 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
-import java.io.File;
+import io.github.h7kz.proofstone.agent.vanilla.ClassScan;
+import io.github.h7kz.proofstone.agent.vanilla.MinecraftView;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.BusBuilder;
 import net.neoforged.bus.api.EventPriority;
@@ -113,18 +113,21 @@ class ObserveOnlyTest {
 
     @Test
     void noClassOfTheAgentNamesApiThatChangesTheServer() throws IOException, URISyntaxException {
-        Path classes = new File(NeoForgeAgent.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toPath();
-        List<Path> files;
-        try (Stream<Path> walk = Files.walk(classes)) {
-            files = walk.filter(path -> path.toString().endsWith(".class")).collect(Collectors.toList());
-        }
-        assertThat(files).as("compiled agent classes under " + classes).isNotEmpty();
-        for (Path file : files) {
-            // Constant-pool names are UTF-8, so a byte scan finds every method, class and field the code refers to.
-            String content = new String(Files.readAllBytes(file), StandardCharsets.ISO_8859_1);
-            for (String name : FORBIDDEN) {
-                assertThat(content).as(file.getFileName() + " must not refer to " + name).doesNotContain(name);
+        Map<String, String> agent = ClassScan.classesOf(NeoForgeAgent.class);
+        // T-M8-15: the vanilla game-view code is shared with the other loader's agent and shaded into this jar. It is its
+        // own module, so the scan reaches it through its own class location: without that a change there would slip past.
+        Map<String, String> shared = ClassScan.classesOf(MinecraftView.class);
+        assertThat(agent.keySet()).as("compiled agent classes").isNotEmpty().noneMatch(name -> name.contains("/vanilla/"));
+        assertThat(shared.keySet()).as("the scan must cover the shared vanilla-view classes")
+                .anyMatch(name -> name.endsWith("/agent/vanilla/MinecraftView.class"))
+                .anyMatch(name -> name.endsWith("/agent/vanilla/Values.class"))
+                .allMatch(name -> name.contains("/agent/vanilla/"));
+        Map<String, String> all = new TreeMap<>(agent);
+        all.putAll(shared);
+        all.forEach((name, content) -> {
+            for (String forbidden : FORBIDDEN) {
+                assertThat(content).as(name + " must not refer to " + forbidden).doesNotContain(forbidden);
             }
-        }
+        });
     }
 }
