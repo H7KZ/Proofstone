@@ -17,13 +17,13 @@ conformance, golden files and the verdict engine exist.
 | **M5** | Bukkit family complete (exit demonstrated, done, reviewed in T-M5-99) | Folia (regions), Purpur and Spigot (BuildTools cache) pass conformance. Capability model done. Bedrock-prefix simulation works. | 8 | 5 / 3 / 0 | 3 (was 2; no Folia row had booted, see the M3 review). Actual: about 7 h wall for PRs #62 to #69 and about 75 min of Docker runs for the review (see the M5 review) |
 | **M6** | Dogfood and 0.1 release | Disenchantment's full suite runs on Proofstone in its CI. Maven and Gradle example projects work. Published to Maven Central and GHCR. GitHub Action published. Licence decided. Mutation check passes. | 9 | 6 / 2 / 1 | 2 |
 | **M7** | Proxies (exit met locally, reviewed in T-M7-99) | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | 15 ([M7-proxies.md](tasks/M7-proxies.md)) | 1 / 9 / 5 | 3 (was 2; honest range 1.5 to 3). Actual: about 4 days of agent wall clock for PRs #98 to #112 (see the M7 review) |
-| **M8** | Mods and data | Fabric and NeoForge agents, multi-version via Stonecutter, plus data pack and resource-pack tests. | 13 (refined 2026-11-14, [M8-mods.md](tasks/M8-mods.md), awaiting approval) | 1 / 6 / 6 | 4 (range 2 to 5, see the card file) |
-| **M9** | Bedrock | Spike (offline Bedrock through Geyser). Then a Bedrock driver, the Geyser topology and the BDS Script-API agent. | epic | spike = Opus, then refine | 4 |
+| **M8** | Mods and data (exit partly met, reviewed in T-M8-99; follow-ups T-M8-13 to 18 open) | Fabric and NeoForge agents (newest native row only; Stonecutter out, ADR-0017), plus data pack and resource-pack tests. | 13 ([M8-mods.md](tasks/M8-mods.md)) + 6 follow-ups ([M8-followups.md](tasks/M8-followups.md)) | 1 / 6 / 6 | 4 (range 2 to 5). Actual: about 17 h of agent wall clock for PRs #115 to #126 (see the M8 review) |
+| **M9** | Bedrock | Spikes (offline Bedrock through Geyser; a BDS script agent). Then a Bedrock driver, the Geyser topology and, if feasible, the BDS Script-API agent. | 13 (refined 2026-11-15, [M9-bedrock.md](tasks/M9-bedrock.md), awaiting approval) | 0 / 6 / 7 | 4 after the spikes (range 2 to 6) |
 | **M10** | Ecosystem | Community pack template, a TS front end (optional), more forks, a docs site, Sponge, PocketMine and others. | epic | refine | ongoing |
 
 **Cards M0–M6:** 66 in total. 40 are Haiku cards (61%), 24 Sonnet and 2 Opus (T-M3-02 moved from Haiku to Sonnet at T-M2-99).
 
-**Total to v0.1 (M0–M6): about 16 focused weeks** (sum of the estimates, M5 run after M4; was 15.5 before the M5 review, see the M5 review). Full ecosystem (M7–M10): about 10+ more weeks (M7 done; M8 to M10 about 8+ weeks, see the M7 review).
+**Total to v0.1 (M0–M6): about 16 focused weeks** (sum of the estimates, M5 run after M4; was 15.5 before the M5 review, see the M5 review). Full ecosystem (M7–M10): about 10+ more weeks (M7 done; M8 to M10 about 8+ weeks, see the M7 review; after M8, about 4 to 6 weeks plus ongoing M10, see the M8 review).
 These are estimates, and they will be re-estimated at the end of each milestone (card `T-Mx-99`).
 
 ## Milestone rules
@@ -966,3 +966,175 @@ Paper and topology numbers.
   data-pack code). Seen once; not allowlisted, no card yet. XML and bundle kept aside (`C:\pw\t809-ev`, local only). The
   T-M8-09 Fabric acceptance is therefore **not ticked as 3 of 3**: the agent's fresh set was 3 of 3 green, the verifier set
   was 2 green and 1 red from this family. For the T-M8-99 review to decide: a card for the family, or a counted rate.
+
+## M8 review (T-M8-99)
+
+Date 2026-11-15. Ran on `card/T-M8-99-review` from origin/main `d89cb4e` (PRs #115 to #126 merged; M8 diff `18432ae..d89cb4e`).
+Local runs only, Windows 11, Docker Desktop 29.9.2, JDK 21 for Gradle, JDK 26 for Maven. One Docker run at a time under
+`scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the command environment only. Every run's XML, bundles and log
+copied aside before the next run (local only, not committed). Every XML read; no red retried. Judged from code and XML, not
+from PR text.
+
+**Verdict: M8 exit criterion PARTLY MET.** Met from runs: C01 to C08 on `fabric@26.3` and `neoforge@26.3`, the data-pack scenario
+on Paper and Fabric (and its reasoned skip on NeoForge), the resource-pack prompt, answer and status on Paper, the three negative
+controls, and the flake rule for those. **Not met: item 2**, because a test cannot declare a mod under test through the public API
+(`@Proofstone(mods)` does not exist; card T-M8-13). The scope is also narrower than the epic: server-only mods only (a Fabric
+content mod kicks the vanilla client), NeoForge content unverified, newest row only (no Stonecutter). The full four-cell smoke is
+red again on the `PSConf moved too quickly!` family (older than M8, T-M7-15). Both loader rows stay `experimental`. Nothing was
+published or tagged.
+
+### Evidence from this run
+
+| Run | Result |
+|---|---|
+| `bash scripts/gates.sh --max-workers=1` at `d89cb4e` | `gates: OK`, exit 0 (release-gate-test 9/0, bad-tests-pin-check 0 failed, renovate unchanged) |
+| `:conformance:smoke`, no selector: cells paper, folia, purpur, spigot @26.3 | **RED**: tests 8, failures 3, errors 0, skipped 0. `c02` failed on folia, purpur and spigot @26.3: `ErrorLogGuard` WARN `PSConf moved too quickly! 0.5,64.0,0.5`. paper@26.3 c01, c02 green; c01 green on all four. Not a join timeout. Bundles kept (lead for T-M7-15 below) |
+| `:conformance:run -Dproofstone.cells=fabric@26.3`, 3 separate invocations | 3 of 3 green, each tests 11, skipped 0, failures 0, errors 0 (C01 to C08, C-D01, C-D02, loader window test); 183 to 188 s each |
+| `:conformance:run -Dproofstone.cells=neoforge@26.3`, 3 separate invocations | 3 of 3 green, each tests 11, skipped 2 (C-D01, C-D02: `missing capability DATAPACKS_VANILLA on cell neoforge@26.3`), failures 0, errors 0; 207 to 212 s each |
+| `:conformance:run -Dproofstone.cells=velocity@4.3.1+paper@26.3`, 3 separate invocations | 3 of 3 green, each tests 2, skipped 0, failures 0, errors 0 (T00, P01 to P05); 79 to 80 s each |
+| `:conformance:run -Dproofstone.cells=bungeecord@2111+paper@26.3`, 3 separate invocations | 3 of 3 green, each tests 2, skipped 0, failures 0, errors 0; 76 to 77 s each |
+| `:conformance:run -Dproofstone.cells=paper@26.3`, 3 separate invocations | 3 of 3 green, each tests 17, skipped 2 (`FOLIA_REGIONS`, reasoned), failures 0, errors 0, C-D01, C-D02, C-R01, C-R02 included; 382 to 383 s each |
+| `:examples:bad-tests:metaTest` | BUILD SUCCESSFUL, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED)", 4 m 47 s; tests 17, failures 9 and skipped 2 by design |
+| `:examples:bad-tests:metaTopologyTest` (7 faults, one cell each) | BUILD SUCCESSFUL, "every bad test produced its expected verdict": 7 of 7 `INVALID`, each `tests=1 failures=1` by design, 0 `timed out joining`; 7 m 33 s |
+| `:examples:bad-tests:metaModFabricTest` | BUILD SUCCESSFUL, expected verdict `INVALID`: `mod proofstone_example (proofstone-example-mod.jar) crashed the server at load on fabric@26.3`, quoting `Could not execute entrypoint stage 'server'`; tests 1, failures 1 by design, skipped 0, errors 0; 20 s |
+| `:examples:bad-tests:metaModNeoForgeTest` | BUILD SUCCESSFUL, expected verdict `INVALID`: the same mod named on neoforge@26.3, quoting `FMLModContainer`; tests 1, failures 1 by design; 23 s |
+| `:examples:bad-tests:metaModPaperTest` | BUILD SUCCESSFUL, expected verdicts `INVALID` (`data pack file/broken-function.zip logged an error while the server loaded it: ... Failed to load function proofstone_broken:hello`) and `FAIL` (pack pushed with hash forty zeros, the driver's record quoted); tests 2, failures 2 by design; 1 m |
+| `:examples:loader-datapack:loaderExample -Dproofstone.cells=fabric@26.3` | Green: tests 1, skipped 0, failures 0, errors 0; loader boot 14.9 s; the allowlisted harness-client `Tc133d056 moved too quickly!` seen, not `PSConf`; 26 s |
+| `bash scripts/release-mutation-check.sh` (no flag), first run | PASS, head `d89cb4e`, cell paper@26.3, killed 4 of 4, but **`dirty=true`**: this review's doc edits were in the worktree while it ran (a process error, docs only). Not counted as the release PASS |
+| `bash scripts/release-mutation-check.sh` (no flag), clean detached worktree at `d89cb4e` | **PASS**: head `d89cb4e`, dirty false, cell paper@26.3, killed 4 of 4 (Gradle and Maven: `double-output`, `accept-any-right`), no allowed-missing. Both baselines PASS (each example's e2e suite once, green) |
+| Containers of ours left running after the runs | none (checked after every run; only Testcontainers' reaper). Other projects' containers untouched |
+
+The runs used a fresh worktree, so the first loader run filled the harness download cache (`build/loader-cache`, launcher,
+installer and Fabric API by sha256). Each loader container installs inside itself on every boot (ADR-0017 §6), so by design every
+loader boot here fetched from Mojang and the loader mavens; the outbound hosts were not re-measured in this review (T-M8-07 did).
+
+### Loader flake numbers (counted apart from Paper and topology, M8 flake rule 4)
+
+Each loader `:conformance:run` boots one container per test class (10 per invocation).
+
+| Source | Invocations | Red | Loader boots | Boot timeouts | Join timeouts | Log-guard reds (family) |
+|---|---|---|---|---|---|---|
+| T-M8-01 spike (by hand) | 41 driver joins | 3 join timeouts, explained (required pack, no answer: `CONFIGURATION_STALLED`), 5 refusals by design | n/a | 0 | 3 (all the resource-pack stall, before T-M8-10) | 0 |
+| T-M8-05/06 ITs (counted) | 6 | 0 (1 dev red before: FML refused the shaded jar, fixed) | not recorded | 0 counted (the dev red waited out 5 min) | 0 | 0 |
+| T-M8-07 host | 6 | 0 | 6 | 0 | n/a (no join) | 0 |
+| T-M8-08 conformance | 6 | 0 (1 dev red before: vanilla `/help`, test expectation) | 48 | 0 | 0 | 0 |
+| T-M8-09 data packs (loader runs) | Fabric 3 first set + 3 fresh (agent) + 3 (verifier), NeoForge 1 | 2 C-D02 `DISAGREE` in the first set (scenario closed the window too early, fixed); **1 verifier red: `zombie_villager` WARN** | not recorded | 0 | 0 | **1 `zombie_villager`** |
+| T-M8-11 meta mod tasks | 6 loader (3 Fabric, 3 NeoForge) | 0 unexpected (INVALID by design) | 6 | 0 | 0 | 0 |
+| T-M8-12 example | 4 Fabric | 1 before any server (`proofstone.agentJar` read on the loader path) | 3 | 0 | 0 | 0 |
+| **T-M8-99 (this run)** | **6 conformance + 2 meta + 1 example** | **0** (the 2 meta reds are the expected `INVALID`) | **63** (60 conformance, 1 example, 2 meta starts that crash at load by design) | **0** | **0** | **0** |
+
+- **Loader join timeouts: 0** in every counted M8 harness invocation; the only loader join timeouts ever seen are the 3 spike
+  joins against a required resource pack the driver did not answer (fixed by T-M8-10: no declared answer ends the join at once).
+- **Loader boot timeouts: 0** counted. This run's boot times, container start to `Done (`, install included: Fabric 14.1 to 15.1 s
+  (30 boots), NeoForge 16.9 to 18.1 s (30 boots).
+- **Loader log-guard reds: 1 in 22 recorded loader `:conformance:run` invocations since T-M8-08** (T-M8-08 6, T-M8-09 10, this
+  review 6), the `Skipping Entity with id
+  minecraft:zombie_villager` worldgen WARN (T-M8-09 verifier, Fabric C02). 0 in this review (6 loader conformance invocations, 60
+  boots). Lead: loader cells set no `SEED` (`LoaderEnvironment.env`), Paper pins `SEED=1234567` (`PaperHost`), so loader worlds
+  differ per boot. Card T-M8-16 (diagnose first). `PSConf moved too quickly!` on loader cells: **0** in every M8 run.
+
+**Paper and topology numbers (apart):** topology 6 of 6 green, 0 join timeouts (first join or switch); `paper@26.3` 3 of 3 green, 0
+join timeouts. Single-server smoke: `PSConf moved too quickly!` 3 of 8 smoke tests red (folia, purpur, spigot @26.3), the same three
+cells as the M7 review and "M6 pre-release findings" item 2: **3 red of 4 recorded full four-cell smoke runs**. **Lead for T-M7-15
+(not a cause yet):** in the folia bundle, the first `PSConf` join of the class spawns at the world spawn (`-9.5, -60.0, 6.5`), the
+fixture teleports it to `0.5, 64.0, 0.5`; the class's next `PSConf` join logs in **at the saved position `0.5, 64.0, 0.5`** (the
+player file persisted between tests) and the WARN fires on that login, before the test body. The topology client got a new
+`T<hex>` name per test (T-M7-12), so it never logs in at a saved position.
+
+### Exit criterion, re-scored
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 1 | A Fabric cell and a NeoForge cell, newest row the `mcpl` client joins natively, boot with their agent and pass C01 to C08, skips reasoned | **MET** (rows `fabric@26.3`, `neoforge@26.3`, native 777, not bridged) | This run: 3 of 3 green per row, C01 to C08 passed every time, 0 skips in C01 to C08. Earlier T-M8-08 3 of 3 per row. C02 on a loader asserts vanilla `/help` (`/help [<command>]`), not the Bukkit `Help` header: a different expectation per family, documented, not weaker. The window-open player read is `501 NOT_SUPPORTED` on both agents (asserted) |
+| 2 | A test can put a mod under test (`/mods`), a data pack and a resource pack into a cell through the public API, additively to API v0 | **NOT MET** (2 of 3 artefacts) | Data packs: `@Proofstone(datapacks)`. Resource packs: `@ServerResourcePack`, `@ResourcePackAnswer`, `Client.resourcePacks()`. **Mods: no `@Proofstone(mods)` and no `Capability.MODS`** (api-baseline at `d89cb4e`); `CellInvocation.bootLoader` passes an empty mod list; the only mod that ever reaches `/mods` besides the agent and Fabric API is the example mod behind the test-only switch `-Dproofstone.injectModFault`. test-api.md §13 documents `mods` as if it existed; the user guide says plainly it does not. Additive: `api-baseline.txt` diff 33 lines added, 0 removed (`DATAPACKS_VANILLA`, `RESOURCE_PACKS`, `Platform.FABRIC`/`NEOFORGE`, `Proofstone.datapacks`, `ResourcePackAnswer`, `ResourcePackPush`, `ServerResourcePack`, `Client.resourcePacks` default). Card T-M8-13 |
+| 3 | A data-pack scenario (function result and recipe) passes on Paper and on Fabric, skipped with the capability named where `DATAPACKS_VANILLA` is missing | **MET, with a recorded red** | This run: C-D01 and C-D02 green 3 of 3 on `paper@26.3` and 3 of 3 on `fabric@26.3`; skipped 3 of 3 on `neoforge@26.3` naming `DATAPACKS_VANILLA`. Counted across M8 after the scenario fix: Fabric 8 of 9 invocations green (agent 3/3, verifier 2/3, this review 3/3), the one red the `zombie_villager` log-guard family on C02 in the same invocation, not C-D01 or C-D02. Paper 9 of 9. The T-M8-09 acceptance box stays unticked for that red; this row counts it, not rounds it up |
+| 4 | The driver reports a resource-pack prompt (URL, hash, required flag), answers as the test says, and the server-side status is read by the agent; no rendering | **MET on Paper only, with a changed mechanism** | This run: C-R01 and C-R02 green 3 of 3 on `paper@26.3`; T-M8-10 3 of 3; `metaModPaperTest` wrong-hash `FAIL` (`statuses=[ACCEPTED, FAILED_DOWNLOAD]`). **ADR-0017 §7's assumption failed:** Paper 26.3 fires no `PlayerResourcePackStatusEvent` for the configuration-phase push from `server.properties`, so the server-side status is read from a **play-phase push by the fixture plugin**; the configuration-phase push is checked on the driver side only. Loader cells do not hold `RESOURCE_PACKS` (no read-only status hook). ADR amendment: T-M8-17 |
+| 5 | A broken mod, a data pack that fails to load and a wrong-hash resource pack are each a loud red | **MET** (the broken mod enters only through the test-only fault switch) | This run, one invocation each, XML read: crash-at-load mod `INVALID` naming the mod on `fabric@26.3` and `neoforge@26.3`; broken-function data pack `INVALID` naming the pack and quoting the server; wrong-hash pack `FAIL` with the driver's statuses; none a boot or join timeout. Earlier T-M8-11 3 of 3 per task. The broken data pack is caught by the host reading its own boot log, not by the log guard (ADR-0017 §4 assumption failed; T-M8-17). Because `mods` does not exist, a user's broken mod cannot be declared at all (item 2) |
+| 6 | Flake rule evidence for every acceptance above | **MET for items 1, 3 (with the red counted), 4, 5; not applicable to item 2's missing part** | Three separate green invocations per row per acceptance in the cards and again here; no red replaced by a green; reds listed above with causes, one (zombie_villager) without a cause yet |
+
+### Known gaps, stated plainly
+
+- **Server-only mods only.** A Fabric mod that adds a synced registry entry gets the vanilla `mcpl` client kicked at join (T-M8-01,
+  3 of 3). NeoForge admitted the client with one added item in the spike, but **NeoForge content mods are unverified**: no run read
+  a mod-added item through both oracles.
+- **`@Proofstone(mods)` does not exist** (item 2). M8 proves the loader host can run mods; it does not let a user test theirs.
+- **T-M8-09 Fabric acceptance had a red** from the `zombie_villager` family; it is counted, not hidden (item 3).
+- **Paper fires no configuration-phase resource-pack status event** (ADR-0017 §7 assumption failed; item 4).
+- **The data-pack log-guard assumption failed** (ADR-0017 §4): the host's boot log is read instead (`DataPackLoad.errorsLogged`).
+- **Mojang at cold start (ADR-0017 §6)** is a listed, content-pinned exception to "no Mojang dependency in runs": every loader boot
+  installs inside its container and fetches Mojang's metadata, the vanilla jar and loader libraries. **This is a maintainer veto
+  point that was never answered** (decision 2 below). Library jars fetched by the installers are not pinned one by one.
+- **Loom and ModDevGradle are not used** (ADR-0017 §5 named them). Both agents compile with plain `javac` against pinned jars:
+  the vanilla 26.3 server jar, Fabric loader and Fabric API, and six NeoForge-side jars (NeoForge universal, FML loader, bus,
+  mergetool api, maven-artifact, typetools for tests), each checked by sha256 at build time. The fallback §5 allows; the ADR text
+  still names the plugins (T-M8-17).
+- **Diff sizes over the 400-line guide** (non-test, non-doc lines per PR): #116 682 (spike scripts), #118 617, #119 1452, #120 1422,
+  #121 972, #123 493, #124 838, #125 438. #120, #121 and #124 said so in the PR; #118, #119, #123 and #125 did not. No split was made.
+- **About 950 duplicated lines** between the Fabric and NeoForge agents (`MinecraftView`, `ItemJson`, `TickCounter`, `ServerThread`,
+  `Values`, `GameView`, test `MockView`, `AgentClient`; 2 to 44 changed lines per file). Card T-M8-15.
+- **`proofstone.agentJar` is required on the loader path** though no loader loads it (T-M8-12 run 1). Card T-M8-14.
+- **No leak bad test on a loader cell** (robustness R6). Card T-M8-18.
+- **Card boxes:** T-M8-01, 08, 09, 10 and 11 acceptance boxes are still unticked in `M8-mods.md` though merged. Left as they are;
+  the evidence above is what counts.
+
+### What is NOT verified
+
+- A user-declared mod in `/mods` through the API (does not exist).
+- Any content mod on NeoForge reaching the client and both oracles; any content mod on Fabric (refused by design).
+- Any loader row other than 26.3; any bridged loader row (refused by the planner).
+- Data packs on NeoForge (the agent serves no `/v1/datapacks`); resource packs on any loader cell.
+- A `LEAK` verdict on a loader cell; a differential run on a loader cell (refused: only `mcpl` joins).
+- A cold loader start without network (fails by design, ADR-0017 §6); a Mojang or maven outage (never seen).
+- The cause of the `zombie_villager` WARN and of `PSConf moved too quickly!` (leads only).
+- The Gradle and Maven examples were run only as the mutation check's baselines.
+
+### Code review (diff `18432ae..d89cb4e`, 223 files, +13863 / -147)
+
+- **Weakened tests: none found.** Changed test files: C03 to C08 and `ConformanceSmokeTest` add the loader `@Matrix` rows; C02 gains a
+  per-family expectation (vanilla `/help [<command>]` on loaders, `Help` on Bukkit), the assertion kept. `AgentContractIT` lists
+  `mods/list` as pending (Bukkit agents never serve it, reasoned) and replays `datapacks/list` in its own case, which asserts a 404,
+  not an empty list, where the server has no data-pack API. `TopologyApiTest` extends its "added after the existing ones" check to
+  the new constants. `CapturedEvent` (API, main code): a getter that returned `null` is now a captured value (`field` returns null)
+  instead of being reported as "no getter"; a missing getter still fails loudly (T-M8-10, own commit). Behaviour change for a
+  caller that relied on the old exception; signature unchanged.
+- **New runtime dependencies: none.** Fabric loader, Fabric API, NeoForge, FML, bus, mergetool, maven-artifact and the vanilla
+  server jar are compile-only, pinned by version and sha256 in `gradle/libs.versions.toml`; typetools is test-only. The agents shade
+  only `agent-core` and Jackson, relocated (NeoForge also merges service files). Repositories are `exclusiveContent` per group.
+- **Workflows: none.** `.github/` holds only the issue and PR templates.
+- **Secrets: none committed.** No key, token, jar or Mojang binary in the diff; the vanilla jar is fetched by sha1 content address at
+  build time into `build/` and never shaded or published.
+- **Sleeps and retries:** none in harness or test code.
+- **API v0 additive only:** yes (item 2 row).
+- **Observe-only, log guard per loader, leak detector:** `docs/robustness.md` §5 "Loader review (T-M8-99)".
+
+### Decisions needed from the maintainer
+
+1. **Accept item 2 as not met and approve T-M8-13** (`@Proofstone(mods)`, `Capability.MODS`) before M8 is called done, or accept M8
+   closed with the gap. Recommendation: approve T-M8-13; it is small, the host side exists.
+2. **ADR-0017 §6, Mojang at cold start:** the veto point flagged in T-M8-03 was never answered. Keep the content-pinned exception, or
+   ask for an install cache card. Recommendation: keep it until a CDN failure is seen; every boot here passed.
+3. **Approve `docs/plan/tasks/M8-followups.md`** (T-M8-13 to T-M8-18) and the T-M7-15 lead above.
+4. **Do not promote the loader rows yet.** ADR-0015's C01 to C08 three-green evidence is met for both rows, but the `zombie_villager`
+   family is open and the row cannot take a user mod. Promotion after T-M8-13 and T-M8-16.
+5. **Approve `docs/plan/tasks/M9-bedrock.md`** (13 cards, two spikes first). Nothing in M9 is started.
+6. Unchanged from M7: Central namespace verification, Disenchantment CI, publish, tag, 0.1.0 go/no-go.
+
+### Re-estimate
+
+M8 was estimated at 4 focused weeks (range 2 to 5). Actual: first M8 merge 2026-11-14 13:42, last 2026-11-15 06:58 (+01:00), about
+17 hours of agent wall clock for 12 cards and 32 non-merge commits, plus this review (about 70 minutes of Docker runs, plus the mutation re-run). The spike's
+"the vanilla client joins" answer removed the modded-driver branch that the range allowed for. Remaining:
+
+| M | Estimate | Reason |
+|---|---|---|
+| M8 follow-ups | **about 2 days** | 6 cards, 3 diagnosis or docs; T-M8-13 is the only one that closes an exit item |
+| M9 Bedrock | **4 weeks after the spikes, range 2 to 6** (centre unchanged) | Offline Bedrock auth, a second protocol family over UDP, a beta Script API, a possible new image. If the Geyser spike shows no offline route, M9 shrinks to about 1 week |
+| M10 Ecosystem | ongoing | Unchanged; refined by T-M9-99 |
+
+Total M8 follow-ups to M10 is about 4 to 6 weeks plus ongoing ecosystem work (was 8+ before M8).
+
+### M9 refined
+
+`docs/plan/tasks/M9-bedrock.md`: exit criterion, context (what M8 left, the simulated tier, offline auth, UDP, BDS licensing), Flake
+rule, 13 cards (T-M9-01 Geyser spike and T-M9-02 BDS spike first, ADR-0018, schema and SPI, driver, Geyser host, API, conformance, BDS
+host and conformance only if the BDS spike says feasible, negative controls, docs, review). **Not approved; nothing started.**

@@ -27,6 +27,10 @@ WARN; paper@26.3 c01 and c02 were green. Second full smoke red with the same thr
 M5 review's full smoke was green. 2 red of 3 recorded full smoke runs. The guard allowlists `T<hex>` names (the topology client
 was renamed for the same WARN in T-M7-12, 2 reds then); the single-server conformance client is still `PSConf`. **Cause unknown.**
 The bundles of the last red were deleted by the next `:conformance:run` before they were copied, so no log from it exists.
+**Update (M8 review, 2026-11-15):** a third red, same three cells (3 red of 4 full smoke runs), bundles kept. Lead from the folia
+bundle: the class's first `PSConf` join spawns at the world spawn, the fixture teleports it to `0.5, 64.0, 0.5`, and the next
+`PSConf` join logs in at that saved position (the player file persisted between tests); the WARN fires on that login (ROADMAP
+"M8 review", Paper and topology numbers).
 
 **Do.**
 - Before any run, copy `build/proofstone/` and `build/test-results/` aside to a dated folder outside the repo. `:conformance:run`
