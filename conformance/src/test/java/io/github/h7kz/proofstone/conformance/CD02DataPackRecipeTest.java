@@ -13,6 +13,8 @@ import io.github.h7kz.proofstone.api.PlayerHandle;
 import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.api.Window;
 import io.github.h7kz.proofstone.core.conformance.ConformanceFixture;
+import io.github.h7kz.proofstone.core.await.Await;
+import java.time.Duration;
 import org.junit.jupiter.api.Assertions;
 
 /**
@@ -52,6 +54,12 @@ class CD02DataPackRecipeTest {
 
             table.click(0, Click.SHIFT_LEFT);
             table.awaitSlot(0, ItemView::isEmpty);
+            // The server sends the result slot first and the player's own slot after it, and a close sent in between
+            // drops that late update (the driver, like the vanilla client, ignores a closed window's packets). So the
+            // diamond must be in the client's own view of the window before it is closed (T-M8-09 finding: Fabric runs
+            // 2 and 3, the update for slot 45 arrived 1 ms after the close).
+            Await.until("the diamond in the window's player slots", () -> table.slots().stream()
+                    .anyMatch(item -> item.is("diamond")), found -> found, Duration.ofSeconds(10));
             Assertions.assertTrue(table.slots().subList(1, GRID_LAST_SLOT + 1).stream().allMatch(ItemView::isEmpty),
                     "crafting grid after the craft");
         }
