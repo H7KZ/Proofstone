@@ -2,7 +2,10 @@ package io.github.h7kz.proofstone.driver.mcpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.h7kz.proofstone.core.driver.ConnectSpec;
+import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import java.lang.reflect.Proxy;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.key.Key;
@@ -73,6 +76,34 @@ class McplJoinAckTest {
         assertThat(acknowledgedIds()).containsExactly(7);
         assertThat(loadedCount()).isEqualTo(1);
         assertThat(session.joinAcknowledgementHeld()).isFalse();
+    }
+
+    private McplSession sessionFor(boolean bridged) {
+        return McplDriver.newSession(network, new ConnectSpec("h", 1, "Bot", Duration.ofSeconds(1),
+                ResourcePackPolicy.NONE, bridged));
+    }
+
+    @Test
+    void aBridgedJoinAcknowledgesTheJoinTeleportAtOnce() {
+        McplSession bridged = sessionFor(true);
+        bridged.listener().packetReceived(network, login());
+        bridged.listener().packetReceived(network, position(7, 64));
+
+        assertThat(acknowledgedIds()).containsExactly(7);
+        assertThat(loadedCount()).isEqualTo(1);
+        assertThat(bridged.joinAcknowledgementHeld()).isFalse();
+        assertThat(bridged.joinFinished()).as("a bridged join does not wait for a first tick").isTrue();
+    }
+
+    @Test
+    void aNativeJoinStillHoldsTheJoinTeleport() {
+        McplSession nativeSession = sessionFor(false);
+        nativeSession.listener().packetReceived(network, login());
+        nativeSession.listener().packetReceived(network, position(7, 64));
+
+        assertThat(acknowledgedIds()).isEmpty();
+        assertThat(nativeSession.joinAcknowledgementHeld()).isTrue();
+        assertThat(nativeSession.joinFinished()).isFalse();
     }
 
     @Test

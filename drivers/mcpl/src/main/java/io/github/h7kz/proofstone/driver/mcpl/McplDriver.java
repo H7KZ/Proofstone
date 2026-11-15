@@ -37,14 +37,19 @@ public final class McplDriver implements ClientDriver {
         return PROTOCOL_VERSION;
     }
 
+    /** A bridged join acknowledges the join teleport at once; a native one holds it for the first tick (T-M7-19). */
+    static McplSession newSession(org.geysermc.mcprotocollib.network.Session network, ConnectSpec spec) {
+        return new McplSession(network, spec.username(), spec.resourcePacks(), ResourcePacks.http(),
+                download -> Thread.ofVirtual().name("mcpl-pack-download").start(download), !spec.bridged());
+    }
+
     @Override
     public ClientSession connect(ConnectSpec spec) {
         ClientNetworkSession network = ClientNetworkSessionFactory.factory()
                 .setAddress(spec.host(), spec.port())
                 .setProtocol(new MinecraftProtocol(spec.username()))
                 .create();
-        McplSession session = new McplSession(network, spec.username(), spec.resourcePacks(), ResourcePacks.http(),
-                download -> Thread.ofVirtual().name("mcpl-pack-download").start(download));
+        McplSession session = newSession(network, spec);
         network.addListener(session.listener());
         network.connect(false);
         String where = spec.username() + " -> " + spec.host() + ":" + spec.port();

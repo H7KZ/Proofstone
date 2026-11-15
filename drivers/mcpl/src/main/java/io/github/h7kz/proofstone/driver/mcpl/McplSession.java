@@ -110,6 +110,9 @@ final class McplSession implements ClientSession {
     // The join teleport's acknowledgement, held until the first SetHealth of this login (T-M7-19). Written on the netty
     // thread only; volatile because the joining thread reads it to tell a held join from a finished one.
     private volatile boolean firstTickSeen;
+    // False on a bridged join (ConnectSpec.bridged): a 1.8.x server behind ViaProxy sends no first tick before the
+    // acknowledgement, so the hold would deadlock it (T-M7-19, ROADMAP). Only native joins hold.
+    private final boolean holdJoinAcknowledgement;
     private volatile ServerboundAcceptTeleportationPacket heldAcknowledgement;
     private boolean loadedHeld;
     /** The last experience sync's level; null until the server sends one (the client oracle must not guess). */
@@ -134,6 +137,12 @@ final class McplSession implements ClientSession {
 
     McplSession(Session network, String username, ResourcePackPolicy packs, ResourcePacks.Fetcher fetcher,
             Executor downloads) {
+        this(network, username, packs, fetcher, downloads, true);
+    }
+
+    McplSession(Session network, String username, ResourcePackPolicy packs, ResourcePacks.Fetcher fetcher,
+            Executor downloads, boolean holdJoinAcknowledgement) {
+        this.holdJoinAcknowledgement = holdJoinAcknowledgement;
         this.network = network;
         this.username = username;
         this.resourcePacks = new ResourcePacks(packs, fetcher, downloads, network::send, this::abort);
@@ -200,7 +209,7 @@ final class McplSession implements ClientSession {
             state = State.SWITCHING;
         } else if (packet instanceof ClientboundLoginPacket) {
             // A new login starts a new join, on a proxy switch as well: hold its teleport again (T-M7-19).
-            firstTickSeen = false;
+            firstTickSeen = !holdJoinAcknowledgement;
             heldAcknowledgement = null;
             loadedHeld = false;
             boolean newServer = state != State.JOINING;
@@ -333,7 +342,7 @@ final class McplSession implements ClientSession {
      * and not a client that stays silent (T-M7-19).
      */
     boolean joinFinished() {
-        return firstTickSeen || state == State.DISCONNECTED;
+        return !holdJoinAcknowledgement || firstTickSeen || state == State.DISCONNECTED;
     }
 
     /** True while the join teleport's acknowledgement waits for the server's first tick (see applyPosition). */
