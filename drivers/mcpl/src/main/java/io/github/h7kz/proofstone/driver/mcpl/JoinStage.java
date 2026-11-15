@@ -17,6 +17,8 @@ enum JoinStage {
     CONFIGURATION_STALLED("login acknowledged, configuration never finished"),
     CONFIGURATION_FINISH_NOT_ANSWERED("the server finished configuration, but the client never answered"),
     PLAY_NO_JOIN_PACKET("play state reached, but no join packet (ClientboundLoginPacket) arrived"),
+    JOIN_TELEPORT_HELD_NO_HEALTH("the join position arrived, but the server's first tick never showed (no"
+            + " ClientboundSetHealthPacket), so the client still holds the teleport acknowledgement"),
     // A server switch on a live connection (T-M7-09): the same steps again, after the proxy moves the client.
     SWITCH_NOT_STARTED("a switch was awaited, but no configuration phase began: the proxy did not move the client"
             + " (an unreachable target, or the command reached a backend instead of the proxy)"),

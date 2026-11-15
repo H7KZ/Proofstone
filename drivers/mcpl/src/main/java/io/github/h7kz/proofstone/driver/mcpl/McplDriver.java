@@ -7,6 +7,8 @@ import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.geysermc.mcprotocollib.network.factory.ClientNetworkSessionFactory;
@@ -46,9 +48,16 @@ public final class McplDriver implements ClientDriver {
         network.addListener(session.listener());
         network.connect(false);
         String where = spec.username() + " -> " + spec.host() + ":" + spec.port();
+        Instant started = Instant.now();
         try {
             Await.until("play state for " + where, session::state, state -> state != McplSession.State.JOINING,
                     spec.connectTimeout());
+            // The join is not done while the teleport acknowledgement is held for the server's first tick (T-M7-19).
+            // Same budget, not a new one: a server that never sends its first SetHealth is a named join timeout.
+            Duration left = spec.connectTimeout().minus(Duration.between(started, Instant.now()));
+            Await.until("first tick (SetHealth) for " + where, () -> session.joinAcknowledgementHeld() && session.state() != McplSession.State.DISCONNECTED,
+                    held -> !held,
+                    left.isNegative() || left.isZero() ? Duration.ofMillis(1) : left);
         } catch (AwaitTimeoutException e) {
             session.close();
             // The stage comes from what the client saw (T-M6-14); the harness adds the server's side.

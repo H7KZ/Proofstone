@@ -65,6 +65,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.Clientbound
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetExperiencePacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetHealthPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerClosePacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetContentPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetSlotPacket;
@@ -106,6 +107,11 @@ final class McplSession implements ClientSession {
     private final List<WindowModel> opened = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger sequence = new AtomicInteger();
     private volatile double[] position;
+    // The join teleport's acknowledgement, held until the first SetHealth of this login (T-M7-19). Written on the netty
+    // thread only; volatile because the joining thread reads it to tell a held join from a finished one.
+    private volatile boolean firstTickSeen;
+    private volatile ServerboundAcceptTeleportationPacket heldAcknowledgement;
+    private boolean loadedHeld;
     /** The last experience sync's level; null until the server sends one (the client oracle must not guess). */
     private volatile Integer experienceLevel;
     private volatile State state = State.JOINING;
@@ -193,6 +199,10 @@ final class McplSession implements ClientSession {
             switchMark = transcript.size();
             state = State.SWITCHING;
         } else if (packet instanceof ClientboundLoginPacket) {
+            // A new login starts a new join, on a proxy switch as well: hold its teleport again (T-M7-19).
+            firstTickSeen = false;
+            heldAcknowledgement = null;
+            loadedHeld = false;
             boolean newServer = state != State.JOINING;
             if (newServer) {
                 resetViews();
@@ -221,6 +231,8 @@ final class McplSession implements ClientSession {
             summary += " " + disconnectReason;
         } else if (packet instanceof ClientboundPlayerPositionPacket move) {
             applyPosition(move);
+        } else if (packet instanceof ClientboundSetHealthPacket) {
+            onFirstTick();
         } else if (packet instanceof ClientboundRegistryDataPacket registry) {
             registries.record(registry);
         } else if (packet instanceof ClientboundOpenScreenPacket open) {
@@ -278,12 +290,46 @@ final class McplSession implements ClientSession {
         position = now;
         // MCProtocolLib does not answer a teleport. Until the server gets this acknowledgement it ignores the
         // player's packets, including block use. Rotation is taken as absolute because the join and tp packets are.
-        network.send(new ServerboundAcceptTeleportationPacket(move.getId(), now[0], now[1], now[2],
-                move.getYRot(), move.getXRot()));
+        ServerboundAcceptTeleportationPacket acknowledgement = new ServerboundAcceptTeleportationPacket(move.getId(),
+                now[0], now[1], now[2], move.getYRot(), move.getXRot());
+        if (!firstTickSeen) {
+            // Deviation from the vanilla client (T-M7-19): Paper and Purpur handle this packet's position before the
+            // player's first tick, when their last good position is still 0, 0, 0, and log "moved too quickly!" for
+            // the whole distance to the join spot. The first SetHealth is sent in that first tick, so the
+            // acknowledgement (and "player loaded") waits for it. Event-driven: released by that packet on this same
+            // netty thread, no timer. The newest held position wins. A server that never sends it is named by the
+            // join (McplDriver.connect, JoinStage.JOIN_TELEPORT_HELD_NO_HEALTH), never left to hang.
+            heldAcknowledgement = acknowledgement;
+            loadedHeld |= first;
+            return;
+        }
+        network.send(acknowledgement);
         if (first) {
             // The vanilla client says so once its first position arrived and the terrain is up.
             network.send(ServerboundPlayerLoadedPacket.INSTANCE);
         }
+    }
+
+    /** The first SetHealth of a login is the server's first player tick: release the held join acknowledgement. */
+    private void onFirstTick() {
+        if (firstTickSeen) {
+            return;
+        }
+        firstTickSeen = true;
+        ServerboundAcceptTeleportationPacket held = heldAcknowledgement;
+        heldAcknowledgement = null;
+        if (held != null) {
+            network.send(held);
+            if (loadedHeld) {
+                network.send(ServerboundPlayerLoadedPacket.INSTANCE);
+            }
+        }
+        loadedHeld = false;
+    }
+
+    /** True while the join teleport's acknowledgement waits for the server's first tick (see applyPosition). */
+    boolean joinAcknowledgementHeld() {
+        return heldAcknowledgement != null;
     }
 
     private String applyContent(ClientboundContainerSetContentPacket content) {

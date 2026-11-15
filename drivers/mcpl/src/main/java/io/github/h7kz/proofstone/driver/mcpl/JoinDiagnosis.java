@@ -68,8 +68,14 @@ record JoinDiagnosis(JoinStage stage, String protocolOffered, String lastReceive
             return sent.contains("ServerboundLoginAcknowledgedPacket")
                     ? JoinStage.CONFIGURATION_STALLED : JoinStage.LOGIN_SUCCESS_NOT_ACKNOWLEDGED;
         }
-        return sent.contains("ServerboundFinishConfigurationPacket")
-                ? JoinStage.PLAY_NO_JOIN_PACKET : JoinStage.CONFIGURATION_FINISH_NOT_ANSWERED;
+        if (!sent.contains("ServerboundFinishConfigurationPacket")) {
+            return JoinStage.CONFIGURATION_FINISH_NOT_ANSWERED;
+        }
+        // The client holds the join acknowledgement until the first SetHealth (T-M7-19); no health packet is a join
+        // that is not finished, named here instead of left to a later hang.
+        return received.contains("ClientboundLoginPacket") && received.contains("ClientboundPlayerPositionPacket")
+                && !received.contains("ClientboundSetHealthPacket")
+                        ? JoinStage.JOIN_TELEPORT_HELD_NO_HEALTH : JoinStage.PLAY_NO_JOIN_PACKET;
     }
 
     /**
