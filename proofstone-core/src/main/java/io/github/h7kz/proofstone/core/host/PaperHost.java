@@ -61,6 +61,8 @@ public final class PaperHost implements ServerHost, AutoCloseable {
     private final LogBuffer logs = new LogBuffer();
     private final GenericContainer<?> container;
     private final List<String> copiedPlugins = new ArrayList<>();
+    /** Data packs under test, installed by the image before the server starts (ADR-0017 section 4). */
+    private List<DataPack> dataPacks = List.of();
     /** Agent calls through curl in the container; it keeps the transcript for the repro bundle. */
     private final AgentClient agent;
     private Health health;
@@ -86,9 +88,11 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         }
         // Resolve before any container exists, so a bad glob fails fast and names itself.
         List<Path> artefacts = Artefacts.resolve(options.artefactBase(), options.artefactGlobs());
+        List<DataPack> dataPacks = DataPack.resolve(options.artefactBase(), options.datapackGlobs());
         // Spigot is built, not downloaded: the jar is resolved before any container exists (T-M5-05).
         Path serverJar = SpigotServerJar.PLATFORM.equals(cell.platform()) ? SpigotServerJar.resolve(cell) : null;
         PaperHost host = new PaperHost(cell, options);
+        host.dataPacks = dataPacks;
         host.boot(artefacts, serverJar);
         return host;
     }
@@ -146,6 +150,11 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         // The image syncs /plugins into /data/plugins at startup. Copy in, never bind-mount (ADR-0005).
         copyPlugin(options.agentJar());
         artefacts.forEach(this::copyPlugin);
+        // Copied in and installed by the image into world/datapacks before the server starts: no reload ever (T-M8-09).
+        dataPacks.forEach(pack -> container.withCopyToContainer(pack.file(), pack.containerPath()));
+        if (!dataPacks.isEmpty()) {
+            container.withEnv("DATAPACKS", DataPack.env(dataPacks));
+        }
         // Tests join several clients from one address within seconds; Paper's default 4 s connection throttle
         // would refuse the second ("Connection throttled!"). Copied in, like every input (T-M1-10).
         // Owned by the server user, or Paper cannot save it and logs a permission error (T-M8-02). A topology backend's
@@ -221,6 +230,11 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         copies.put("/data/bukkit.yml", ServerFile.of(BUKKIT_YML));
         files.forEach((path, content) -> copies.put(path, ServerFile.of(content)));
         return copies;
+    }
+
+    @Override
+    public List<String> dataPackIds() {
+        return dataPacks.stream().map(DataPack::id).toList();
     }
 
     private void copyPlugin(Path jar) {

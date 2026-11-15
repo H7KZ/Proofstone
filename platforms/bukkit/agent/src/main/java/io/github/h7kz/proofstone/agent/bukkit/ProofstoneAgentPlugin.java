@@ -42,7 +42,7 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     PROTOCOL,
                     platform,
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    capabilities(platform, Bukkit.getOnlineMode()));
+                    capabilities(platform, Bukkit.getOnlineMode(), DataPackList.supported()));
             EventProbes probes = new EventProbes(this, ticks);
             server = new AgentServer(config, health,
                     new BukkitGame(scheduler, probes, logs, ticks, "folia".equals(platform)));
@@ -60,10 +60,18 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
      * there (SIMULATED_BEDROCK, docs/platforms/paper.md). The pack still has to relax Paper's username validation.
      */
     static List<String> capabilities(String platform, boolean onlineMode) {
+        return capabilities(platform, onlineMode, false);
+    }
+
+    /** {@code datapacks} is reported where the server API lists data packs (protocol 1.3, ADR-0017 section 8). */
+    static List<String> capabilities(String platform, boolean onlineMode, boolean datapacks) {
         List<String> tokens = new ArrayList<>(Arrays.asList(
                 "command", "players", "config", "reload", "world", "events", "log", "ticks"));
         if (!onlineMode) {
             tokens.add("bedrock-prefix");
+        }
+        if (datapacks) {
+            tokens.add("datapacks");
         }
         if ("folia".equals(platform)) {
             tokens.add("regions");

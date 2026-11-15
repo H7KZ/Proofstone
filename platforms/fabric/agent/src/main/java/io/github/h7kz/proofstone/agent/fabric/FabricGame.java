@@ -134,6 +134,11 @@ final class FabricGame implements Game {
         return view.mods();
     }
 
+    @Override
+    public Map<String, Object> dataPacks(long timeoutMs) {
+        return thread.call(view::dataPacks, timeoutMs);
+    }
+
     /** snapshot.json: every online player, sorted by name, read in one pass on the server thread. No plugins. */
     @Override
     public Map<String, Object> snapshot(long timeoutMs) {

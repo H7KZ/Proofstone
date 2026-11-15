@@ -62,7 +62,7 @@ class FabricContractTest {
         ArrayNode tokens = data.putArray("capabilities");
         FabricAgent.capabilities().forEach(tokens::add);
         replay("health/ok", golden);
-        assertThat(FabricAgent.capabilities()).contains("mods").doesNotContain("config", "reload", "datapacks");
+        assertThat(FabricAgent.capabilities()).contains("mods", "datapacks").doesNotContain("config", "reload");
         assertThat(http.get("/v1/health").json().get("data").get("mcVersion").asText()).isEqualTo("26.3");
     }
 
@@ -74,6 +74,20 @@ class FabricContractTest {
     @Test
     void modsMatchTheGolden() throws IOException {
         replay("mods/list");
+    }
+
+    @Test
+    void datapacksMatchTheGoldenWithTheMockServersList() throws IOException {
+        // The golden's ids are Paper's; the shape is what is replayed, with this server's ids (as NeoForge does for mods).
+        JsonNode golden = read("datapacks/list.response.json");
+        ObjectNode data = (ObjectNode) golden.get("body").get("data");
+        ArrayNode ids = data.putArray("enabled");
+        ArrayNode all = data.putArray("available");
+        for (String id : new String[] {"vanilla", "fabric-convention-tags-v2", "file/x.zip"}) {
+            ids.add(id);
+            all.add(id);
+        }
+        replay("datapacks/list", golden);
     }
 
     @Test

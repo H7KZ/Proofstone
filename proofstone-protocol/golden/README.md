@@ -75,7 +75,7 @@ The fixture spawn is `world` at `(0.5, 64.0, 0.5)`: block `(0, 64, 0)`, centred.
 | `proxy/server-not-found` | 404 `SERVER_NOT_FOUND` with `detail {name}` (v1.2) |
 | `players/proxy-first-join` | proxy `GET /v1/players/Alex` on the first server: `previousServer` is an explicit `null` (v1.2) |
 | `players/proxy-switched` | the same after a switch lobby to survival (v1.2) |
-| `datapacks/list` | `GET /v1/datapacks`: `{enabled, available}` ids as the server names them (v1.3, T-M8-04). Shape only: pending, see below |
+| `datapacks/list` | `GET /v1/datapacks`: `{enabled, available}` ids as the server names them (v1.3, T-M8-04). Pinned on a real paper@26.3 server in T-M8-09 and replayed by the Bukkit agent (Paper only); the Fabric agent replays it with its own lists |
 | `mods/list` | `GET /v1/mods`: `{mods: [{id, version}]}` sorted by id (v1.3, T-M8-04). Replayed by the Fabric agent against a real fabric@26.3 server (T-M8-05) |
 
 **Proxy cases (T-M7-03).** The six v1.2 cases are checked against their schemas by this module's `GoldenContractTest`
@@ -85,11 +85,11 @@ agents (T-M7-05, T-M7-06) replay them.
 **Protocol 1.3 cases (T-M8-04, ADR-0017 section 9).** `datapacks/list` and `mods/list` are checked against their
 schemas by this module's `GoldenContractTest`. `mods/list` is served and replayed by the Fabric agent (T-M8-05, its contract
 test and `FabricAgentIT`): the real fabric@26.3 server listed exactly `fabric-api` and `proofstone-agent`, so the golden
-stands as written. `datapacks/list` is pending for every agent: no agent serves it yet. The Bukkit
-agent lists both in `AgentContractIT.PENDING` (it reports neither the `datapacks` nor the `mods` token; `GET /v1/datapacks`
-comes with T-M8-09 where the server API lists data packs, `GET /v1/mods` is for the Fabric and NeoForge agents). The proxy
+stands as written. `datapacks/list` was pending until T-M8-09: the Bukkit agent now serves it (`AgentContractIT.dataPacksCase` replays it where the
+cell reports `datapacks`, and asserts `404` where it does not), and so does the Fabric agent. `mods/list` stays in
+`AgentContractIT.PENDING` (`GET /v1/mods` is for the Fabric and NeoForge agents). The proxy
 agents never serve them and do not list them: their contract tests replay only the cases they name. The ids in
-`datapacks/list` are the shape the endpoint returns, not a recorded server's list: T-M8-09 pins it against a real server.
+`datapacks/list` are a recorded server's list since T-M8-09 (paper@26.3 build 244, no data pack declared).
 The mods golden's `fabric-api` (every Fabric row has it, ADR-0017 section 5) and `proofstone-agent` (the Fabric agent's mod
 id) are what the real server listed. The NeoForge agent (T-M8-06, `NeoForgeContractTest` and `NeoForgeAgentIT`) replays
 it with the list replaced by its one entry, `proofstone_agent` (the only jar in `/mods` on the neoforge@26.3 row; a

@@ -25,6 +25,15 @@ public @interface Proofstone {
     String[] plugins() default {};
 
     /**
+     * Vanilla data packs, as globs relative to the project directory. Each must match exactly one {@code .zip} file or one
+     * directory that holds {@code pack.mcmeta}, else the run fails naming the glob. The pack is copied into the world's
+     * {@code datapacks} before the server starts and is never reloaded while a test runs (ADR-0017 section 4). Declaring
+     * one implies {@link Capability#DATAPACKS_VANILLA}: a cell without it is SKIPPED with the capability named. A declared
+     * pack the server did not load makes the class's tests INVALID, naming the pack.
+     */
+    String[] datapacks() default {};
+
+    /**
      * Accepts the Minecraft EULA (https://aka.ms/MinecraftEULA) in code. Without it the environment variable
      * {@code PROOFSTONE_ACCEPT_EULA=true} is required, otherwise the tests are skipped with that reason.
      */

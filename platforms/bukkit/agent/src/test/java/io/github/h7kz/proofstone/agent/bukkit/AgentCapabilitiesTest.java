@@ -1,0 +1,16 @@
+package io.github.h7kz.proofstone.agent.bukkit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+/** The tokens the Bukkit agent reports (test-api section 10, ADR-0017 section 8). */
+class AgentCapabilitiesTest {
+
+    @Test
+    void datapacksIsReportedOnlyWhereTheServerApiListsPacks() {
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true)).contains("datapacks");
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true, false)).doesNotContain("datapacks");
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true)).doesNotContain("datapacks");
+    }
+}

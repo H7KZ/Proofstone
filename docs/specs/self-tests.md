@@ -82,7 +82,15 @@ C01 to C08 run and the M8 flake rule's three green invocations.
 | C-D02 | A data-pack recipe crafts through the client's crafting window, as C08 does | `DATAPACKS_VANILLA` | the data-pack recipe on both oracles |
 
 C-D01 and C-D02 run on `paper@26.3` and the Fabric row (T-M8-09). A cell without `DATAPACKS_VANILLA` skips them with the
-capability named.
+capability named. As built (`conformance/src/test/java/.../CD01DataPackFunctionTest` and `CD02DataPackRecipeTest`, pack
+`conformance/src/test/datapacks/proofstone-e2e`, declared with `@Proofstone(datapacks = ...)`):
+- **C-D01:** the console runs `function proofstone_e2e:hello`, which gives the player five emeralds and sends one `tellraw`.
+  The agent and the client read the same five emeralds (`DualAssert`); the client saw the chat line. The function sets no
+  block and no score, because the agent API has no block or score read that is not console output (ADR-0002).
+- **C-D02:** the recipe (two dirt make one diamond, absent from vanilla) crafts through the client's crafting window as C08
+  does: the result shows in the window, shift-click moves it, and after the window closes the agent and the client read one
+  diamond and no dirt. The Fabric and NeoForge agents answer no player read while a window is open (501 `NOT_SUPPORTED`), so
+  the player is read before the window opens and after it closes only, on every cell: no assertion is weakened for them.
 
 ## 2. Control run (nightly)
 

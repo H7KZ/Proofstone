@@ -20,6 +20,8 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
 - Capabilities (T-M5-01, api-change, test-api spec section 10): `Capability` (an enum), `@Requires` (class or method) and
   `Cell.capabilities()`. A cell without a required capability is skipped with its reason. The baseline gains only these members; no frozen v0 member changed. The fix PR (`fix/m5-capability-api`) made
   `Cell.capabilities()` a default method that throws, and removed `Capability.NMS` and `Capability.DATAPACKS` (no agent token).
+- Data packs (T-M8-09, api-change, additions only, ADR-0017): `Proofstone.datapacks()` (globs, default none) and
+  `Capability.DATAPACKS_VANILLA` (last constant). Declaring a pack implies the capability.
 - Injected parameters: `Cell`, `Agent` (`command`, `capabilities`, `player`) and `Client` (`name`, `command`,
   `awaitMessage`, `position`, `awaitPosition`, `openBlock`, `inventory`).
 - Setup and views (T-M2-07): `PlayerHandle` and `PlayerState` (server oracle), `Window`, `Click`, `Item` (build),

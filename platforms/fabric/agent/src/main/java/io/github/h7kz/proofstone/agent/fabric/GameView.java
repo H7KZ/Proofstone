@@ -34,6 +34,12 @@ interface GameView {
     /** Writes {@code block.json#/$defs/write} and reads it back. An unknown type or state is UNKNOWN_KEY, nothing changed. */
     Map<String, Object> setBlock(String world, int x, int y, int z, Map<String, Object> write);
 
+    /**
+     * The server's data packs, {@code {enabled, available}} (datapacks.json): the pack repository's selected and available
+     * ids in its order ({@code vanilla}, {@code file/x.zip}). Read-only; never reloads or selects a pack.
+     */
+    Map<String, Object> dataPacks();
+
     /** The mods loaded from the server's mods folder, sorted by id (mods.json). */
     List<Map<String, Object>> mods();
 }

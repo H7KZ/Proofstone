@@ -42,6 +42,9 @@ setup writes: give, reset and PATCH.
     patched: a no-op;
   - `POST /plugins/{id}/reload`, optional body `{proofstone-reload-command}`, reply `{}`. Runs the named console
     command as the plugin's hook, or disables and enables the plugin. Never `/reload`.
+  - `GET /datapacks`, reply `{enabled, available}` (T-M8-09): the ids Paper's `Server#getDatapackManager` names (`vanilla`, `paper`,
+    `file/x.zip`). Read by reflection (the agent is built against 1.8.8); the token `datapacks` is reported, and the endpoint
+    served, only where that API exists, else `404 NOT_FOUND`. Read-only: never enables, disables or refreshes a pack;
   - `GET /snapshot`, reply `{players, plugins}` (snapshot.json, T-M4-12): every online `PlayerState` and every loaded
     plugin's name, version, enabled flag and config (dotted path to leaf value, jar defaults included), sorted by name. Read-only, one pass on the server
     thread. Never the agent token.

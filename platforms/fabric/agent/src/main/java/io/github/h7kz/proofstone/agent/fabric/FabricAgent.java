@@ -28,12 +28,13 @@ final class FabricAgent implements AutoCloseable {
 
     /**
      * The tokens the agent answers for (test-api section 10). {@code mods} is the ADR-0017 section 8 token for
-     * {@code GET /v1/mods}. Not claimed: {@code config} and {@code reload} (a Fabric server has no plugins),
-     * {@code datapacks} (T-M8-09 adds {@code GET /v1/datapacks}) and {@code resource-pack-status} (no read-only hook was
+     * {@code GET /v1/mods}, {@code datapacks} is the one of
+     * {@code GET /v1/datapacks} (T-M8-09). Not claimed: {@code config} and {@code reload} (a Fabric server has no plugins)
+     * and {@code resource-pack-status} (no read-only hook was
      * run, ADR-0017 section 7).
      */
     static List<String> capabilities() {
-        return Arrays.asList("command", "players", "world", "events", "log", "ticks", "mods");
+        return Arrays.asList("command", "players", "world", "events", "log", "ticks", "mods", "datapacks");
     }
 
     /**

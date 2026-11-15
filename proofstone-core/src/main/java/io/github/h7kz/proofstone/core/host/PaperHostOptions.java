@@ -21,6 +21,8 @@ import org.testcontainers.containers.Network;
  *     default one; set when a ViaProxy container must reach the server by name (T-M3-03)
  * @param networkAlias the server's name on {@code network}: {@link PaperHost#NETWORK_ALIAS}, or
  *     {@code server-<name>} for a topology backend (ADR-0016 section 1)
+ * @param datapackGlobs vanilla data packs under test (ADR-0017 section 4), globs relative to {@code artefactBase}; each
+ *     is copied in before start and installed into the world's {@code datapacks}
  * @param files container path to content, copied in before start (a topology backend's forwarding settings,
  *     TopologyConfig); empty for a single server. The content may hold a secret, so it is never logged.
  */
@@ -35,40 +37,42 @@ public record PaperHostOptions(
         boolean debugPorts,
         Network network,
         String networkAlias,
-        Map<String, String> files) {
+        Map<String, String> files,
+        List<String> datapackGlobs) {
 
     public PaperHostOptions {
         files = Map.copyOf(files);
+        datapackGlobs = List.copyOf(datapackGlobs);
     }
 
     public static PaperHostOptions of(Path agentJar, boolean eulaAccepted) {
         return new PaperHostOptions(agentJar, agentJar.toAbsolutePath().getParent(), List.of(), eulaAccepted,
-                Duration.ofMinutes(3), Duration.ofSeconds(30), true, false, null, PaperHost.NETWORK_ALIAS, Map.of());
+                Duration.ofMinutes(3), Duration.ofSeconds(30), true, false, null, PaperHost.NETWORK_ALIAS, Map.of(), List.of());
     }
 
     public PaperHostOptions withArtefacts(Path base, List<String> globs) {
         return new PaperHostOptions(agentJar, base, globs, eulaAccepted, bootTimeout, agentTimeout,
-                applyGameRules, debugPorts, network, networkAlias, files);
+                applyGameRules, debugPorts, network, networkAlias, files, datapackGlobs);
     }
 
     public PaperHostOptions withApplyGameRules(boolean apply) {
         return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout,
-                agentTimeout, apply, debugPorts, network, networkAlias, files);
+                agentTimeout, apply, debugPorts, network, networkAlias, files, datapackGlobs);
     }
 
     public PaperHostOptions withDebugPorts(boolean debug) {
         return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout, agentTimeout,
-                applyGameRules, debug, network, networkAlias, files);
+                applyGameRules, debug, network, networkAlias, files, datapackGlobs);
     }
 
     public PaperHostOptions withAgentTimeout(Duration timeout) {
         return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout, timeout,
-                applyGameRules, debugPorts, network, networkAlias, files);
+                applyGameRules, debugPorts, network, networkAlias, files, datapackGlobs);
     }
 
     public PaperHostOptions withBootTimeout(Duration timeout) {
         return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, timeout, agentTimeout,
-                applyGameRules, debugPorts, network, networkAlias, files);
+                applyGameRules, debugPorts, network, networkAlias, files, datapackGlobs);
     }
 
     public PaperHostOptions withNetwork(Network cellNetwork) {
@@ -78,13 +82,19 @@ public record PaperHostOptions(
     /** Joins {@code cellNetwork} under {@code alias} (a topology backend's {@code server-<name>}). */
     public PaperHostOptions withNetwork(Network cellNetwork, String alias) {
         return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout, agentTimeout,
-                applyGameRules, debugPorts, cellNetwork, alias, files);
+                applyGameRules, debugPorts, cellNetwork, alias, files, datapackGlobs);
+    }
+
+    /** Data packs under test, installed before start; never reloaded while a test runs. */
+    public PaperHostOptions withDataPacks(List<String> globs) {
+        return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout, agentTimeout,
+                applyGameRules, debugPorts, network, networkAlias, files, globs);
     }
 
     /** Copies {@code containerFiles} (path to content) in before start. */
     public PaperHostOptions withFiles(Map<String, String> containerFiles) {
         return new PaperHostOptions(agentJar, artefactBase, artefactGlobs, eulaAccepted, bootTimeout, agentTimeout,
-                applyGameRules, debugPorts, network, networkAlias, containerFiles);
+                applyGameRules, debugPorts, network, networkAlias, containerFiles, datapackGlobs);
     }
 
     /** The files are not in the text: a topology backend's hold the forwarding secret (ADR-0016 section 8). */

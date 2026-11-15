@@ -108,6 +108,10 @@ public final class AgentServer {
             requireMethod(method, "GET");
             return Collections.singletonMap("mods", game.mods(DEFAULT_TIMEOUT_MS));
         }
+        if ("/v1/datapacks".equals(path)) {
+            requireMethod(method, "GET");
+            return game.dataPacks(DEFAULT_TIMEOUT_MS);
+        }
         if (ObservationRoutes.handles(path)) {
             return observation.dispatch(exchange, method, path);
         }

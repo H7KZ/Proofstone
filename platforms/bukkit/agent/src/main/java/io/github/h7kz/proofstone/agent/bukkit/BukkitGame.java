@@ -265,6 +265,11 @@ public final class BukkitGame implements Game {
         }, timeoutMs);
     }
 
+    @Override
+    public Map<String, Object> dataPacks(long timeoutMs) {
+        return MainThread.call(scheduler, Affinity.global(), DataPackList::read, timeoutMs);
+    }
+
     /**
      * Read-only, so nothing here changes the server (AGENTS.md section 3). Players and plugins are sorted by name, so
      * two dumps of the same state are equal. Each player is read the way {@link #player} reads it.

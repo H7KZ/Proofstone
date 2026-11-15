@@ -152,6 +152,8 @@ Observed in the spike, not yet tokens:
 - **Data packs (vanilla):** the same pack as on Fabric loaded (`Found new data pack file/spike-datapack.zip, loading it
   automatically`); `function spike:hello` gave the driver `spike function ran` (5 of 5 joins) and `recipe give` logged
   `Unlocked 1 recipe(s) for Spike1`. NeoForge also logged `Loaded 0 recipe priority overrides` (its own recipe layer).
+- **T-M8-09:** the NeoForge agent does not serve `GET /v1/datapacks` and the NeoForge pack does not declare `DATAPACKS_VANILLA`, so
+  C-D01 and C-D02 skip on `neoforge@26.3` with `missing capability DATAPACKS_VANILLA` (a skip, never a pass). A later card may add it.
 - **Resource packs:** not run on NeoForge (run on Fabric and the vanilla path; see [fabric.md](fabric.md)).
 
 ## Gotchas

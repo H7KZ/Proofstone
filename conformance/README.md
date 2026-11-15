@@ -22,6 +22,10 @@ itself against real vanilla behaviour, on the newest Paper row:
   are: C02 reads the vanilla `/help` reply (`/help [<command>]`, one system message per usage) where Paper prints `Help`, and
   `ConformanceLoaderWindowTest` pins the player-state read with a window open, `501 NOT_SUPPORTED` on both mod agents.
 
+- Data packs (T-M8-09): C-D01 (`CD01DataPackFunctionTest`) and C-D02 (`CD02DataPackRecipeTest`) declare
+  `@Proofstone(datapacks = "src/test/datapacks/proofstone-e2e")` and run on `paper@26.3`, `fabric@26.3` and `neoforge@26.3`
+  (which skips with `DATAPACKS_VANILLA` named).
+
 C09 to C12 (events, config, log, reset) are not written yet. The per-cell check runs C03 to C08 on every cell in the
 bad-tests and user suites (T-M4-10b); docs/specs/self-tests.md section 1 gives the reasons C09 to C12 are deferred.
 

@@ -16,6 +16,10 @@
 ## Capabilities
 `BUKKIT_EVENTS`, `CONSOLE`, `SIMULATED_BEDROCK`. The last is a Java client under a `.` prefixed name,
 not a Bedrock client (test-api spec section 11). The agent reports its token `bedrock-prefix` only on an offline server.
+`DATAPACKS_VANILLA` (T-M8-09, token `datapacks`, `GET /v1/datapacks`) is reported where Paper's `Server#getDatapackManager`
+exists (paper@26.3 build 244: enabled `vanilla`, `paper`, plus a declared `file/<name>`; available also lists Paper's
+`minecart_improvements`, `redstone_experiments` and `trade_rebalance`). C-D01 and C-D02 run it; Folia, Purpur and Spigot do not
+declare it. The Paper API has no `org.bukkit.packs` manager in 26.3: the manager is Paper's `io.papermc.paper.datapack`.
 
 ## Gotchas
 

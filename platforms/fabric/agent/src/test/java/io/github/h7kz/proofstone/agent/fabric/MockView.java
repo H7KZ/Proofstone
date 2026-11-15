@@ -138,6 +138,14 @@ final class MockView implements GameView {
         return mods;
     }
 
+    @Override
+    public Map<String, Object> dataPacks() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", java.util.Arrays.asList("vanilla", "fabric-convention-tags-v2", "file/x.zip"));
+        out.put("available", java.util.Arrays.asList("vanilla", "fabric-convention-tags-v2", "file/x.zip"));
+        return out;
+    }
+
     private static Map<String, Object> mod(String id, String version) {
         Map<String, Object> mod = new LinkedHashMap<>();
         mod.put("id", id);

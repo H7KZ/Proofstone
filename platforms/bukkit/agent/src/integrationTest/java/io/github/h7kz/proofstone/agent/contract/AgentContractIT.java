@@ -113,11 +113,13 @@ class AgentContractIT {
             "proxy/server-not-found",
             "players/proxy-first-join",
             "players/proxy-switched",
-            // Protocol 1.3 (ADR-0017 section 9, T-M8-04). The Bukkit agent reports neither capability token yet, so it
-            // serves neither endpoint: GET /v1/datapacks comes with T-M8-09 (where the server API lists data packs),
-            // GET /v1/mods is for the Fabric and NeoForge agents only (T-M8-05, T-M8-06).
-            "datapacks/list",
+            // Protocol 1.3 (ADR-0017 section 9). GET /v1/mods is for the Fabric and NeoForge agents only (T-M8-05,
+            // T-M8-06). datapacks/list is replayed by dataPacksCase, because only a server whose API lists data packs
+            // serves it (T-M8-09); it is not pending, so it is listed in KNOWN_ELSEWHERE below.
             "mods/list");
+
+    /** Golden cases replayed by a test of their own, not by the CASES loop. */
+    static final List<String> REPLAYED_ELSEWHERE = List.of("datapacks/list");
 
     private final HttpClient http = HttpClient.newHttpClient();
     /** The platform of the cell that booted last; the golden files were recorded on Paper. */
@@ -217,6 +219,7 @@ class AgentContractIT {
         }
         Set<String> known = new java.util.HashSet<>(CASES);
         known.addAll(PENDING);
+        known.addAll(REPLAYED_ELSEWHERE);
         assertThat(onDisk).containsExactlyInAnyOrderElementsOf(known);
     }
 
@@ -236,8 +239,9 @@ class AgentContractIT {
                     Stream.concat(
                             Stream.of(dynamicTest("boot " + label, () -> bootPaper(cell))),
                             CASES.stream().map(name -> dynamicTest(name, () -> replay(name)))),
+                    Stream.concat(Stream.of(dynamicTest("datapacks/list", this::dataPacksCase)),
                     // Not a golden case: the key of a renamed item is the same on every version (T-M3-06).
-                    Stream.concat(Stream.of(dynamicTest("renamed item keys", this::renamedItemKeys)), foliaOnly));
+                    Stream.concat(Stream.of(dynamicTest("renamed item keys", this::renamedItemKeys)), foliaOnly)));
             return dynamicContainer(label, children.onClose(this::stopPaper));
         });
     }
@@ -263,6 +267,21 @@ class AgentContractIT {
                 .path("data").path("inventory").path("0");
         assertThat(slot.path("type").asText()).as("slot 0 was " + slot).isEqualTo("minecraft:golden_sword");
         assertThat(slot.path("enchants").path("minecraft:knockback").asInt()).as("slot 0 was " + slot).isEqualTo(2);
+    }
+
+    /**
+     * GET /v1/datapacks (protocol 1.3): a server whose API lists data packs reports the token and replays the golden; any
+     * other (1.8.8 has no data packs) reports no token and answers 404, never an empty list (T-M8-09).
+     */
+    private void dataPacksCase() throws Exception {
+        assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
+        boolean reported = host.health().capabilities().contains("datapacks");
+        if (reported) {
+            replay("datapacks/list");
+        } else {
+            Reply reply = send("GET", "/v1/datapacks", true, null);
+            assertThat(reply.status()).as("a server without a data-pack API answers 404: " + reply.body()).isEqualTo(404);
+        }
     }
 
     private void replay(String name) throws Exception {
@@ -301,6 +320,9 @@ class AgentContractIT {
         ObjectNode copy = expected.deepCopy();
         ObjectNode data = (ObjectNode) copy.path("body").path("data");
         ((ArrayNode) data.get("capabilities")).add("bedrock-prefix");
+        if (host.health().capabilities().contains("datapacks")) {
+            ((ArrayNode) data.get("capabilities")).add("datapacks");
+        }
         if (platform.equals("folia")) {
             data.put("platform", "folia");
             ((ArrayNode) data.get("capabilities")).add("regions");

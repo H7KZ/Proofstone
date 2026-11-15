@@ -170,4 +170,35 @@ class CapabilityModelTest {
                 .contains("missing capability TOPOLOGY on cell paper@26.3");
         assertThat(CapabilityModel.topologyOnlyMissing(Set.of(Capability.CONSOLE), "paper@26.3")).isEmpty();
     }
+
+    @io.github.h7kz.proofstone.api.Proofstone(datapacks = "packs/x")
+    static class DeclaresDataPack {
+        void plain() {
+        }
+    }
+
+    @Test
+    void paperAndFabricHoldDataPacksOnlyWhenTheAgentReportsTheToken() {
+        List<String> with = List.of("command", "datapacks");
+        assertThat(CapabilityModel.cellCapabilities("paper", with)).contains(Capability.DATAPACKS_VANILLA);
+        assertThat(CapabilityModel.cellCapabilities("fabric", with)).contains(Capability.DATAPACKS_VANILLA);
+        assertThat(CapabilityModel.cellCapabilities("paper", List.of("command"))).doesNotContain(Capability.DATAPACKS_VANILLA);
+        assertThat(CapabilityModel.cellCapabilities("fabric", List.of("command"))).doesNotContain(Capability.DATAPACKS_VANILLA);
+    }
+
+    @Test
+    void otherPacksNeverHoldDataPacksWhateverTheAgentReports() {
+        List<String> with = List.of("command", "events", "datapacks");
+        for (String platform : List.of("neoforge", "folia", "purpur", "spigot")) {
+            assertThat(CapabilityModel.cellCapabilities(platform, with)).doesNotContain(Capability.DATAPACKS_VANILLA);
+        }
+    }
+
+    @Test
+    void declaringADataPackImpliesTheCapability() throws NoSuchMethodException {
+        assertThat(CapabilityModel.required(DeclaresDataPack.class, DeclaresDataPack.class.getDeclaredMethod("plain")))
+                .containsExactly(Capability.DATAPACKS_VANILLA);
+        assertThat(CapabilityModel.required(MethodOnly.class, MethodOnly.class.getDeclaredMethod("needsTwo")))
+                .doesNotContain(Capability.DATAPACKS_VANILLA);
+    }
 }

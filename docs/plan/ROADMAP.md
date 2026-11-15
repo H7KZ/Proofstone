@@ -861,6 +861,16 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
 Paper and topology numbers.
 
+- **T-M8-09 data packs (2026-11-15).** C-D01 and C-D02, `:conformance:run` per cell, one cell per invocation under the Docker
+  lock. First set: `paper@26.3` 3 of 3 green; `fabric@26.3` 1 of 3 green, **C-D02 RED in runs 2 and 3** (`DISAGREE`: the agent
+  reads the diamond, the client's inventory is empty). **Cause (driver transcript of the red bundle):** the scenario sent the
+  window close right after the result slot emptied; the server's update for the player's slot 45 (the diamond) reached the
+  driver 1 ms after the close, and the driver ignores a closed window's packets as the vanilla client does. Not a driver bug:
+  the scenario closed too early. C08 (same flow) can race the same way and has stayed green; not changed here. **Fix** (own
+  commit): C-D02 awaits the diamond in the window's own player slots before closing; the dual-oracle check is unchanged.
+  Fresh set after the fix: `paper@26.3` 3 of 3 green (13 tests, 2 skipped `FOLIA_REGIONS`, 0 failures, 0 errors),
+  `fabric@26.3` 3 of 3 green (11 tests, 0 skipped, 0 failures, 0 errors). `neoforge@26.3`: C-D01 and C-D02 skipped with
+  `missing capability DATAPACKS_VANILLA` (one invocation). Evidence: local copies of the XML, bundles and logs (not committed).
 - **T-M8-01 spike (2026-11-14).** Fabric 0.20.1 and NeoForge 26.3.0.103 on 26.3 take the `mcpl` 777 client natively with
   no mod and with a server-only mod (Fabric also with Fabric API). Driver joins: Fabric 28 counted, 20 ok, 3 join
   timeouts, 5 refused; NeoForge 13 counted, 13 ok. Details in [fabric.md](../platforms/fabric.md) and
@@ -904,3 +914,12 @@ Paper and topology numbers.
   |---|---|---|---|---|---|---|---|---|---|---|---|
   | fabric@26.3 | no | pass | pass (vanilla `/help`) | pass | pass | pass | pass | pass | pass | none | 3 of 3 green |
   | neoforge@26.3 | no | pass | pass (vanilla `/help`) | pass | pass | pass | pass | pass | pass | none | 3 of 3 green |
+
+- **Verifier run, T-M8-09 (2026-11-15): 1 red in 6 conformance invocations, new log-guard family on Fabric.** Paper 3 of 3
+  green. Fabric `:conformance:run -Dproofstone.cells=fabric@26.3`: runs 1 and 2 green, **run 3 red** in
+  `ConformanceSmokeTest` (C02, verdict: log guard, not a join or boot timeout, not C-D01 or C-D02):
+  `WARN net.minecraft.world.entity.EntityType: Skipping Entity with id minecraft:zombie_villager`, logged by `Worker-Main-3`
+  right after the join (random world, so a village zombie in a generated chunk near spawn; vanilla, not caused by the
+  data-pack code). Seen once; not allowlisted, no card yet. XML and bundle kept aside (`C:\pw\t809-ev`, local only). The
+  T-M8-09 Fabric acceptance is therefore **not ticked as 3 of 3**: the agent's fresh set was 3 of 3 green, the verifier set
+  was 2 green and 1 red from this family. For the T-M8-99 review to decide: a card for the family, or a counted rate.
