@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.server.AgentConfig;
+import io.github.h7kz.proofstone.agent.vanilla.AgentClient;
+import io.github.h7kz.proofstone.agent.vanilla.MockView;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.HashSet;
@@ -24,7 +27,7 @@ class NeoForgeAgentStartTest {
     @Test
     void everyThreadTheAgentStartsIsADaemon() throws IOException {
         Set<Thread> before = new HashSet<>(Thread.getAllStackTraces().keySet());
-        MockView mock = new MockView();
+        NeoForgeMockView mock = new NeoForgeMockView();
         LogBuffer logs = LogBuffer.attach();
         TickCounter ticks = new TickCounter();
         NeoForgeAgent agent = NeoForgeAgent.start(new AgentConfig(AgentClient.TOKEN, 0), mock::execute, mock,
@@ -48,7 +51,7 @@ class NeoForgeAgentStartTest {
     @Test
     void aPortInUseIsALoudStartFailure() throws IOException {
         try (ServerSocket taken = new ServerSocket(0)) {
-            MockView mock = new MockView();
+            NeoForgeMockView mock = new NeoForgeMockView();
             TickCounter ticks = new TickCounter();
             assertThatThrownBy(() -> NeoForgeAgent.start(new AgentConfig(AgentClient.TOKEN, taken.getLocalPort()),
                     mock::execute, mock, new NeoForgeEventProbes(BusBuilder.builder().build(), ticks::current),

@@ -1,4 +1,4 @@
-package io.github.h7kz.proofstone.agent.fabric;
+package io.github.h7kz.proofstone.agent.vanilla;
 
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
 import java.util.concurrent.Callable;
@@ -13,15 +13,15 @@ import java.util.concurrent.TimeoutException;
  * game state is only safe to touch there. The HTTP thread waits for the reply, bounded by the request's timeout, so the
  * caller gets {@code TIMEOUT} rather than a hang. The executor is the server's own task queue.
  */
-final class ServerThread {
+public final class ServerThread {
 
     private final Executor server;
 
-    ServerThread(Executor server) {
+    public ServerThread(Executor server) {
         this.server = server;
     }
 
-    <T> T call(Callable<T> work, long timeoutMs) {
+    public <T> T call(Callable<T> work, long timeoutMs) {
         CompletableFuture<T> result = new CompletableFuture<>();
         server.execute(() -> {
             try {

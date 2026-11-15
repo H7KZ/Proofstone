@@ -1,4 +1,4 @@
-package io.github.h7kz.proofstone.agent.fabric;
+package io.github.h7kz.proofstone.agent.vanilla;
 
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
 import java.util.ArrayList;
@@ -10,16 +10,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * The global tick counter (ticks.json): the server ticks counted since the agent loaded, from Fabric API's end-of-tick
- * callback. {@code await} completes from that callback, so no thread polls or sleeps (AGENTS.md section 3).
+ * The global tick counter (ticks.json): the server ticks counted since the agent loaded, from the loader's end-of-tick
+ * callback (Fabric API's or NeoForge's). {@code await} completes from that callback, so no thread polls or sleeps (AGENTS.md section 3).
  */
-final class TickCounter {
+public final class TickCounter {
 
     private long ticks;
     private final List<Waiter> waiters = new ArrayList<>();
 
     /** Called once per server tick, on the server thread. */
-    synchronized void tick() {
+    public synchronized void tick() {
         ticks++;
         for (Iterator<Waiter> it = waiters.iterator(); it.hasNext(); ) {
             Waiter waiter = it.next();
@@ -30,12 +30,12 @@ final class TickCounter {
         }
     }
 
-    synchronized long current() {
+    public synchronized long current() {
         return ticks;
     }
 
     /** Waits on the calling thread, never the server thread, until {@code n} more ticks have passed. */
-    long await(long n, long timeoutMs) {
+    public long await(long n, long timeoutMs) {
         Waiter waiter;
         synchronized (this) {
             waiter = new Waiter(ticks + n);

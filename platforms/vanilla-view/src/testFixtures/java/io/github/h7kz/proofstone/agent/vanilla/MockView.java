@@ -1,4 +1,4 @@
-package io.github.h7kz.proofstone.agent.neoforge;
+package io.github.h7kz.proofstone.agent.vanilla;
 
 import io.github.h7kz.proofstone.agent.game.Fields;
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
@@ -12,37 +12,40 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * A server in memory behind {@link GameView}, with one player, {@code Alex}, and a block store. Its "server thread" is a
+ * A server in memory behind {@link GameView} for the agents' contract tests (shared by the Fabric and NeoForge agents,
+ * T-M8-15), with one player, {@code Alex}, and a block store. Its "server thread" is a
  * single thread named {@code Server thread}; every view call records the thread it ran on, so a test can prove the agent
  * moved the work there. It answers as the real server does for the golden fixture (golden/README.md), no more.
  */
-final class MockView implements GameView {
+public class MockView implements GameView {
 
-    static final String THREAD = "Server thread";
-    static final String UUID = "8a2c1f0e-6b1d-4f7e-9c3a-2d5e7b9a1c40";
+    public static final String THREAD = "Server thread";
+    public static final String UUID = "8a2c1f0e-6b1d-4f7e-9c3a-2d5e7b9a1c40";
 
-    final ExecutorService serverThread = Executors.newSingleThreadExecutor(r -> {
+    public final ExecutorService serverThread = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r, THREAD);
         thread.setDaemon(true);
         return thread;
     });
-    final List<String> callThreads = Collections.synchronizedList(new ArrayList<>());
-    final List<String> commandsRun = new ArrayList<>();
+    public final List<String> callThreads = Collections.synchronizedList(new ArrayList<>());
+    public final List<String> commandsRun = new ArrayList<>();
+    /** The mods {@link #mods()} lists: each loader's test view fills in what its row loads. */
+    protected final List<Map<String, Object>> mods = new ArrayList<>();
     /** When true the server thread never runs a task: the agent must answer TIMEOUT. */
-    volatile boolean stalled;
+    public volatile boolean stalled;
 
     private final Map<String, Map<String, Object>> blocks = new TreeMap<>();
     private final Map<String, Object> inventory = new LinkedHashMap<>();
     private boolean online = true;
 
     /** The executor the agent gets as the server's task queue. */
-    void execute(Runnable task) {
+    public void execute(Runnable task) {
         if (!stalled) {
             serverThread.execute(task);
         }
     }
 
-    void leave() {
+    public void leave() {
         online = false;
     }
 
@@ -132,13 +135,10 @@ final class MockView implements GameView {
 
     @Override
     public List<Map<String, Object>> mods() {
-        List<Map<String, Object>> mods = new ArrayList<>();
-        // The neoforge@26.3 row has no mod of its own in /mods: the agent is the only one.
-        mods.add(mod(ProofstoneNeoForgeAgent.MOD_ID, "0.1.0"));
-        return mods;
+        return new ArrayList<>(mods);
     }
 
-    private static Map<String, Object> mod(String id, String version) {
+    protected static Map<String, Object> mod(String id, String version) {
         Map<String, Object> mod = new LinkedHashMap<>();
         mod.put("id", id);
         mod.put("version", version);

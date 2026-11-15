@@ -4,6 +4,8 @@ import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.protocol.Health;
 import io.github.h7kz.proofstone.agent.server.AgentConfig;
 import io.github.h7kz.proofstone.agent.server.AgentServer;
+import io.github.h7kz.proofstone.agent.vanilla.ServerThread;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +43,7 @@ final class FabricAgent implements AutoCloseable {
      * Starts the HTTP server. Its threads are daemon threads (ADR-0017 section 5): a JVM whose server failed must end,
      * not wait on the agent. The JDK's HTTP server takes the daemon flag from the thread that starts it.
      */
-    static FabricAgent start(AgentConfig config, Executor serverThread, GameView view, FabricEventProbes probes,
+    static FabricAgent start(AgentConfig config, Executor serverThread, FabricView view, FabricEventProbes probes,
             LogBuffer logs, TickCounter ticks, String agentVersion, String mcVersion) throws IOException {
         Health health = new Health(agentVersion, PROTOCOL, PLATFORM, mcVersion, capabilities());
         FabricGame game = new FabricGame(new ServerThread(serverThread), view, probes, logs, ticks);

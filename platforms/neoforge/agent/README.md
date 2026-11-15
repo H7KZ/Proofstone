@@ -32,9 +32,9 @@ the container network.
   the fallback ADR-0017 section 5 allows. `unpackGame` checks every jar by its catalog sha256 (the vanilla server jar, which
   it unpacks, NeoForge `universal`, FancyModLoader `loader`, `bus`, `mergetool` `api`, `maven-artifact`, and `typetools` for
   the unit tests) and puts them in `build/game`. Nothing of them is committed or shaded.
-- **Shared game code is a copy.** `MinecraftView`, `ItemJson`, `ServerThread`, `TickCounter`, `GameView` and the game
-  wrapper are the Fabric agent's (vanilla names on both loaders); only `mods()`, the probes and the entrypoint differ. A
-  shared module would change the Fabric agent, which this card does not own.
+- **Shared game code is one module.** `MinecraftView`, `ItemJson`, `ServerThread`, `TickCounter`, `GameView` and `Values` live in
+  [`platforms:vanilla-view`](../../vanilla-view/README.md), shared with the Fabric agent and shaded into this jar (T-M8-15;
+  vanilla names on both loaders). This agent adds `NeoForgeMinecraftView` (the mod list from FML), the probes and the entrypoint.
 - Not a public artefact. The harness copies it into the container's `/mods`; it never ships in a user's build.
 
 ### Thread model

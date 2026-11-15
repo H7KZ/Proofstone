@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.h7kz.proofstone.agent.log.LogBuffer;
 import io.github.h7kz.proofstone.agent.server.AgentConfig;
+import io.github.h7kz.proofstone.agent.vanilla.AgentClient;
+import io.github.h7kz.proofstone.agent.vanilla.MockView;
+import io.github.h7kz.proofstone.agent.vanilla.TickCounter;
 import io.github.h7kz.proofstone.protocol.testing.GoldenMatcher;
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +38,7 @@ class NeoForgeContractTest {
     private static final File GOLDEN = new File(System.getProperty("proofstone.golden"));
 
     private final IEventBus bus = BusBuilder.builder().build();
-    private MockView mock;
+    private NeoForgeMockView mock;
     private LogBuffer logs;
     private TickCounter ticks;
     private NeoForgeAgent agent;
@@ -43,7 +46,7 @@ class NeoForgeContractTest {
 
     @BeforeEach
     void start() throws IOException {
-        mock = new MockView();
+        mock = new NeoForgeMockView();
         logs = LogBuffer.attach();
         ticks = new TickCounter();
         agent = NeoForgeAgent.start(new AgentConfig(AgentClient.TOKEN, 0), mock::execute, mock,

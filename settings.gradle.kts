@@ -78,6 +78,7 @@ include(
     "platforms:velocity:agent",
     "platforms:fabric:agent",
     "platforms:neoforge:agent",
+    "platforms:vanilla-view",
     "examples:smoke",
     "examples:loader-datapack",
     "examples:loader-mod",
