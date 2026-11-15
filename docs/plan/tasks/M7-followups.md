@@ -4,6 +4,9 @@ Written 2026-11-14 from the M7 review (T-M7-99, ROADMAP "M7 review", known open 
 older than M7 that the review could not explain. **Diagnosis only:** a card here finds a cause and names a fix; the fix is a
 separate card. Neither card is started.
 
+**Update (T-M7-15, 2026-11-15):** T-M7-15 found its cause and proposes the fix card **T-M7-17** at the end of this file (not
+started, needs approval).
+
 IDs continue M7-proxies.md (T-M7-01 to T-M7-14, T-M7-99), so the next free IDs were T-M7-15 and T-M7-16. They do not block M8.
 
 **Flake rule.** Read the **Flake rule** in [M7-proxies.md](M7-proxies.md); it applies unchanged. In short: one cell per
@@ -51,9 +54,12 @@ bundle: the class's first `PSConf` join spawns at the world spawn, the fixture t
 - Change the wire protocol, `versions.yml`, or any harness code in this card.
 
 **Acceptance.**
-- [ ] Per-cell red counts over at least 5 runs each are in the ROADMAP entry, with the XML read (`skipped`, `failures`, `errors`).
-- [ ] The cause is named with log lines, or the entry says "unexplained" with the counts and what was ruled out.
-- [ ] A follow-up fix card is proposed (or the card says why none is needed). No code changed.
+- [x] Per-cell red counts over at least 5 runs each are in the ROADMAP entry, with the XML read (`skipped`, `failures`, `errors`).
+  Evidence: ROADMAP "M7 follow-up findings (T-M7-15)": full smoke 5 of 5 red (folia, purpur, spigot c02), each cell alone 0 of 5.
+- [x] The cause is named with log lines, or the entry says "unexplained" with the counts and what was ruled out. Evidence: the
+  shared host is keyed by mc only, so the full smoke runs all four cells on one Paper server and `PSConf` logs in again at its
+  saved spot (`Resolving type given PAPER` in every bundle, `"platform":"paper"` in every health reply).
+- [x] A follow-up fix card is proposed (or the card says why none is needed). No code changed. Evidence: T-M7-17 below.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1`
@@ -99,3 +105,44 @@ timeout family on single-server cells is bounded but unexplained (ROADMAP "M6 re
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --no-parallel --max-workers=1`
+
+### T-M7-17 · Boot one server per cell in a PER_CLASS class: key the shared host by the full cell, not the mc version
+- tier: sonnet
+- depends: T-M7-15
+- modules: proofstone-core, conformance
+- adrs: 0003, 0007
+- specs: specs/self-tests.md §1, specs/test-api.md
+- test-first: yes
+
+**Goal.** Every cell of a class runs on its own platform's server. Today `CellInvocation.resource` keys the class-shared host
+by `"host:" + cell.mc()`, so cells of one mc version share the first cell's server; that is the cause of the `PSConf moved too
+quickly!` red found in T-M7-15 (ROADMAP "M7 follow-up findings (T-M7-15)").
+
+**Do.**
+- Test first, no Docker: a unit test that two cells of one mc version and different platforms (`paper@26.3`, `folia@26.3`) in
+  one `PER_CLASS` class get two host keys, and that one cell's two tests get one key. Extract the key into a small
+  package-private function to test it; it fails on main.
+- Test first, real server: C01 in `ConformanceSmokeTest` also checks that the server is the cell's platform. It fails on main
+  in the full smoke (the `folia@26.3` agent's `/v1/health` answers `"platform":"paper"`). `Agent` has no platform getter, so
+  either compare the health platform where the harness already reads it (`PaperHost` readiness) and fail the class on a
+  mismatch, or assert the Bukkit `version` command reply names the platform; record which and why. No API or protocol change.
+- Key the host by the full cell identity (platform, mc, and anything else that changes the boot, as `TopologyInvocation` does
+  with `cell.identity()`). Check `differentialKey` (`class.method@mc`) for the same collision and key it by the cell too.
+- Run the full smoke with no selector (all four cells) 5 times as separate invocations and each cell alone once; record XML
+  counts and that each bundle's `server.log` shows its own `Resolving type given <PLATFORM>`.
+- Update the `PSConf` entries in `docs/platforms/folia.md` and `docs/user/troubleshooting.md` (cause known, fixed).
+
+**Don't.**
+- Allowlist `PSConf` or `moved too quickly`, rename the conformance client, add a sleep, a retry or a timeout raise.
+- Change the wire protocol or `versions.yml`.
+- Clean player data between tests as the fix: the server must not be shared across cells at all; per-test player cleanup would
+  hide the shared server.
+
+**Acceptance.**
+- [ ] The unit test and the C01 platform assertion fail on main and pass with the fix (both runs recorded in the PR).
+- [ ] Full four-cell `:conformance:smoke`, 5 separate invocations: each `tests 8, skipped 0, failures 0, errors 0`, four
+  distinct server types in the bundles' logs, 0 `PSConf moved too quickly!`.
+- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1`

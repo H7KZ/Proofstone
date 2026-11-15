@@ -1138,3 +1138,63 @@ Total M8 follow-ups to M10 is about 4 to 6 weeks plus ongoing ecosystem work (wa
 `docs/plan/tasks/M9-bedrock.md`: exit criterion, context (what M8 left, the simulated tier, offline auth, UDP, BDS licensing), Flake
 rule, 13 cards (T-M9-01 Geyser spike and T-M9-02 BDS spike first, ADR-0018, schema and SPI, driver, Geyser host, API, conformance, BDS
 host and conformance only if the BDS spike says feasible, negative controls, docs, review). **Not approved; nothing started.**
+
+## M7 follow-up findings (T-M7-15)
+
+Date 2026-11-15. Ran on `card/T-M7-15-psconf-diagnosis` from origin/main `704839a`. Local only, Windows 11, Docker Desktop
+29.9.2, JDK 21 for Gradle. One cell selector per invocation under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA
+in the command environment only. Every run's XML, bundles and log copied aside before the next run (local only, not committed).
+No red retried. No code changed.
+
+**Cause (named, from log lines): the four "cells" of the full smoke run on one Paper server.** `CellInvocation.resource` keys the
+class-shared host (`PER_CLASS`) by `"host:" + cell.mc()`. All four smoke rows are `@26.3`, so the first cell (`paper@26.3`) boots
+Paper and `folia@26.3`, `purpur@26.3` and `spigot@26.3` reuse that server (`TopologyInvocation` keys by `cell.identity()` and is
+not affected). The per-cell conformance check (`CellConformance`, cached per cell id) then joins `PSConf` once per cell on that
+same server: the first join spawns at world spawn, C03's fixture teleports it to `0.5 64 0.5`, the player file stays in the
+container's `/data/world`, and the next cell's `PSConf` logs in there and Paper WARNs. The WARN fires inside the next cell's c02
+test window, so the log guard fails c02 on cells 2 to 4. The red cells are fixed by order (`@Matrix` order paper, folia, purpur,
+spigot), not by platform. Evidence:
+
+- Every full-smoke bundle (`folia`, `purpur`, `spigot`) holds the same `server.log`, starting `[init] Resolving type given PAPER`
+  and `Downloaded /data/paper-26.3-244.jar`; each `agent-transcript.jsonl` answers `/v1/health` with `"platform":"paper"` though
+  `cell.json` says `folia`, `purpur` or `spigot`. One server boot per run (40 to 55 s for 8 tests; one cell alone 29 to 37 s).
+  `PROOFSTONE CONFORMANCE folia@26.3: passed` is printed for a check that ran on Paper.
+- Log (full-1, spigot bundle): `PSConf[...] logged in with entity id 1 at ([minecraft:overworld]10.5, -60.0, 2.5)` (no WARN), then
+  `PSConf[...] logged in with entity id 3 at ([minecraft:overworld]0.5, 64.0, 0.5)` followed by
+  `WARN]: PSConf moved too quickly! 0.5,64.0,0.5`, and the same at entity ids 5 and 7. 4 `PSConf` joins per run, the first never
+  WARNs (0 of 5), every later one does (15 of 15).
+- Direct test without code change (throwaway, labelled, not counted below): `-Dproofstone.cells=purpur@26.3,spigot@26.3`, 2 runs,
+  with `docker logs` saved by a read-only watcher: one container, `Resolving type given PURPUR`, `spigot@26.3` c02 red on
+  `PSConf moved too quickly! 0.5,64.0,0.5` both times (tests 4, failures 1, errors 0, skipped 0). `folia@26.3,spigot@26.3`, 3 runs:
+  one container, `Resolving type given FOLIA`, the second `PSConf` logs in at `0.5, 64.0, 0.5` and Folia logs no WARN (3 of 3
+  green, tests 4, failures 0). So the second login at the saved spot WARNs on a Paper or Purpur server and not on Folia; the
+  shared server is what makes a second `PSConf` login happen at all.
+- Ruled out: a Paper-only `moved-too-quickly` threshold (the harness writes no `spigot.yml` or `paper-global.yml` for single-server
+  cells; every red ran on the same Paper server anyway), the reset teleport of a test client (the WARN is on the conformance
+  client's login, before the test body), and a platform defect in Folia, Purpur or Spigot (each alone: 0 of 5 red).
+- Why the WARN fires on the login at a saved spot but not on the first, cold join is not proven here (the first join is the
+  server's first; later joins are on a warm server). It does not matter for the fix: one server per cell means one `PSConf` login
+  per server. The topology client of T-M7-12 hit the same "second login of one name on one server" shape (lobby, switch back).
+
+**Consequence beyond the WARN.** The full smoke never booted Folia, Purpur or Spigot: their c01 and c02 "passes" in every recorded
+full smoke (M5 review green, and the green c01s since) ran on Paper. Any user class with two `@Matrix` platforms of one mc version
+run together is affected the same way. Per-cell `:conformance:run` invocations (one selector each, as the reviews ran them) are not
+affected. Earlier notes that harness `T<hex>` clients log `moved too quickly!` on Folia came from smoke logs of this shared Paper
+server; in the folia-first experiment above no client WARNed.
+
+| Invocation | Runs | Red | XML per run | Red tests |
+|---|---|---|---|---|
+| `:conformance:smoke`, no selector (paper, folia, purpur, spigot @26.3) | 5 | **5** | tests 8, skipped 0, failures 3, errors 0 | c02 on folia, purpur, spigot, every run: `PSConf moved too quickly! 0.5,64.0,0.5`; paper c01, c02 and all c01 green |
+| `-Dproofstone.cells=folia@26.3` | 5 | 0 | tests 2, skipped 0, failures 0, errors 0 | none |
+| `-Dproofstone.cells=purpur@26.3` | 5 | 0 | tests 2, skipped 0, failures 0, errors 0 | none |
+| `-Dproofstone.cells=spigot@26.3` | 5 | 0 | tests 2, skipped 0, failures 0, errors 0 | none |
+| `-Dproofstone.cells=paper@26.3` | 5 | 0 | tests 2, skipped 0, failures 0, errors 0 | none |
+
+Per cell over the 5 full runs: paper 0 of 5 red, folia 5 of 5, purpur 5 of 5, spigot 5 of 5. With the earlier records the full
+four-cell smoke is now 8 red of 9 (M5 review green; the shared-server cause was already in the code then, `"host:" + cell.mc()` at
+`577480f`, so that green was a login that did not WARN, not a different setup). Containers left after each run: none.
+
+**Fix card proposed:** T-M7-17 in [M7-followups.md](tasks/M7-followups.md) (key the shared host by the full cell, test-first with a
+unit test and a C01 platform check; no allowlist, sleep, retry or timeout). **Not started; needs approval.** Side note, not this
+card: the itzg image downloads `paper-global.yml`, `paper-world-defaults.yml` and `spigot.yml` at boot from an unpinned GitHub
+branch (`Downloaded /data/config/paper-global.yml from https://raw.githubusercontent.com/Shonz1/minecraft-default-configs/main/...`).
