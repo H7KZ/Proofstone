@@ -145,10 +145,13 @@ topology numbers.
   `Worker-Main-3` right after the join.
 - **Cause (T-M8-16, reproduced by hand):** the cell runs on `DIFFICULTY=peaceful`, and vanilla's `EntityType.create` returns null
   for a mob that is not allowed in peaceful, so a structure template that holds a zombie villager (the zombie variant of a
-  village, about 2% of villages) logs the WARN once per entity. Loader cells set no `SEED`, so each boot is a new random world
-  and a zombie village near spawn shows up in about 1 boot in 430. It is vanilla, not a data pack, and **not allowlisted**.
-  Card T-M8-21 pins the seed (as Paper does); until it is merged the rate stands.
-- **What to do:** keep the XML and bundle of the red run. Do not retry it into green. Report it with the line quoted.
+  village, about 2% of villages) logs the WARN once per entity. Loader cells used to set no `SEED`, so each boot was a new random
+  world and a zombie village near spawn showed up in about 1 boot in 430. It is vanilla, not a data pack, and **not allowlisted**.
+- **Fixed (T-M8-21):** loader cells pin `SEED=1234567`, as Paper does. That world's nearest village is 353 blocks from spawn
+  (Fabric and NeoForge, `locate structure #minecraft:village`), outside the generated area.
+  After it, `:conformance:run` on `fabric@26.3` and `neoforge@26.3` (3 invocations each) had 0 `Skipping Entity` lines in every container log.
+- **If it shows up again:** a mod under test may have moved worldgen. Keep the XML and bundle of the red run, do not retry it into
+  green, and report it with the line quoted.
 
 ### Fabric and NeoForge: `handleDisconnection() called twice` fails the first test
 

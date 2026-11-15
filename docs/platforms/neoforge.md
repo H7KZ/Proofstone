@@ -160,7 +160,8 @@ Observed in the spike, not yet tokens:
 
 ## Gotchas
 - **Both loader WARN families are vanilla** (T-M8-16): `Skipping Entity with id minecraft:zombie_villager` (peaceful difficulty plus
-  a zombie village, `SEED` not pinned; NeoForge reproduces it with `place template` on peaceful, same logger) and
+  a zombie village; NeoForge reproduces it with `place template` on peaceful, same logger; **fixed by T-M8-21**: the cell pins
+  `SEED=1234567`, and by hand `locate structure #minecraft:village` answers `village_plains` 353 blocks from spawn, as on Fabric) and
   `handleDisconnection() called twice` (a race between `Connection.tick` and `ServerConnectionListener.tick`, seen once on this row
   in a conformance run, 0 in 10 later runs). The mechanisms are in [fabric.md](fabric.md) and the ROADMAP "M8 findings"; cards
   T-M8-21 and T-M8-22.

@@ -74,6 +74,7 @@ final class LoaderEnvironment {
         env.put("ONLINE_MODE", "FALSE");
         env.put("ENFORCE_SECURE_PROFILE", "FALSE");
         env.put("LEVEL_TYPE", PaperHost.levelType(cell.mc()));
+        env.put("SEED", PaperHost.SEED);
         env.put("SPAWN_PROTECTION", "0");
         env.put("DIFFICULTY", "peaceful");
         env.put("VIEW_DISTANCE", "4");
