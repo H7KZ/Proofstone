@@ -16,8 +16,8 @@ import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
  * The primary driver (ADR-0004): MCProtocolLib on the newest protocol only, offline auth.
  *
  * <p>The library's default listeners run login, the configuration phase (registries, known packs, finish
- * configuration) and keep-alive replies. {@link McplSession} only observes packets and sends chat and commands,
- * which is the whole packet surface this card needs (client-driver spec §3).
+ * configuration) and keep-alive replies. {@link McplSession} observes packets, sends chat and commands, and answers
+ * resource-pack pushes as {@link ConnectSpec#resourcePacks()} says (client-driver spec §2b, §3).
  */
 public final class McplDriver implements ClientDriver {
 
@@ -40,7 +40,8 @@ public final class McplDriver implements ClientDriver {
                 .setAddress(spec.host(), spec.port())
                 .setProtocol(new MinecraftProtocol(spec.username()))
                 .create();
-        McplSession session = new McplSession(network, spec.username());
+        McplSession session = new McplSession(network, spec.username(), spec.resourcePacks(), ResourcePacks.http(),
+                download -> Thread.ofVirtual().name("mcpl-pack-download").start(download));
         network.addListener(session.listener());
         network.connect(false);
         String where = spec.username() + " -> " + spec.host() + ":" + spec.port();
