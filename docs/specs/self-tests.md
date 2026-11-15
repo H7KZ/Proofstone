@@ -104,6 +104,13 @@ C-R01 and C-R02 run on `paper@26.3` (T-M8-10; `conformance/src/test/java/.../CR0
 - **C-R02:** `sha1` set to forty zeros. Accept: statuses `ACCEPTED`, `FAILED_DOWNLOAD`, problem `hash mismatch: expected 000...,
   got <sha1>`; the client still reaches play; the same push in play gives the server's `ACCEPTED`, `FAILED_DOWNLOAD`.
 
+**Negative controls (T-M8-11).** The new paths can fail loudly, shown by `examples/bad-tests` `metaModTest`: a mod that crashes at
+load is `INVALID` naming the mod and quoting the loader's line (Fabric and NeoForge); a data pack whose function does not parse is
+`INVALID` naming the pack and quoting the server's line, read from the host's log of the boot (the pack stays enabled, so the
+declared-pack check alone passes it); a resource pack pushed with a wrong sha1 is a `FAIL` of the test that expects it to load,
+with `FAILED_DOWNLOAD` and the hash mismatch in the message. A failure before conformance whose message starts with `INVALID` is
+`INVALID` in the report too. Each bad test is pinned to its cell and refused on another; none is a boot or join timeout.
+
 ## 2. Control run (nightly)
 
 - Run the user's suite with every `plugins` jar **removed**. The agent and fixtures stay.

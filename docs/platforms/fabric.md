@@ -249,6 +249,10 @@ Observed in the spike, not yet tokens:
 - **RCON:** not used (`ENABLE_RCON=false`). The console pipe worked for every command.
 
 ## Gotchas
+- **A mod that throws at init names itself in the log** (T-M8-11, `metaModCrash`, dev run). Fabric logs `[main/ERROR]
+  (FabricLoader) Could not execute entrypoint stage 'server' due to errors, provided by '<mod id>' at '<entrypoint class>'!`
+  and then `Failed to start the minecraft server`; the host reads the second line and fails at once (about 15 s), and the first
+  names the mod, so the test is `INVALID` naming it. A start that fails without naming a declared mod is not blamed on one.
 - **A modded server's configuration ping must be answered.** Fabric API sends `ClientboundPingPacket` in configuration and
   waits. The `mcpl` driver answers it; a client that does not stalls with only keep-alives (phase A probe, 30 s).
 - **`resource-pack-prompt` must be a text component.** A plain string is dropped: `Failed to parse resource pack prompt
