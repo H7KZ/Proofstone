@@ -8,6 +8,7 @@ import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.geysermc.mcprotocollib.network.factory.ClientNetworkSessionFactory;
 import org.geysermc.mcprotocollib.network.session.ClientNetworkSession;
 import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
@@ -59,7 +60,11 @@ public final class McplDriver implements ClientDriver {
         }
         if (session.state() == McplSession.State.DISCONNECTED) {
             session.close();
-            throw new ClientDriverException("could not join " + where + ": " + session.disconnectReason());
+            // A pack the client could not take is part of why: the server's kick alone would hide it (T-M8-10).
+            String packs = session.resourcePacks().stream().filter(push -> push.problem() != null)
+                    .map(push -> push.url() + ": " + push.problem()).collect(Collectors.joining("; "));
+            throw new ClientDriverException("could not join " + where + ": " + session.disconnectReason()
+                    + (packs.isEmpty() ? "" : "; resource packs: " + packs));
         }
         return session;
     }

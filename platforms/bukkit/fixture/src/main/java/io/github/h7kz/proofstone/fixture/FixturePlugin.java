@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.UUID;
 import java.util.logging.Level;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -48,6 +49,17 @@ public final class FixturePlugin extends JavaPlugin {
             sendGetServer(player);
             return true;
         });
+        // C-R01 and C-R02 (T-M8-10): push a resource pack to a player in play, as a plugin under test would. Paper fires
+        // PlayerResourcePackStatusEvent for a play-phase answer only, so this is how the server's view of an answer is read.
+        getCommand("fixture-resourcepack").setExecutor((sender, command, label, args) -> {
+            Player player = args.length == 4 ? getServer().getPlayerExact(args[0]) : null;
+            if (player == null) {
+                sender.sendMessage("fixture-resourcepack needs <online player> <url> <sha1 hex> <required>");
+                return false;
+            }
+            pushResourcePack(player, args[1], args[2], Boolean.parseBoolean(args[3]));
+            return true;
+        });
         // The same, but straight through Log4j2, the way the server's own code logs. Reflection keeps the fixture
         // compiled against the Bukkit API only.
         getCommand("fixture-log4j-error").setExecutor((sender, command, label, args) -> {
@@ -61,6 +73,23 @@ public final class FixturePlugin extends JavaPlugin {
             }
             return true;
         });
+    }
+
+    /**
+     * {@code Player#addResourcePack(UUID, String, byte[], String, boolean)} (Bukkit 1.20.3 and newer), by reflection because
+     * the fixture compiles against 1.8.8. A server without it fails the command loudly.
+     */
+    private static void pushResourcePack(Player player, String url, String sha1, boolean required) {
+        byte[] hash = new byte[sha1.length() / 2];
+        for (int i = 0; i < hash.length; i++) {
+            hash[i] = (byte) Integer.parseInt(sha1.substring(2 * i, 2 * i + 2), 16);
+        }
+        try {
+            player.getClass().getMethod("addResourcePack", UUID.class, String.class, byte[].class, String.class,
+                    boolean.class).invoke(player, UUID.randomUUID(), url, hash, null, required);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("this server cannot push a resource pack by id (Bukkit 1.20.3+)", e);
+        }
     }
 
     private void sendGetServer(Player player) {
