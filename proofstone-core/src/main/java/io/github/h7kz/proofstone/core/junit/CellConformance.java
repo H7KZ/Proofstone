@@ -9,8 +9,11 @@ import io.github.h7kz.proofstone.core.conformance.C07Grindstone;
 import io.github.h7kz.proofstone.core.conformance.C08ShiftClickCraft;
 import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
+import java.time.Duration;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * The conformance run of one cell (self-tests section 1), run once per cell per run through {@code ConformanceCache}.
@@ -37,6 +40,9 @@ final class CellConformance {
     static final String FAULT_EXPECTED = "PROOFSTONE-CONFORMANCE-FAULT";
     /** The name of the client the conformance run joins with. Tests use their own names (see CellInvocation). */
     static final String CLIENT = "PSConf";
+
+    /** The budget of each wait on the conformance client's leave: the same as every other client wait. */
+    static final Duration LEAVE_WAIT = Duration.ofSeconds(10);
 
     /** Which conformance-breaking override is on. */
     enum Fault {
@@ -78,6 +84,38 @@ final class CellConformance {
     private static ConformanceResult scenarios(String cell, ServerHost host, CellView view,
             Function<String, SessionClient> join, boolean windowFault) {
         Agent agent = new HostAgent(host, Set.of());
+        String[] current = {"C03"};
+        return session(cell, host, ErrorLogGuard.Patterns.of(view.platform()), LEAVE_WAIT, join, client -> {
+            timed(cell, "C03", () -> C03GiveRoundTrip.run(view, agent, client));
+            if (view.bridged()) {
+                current[0] = "C04";
+                timed(cell, "C04", () -> C04ChestMove.run(view, agent, client, windowFault));
+                current[0] = "C05";
+                timed(cell, "C05", () -> C05AnvilRenameCost.run(view, agent, client));
+                current[0] = "C06";
+                timed(cell, "C06", () -> C06AnvilCombine.run(view, agent, client));
+                current[0] = "C07";
+                if (C07Grindstone.hasGrindstone(view.version())) {
+                    timed(cell, "C07", () -> C07Grindstone.run(view, agent, client));
+                } else {
+                    System.err.println("PROOFSTONE CONFORMANCE " + cell + ": C07 skipped, grindstone arrived in 1.14");
+                }
+                current[0] = "C08";
+                timed(cell, "C08", () -> C08ShiftClickCraft.run(view, agent, client));
+            }
+        }, () -> current[0]);
+    }
+
+    /**
+     * One conformance client's whole life: join, the scenarios, the log check, the leave.
+     *
+     * @param patterns the cell's platform pack, for the log check
+     * @param wait     the budget of each wait on the leave
+     * @param body     the scenarios; a failing one throws
+     * @param current  names the running scenario, for the failure detail
+     */
+    static ConformanceResult session(String cell, ServerHost host, ErrorLogGuard.Patterns patterns, Duration wait,
+            Function<String, SessionClient> join, Consumer<SessionClient> body, Supplier<String> current) {
         SessionClient client;
         try {
             client = join.apply(CLIENT);
@@ -85,27 +123,10 @@ final class CellConformance {
             return failed(cell, "the conformance client could not join", e);
         }
         ConformanceResult result = null;
-        String current = "C03";
         try {
-            timed(cell, "C03", () -> C03GiveRoundTrip.run(view, agent, client));
-            if (view.bridged()) {
-                current = "C04";
-                timed(cell, "C04", () -> C04ChestMove.run(view, agent, client, windowFault));
-                current = "C05";
-                timed(cell, "C05", () -> C05AnvilRenameCost.run(view, agent, client));
-                current = "C06";
-                timed(cell, "C06", () -> C06AnvilCombine.run(view, agent, client));
-                current = "C07";
-                if (C07Grindstone.hasGrindstone(view.version())) {
-                    timed(cell, "C07", () -> C07Grindstone.run(view, agent, client));
-                } else {
-                    System.err.println("PROOFSTONE CONFORMANCE " + cell + ": C07 skipped, grindstone arrived in 1.14");
-                }
-                current = "C08";
-                timed(cell, "C08", () -> C08ShiftClickCraft.run(view, agent, client));
-            }
+            body.accept(client);
         } catch (RuntimeException | AssertionError e) {
-            result = failed(cell, current + " failed", e);
+            result = failed(cell, current.get() + " failed", e);
         }
         try {
             client.close();
