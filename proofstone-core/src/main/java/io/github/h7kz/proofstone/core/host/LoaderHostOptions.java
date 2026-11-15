@@ -16,6 +16,7 @@ import java.util.Map;
  *     slow start (ADR-0017, M8 flake rule 4); the measured boot time is {@link LoaderHost#bootTime()}.
  * @param agentTimeout how long to wait for agent health once the server is done
  * @param cacheDir where the pinned downloads are kept between runs, each reused only when its sha256 matches
+ * @param datapackGlobs vanilla data packs under test (ADR-0017 section 4), globs relative to {@code artefactBase}
  * @param files container path (under {@code /config/}) to content, copied in before start owned by the server user
  */
 public record LoaderHostOptions(
@@ -26,7 +27,8 @@ public record LoaderHostOptions(
         Duration bootTimeout,
         Duration agentTimeout,
         Path cacheDir,
-        Map<String, String> files) {
+        Map<String, String> files,
+        List<String> datapackGlobs) {
 
     /** The T-M8-05 and T-M8-06 boot timeout; a cold start with an install took about 20 s there. */
     public static final Duration BOOT_TIMEOUT = Duration.ofMinutes(5);
@@ -34,28 +36,35 @@ public record LoaderHostOptions(
     public LoaderHostOptions {
         modGlobs = List.copyOf(modGlobs);
         files = Map.copyOf(files);
+        datapackGlobs = List.copyOf(datapackGlobs);
     }
 
     public static LoaderHostOptions of(Path agentJar, boolean eulaAccepted, Path cacheDir) {
         return new LoaderHostOptions(agentJar, agentJar.toAbsolutePath().getParent(), List.of(), eulaAccepted,
-                BOOT_TIMEOUT, Duration.ofSeconds(30), cacheDir, Map.of());
+                BOOT_TIMEOUT, Duration.ofSeconds(30), cacheDir, Map.of(), List.of());
     }
 
     public LoaderHostOptions withMods(Path base, List<String> globs) {
-        return new LoaderHostOptions(agentJar, base, globs, eulaAccepted, bootTimeout, agentTimeout, cacheDir, files);
+        return new LoaderHostOptions(agentJar, base, globs, eulaAccepted, bootTimeout, agentTimeout, cacheDir, files, datapackGlobs);
+    }
+
+    /** Data packs under test, installed before start; never reloaded while a test runs. */
+    public LoaderHostOptions withDataPacks(List<String> globs) {
+        return new LoaderHostOptions(agentJar, artefactBase, modGlobs, eulaAccepted, bootTimeout, agentTimeout, cacheDir,
+                files, globs);
     }
 
     public LoaderHostOptions withFiles(Map<String, String> containerFiles) {
         return new LoaderHostOptions(agentJar, artefactBase, modGlobs, eulaAccepted, bootTimeout, agentTimeout, cacheDir,
-                containerFiles);
+                containerFiles, datapackGlobs);
     }
 
     public LoaderHostOptions withAgentTimeout(Duration timeout) {
-        return new LoaderHostOptions(agentJar, artefactBase, modGlobs, eulaAccepted, bootTimeout, timeout, cacheDir, files);
+        return new LoaderHostOptions(agentJar, artefactBase, modGlobs, eulaAccepted, bootTimeout, timeout, cacheDir, files, datapackGlobs);
     }
 
     public LoaderHostOptions withBootTimeout(Duration timeout) {
-        return new LoaderHostOptions(agentJar, artefactBase, modGlobs, eulaAccepted, timeout, agentTimeout, cacheDir, files);
+        return new LoaderHostOptions(agentJar, artefactBase, modGlobs, eulaAccepted, timeout, agentTimeout, cacheDir, files, datapackGlobs);
     }
 
     /** The files are not in the text: a config file may hold a secret. */

@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.core.junit;
 
 import io.github.h7kz.proofstone.api.Capability;
+import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.api.Requires;
 import io.github.h7kz.proofstone.api.Topology;
 import java.lang.reflect.Method;
@@ -29,13 +30,14 @@ final class CapabilityModel {
             // Spigot declares only what its conformance run verified (docs/platforms/spigot.md), like Purpur.
             "spigot", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE),
             // Paper's offline login accepts a '.' prefixed name with no setting changed (docs/platforms/paper.md, verified).
-            "paper", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE, Capability.SIMULATED_BEDROCK),
+            "paper", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE, Capability.SIMULATED_BEDROCK,
+                    Capability.DATAPACKS_VANILLA),
             // The proxy packs declare only the topology capabilities (ADR-0016 section 10); their agents report "proxy".
             "velocity", Set.of(Capability.PROXY, Capability.TOPOLOGY),
             "bungeecord", Set.of(Capability.PROXY, Capability.TOPOLOGY),
             // A loader pack declares only what its C01 to C08 run verified (T-M8-08): the console path, which the per-cell
             // check and C03 use. Not BUKKIT_EVENTS: its token "events" is a Bukkit listener, and a loader's probe is not.
-            "fabric", Set.of(Capability.CONSOLE),
+            "fabric", Set.of(Capability.CONSOLE, Capability.DATAPACKS_VANILLA),
             "neoforge", Set.of(Capability.CONSOLE));
 
     /**
@@ -49,7 +51,9 @@ final class CapabilityModel {
             // Reported only when the server runs offline, where a prefixed name can log in (Agent: bedrock-prefix).
             Capability.SIMULATED_BEDROCK, "bedrock-prefix",
             Capability.PROXY, "proxy",
-            Capability.TOPOLOGY, "proxy");
+            Capability.TOPOLOGY, "proxy",
+            // GET /v1/datapacks (protocol 1.3, ADR-0017 section 8): Bukkit agent where the server API lists packs, Fabric agent.
+            Capability.DATAPACKS_VANILLA, "datapacks");
 
     private CapabilityModel() {
     }
@@ -129,6 +133,11 @@ final class CapabilityModel {
         EnumSet<Capability> required = EnumSet.noneOf(Capability.class);
         if (testClass.isAnnotationPresent(Topology.Backends.class)) {
             required.add(Capability.TOPOLOGY);
+        }
+        // A declared data pack needs the capability that loads it, so a cell without it skips (ADR-0017 section 4).
+        Proofstone declared = testClass.getAnnotation(Proofstone.class);
+        if (declared != null && declared.datapacks().length > 0) {
+            required.add(Capability.DATAPACKS_VANILLA);
         }
         Requires onClass = testClass.getAnnotation(Requires.class);
         if (onClass != null) {

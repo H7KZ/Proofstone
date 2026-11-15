@@ -16,6 +16,11 @@ public interface ServerHost extends AgentEndpoint, AutoCloseable {
     /** The host port mapped to the server's game port. */
     int gamePort();
 
+    /** The ids the server must list for the data packs this host installed ({@code file/<name>}); empty when none. */
+    default java.util.List<String> dataPackIds() {
+        return java.util.List.of();
+    }
+
     /** The last lines of the server log, for a failure message. */
     String logTail();
 

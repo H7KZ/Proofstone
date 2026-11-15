@@ -29,6 +29,11 @@ final class ServerFile implements Transferable {
         return new ServerFile(content.getBytes(StandardCharsets.UTF_8));
     }
 
+    /** A binary file, such as a data pack's zip (T-M8-09). */
+    static ServerFile ofBytes(byte[] content) {
+        return new ServerFile(content.clone());
+    }
+
     @Override
     public long getSize() {
         return content.length;

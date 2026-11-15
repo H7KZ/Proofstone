@@ -469,6 +469,11 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
             throw new IllegalStateException("no proxy agent for proxy " + cell.proxy().id());
         }
         String proxyJar = property(proxyProperty, "the shaded " + cell.proxy().id() + " agent jar");
+        if (config.datapacks().length > 0) {
+            // Loud, never ignored: no run showed a data pack in a topology backend (ADR-0017 section 4).
+            throw new IllegalStateException("INVALID test declaration: " + config.datapacks().length + " data pack(s) "
+                    + "declared on the topology cell " + cell.proxy().id() + "; data packs run on single-server cells only");
+        }
         List<String> plugins = List.of(config.plugins());
         if (controlRun) {
             System.err.println("PROOFSTONE CONTROL RUN: plugin jars are not installed; a passing test is VACUOUS");

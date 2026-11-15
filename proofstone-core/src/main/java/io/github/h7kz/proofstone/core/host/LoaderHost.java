@@ -56,11 +56,15 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
     private final GenericContainer<?> container;
     private final AgentClient agent;
     private final List<String> copiedMods;
+    /** Data packs under test, installed by the image before the server starts (ADR-0017 section 4). */
+    private final List<DataPack> dataPacks;
     private Health health;
     private Duration bootTime;
     private String failure;
 
-    private LoaderHost(LoaderCell cell, LoaderHostOptions options, List<String> copiedMods) {
+    private LoaderHost(LoaderCell cell, LoaderHostOptions options, List<String> copiedMods,
+            List<DataPack> dataPacks) {
+        this.dataPacks = dataPacks;
         this.cell = cell;
         this.options = options;
         this.copiedMods = copiedMods;
@@ -81,6 +85,7 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
         }
         // Everything that can fail without Docker fails first, so a bad glob or pin never leaves a container behind.
         List<Path> mods = Artefacts.resolve(options.artefactBase(), options.modGlobs());
+        List<DataPack> dataPacks = DataPack.resolve(options.artefactBase(), options.datapackGlobs());
         List<PinnedFile> pins = LoaderPins.resolve(LoaderEnvironment.downloads(cell), options.cacheDir(), LoaderPins.http());
         Map<String, Path> jars = LoaderEnvironment.jarCopies(pins, options.agentJar(), mods);
         Map<String, ServerFile> config = LoaderEnvironment.configCopies(options.files());
@@ -89,7 +94,8 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
                     + "jar the install fetches is not pinned (ADR-0017 section 6). Pin it from a real run and the "
                     + "published value; the cell does not start without it.");
         }
-        LoaderHost host = new LoaderHost(cell, options, mods.stream().map(mod -> mod.getFileName().toString()).toList());
+        LoaderHost host = new LoaderHost(cell, options, mods.stream().map(mod -> mod.getFileName().toString()).toList(),
+                dataPacks);
         host.boot(jars, config);
         return host;
     }
@@ -120,6 +126,11 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
         jars.forEach((path, jar) -> container.withCopyFileToContainer(MountableFile.forHostPath(jar), path));
         // Owned by the server user, or the loader or a mod cannot rewrite it (T-M8-02).
         config.forEach((path, file) -> container.withCopyToContainer(file, path));
+        // Installed by the image into world/datapacks before the server starts: no reload ever (T-M8-09).
+        dataPacks.forEach(pack -> container.withCopyToContainer(pack.file(), pack.containerPath()));
+        if (!dataPacks.isEmpty()) {
+            container.withEnv("DATAPACKS", DataPack.env(dataPacks));
+        }
         container.addExposedPort(GAME_PORT);
         // Readiness is ours: the default wait is a 60 s port wait, a second timeout that would hide a slow boot.
         container.waitingFor(new AbstractWaitStrategy() {
@@ -259,6 +270,11 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
     /** Runs a command in the container; a non-zero exit is an error with its stderr. */
     String exec(String... args) {
         return agent.exec(args);
+    }
+
+    @Override
+    public List<String> dataPackIds() {
+        return dataPacks.stream().map(DataPack::id).toList();
     }
 
     public LoaderCell cell() {

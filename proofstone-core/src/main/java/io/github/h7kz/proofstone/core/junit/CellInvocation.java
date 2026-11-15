@@ -215,6 +215,17 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             state.skipped = missing.get();
             throw new TestAbortedException(missing.get());
         }
+        // Loaded or loud (ADR-0017 section 4): a declared data pack the server did not enable is INVALID, naming it. After the
+        // capability skip, so a cell without the capability skips with it named and is never judged on a pack it cannot load.
+        List<String> declaredPacks = host.dataPackIds();
+        if (!declaredPacks.isEmpty()) {
+            String notLoaded = DataPackLoad.invalid(declaredPacks, host.request("GET", "/v1/datapacks", null), cellId(),
+                    host.logTail());
+            if (notLoaded != null) {
+                state.invalid = new AssertionError(notLoaded);
+                throw state.invalid;
+            }
+        }
         // Conformance comes first (self-tests section 1): on a failed cell the test body never runs, and the test is INVALID.
         state.conformance = conformance(context, resource, state.capabilities);
         AssertionError invalid = VerdictGate.judgeInvalid(context.getRequiredTestMethod(), cellId(),
@@ -507,8 +518,10 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             System.err.println("PROOFSTONE CONTROL RUN: plugin jars are not installed; a passing test is VACUOUS");
             plugins = List.of();
         }
+        // A data pack is an artefact under test too: a control run installs none (self-tests section 2).
         PaperHostOptions options = PaperHostOptions.of(Path.of(jar), true)
-                .withArtefacts(Path.of("").toAbsolutePath(), plugins);
+                .withArtefacts(Path.of("").toAbsolutePath(), plugins)
+                .withDataPacks(controlRun ? List.of() : List.of(config.datapacks()));
         List<String> drivers = driversFor(differential);
         // Only a driver other than mcpl needs the network to reach the server, and only a bridged driver needs ViaProxy.
         boolean network = false;
@@ -574,8 +587,10 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                     + loader.loader() + " agent jar");
         }
         String cache = System.getProperty(LOADER_CACHE, "build/loader-cache");
-        LoaderHost host = LoaderHost.start(loader,
-                LoaderHostOptions.of(Path.of(jar), true, Path.of(cache).toAbsolutePath()));
+        LoaderHostOptions options = LoaderHostOptions.of(Path.of(jar), true, Path.of(cache).toAbsolutePath())
+                .withMods(Path.of("").toAbsolutePath(), List.of())
+                .withDataPacks(controlRun ? List.of() : List.of(config.datapacks()));
+        LoaderHost host = LoaderHost.start(loader, options);
         System.err.println("PROOFSTONE LOADER BOOT " + loader.identity() + ": " + host.bootTime().toMillis()
                 + " ms from container start to \"Done (\" (host finding, not a join timeout)");
         return new HostResource(host, null, null, Map.of());
