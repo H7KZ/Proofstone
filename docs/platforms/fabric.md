@@ -270,8 +270,10 @@ Observed in the spike, not yet tokens:
 - **`Skipping Entity with id minecraft:zombie_villager` (WARN) is peaceful difficulty plus a zombie village** (T-M8-16): the
   cell runs `DIFFICULTY=peaceful`, `EntityType.create` returns null for a mob not allowed in peaceful, and the template
   `village/plains/zombie/villagers/unemployed` holds one. `place template ...` reproduces it on peaceful and not on `easy`. With
-  no `SEED` the world is new per boot (about 1 zombie village near spawn in 430 boots); `SEED=1234567` has its nearest village
-  353 blocks from spawn. Card T-M8-21.
+  no `SEED` the world was new per boot (about 1 zombie village near spawn in 430 boots). **Fixed by T-M8-21:** `LoaderEnvironment.env`
+  sets `SEED=1234567`, the value `PaperHost` pins. By hand the console `seed` answers `Seed: [1234567]` and `locate structure
+  #minecraft:village` finds `village_plains` at `[32, ~, 352]`, 353 blocks from spawn (the generated area is about 64 blocks).
+  A mod under test that moves worldgen could bring a village near spawn; `GENERATE_STRUCTURES=false` stays the fallback.
 - **`handleDisconnection() called twice` (WARN) is a vanilla race** (T-M8-16): `Connection.tick` and `ServerConnectionListener.tick`
   both handle a disconnect that lands mid-tick, the second one tick later (52 to 59 ms in the logs), about 0.4% of client closes.
   Card T-M8-22.
