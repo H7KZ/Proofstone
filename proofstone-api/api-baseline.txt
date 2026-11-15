@@ -19,6 +19,7 @@ public final io.github.h7kz.proofstone.api.Capability extends java.lang.Enum<io.
   field public static final io.github.h7kz.proofstone.api.Capability DATAPACKS_VANILLA
   field public static final io.github.h7kz.proofstone.api.Capability FOLIA_REGIONS
   field public static final io.github.h7kz.proofstone.api.Capability PROXY
+  field public static final io.github.h7kz.proofstone.api.Capability RESOURCE_PACKS
   field public static final io.github.h7kz.proofstone.api.Capability SIMULATED_BEDROCK
   field public static final io.github.h7kz.proofstone.api.Capability TOPOLOGY
   method public static io.github.h7kz.proofstone.api.Capability io.github.h7kz.proofstone.api.Capability.valueOf(java.lang.String)
@@ -73,6 +74,7 @@ public abstract interface io.github.h7kz.proofstone.api.Client
   method public abstract java.lang.String io.github.h7kz.proofstone.api.Client.name()
   method public abstract java.util.List<io.github.h7kz.proofstone.api.ItemView> io.github.h7kz.proofstone.api.Client.inventory()
   method public abstract void io.github.h7kz.proofstone.api.Client.command(java.lang.String)
+  method public default java.util.List<io.github.h7kz.proofstone.api.ResourcePackPush> io.github.h7kz.proofstone.api.Client.resourcePacks()
   method public default void io.github.h7kz.proofstone.api.Client.transferTo(java.lang.String)
 public abstract interface io.github.h7kz.proofstone.api.Clients
   method public abstract io.github.h7kz.proofstone.api.Client io.github.h7kz.proofstone.api.Clients.create(java.lang.String)
@@ -209,6 +211,33 @@ public abstract interface io.github.h7kz.proofstone.api.Proofstone implements ja
   method public abstract java.lang.String[] io.github.h7kz.proofstone.api.Proofstone.plugins()
 public abstract interface io.github.h7kz.proofstone.api.Requires implements java.lang.annotation.Annotation
   method public abstract io.github.h7kz.proofstone.api.Capability[] io.github.h7kz.proofstone.api.Requires.value()
+public abstract interface io.github.h7kz.proofstone.api.ResourcePackAnswer implements java.lang.annotation.Annotation
+  method public abstract io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer io.github.h7kz.proofstone.api.ResourcePackAnswer.value()
+public final io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer extends java.lang.Enum<io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer>
+  field public static final io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer ACCEPT
+  field public static final io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer DECLINE
+  field public static final io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer FAIL_DOWNLOAD
+  method public static io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer.valueOf(java.lang.String)
+  method public static io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer[] io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer.values()
+public final io.github.h7kz.proofstone.api.ResourcePackPush extends java.lang.Record
+  constructor public io.github.h7kz.proofstone.api.ResourcePackPush(java.lang.String,java.lang.String,java.lang.String,boolean,java.lang.String,io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer,java.util.List<java.lang.String>,java.lang.String,boolean)
+  method public boolean io.github.h7kz.proofstone.api.ResourcePackPush.popped()
+  method public boolean io.github.h7kz.proofstone.api.ResourcePackPush.required()
+  method public final boolean io.github.h7kz.proofstone.api.ResourcePackPush.equals(java.lang.Object)
+  method public final int io.github.h7kz.proofstone.api.ResourcePackPush.hashCode()
+  method public final java.lang.String io.github.h7kz.proofstone.api.ResourcePackPush.toString()
+  method public io.github.h7kz.proofstone.api.ResourcePackAnswer$Answer io.github.h7kz.proofstone.api.ResourcePackPush.answer()
+  method public java.lang.String io.github.h7kz.proofstone.api.ResourcePackPush.hash()
+  method public java.lang.String io.github.h7kz.proofstone.api.ResourcePackPush.id()
+  method public java.lang.String io.github.h7kz.proofstone.api.ResourcePackPush.problem()
+  method public java.lang.String io.github.h7kz.proofstone.api.ResourcePackPush.prompt()
+  method public java.lang.String io.github.h7kz.proofstone.api.ResourcePackPush.url()
+  method public java.util.List<java.lang.String> io.github.h7kz.proofstone.api.ResourcePackPush.statuses()
+public abstract interface io.github.h7kz.proofstone.api.ServerResourcePack implements java.lang.annotation.Annotation
+  method public abstract boolean io.github.h7kz.proofstone.api.ServerResourcePack.required()
+  method public abstract java.lang.String io.github.h7kz.proofstone.api.ServerResourcePack.prompt()
+  method public abstract java.lang.String io.github.h7kz.proofstone.api.ServerResourcePack.sha1()
+  method public abstract java.lang.String io.github.h7kz.proofstone.api.ServerResourcePack.value()
 public abstract interface io.github.h7kz.proofstone.api.Topology
   method public abstract io.github.h7kz.proofstone.api.Agent io.github.h7kz.proofstone.api.Topology.proxy()
   method public abstract io.github.h7kz.proofstone.api.Agent io.github.h7kz.proofstone.api.Topology.server(java.lang.String)
