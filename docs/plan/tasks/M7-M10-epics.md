@@ -39,6 +39,9 @@ session turns it into `T-Mx-NN` cards in the standard format, in a file `Mx-<nam
   - mappings before 26.1.
 
 ## M9: Bedrock
+
+**Refined into cards on 2026-11-15 by T-M8-99: see [M9-bedrock.md](M9-bedrock.md) (awaiting maintainer approval).** The text below is the original epic.
+
 - **Spike (Opus, time-boxed to 2 days).**
   - Can a Java-hosted Bedrock client connect offline to Geyser (`auth-type: offline` or the Floodgate
     setup)? Try both CloudburstMC Protocol (Java) and `bedrock-protocol` (Node).

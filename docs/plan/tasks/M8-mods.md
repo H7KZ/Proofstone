@@ -1,7 +1,8 @@
 # M8: Mods and data (Fabric, NeoForge, data packs, resource packs)
 
-Refined from the M8 epic in [M7-M10-epics.md](M7-M10-epics.md) by the M7 review (T-M7-99, 2026-11-14). **Not approved yet.**
-No card here is started. The maintainer approves the plan, or changes it, before any card is picked up.
+Refined from the M8 epic in [M7-M10-epics.md](M7-M10-epics.md) by the M7 review (T-M7-99, 2026-11-14). **Done: T-M8-01 to
+T-M8-12 merged (PRs #115 to #126); reviewed in T-M8-99 (ROADMAP "M8 review": exit criterion partly met, item 2 not met).**
+Follow-ups: [M8-followups.md](M8-followups.md).
 
 **Exit criterion.** All of the following must be true, each shown by a real-server run with the XML read:
 - A Fabric cell and a NeoForge cell, each on the newest row the T-M8-01 spike shows the `mcpl` client joins natively, boot with
@@ -448,9 +449,9 @@ topology paths unchanged.
 - Start M9, tag, or publish. Round up a partial result.
 
 **Acceptance.**
-- [ ] ROADMAP has an "M8 review" section with the exit criterion re-scored row by row, each with evidence, and a plain verdict.
-- [ ] Loader flake numbers and reasons are stated, with the run count.
-- [ ] `docs/plan/tasks/M9-bedrock.md` exists in the standard card format and `docsCheck` passes.
+- [x] ROADMAP has an "M8 review" section with the exit criterion re-scored row by row, each with evidence, and a plain verdict.
+- [x] Loader flake numbers and reasons are stated, with the run count.
+- [x] `docs/plan/tasks/M9-bedrock.md` exists in the standard card format and `docsCheck` passes.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
