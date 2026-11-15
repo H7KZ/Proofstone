@@ -68,4 +68,15 @@ public interface Client {
     default void transferTo(String name) {
         throw new UnsupportedOperationException("this Client implementation cannot switch servers; override transferTo");
     }
+
+    /**
+     * The resource packs the server pushed to this client, in order, in the configuration phase and in play, with what
+     * the client answered and sent (ADR-0017 section 7). Packs a plugin pushes are recorded the same way.
+     *
+     * <p>Additive (T-M8-10). The default throws, so a custom {@code Client} fails loudly instead of passing.
+     */
+    default List<ResourcePackPush> resourcePacks() {
+        throw new UnsupportedOperationException("this Client implementation does not record resource packs; override "
+                + "resourcePacks");
+    }
 }

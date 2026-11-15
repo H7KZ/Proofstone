@@ -42,7 +42,8 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
                     PROTOCOL,
                     platform,
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    capabilities(platform, Bukkit.getOnlineMode(), DataPackList.supported()));
+                    capabilities(platform, Bukkit.getOnlineMode(), DataPackList.supported(),
+                            classPresent(RESOURCE_PACK_STATUS_EVENT)));
             EventProbes probes = new EventProbes(this, ticks);
             server = new AgentServer(config, health,
                     new BukkitGame(scheduler, probes, logs, ticks, "folia".equals(platform)));
@@ -65,6 +66,17 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
 
     /** {@code datapacks} is reported where the server API lists data packs (protocol 1.3, ADR-0017 section 8). */
     static List<String> capabilities(String platform, boolean onlineMode, boolean datapacks) {
+        return capabilities(platform, onlineMode, datapacks, false);
+    }
+
+    /**
+     * The client's answer to a resource pack, as the server sees it, is this event; the existing event probe reads it, so
+     * {@code resource-pack-status} needs no endpoint of its own (ADR-0017 sections 7 and 8, T-M8-10).
+     */
+    static final String RESOURCE_PACK_STATUS_EVENT = "org.bukkit.event.player.PlayerResourcePackStatusEvent";
+
+    /** {@code resource-pack-status} is reported where the server has {@link #RESOURCE_PACK_STATUS_EVENT}. */
+    static List<String> capabilities(String platform, boolean onlineMode, boolean datapacks, boolean resourcePackStatus) {
         List<String> tokens = new ArrayList<>(Arrays.asList(
                 "command", "players", "config", "reload", "world", "events", "log", "ticks"));
         if (!onlineMode) {
@@ -72,6 +84,9 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
         }
         if (datapacks) {
             tokens.add("datapacks");
+        }
+        if (resourcePackStatus) {
+            tokens.add("resource-pack-status");
         }
         if ("folia".equals(platform)) {
             tokens.add("regions");

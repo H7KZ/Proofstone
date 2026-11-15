@@ -64,6 +64,16 @@ val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
     into(fixturePlugins)
 }
 
+// The resource pack of C-R01 and C-R02 (T-M8-10), zipped from its source, never committed as a binary. Reproducible, so its
+// sha1 is the same on every build.
+val zipResourcePack = tasks.register<Zip>("zipResourcePack") {
+    from(layout.projectDirectory.dir("src/test/resourcepacks/proofstone-e2e"))
+    archiveFileName.set("proofstone-e2e.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("resourcepacks"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
 /** The setup shared by both scenario tasks: one real Paper cell, the agent jar, and a guard against silent skips. */
 fun Test.realServerScenarios(taskDescription: String) {
     group = "verification"
@@ -73,7 +83,7 @@ fun Test.realServerScenarios(taskDescription: String) {
     useJUnitPlatform()
     // The agent jar is built, never committed (AGENTS.md §3).
     dependsOn(":platforms:bukkit:agent:shadowJar", ":platforms:velocity:agent:shadowJar",
-        ":platforms:bungee:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin, copyFixturePlugin)
+        ":platforms:bungee:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin, copyFixturePlugin, zipResourcePack)
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     systemProperty("proofstone.velocity.agentJar", velocityAgentJar.asFile.absolutePath)

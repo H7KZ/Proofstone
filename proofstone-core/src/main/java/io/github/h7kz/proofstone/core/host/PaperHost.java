@@ -155,6 +155,8 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         if (!dataPacks.isEmpty()) {
             container.withEnv("DATAPACKS", DataPack.env(dataPacks));
         }
+        // server.properties pushes the pack the harness serves on its own loopback (ADR-0017 section 7, T-M8-10).
+        options.resourcePackEnv().forEach(container::withEnv);
         // Tests join several clients from one address within seconds; Paper's default 4 s connection throttle
         // would refuse the second ("Connection throttled!"). Copied in, like every input (T-M1-10).
         // Owned by the server user, or Paper cannot save it and logs a permission error (T-M8-02). A topology backend's

@@ -9,6 +9,8 @@ import io.github.h7kz.proofstone.api.Click;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
+import io.github.h7kz.proofstone.api.ResourcePackPush;
 import io.github.h7kz.proofstone.core.driver.Face;
 import io.github.h7kz.proofstone.core.driver.SlotStack;
 import io.github.h7kz.proofstone.core.driver.WindowSession;
@@ -22,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
@@ -49,6 +52,9 @@ import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarActio
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ShiftClickItemAction;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundDisconnectPacket;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundPingPacket;
+import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundResourcePackPopPacket;
+import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundResourcePackPushPacket;
+import org.geysermc.mcprotocollib.protocol.packet.common.serverbound.ServerboundResourcePackPacket;
 import org.geysermc.mcprotocollib.protocol.packet.common.serverbound.ServerboundPongPacket;
 import org.geysermc.mcprotocollib.protocol.data.game.item.HashedStack;
 import org.geysermc.mcprotocollib.protocol.packet.configuration.clientbound.ClientboundRegistryDataPacket;
@@ -112,10 +118,28 @@ final class McplSession implements ClientSession {
     private volatile int switchMark = -1;
     private volatile int commandMark = -1;
     private volatile boolean disconnectedMidSwitch;
+    /** Every resource-pack push and pop, answered as the test declared (client-driver spec section 2b). */
+    private final ResourcePacks resourcePacks;
 
     McplSession(Session network, String username) {
+        this(network, username, ResourcePackPolicy.NONE, ResourcePacks.http(),
+                download -> Thread.ofVirtual().name("mcpl-pack-download").start(download));
+    }
+
+    McplSession(Session network, String username, ResourcePackPolicy packs, ResourcePacks.Fetcher fetcher,
+            Executor downloads) {
         this.network = network;
         this.username = username;
+        this.resourcePacks = new ResourcePacks(packs, fetcher, downloads, network::send, this::abort);
+    }
+
+    /** Ends the session with a reason of the driver's own; the disconnect event keeps it as the reason. */
+    private void abort(String reason) {
+        if (disconnectReason == null) {
+            disconnectReason = reason;
+        }
+        record("disconnecting: " + reason);
+        network.disconnect(reason);
     }
 
     SessionListener listener() {
@@ -134,7 +158,9 @@ final class McplSession implements ClientSession {
             public void packetSent(Session session, Packet packet) {
                 // The offered protocol is what a version mismatch would show first (T-M6-14).
                 record("-> " + packet.getClass().getSimpleName() + (packet instanceof ClientIntentionPacket intention
-                        ? " protocol=" + intention.getProtocolVersion() : ""));
+                        ? " protocol=" + intention.getProtocolVersion() : "")
+                        + (packet instanceof ServerboundResourcePackPacket status
+                                ? " id=" + status.getId() + " " + status.getStatus() : ""));
             }
 
             @Override
@@ -185,6 +211,11 @@ final class McplSession implements ClientSession {
             // A vanilla client answers every ping. ViaProxy turns a rejected click of a pre-1.17 server into a
             // ping, and the server ignores all further clicks until the pong comes back (T-M3-03).
             network.send(new ServerboundPongPacket(ping.getId()));
+        } else if (packet instanceof ClientboundResourcePackPushPacket push) {
+            // In configuration and in play alike: the server waits for the answer, so it is never left unanswered.
+            summary += " " + resourcePacks.onPush(push);
+        } else if (packet instanceof ClientboundResourcePackPopPacket pop) {
+            summary += " " + resourcePacks.onPop(pop);
         } else if (packet instanceof ClientboundDisconnectPacket kick) {
             disconnectReason = flatten(kick.getReason());
             summary += " " + disconnectReason;
@@ -700,6 +731,11 @@ final class McplSession implements ClientSession {
         synchronized (transcript) {
             return new ArrayList<>(transcript.subList(Math.max(0, transcript.size() - 10), transcript.size()));
         }
+    }
+
+    @Override
+    public List<ResourcePackPush> resourcePacks() {
+        return resourcePacks.snapshot();
     }
 
     @Override

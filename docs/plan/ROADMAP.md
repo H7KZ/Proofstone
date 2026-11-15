@@ -861,6 +861,16 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
 Paper and topology numbers.
 
+- **T-M8-10 resource packs (2026-11-15).** `:conformance:run -Dproofstone.cells=paper@26.3`, three separate invocations under the
+  Docker lock, all green: 17 tests, 2 skipped (`FOLIA_REGIONS`, reasoned), 0 failures, 0 errors each, C-R01 and C-R02 included;
+  0 join timeouts, no `moved too quickly`. Three development runs of C-R01/C-R02 alone came first. Dev run 1: accept, decline
+  and wrong hash RED (`AwaitTimeoutException`, probe empty): **Paper 26.3 fires no `PlayerResourcePackStatusEvent` for the
+  configuration-phase push from `server.properties`** (paper.md Gotchas), against ADR-0017 §7's assumption that the probe reads
+  it; the scenarios now read the server's view from a play-phase push by the fixture plugin. Dev run 2: RED, the probe's events
+  carried `getHash` = null and `CapturedEvent` (`Map.copyOf`) refused them with a NullPointerException, an existing bug for any
+  event with a null getter; fixed in its own commit. Dev run 3 green. The driver side (record, answers, sha1 check, decline kick
+  `multiplayer.requiredTexturePrompt.disconnect`, no answer refused at once) passed from dev run 1. Evidence: local copies of the
+  XML, bundles and logs (not committed).
 - **T-M8-09 data packs (2026-11-15).** C-D01 and C-D02, `:conformance:run` per cell, one cell per invocation under the Docker
   lock. First set: `paper@26.3` 3 of 3 green; `fabric@26.3` 1 of 3 green, **C-D02 RED in runs 2 and 3** (`DISAGREE`: the agent
   reads the diamond, the client's inventory is empty). **Cause (driver transcript of the red bundle):** the scenario sent the

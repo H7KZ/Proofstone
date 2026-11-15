@@ -8,6 +8,7 @@ import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.geysermc.mcprotocollib.network.factory.ClientNetworkSessionFactory;
 import org.geysermc.mcprotocollib.network.session.ClientNetworkSession;
 import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
@@ -16,8 +17,8 @@ import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
  * The primary driver (ADR-0004): MCProtocolLib on the newest protocol only, offline auth.
  *
  * <p>The library's default listeners run login, the configuration phase (registries, known packs, finish
- * configuration) and keep-alive replies. {@link McplSession} only observes packets and sends chat and commands,
- * which is the whole packet surface this card needs (client-driver spec §3).
+ * configuration) and keep-alive replies. {@link McplSession} observes packets, sends chat and commands, and answers
+ * resource-pack pushes as {@link ConnectSpec#resourcePacks()} says (client-driver spec §2b, §3).
  */
 public final class McplDriver implements ClientDriver {
 
@@ -40,7 +41,8 @@ public final class McplDriver implements ClientDriver {
                 .setAddress(spec.host(), spec.port())
                 .setProtocol(new MinecraftProtocol(spec.username()))
                 .create();
-        McplSession session = new McplSession(network, spec.username());
+        McplSession session = new McplSession(network, spec.username(), spec.resourcePacks(), ResourcePacks.http(),
+                download -> Thread.ofVirtual().name("mcpl-pack-download").start(download));
         network.addListener(session.listener());
         network.connect(false);
         String where = spec.username() + " -> " + spec.host() + ":" + spec.port();
@@ -58,7 +60,11 @@ public final class McplDriver implements ClientDriver {
         }
         if (session.state() == McplSession.State.DISCONNECTED) {
             session.close();
-            throw new ClientDriverException("could not join " + where + ": " + session.disconnectReason());
+            // A pack the client could not take is part of why: the server's kick alone would hide it (T-M8-10).
+            String packs = session.resourcePacks().stream().filter(push -> push.problem() != null)
+                    .map(push -> push.url() + ": " + push.problem()).collect(Collectors.joining("; "));
+            throw new ClientDriverException("could not join " + where + ": " + session.disconnectReason()
+                    + (packs.isEmpty() ? "" : "; resource packs: " + packs));
         }
         return session;
     }

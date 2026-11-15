@@ -43,5 +43,12 @@ public enum Capability {
      * ({@code GET /v1/datapacks}, token {@code datapacks}), so {@link Proofstone#datapacks()} can ship one. Declared by the
      * Paper and Fabric packs (ADR-0017 section 8).
      */
-    DATAPACKS_VANILLA
+    DATAPACKS_VANILLA,
+
+    /**
+     * The server pushes a {@link ServerResourcePack} to the client and the agent reads the client's answer through the
+     * event probe (token {@code resource-pack-status}). Declared by the Paper pack, on native cells only (ADR-0017
+     * sections 7 and 8).
+     */
+    RESOURCE_PACKS
 }

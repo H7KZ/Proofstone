@@ -69,6 +69,14 @@ public interface ClientSession extends AutoCloseable {
         throw new ClientDriverException("this driver cannot await a proxy server switch; use a driver that supports it");
     }
 
+    /**
+     * Every resource-pack push this session saw, in order, in configuration and in play, with the answer and the statuses
+     * sent (client-driver spec section 2b). Additive (T-M8-10); a driver without support fails loudly.
+     */
+    default List<io.github.h7kz.proofstone.api.ResourcePackPush> resourcePacks() {
+        throw new ClientDriverException("this driver does not record resource packs; use a driver that supports them");
+    }
+
     /** Timestamped packet names and summaries, for repro bundles. */
     List<String> transcript();
 

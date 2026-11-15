@@ -3,6 +3,7 @@ package io.github.h7kz.proofstone.core.junit;
 import io.github.h7kz.proofstone.api.Capability;
 import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.api.Requires;
+import io.github.h7kz.proofstone.api.ServerResourcePack;
 import io.github.h7kz.proofstone.api.Topology;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -30,8 +31,9 @@ final class CapabilityModel {
             // Spigot declares only what its conformance run verified (docs/platforms/spigot.md), like Purpur.
             "spigot", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE),
             // Paper's offline login accepts a '.' prefixed name with no setting changed (docs/platforms/paper.md, verified).
+            // RESOURCE_PACKS: the push, the answers and the status event ran on paper@26.3 (T-M8-10, docs/platforms/paper.md).
             "paper", Set.of(Capability.BUKKIT_EVENTS, Capability.CONSOLE, Capability.SIMULATED_BEDROCK,
-                    Capability.DATAPACKS_VANILLA),
+                    Capability.DATAPACKS_VANILLA, Capability.RESOURCE_PACKS),
             // The proxy packs declare only the topology capabilities (ADR-0016 section 10); their agents report "proxy".
             "velocity", Set.of(Capability.PROXY, Capability.TOPOLOGY),
             "bungeecord", Set.of(Capability.PROXY, Capability.TOPOLOGY),
@@ -53,7 +55,9 @@ final class CapabilityModel {
             Capability.PROXY, "proxy",
             Capability.TOPOLOGY, "proxy",
             // GET /v1/datapacks (protocol 1.3, ADR-0017 section 8): Bukkit agent where the server API lists packs, Fabric agent.
-            Capability.DATAPACKS_VANILLA, "datapacks");
+            Capability.DATAPACKS_VANILLA, "datapacks",
+            // The Bukkit agent's event probe can read PlayerResourcePackStatusEvent (ADR-0017 section 8).
+            Capability.RESOURCE_PACKS, "resource-pack-status");
 
     private CapabilityModel() {
     }
@@ -63,7 +67,9 @@ final class CapabilityModel {
      * stalls before the server sees it (observed on paper@1.21.11, T-M5-06, docs/platforms/paper.md), so the capability
      * is held on native cells only until a bridged row shows the login working.
      */
-    private static final Set<Capability> NOT_HELD_BRIDGED = Set.of(Capability.SIMULATED_BEDROCK);
+    private static final Set<Capability> NOT_HELD_BRIDGED = Set.of(Capability.SIMULATED_BEDROCK,
+            // No bridged run showed ViaProxy carrying the push (ADR-0017 section 7).
+            Capability.RESOURCE_PACKS);
 
     /** The capabilities a native (unbridged) cell holds. */
     static Set<Capability> cellCapabilities(String platform, List<String> agentReported) {
@@ -110,7 +116,9 @@ final class CapabilityModel {
      * Not held on a topology cell until a topology run shows them working: a prefixed login through a proxy has not been
      * run (fail closed, like {@link #NOT_HELD_BRIDGED}).
      */
-    private static final Set<Capability> NOT_HELD_TOPOLOGY = Set.of(Capability.SIMULATED_BEDROCK);
+    private static final Set<Capability> NOT_HELD_TOPOLOGY = Set.of(Capability.SIMULATED_BEDROCK,
+            // A topology serves no resource pack and no run pushed one through a proxy (ADR-0017 section 7).
+            Capability.RESOURCE_PACKS);
 
     /**
      * The capabilities a topology cell holds: the backend pack's that the default backend's agent reports, less those not
@@ -138,6 +146,10 @@ final class CapabilityModel {
         Proofstone declared = testClass.getAnnotation(Proofstone.class);
         if (declared != null && declared.datapacks().length > 0) {
             required.add(Capability.DATAPACKS_VANILLA);
+        }
+        // A declared resource pack needs the cell that pushes it and reads the status (ADR-0017 section 4).
+        if (testClass.isAnnotationPresent(ServerResourcePack.class)) {
+            required.add(Capability.RESOURCE_PACKS);
         }
         Requires onClass = testClass.getAnnotation(Requires.class);
         if (onClass != null) {

@@ -45,6 +45,9 @@ setup writes: give, reset and PATCH.
   - `GET /datapacks`, reply `{enabled, available}` (T-M8-09): the ids Paper's `Server#getDatapackManager` names (`vanilla`, `paper`,
     `file/x.zip`). Read by reflection (the agent is built against 1.8.8); the token `datapacks` is reported, and the endpoint
     served, only where that API exists, else `404 NOT_FOUND`. Read-only: never enables, disables or refreshes a pack;
+  - capability token `resource-pack-status` (T-M8-10, ADR-0017 §8): reported where `PlayerResourcePackStatusEvent` exists. No
+    endpoint: the server's view of a pack answer is read with the existing event probe (`events`). On Paper 26.3 the event
+    fires for a play-phase answer only (docs/platforms/paper.md, Gotchas);
   - `GET /snapshot`, reply `{players, plugins}` (snapshot.json, T-M4-12): every online `PlayerState` and every loaded
     plugin's name, version, enabled flag and config (dotted path to leaf value, jar defaults included), sorted by name. Read-only, one pass on the server
     thread. Never the agent token.

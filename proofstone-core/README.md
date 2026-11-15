@@ -34,6 +34,12 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
   at once with the log tail and stops the container; the boot time is `bootTime()`, a host finding, and the timeout is never
   raised. `LoaderEnvironment` renders the environment, pins, copy list and the listed install hosts (the ADR-0017 section 6
   exception). Paper and topology code is untouched.
+- Resource packs (T-M8-10, ADR-0017 §7): `core.host.ResourcePackSource` serves one declared `.zip` from the test JVM on
+  `127.0.0.1` (the JDK's HTTP server, daemon threads, 404 for any other path) and renders the image's `RESOURCE_PACK*`
+  variables (`PaperHostOptions.withResourcePack`). The extension starts it when the class has `@ServerResourcePack` (not in a
+  control run; a differential run is refused), closes it with the server, and passes each client a `ResourcePackPolicy`
+  (`core.driver`, in `ConnectSpec`): the test's `@ResourcePackAnswer`, or none, and the source's base URL. `RESOURCE_PACKS` is
+  declared by `paper` (token `resource-pack-status`) and never held bridged or on a topology.
 - `io.github.h7kz.proofstone.core.cell.CellSelector`: parses `-Dproofstone.cells` / `PROOFSTONE_CELLS` (`platform@version`, `latest`, `all`); `Scope` (`pr`, `nightly`) and `VersionFamilies` (the `version-families` of `proofstone.yml`).
 
 - `io.github.h7kz.proofstone.core.await.Await`: `until` and `untilBoth` predicate polling (25 ms to 250 ms backoff).

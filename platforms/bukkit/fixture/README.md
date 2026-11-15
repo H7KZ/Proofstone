@@ -18,6 +18,9 @@ A test-only Bukkit plugin, `proofstone-fixture`, that the agent's contract tests
 - Command `fixture-getserver <player>` (T-M7-12): sends `GetServer` on the `BungeeCord` plugin channel for that player and
   logs the proxy's answer as `fixture BungeeCord reply: GetServer <server>`. The topology conformance P04 reads that line from
   the container log. It sends one message and records the reply; it does nothing else.
+- Command `fixture-resourcepack <player> <url> <sha1> <required>` (T-M8-10): pushes that resource pack to the player in play
+  (`Player#addResourcePack`, by reflection, Bukkit 1.20.3+), as a plugin under test would. The conformance scenarios C-R01
+  and C-R02 use it because Paper fires `PlayerResourcePackStatusEvent` only for a play-phase answer.
 
 ## How to test
 - `./gradlew :platforms:bukkit:agent:integrationTest`: `AgentContractIT` copies this jar into the Paper container with

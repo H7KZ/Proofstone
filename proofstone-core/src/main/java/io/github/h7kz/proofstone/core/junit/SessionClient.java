@@ -4,6 +4,7 @@ import io.github.h7kz.proofstone.api.BlockPos;
 import io.github.h7kz.proofstone.api.Client;
 import io.github.h7kz.proofstone.api.ItemView;
 import io.github.h7kz.proofstone.api.Position;
+import io.github.h7kz.proofstone.api.ResourcePackPush;
 import io.github.h7kz.proofstone.api.Window;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
@@ -88,6 +89,11 @@ final class SessionClient implements Client, AutoCloseable {
                     + "backends); this is a single-server cell, so there is no server to switch to (ADR-0016 section 5)");
         }
         switcher.transfer(name, session, target);
+    }
+
+    @Override
+    public List<ResourcePackPush> resourcePacks() {
+        return session.resourcePacks();
     }
 
     /** The driver's packet transcript, for the repro bundle. */

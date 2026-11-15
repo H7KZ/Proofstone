@@ -201,4 +201,31 @@ class CapabilityModelTest {
         assertThat(CapabilityModel.required(MethodOnly.class, MethodOnly.class.getDeclaredMethod("needsTwo")))
                 .doesNotContain(Capability.DATAPACKS_VANILLA);
     }
+
+    @io.github.h7kz.proofstone.api.ServerResourcePack("packs/p.zip")
+    static class DeclaresResourcePack {
+        void plain() {
+        }
+    }
+
+    @Test
+    void onlyNativePaperHoldsResourcePacksAndOnlyWithTheStatusToken() {
+        List<String> with = List.of("command", "events", "resource-pack-status");
+        assertThat(CapabilityModel.cellCapabilities("paper", with)).contains(Capability.RESOURCE_PACKS);
+        assertThat(CapabilityModel.cellCapabilities("paper", List.of("command", "events")))
+                .doesNotContain(Capability.RESOURCE_PACKS);
+        assertThat(CapabilityModel.cellCapabilities("paper", with, true)).as("not until a bridged run shows the push")
+                .doesNotContain(Capability.RESOURCE_PACKS);
+        for (String platform : List.of("fabric", "neoforge", "folia", "purpur", "spigot")) {
+            assertThat(CapabilityModel.cellCapabilities(platform, with)).doesNotContain(Capability.RESOURCE_PACKS);
+        }
+        assertThat(CapabilityModel.topologyCapabilities("paper", with, "velocity", List.of("proxy")))
+                .as("a topology serves no pack").doesNotContain(Capability.RESOURCE_PACKS);
+    }
+
+    @Test
+    void declaringAResourcePackImpliesTheCapability() throws NoSuchMethodException {
+        assertThat(CapabilityModel.required(DeclaresResourcePack.class,
+                DeclaresResourcePack.class.getDeclaredMethod("plain"))).containsExactly(Capability.RESOURCE_PACKS);
+    }
 }

@@ -69,30 +69,42 @@ ignores it, and it ignores the Velocity and BungeeCord difference otherwise.
 
 ## 2b. Resource packs (ADR-0017 §7, built by T-M8-10)
 
-Design; no driver code yet. What ran (T-M8-01, Fabric 26.3, [fabric.md](../platforms/fabric.md) Capabilities): the server
-pushes `ClientboundResourcePackPushPacket(id, url, hash (sha1), required, prompt)` in the **configuration phase**; accept
+What ran first (T-M8-01, Fabric 26.3, [fabric.md](../platforms/fabric.md) Capabilities): the server pushes
+`ClientboundResourcePackPushPacket(id, url, hash (sha1), required, prompt)` in the **configuration phase**; accept
 (`ACCEPTED`, `DOWNLOADED`, `SUCCESSFULLY_LOADED`) reached play, `DECLINED` was kicked with
-`multiplayer.requiredTexturePrompt.disconnect`, and no answer stalled the join at `CONFIGURATION_STALLED`.
+`multiplayer.requiredTexturePrompt.disconnect`, and no answer stalled the join at `CONFIGURATION_STALLED`. As built
+(`drivers/mcpl` `ResourcePacks`, T-M8-10), checked on `paper@26.3` by C-R01 and C-R02 ([self-tests.md](self-tests.md) §1c):
 
-- **Answer policy, set before connect.** `ConnectSpec` carries the test's answer (`ACCEPT`, `DECLINE`, `FAIL_DOWNLOAD`) or
-  none. A push arrives during the join, before the test body, so the answer cannot be given later.
-- **No answer declared:** on the first push the driver disconnects and throws `ClientDriverException` with the URL and
-  `no resource-pack answer declared`. It never accepts silently and never lets the join stall into a timeout.
-- **Record every push and pop**, in configuration and in play, in order: `id`, `url`, `hash` (empty if the server sent
-  none), `required`, `prompt` (the text component flattened to plain text, or null), the answer given and the statuses
-  sent. A pop (`ClientboundResourcePackPopPacket`, one id or all) is recorded too. The session exposes the records
-  (`ClientSession.resourcePacks()`, additive, default throws so a driver without support fails loudly); the test reads
-  them as `Client.resourcePacks()`.
-- **Statuses sent**, as a vanilla client sends them:
-  - `ACCEPT`: `ACCEPTED`, then the download, then `DOWNLOADED` and `SUCCESSFULLY_LOADED` when the sha1 of the bytes equals
-    the pushed hash. On a mismatch the record says `hash mismatch: expected <h>, got <h>` and the driver sends
-    `FAILED_DOWNLOAD`; the test, not the driver, decides whether that is a failure.
+- **Answer policy, set before connect.** `ConnectSpec.resourcePacks()` is a `ResourcePackPolicy(answer, source)`: the test's
+  answer (`ACCEPT`, `DECLINE`, `FAIL_DOWNLOAD`, from `@ResourcePackAnswer` on the method, else the class) or none, and the
+  harness source's base URL (`http://127.0.0.1:<port>/`) or none. The 4-argument `ConnectSpec` means no answer and no source.
+  The per-cell conformance check's own clients accept the cell's declared pack (the harness serves it); with no pack
+  declared they declare nothing either.
+- **No answer declared:** on the first push the driver disconnects, and the join fails at once with `ClientDriverException`
+  naming the URL and `no resource-pack answer declared`. It never accepts silently and never lets the join stall into a
+  timeout (C-R01: ended well inside the join timeout, no `timed out` message).
+- **Record every push and pop**, in configuration and in play (and during a proxy switch), in order, as
+  `io.github.h7kz.proofstone.api.ResourcePackPush`: `id`, `url`, `hash` (empty if the server sent none), `required`, `prompt`
+  (the text component flattened to plain text, or null), the declared `answer`, the `statuses` sent, a `problem` (or null)
+  and `popped`. A pop (`ClientboundResourcePackPopPacket`, one id or all) marks the records; the driver sends no status for a
+  pop. The transcript has one line per push, pop and status sent. `ClientSession.resourcePacks()` (additive, default throws)
+  exposes the records; the test reads them as `Client.resourcePacks()`.
+- **Statuses sent**, as a vanilla client sends them, each recorded before it is sent:
+  - `ACCEPT`: `ACCEPTED`, then the download (on its own thread, so keep-alives still flow), then `DOWNLOADED` and
+    `SUCCESSFULLY_LOADED` when the sha1 of the bytes equals the pushed hash. On a mismatch the record's problem is
+    `hash mismatch: expected <h>, got <h>` and the driver sends `FAILED_DOWNLOAD`; a failed download (not HTTP 200, an I/O
+    error) is `download failed: ...` and `FAILED_DOWNLOAD`. The test, not the driver, decides whether that is a failure. A
+    push with no hash is loaded unchecked, as vanilla does, and the problem says it was not checked.
   - `DECLINE`: `DECLINED`.
   - `FAIL_DOWNLOAD`: `ACCEPTED`, then `FAILED_DOWNLOAD`, without downloading.
-  - T-M8-10 checks each sequence against a real server and records what the server logs for it.
-- **Source rule: never the internet.** The driver downloads only from the harness pack source (the loopback URL the harness
-  serves for the cell). A push with any other URL is recorded; `DECLINE` and `FAIL_DOWNLOAD` are sent as declared, and
-  `ACCEPT` on it is a `ClientDriverException` naming the URL and this rule. Nothing is unpacked or rendered.
+  - What `paper@26.3` did with each (C-R01, C-R02): `ACCEPT` reached play; `DECLINED` on a required pack was kicked with
+    `multiplayer.requiredTexturePrompt.disconnect` (server log: `Disconnecting <player> due to resource pack <id> rejection`);
+    `FAILED_DOWNLOAD` after a wrong hash on a required pack still reached play. `FAIL_DOWNLOAD` itself was run in unit tests
+    only.
+- **A join that fails** says why the pack was not taken: the `could not join` message adds `resource packs: <url>: <problem>`.
+- **Source rule: never the internet.** The driver downloads only from under the source base URL, with one GET that follows
+  no redirect. A push with any other URL is recorded; `DECLINE` and `FAIL_DOWNLOAD` are sent as declared, and `ACCEPT` on it
+  disconnects with a `ClientDriverException` naming the URL and this rule. Nothing is unpacked or rendered.
 - **Several packs** (one push per id since 1.20.3) are answered one by one with the same policy.
 - Bridged cells: not run. `RESOURCE_PACKS` is held on native cells only until a bridged run shows ViaProxy carries the push.
 
