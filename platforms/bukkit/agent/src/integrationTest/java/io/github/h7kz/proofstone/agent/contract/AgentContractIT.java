@@ -323,6 +323,8 @@ class AgentContractIT {
         if (host.health().capabilities().contains("datapacks")) {
             ((ArrayNode) data.get("capabilities")).add("datapacks");
         }
+        // Reported where PlayerResourcePackStatusEvent exists (T-M8-10); asserted, not copied: run on paper@26.3, the default cell.
+        ((ArrayNode) data.get("capabilities")).add("resource-pack-status");
         if (platform.equals("folia")) {
             data.put("platform", "folia");
             ((ArrayNode) data.get("capabilities")).add("regions");

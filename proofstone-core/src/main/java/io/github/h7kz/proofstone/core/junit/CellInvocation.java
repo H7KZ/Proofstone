@@ -5,6 +5,7 @@ import io.github.h7kz.proofstone.api.Client;
 import io.github.h7kz.proofstone.api.Clients;
 import io.github.h7kz.proofstone.api.Isolation;
 import io.github.h7kz.proofstone.api.Proofstone;
+import io.github.h7kz.proofstone.api.ServerResourcePack;
 import io.github.h7kz.proofstone.api.Topology;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.LoaderCell;
@@ -12,12 +13,14 @@ import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import io.github.h7kz.proofstone.core.host.LoaderHost;
 import io.github.h7kz.proofstone.core.host.LoaderHostOptions;
 import io.github.h7kz.proofstone.core.host.PaperHost;
 import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.host.LeakDetector;
 import io.github.h7kz.proofstone.core.host.PaperHostOptions;
+import io.github.h7kz.proofstone.core.host.ResourcePackSource;
 import io.github.h7kz.proofstone.core.host.ViaProxyHost;
 import io.github.h7kz.proofstone.core.verdict.Attempt;
 import io.github.h7kz.proofstone.core.verdict.CellResult;
@@ -206,8 +209,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         TestState state = new TestState(host, ErrorLogGuard.cursor(host));
         state.proxy = resource.proxy();
         state.capabilities = CapabilityModel.cellCapabilities(cell.platform(), host.health().capabilities(), bridged);
-        // Extra clients join through the same driver and address as the test's own client (section 11).
-        state.clients = new TestClients(name -> connect(resource, name));
+        // Extra clients join through the same driver and address as the test's own client (section 11), and answer a
+        // resource-pack push as the test declared, or end the join loudly when it declared nothing (ADR-0017 section 7).
+        ResourcePackPolicy packs = ResourcePackDeclaration.forTest(ResourcePackDeclaration.answer(
+                context.getRequiredTestClass(), context.getRequiredTestMethod()), resource.pack());
+        state.clients = new TestClients(name -> connect(resource, name, packs));
         context.getStore(NAMESPACE).put(STATE, state);
         // Capabilities come before conformance: a cell that lacks one is SKIPPED with its reason, and nothing else runs (T-M5-01).
         Optional<String> missing = CapabilityModel.missingReason(required, state.capabilities, cellId());
@@ -243,7 +249,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (declaresClient(context)) {
             // A hash of the unique test id keeps the name stable for a test and different between tests.
             String name = String.format("T%08x", context.getUniqueId().hashCode());
-            state.client = connect(resource, name);
+            state.client = connect(resource, name, packs);
             // After the join: reset needs the player online. It also teleports to the fixture spot.
             new HostPlayer(host, state.client.name()).reset();
         }
@@ -407,7 +413,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 .getOrComputeIfAbsent(CONFORMANCE, key -> new ConformanceCache(), ConformanceCache.class);
         // The per-cell check joins its own client through this invocation's driver (T-M4-10b).
         return cache.get(cellId(), () -> CellConformance.run(cellId(), resource.host(),
-                new CellView(cell, bridged, capabilities), name -> connect(resource, name)));
+                new CellView(cell, bridged, capabilities),
+                name -> connect(resource, name, ResourcePackDeclaration.forHarness(resource.pack()))));
     }
 
     /** The two runs of one test on one cell share this key, so the second one finds the first one's evidence. */
@@ -496,22 +503,43 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             }
         }
         return owner.getStore(NAMESPACE).getOrComputeIfAbsent(
-                "host:" + cell.mc(), key -> boot(), HostResource.class);
+                "host:" + cell.mc(), key -> boot(context.getRequiredTestClass()), HostResource.class);
     }
 
     /**
      * Starts the cell's topology: the server, plus ViaProxy and the network when a driver needs them. A differential run
      * boots it for both drivers, so the shared server is bound to every driver the run uses.
      */
-    private HostResource boot() {
+    private HostResource boot(Class<?> testClass) {
         String jar = System.getProperty(AGENT_JAR);
         if (jar == null) {
             throw new ParameterResolutionException("system property " + AGENT_JAR + " is not set: it points at "
                     + "the shaded agent jar");
         }
         if (loader != null) {
+            // A loader cell does not hold RESOURCE_PACKS, so a declared pack skips there with the capability named.
             return bootLoader();
         }
+        ServerResourcePack declaredPack = controlRun ? null : testClass.getAnnotation(ServerResourcePack.class);
+        if (declaredPack != null && differential) {
+            throw new ParameterResolutionException("INVALID: a differential run of the resource-pack test "
+                    + testClass.getName() + " is refused: only the mcpl driver answers a push (ADR-0017 section 7)");
+        }
+        // Served from this JVM on loopback for as long as the server lives; the client is the only one that fetches it.
+        ResourcePackSource pack = declaredPack == null ? null
+                : ResourcePackSource.serve(Path.of("").toAbsolutePath(), declaredPack.value());
+        try {
+            return bootPaper(pack == null ? Map.of() : ResourcePackDeclaration.env(declaredPack, pack), pack);
+        } catch (RuntimeException e) {
+            if (pack != null) {
+                pack.close();
+            }
+            throw e;
+        }
+    }
+
+    private HostResource bootPaper(Map<String, String> packEnv, ResourcePackSource pack) {
+        String jar = System.getProperty(AGENT_JAR);
         // A control run installs no plugin jars. The agent and the fixture world are not plugins under test, so they stay.
         List<String> plugins = List.of(config.plugins());
         if (controlRun) {
@@ -521,7 +549,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // A data pack is an artefact under test too: a control run installs none (self-tests section 2).
         PaperHostOptions options = PaperHostOptions.of(Path.of(jar), true)
                 .withArtefacts(Path.of("").toAbsolutePath(), plugins)
-                .withDataPacks(controlRun ? List.of() : List.of(config.datapacks()));
+                .withDataPacks(controlRun ? List.of() : List.of(config.datapacks()))
+                .withResourcePack(packEnv);
         List<String> drivers = driversFor(differential);
         // Only a driver other than mcpl needs the network to reach the server, and only a bridged driver needs ViaProxy.
         boolean network = false;
@@ -534,7 +563,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             proxy |= bridgedFor;
         }
         if (!network) {
-            return new HostResource(PaperHost.start(cell, options), null, null, Map.of());
+            return new HostResource(PaperHost.start(cell, options), null, null, Map.of(), pack);
         }
         Network cellNetwork = Network.newNetwork();
         PaperHost host = null;
@@ -552,9 +581,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                             Path.of(System.getProperty("proofstone.repoRoot"))));
                 }
             }
-            return new HostResource(host, viaProxy, cellNetwork, bound);
+            return new HostResource(host, viaProxy, cellNetwork, bound, pack);
         } catch (RuntimeException e) {
-            new HostResource(host, viaProxy, cellNetwork, bound).closeQuietly(e);
+            new HostResource(host, viaProxy, cellNetwork, bound, null).closeQuietly(e);
             throw e;
         }
     }
@@ -593,11 +622,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         LoaderHost host = LoaderHost.start(loader, options);
         System.err.println("PROOFSTONE LOADER BOOT " + loader.identity() + ": " + host.bootTime().toMillis()
                 + " ms from container start to \"Done (\" (host finding, not a join timeout)");
-        return new HostResource(host, null, null, Map.of());
+        return new HostResource(host, null, null, Map.of(), null);
     }
 
     /** Logs one client in under {@code name} through the cell's driver, at the address that driver reaches. */
-    private SessionClient connect(HostResource resource, String name) {
+    private SessionClient connect(HostResource resource, String name, ResourcePackPolicy packs) {
         ClientDriver driver = PRIMARY_DRIVER.equals(driverId) ? findDriver(driverId).orElseThrow(
                 () -> new ParameterResolutionException("no client driver " + driverId + " on the classpath"))
                 : resource.drivers().get(driverId);
@@ -621,7 +650,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         int proxyMark = resource.proxy() == null ? 0 : resource.proxy().logs().size();
         ClientSession session;
         try {
-            session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT));
+            session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT, packs));
         } catch (JoinTimeoutException e) {
             throw reportStall(resource, e, serverMark, proxyMark);
         }
@@ -668,8 +697,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * Closes the bound drivers, ViaProxy, the server and the network when the owning store closes. {@code drivers} holds
      * only the sidecar drivers that {@link ClientDriver#onNetwork} started.
      */
-    private record HostResource(ServerHost host, ViaProxyHost proxy, Network network, Map<String, ClientDriver> drivers)
-            implements AutoCloseable {
+    private record HostResource(ServerHost host, ViaProxyHost proxy, Network network, Map<String, ClientDriver> drivers,
+            ResourcePackSource pack) implements AutoCloseable {
         @Override
         public void close() {
             RuntimeException failure = null;
@@ -690,6 +719,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             parts.add(proxy);
             parts.add(host);
             parts.add(network);
+            parts.add(pack);
             for (AutoCloseable part : parts) {
                 if (part == null) {
                     continue;

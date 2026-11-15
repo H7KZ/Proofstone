@@ -13,4 +13,13 @@ class AgentCapabilitiesTest {
         assertThat(ProofstoneAgentPlugin.capabilities("paper", true, false)).doesNotContain("datapacks");
         assertThat(ProofstoneAgentPlugin.capabilities("paper", true)).doesNotContain("datapacks");
     }
+
+    @Test
+    void resourcePackStatusIsReportedOnlyWhereTheStatusEventExistsAfterDatapacksAndBeforeRegions() {
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", false, true, true))
+                .endsWith("bedrock-prefix", "datapacks", "resource-pack-status");
+        assertThat(ProofstoneAgentPlugin.capabilities("folia", true, true, true)).endsWith("resource-pack-status", "regions");
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true, false)).doesNotContain("resource-pack-status");
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true)).doesNotContain("resource-pack-status");
+    }
 }
