@@ -861,6 +861,14 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
 Paper and topology numbers.
 
+- **T-M8-09 data packs (2026-11-15).** C-D01 and C-D02, `:conformance:run` per cell, one cell per invocation under the Docker
+  lock. `paper@26.3`: 3 of 3 green (13 tests, 2 skipped = C-FOLIA reasoned `FOLIA_REGIONS`, 0 failures). `fabric@26.3`: **1 of 3
+  green; C-D02 RED in runs 2 and 3** (`DISAGREE`: after the craft and the window close the agent reads the diamond, the
+  client oracle's inventory is empty; C-D01 and C01 to C08 green in all three). Not retried, not changed: the cause is not
+  yet shown (the driver copies the window's player slots back on close, and the shift-click result may land after that copy;
+  C08, the same flow with paper, passed 3 of 3 on this row). `neoforge@26.3`: C-D01 and C-D02 skipped with
+  `missing capability DATAPACKS_VANILLA` (one invocation). Evidence: `C:\pw	809-ev`. The acceptance for the Fabric row is
+  therefore NOT met.
 - **T-M8-01 spike (2026-11-14).** Fabric 0.20.1 and NeoForge 26.3.0.103 on 26.3 take the `mcpl` 777 client natively with
   no mod and with a server-only mod (Fabric also with Fabric API). Driver joins: Fabric 28 counted, 20 ok, 3 join
   timeouts, 5 refused; NeoForge 13 counted, 13 ok. Details in [fabric.md](../platforms/fabric.md) and

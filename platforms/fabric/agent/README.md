@@ -41,8 +41,9 @@ other agents and binds all interfaces inside the container network.
 
   | Endpoint | Reply on Fabric |
   |---|---|
-  | `GET /v1/health` | `platform: "fabric"`, `protocol: "1.3"`, `mcVersion` the game version; tokens `command`, `players`, `world`, `events`, `log`, `ticks`, `mods` |
+  | `GET /v1/health` | `platform: "fabric"`, `protocol: "1.3"`, `mcVersion` the game version; tokens `command`, `players`, `world`, `events`, `log`, `ticks`, `mods`, `datapacks` |
   | `GET /v1/mods` | `{mods: [{id, version}]}` sorted by id: the mods whose jar is in the mods folder (not the game, Java, the loader, or a nested module) |
+  | `GET /v1/datapacks` | `{enabled, available}`: the pack repository's selected and available ids in its order (`vanilla`, `file/x.zip`, the loader's own packs), read on the server thread; read-only, never reloads or selects a pack (T-M8-09) |
   | `POST /v1/command` | `{raw}`: what the command sent to its source; an unknown command is `400 INVALID_REQUEST` |
   | `GET /v1/players/{name}` | `PlayerState`; worlds named as Bukkit names them (`world`, `world_nether`, `world_the_end`, else the dimension id); slots are the vanilla indexes (0-35, 36-39 feet to head, 40 offhand). A player with a window open is `501 NOT_SUPPORTED` (the server keeps no window title) |
   | `POST .../give`, `.../reset`, `PATCH` | as the Bukkit agent; enchantments resolve through the server's registries; `UNKNOWN_KEY` before anything changes |

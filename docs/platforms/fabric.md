@@ -175,7 +175,9 @@ From `FabricAgentIT` runs on the fabric@26.3 row (2026-11-14, `scripts/dockerloc
   `mods/list` golden.
 - **World names** follow Bukkit (`world`, `world_nether`, `world_the_end`), so the golden fixture (`world`, spawn
   `(0.5, 64.0, 0.5)`) replays unchanged.
-- **Not served:** plugin endpoints (`404`), `datapacks` (T-M8-09), `resource-pack-status` (ADR-0017 section 7). A player with
+- **`/v1/datapacks`** (T-M8-09) lists the pack repository's selected and available ids; a declared `file/<name>.zip` is in
+  both once the image has installed it into `world/datapacks` before start.
+- **Not served:** plugin endpoints (`404`), `resource-pack-status` (ADR-0017 section 7). A player with
   a window open is `501 NOT_SUPPORTED`: a vanilla server does not keep the window's title, and the agent will not invent one.
 
 ### The loader host (T-M8-07, `LoaderHost` in `proofstone-core`)
@@ -213,7 +215,8 @@ Quirks, each asserted as it is (never a weakened assertion):
   `ConformanceLoaderWindowTest` asserts the refusal while a chest is open and the read again once it is closed. C04 to C08 read
   the player only after closing the window, so they run unchanged. A dev run before the counted ones (fabric, C02 expecting the
   Bukkit `Help`) was red on `/help` and led to the first quirk above.
-- **Capabilities:** the loader pack holds `CONSOLE` (agent token `command`, verified by C03 and the per-cell check). Not
+- **Capabilities:** the loader pack holds `CONSOLE` (agent token `command`, verified by C03 and the per-cell check) and, since
+  T-M8-09, `DATAPACKS_VANILLA` (token `datapacks`, C-D01 and C-D02). Not
   `BUKKIT_EVENTS`: the agent's `events` token is a loader probe, not a Bukkit listener. No scenario was skipped.
 
 ## Capabilities

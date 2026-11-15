@@ -260,7 +260,10 @@ class EventsE2E {
 - **Removed.** `NMS` and `DATAPACKS` were declared with no agent token, so a `@Requires` on either skipped every cell.
   The fix PR (`fix/m5-capability-api`, api-change, M5 review decision 4) removed both. A capability is re-added only together
   with the agent token that reports it: NMS checks belong in the per-cell `expect` hook (section 9), and `DATAPACKS_VANILLA`
-  returns in M8 with the token `datapacks` (ADR-0017 §8, T-M8-09).
+  returns in M8 with the token `datapacks` (ADR-0017 §8, T-M8-09). **Re-added by T-M8-09** as `DATAPACKS_VANILLA` (last
+  constant of the enum, additive): the Paper and Fabric packs declare it and it is held when the agent reports `datapacks`
+  (`GET /v1/datapacks`). Folia, Purpur, Spigot and NeoForge declare nothing, so a data-pack test skips there with
+  `missing capability DATAPACKS_VANILLA`.
 - **`Cell.capabilities()` is a default method (fix PR, M5 review decision 2).** It throws
   `UnsupportedOperationException` unless overridden, so a custom `Cell` that is used with `@Requires` fails loudly. The core
   `CellView` overrides it. Source-compatible for existing implementers; the baseline line changes from abstract to default.
@@ -394,6 +397,13 @@ class PackE2E {
   implies `@Requires(MODS)` or `@Requires(DATAPACKS_VANILLA)`: a cell without it is `SKIPPED` with `CAPABILITY_MISSING`.
   `plugins` on a loader cell is `INVALID test declaration`. A test mod with the id `fabric-api` is refused (the Fabric cell
   provides the pinned Fabric API).
+- **Data packs, as built (T-M8-09).** `@Proofstone(datapacks = ...)` is in the API. Each glob matches exactly one `.zip` (with
+  `pack.mcmeta` at its top) or one directory holding `pack.mcmeta`; a directory is zipped deterministically and named
+  `<directory>.zip`. The zip is copied into the container before start and installed by the image's `DATAPACKS` setting into
+  `world/datapacks`; nothing reloads it while a test runs. The server lists it as `file/<name>` and the extension checks that
+  id in `GET /v1/datapacks` `enabled` after the capability check (a cell without the capability skips first): a missing one
+  is `INVALID test declaration` naming the pack, with the log tail. A control run installs no data pack. A topology cell
+  refuses a declared data pack (`INVALID test declaration`).
 - **Loaded or loud.** A declared mod missing from the agent's mod list, or a declared data pack not enabled, makes the class's
   tests on that cell `INVALID`, naming the artefact. A mod that crashes the loader is a failed boot, `INVALID` naming the
   mod. A data pack that loads but logs an error fails the test through the log guard (`FAIL`).
