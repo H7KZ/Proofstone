@@ -37,6 +37,7 @@ class TopologyApiTest {
         assertThat(Platform.values()).startsWith(Platform.PAPER, Platform.FOLIA, Platform.PURPUR, Platform.SPIGOT)
                 .endsWith(Platform.VELOCITY, Platform.BUNGEECORD, Platform.FABRIC, Platform.NEOFORGE);
         assertThat(Capability.values()).startsWith(Capability.BUKKIT_EVENTS, Capability.CONSOLE,
-                Capability.FOLIA_REGIONS, Capability.SIMULATED_BEDROCK).endsWith(Capability.PROXY, Capability.TOPOLOGY);
+                Capability.FOLIA_REGIONS, Capability.SIMULATED_BEDROCK)
+                .endsWith(Capability.PROXY, Capability.TOPOLOGY, Capability.DATAPACKS_VANILLA);
     }
 }
