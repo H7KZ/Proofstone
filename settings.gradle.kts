@@ -79,6 +79,7 @@ include(
     "platforms:fabric:agent",
     "platforms:neoforge:agent",
     "examples:smoke",
+    "examples:loader-datapack",
     "examples:disenchantment-anvil",
     "examples:bad-tests",
     "examples:bedrock-prefix",

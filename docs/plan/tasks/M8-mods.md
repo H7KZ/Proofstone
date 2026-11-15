@@ -418,8 +418,8 @@ topology paths unchanged.
 - Claim a status, a version or a flake rate that was not run.
 
 **Acceptance.**
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
-- [ ] The example runs green on one loader row, three invocations, XML read.
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The example runs green on one loader row, three invocations, XML read.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`

@@ -861,6 +861,14 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
 Paper and topology numbers.
 
+- **T-M8-12 docs and example (2026-11-15).** `examples/loader-datapack` (`DataPackFunctionE2E`, C-D01 cut down) on
+  `fabric@26.3`: `:examples:loader-datapack:loaderExample -Dproofstone.cells=fabric@26.3`, one invocation each under the Docker
+  lock, warm loader cache. Run 1 **RED before any server started** (`ParameterResolutionException`: `CellInvocation.boot` reads
+  `proofstone.agentJar`, the Bukkit agent, before it branches to the loader host, so a loader run must set it though a loader cell
+  never loads it; the example's build now sets it; a finding about the host, not changed here). Then 3 of 3 green, 1 test each,
+  `skipped="0" failures="0" errors="0"`, loader boot 15.0, 14.5, 14.0 s, 0 join timeouts, no `moved too quickly`. User guide
+  [mods-and-packs](../user/mods-and-packs.md) and troubleshooting entries added; `docs/platforms.md` keeps Fabric, NeoForge, data
+  packs and resource packs `experimental`. Evidence: local copies of the XML and logs (not committed).
 - **T-M8-11 negative controls (2026-11-15), run by hand, not in `scripts/release-mutation-check.sh` (asked in the PR).** Four
   red-by-design runs in `metaModTest` (`examples/bad-tests`), each judged by its own reason, none a boot or join timeout, and the
   report's verdict equal to the XML's: `fabric@26.3` and `neoforge@26.3`, a mod that throws at init: `INVALID`, naming
