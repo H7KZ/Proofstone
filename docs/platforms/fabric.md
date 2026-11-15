@@ -267,6 +267,14 @@ Observed in the spike, not yet tokens:
   version-neutral.
 - **The loader alone cannot register an item.** Without Fabric API, `Registry.register(BuiltInRegistries.ITEM, ...)` in
   the server entrypoint failed the boot: `IllegalStateException: This registry can't create intrusive holders`.
+- **`Skipping Entity with id minecraft:zombie_villager` (WARN) is peaceful difficulty plus a zombie village** (T-M8-16): the
+  cell runs `DIFFICULTY=peaceful`, `EntityType.create` returns null for a mob not allowed in peaceful, and the template
+  `village/plains/zombie/villagers/unemployed` holds one. `place template ...` reproduces it on peaceful and not on `easy`. With
+  no `SEED` the world is new per boot (about 1 zombie village near spawn in 430 boots); `SEED=1234567` has its nearest village
+  353 blocks from spawn. Card T-M8-21.
+- **`handleDisconnection() called twice` (WARN) is a vanilla race** (T-M8-16): `Connection.tick` and `ServerConnectionListener.tick`
+  both handle a disconnect that lands mid-tick, the second one tick later (52 to 59 ms in the logs), about 0.4% of client closes.
+  Card T-M8-22.
 - **Boot ERROR lines:** `No key layers in MapLike[{}]` (flat world without generator settings, the same line Paper's
   allowlist holds) on every Fabric run. With the network disconnected, log4j adds `main ERROR Could not determine local
   host name` (offline restart only).

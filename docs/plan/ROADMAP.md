@@ -861,6 +861,101 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
 Paper and topology numbers.
 
+- **T-M8-16 loader WARN diagnosis (2026-11-15).** Two vanilla WARN families on loader cells, each with a mechanism. Diagnosis only:
+  no harness, guard, allowlist or `versions.yml` change. Fix cards T-M8-21 and T-M8-22. Local, Windows 11, Docker Desktop, JDK 21,
+  one invocation at a time under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the command environment only.
+  Every run was `:conformance:run -Dproofstone.cells=<row>` with `conformance/build/{proofstone,test-results}` removed before and
+  copied aside after, XML read. A read-only watcher followed `docker logs -f` of every server container (so green runs keep their
+  whole log) and a second one took one tar of the small world files after `Done (` to read the seed (`world_gen_settings.dat`, tag
+  `seed`). Evidence: `C:\pw\t816-ev`.
+
+  **Runs (21 invocations, 210 boots; XML read; the WARN columns count every container log, also outside the test window):**
+
+  | Run | Result | tests / failures / errors / skipped | Boots | `Skipping Entity` lines | `handleDisconnection` lines | Seeds read |
+  |---|---|---|---|---|---|---|
+  | `fabric-pre1` | green | 11/0/0/0 | 10 | 0 | 0 | none (before the seed watcher) |
+  | `fabric-1` | **red**: C06 (known `DISAGREE`, below) | 11/1/0/0 | 10 | 0 | 0 | 8 |
+  | `fabric-2` to `-4`, `-7` to `-10` | green | 11/0/0/0 | 10 each | 0 | 0 | 10 each |
+  | `fabric-5` | green | 11/0/0/0 | 10 | 0 | **1** | 10 |
+  | `fabric-6` | green | 11/0/0/0 | 10 | 0 | **1** | 10 |
+  | `neoforge-1` to `-8`, `-10` | green | 11/0/0/2 | 10 each | 0 | 0 | 8 each |
+  | `neoforge-9` | **red**: C08 (known `DISAGREE`, below) | 11/1/0/2 | 10 | 0 | 0 | 8 |
+
+  The 2 skips per NeoForge run are `CD01` and `CD02` with `missing capability DATAPACKS_VANILLA` (a skip with its reason, by design,
+  neoforge.md). Seeds: 178 read, **all different**; the ones missing (2 per NeoForge run, 2 in `fabric-1`) are containers that were
+  short-lived or booted before the watcher started, so no tar was taken. Every loader boot gets its own random world.
+  **Per-row red counts:** fabric 1 of 11 invocations red, NeoForge 1 of 10, **0 of 21 by a log-guard WARN**. Both reds are the
+  known `DISAGREE: present in the inventory ... no matching item among []` family: the client closed the window while the
+  server's slot packets for it were still in flight (`ContainerSetContent id=1 (no such window, ignored)` or `ContainerSetSlot id=1
+  (not applied: unknown window or slot)` right after `ServerboundContainerClosePacket` in both driver transcripts). It is the
+  family of T-M7-19 (NeoForge C08) and T-M5-05, not diagnosed here and counted apart. Every other `WARN` or `ERROR` line in the 210
+  logs is known boot noise (offline mode, `No key layers`, NeoForge `Appender DebugFile`, `Advanced terminal`).
+
+  **1. `Skipping Entity with id minecraft:zombie_villager` (T-M8-09 verifier, Fabric C02): mechanism found.**
+  Not seen in 210 boots (0 in 21 invocations). Counting the earlier M8 runs (T-M8-08, T-M8-09, the review: about 220 boots) the
+  rate is **1 in about 430 boots**. The one hit on record is the `t809` verifier bundle: `[02:52:45] [Worker-Main-3/WARN]: Skipping
+  Entity with id minecraft:zombie_villager`, in the second of the client's join. Cause:
+  - Bytecode of the pinned `server-26.3.jar` (`javap -c`; 26.x is unobfuscated): the WARN is in `EntityType.create(ValueInput,
+    Level, EntitySpawnRequest)`, logged when `EntityType.create(Level, EntitySpawnRequest)` returns null, and that returns null
+    when `canSpawn(level)` is false: the type is not enabled by the feature flags, or **`!isAllowedInPeaceful()` and
+    `level.getDifficulty() == PEACEFUL`**. The harness sets `DIFFICULTY=peaceful` on every cell (`LoaderEnvironment.env`,
+    `PaperHost`). A structure template that holds a zombie villager therefore logs the WARN once per entity, and a hostile mob
+    template is skipped the same way.
+  - The template: `village/plains/zombie/villagers/unemployed` (`zombie_villager` is in its NBT; there are 10 such templates over
+    the five biomes). It belongs to the **zombie variant of a village**: `village/plains/town_centers` holds 4 zombie town
+    centres at weight 1 and 4 normal ones at weight 50, so 4 of 204, about 2%. Villages are placed every 34 chunks (separation 8),
+    so a village start inside the generated area is a minority of worlds and a zombie one about 2% of those: the order of 1 in
+    several hundred boots, as seen. Paper cells never logged it because `PaperHost` pins `SEED=1234567`.
+  - **Reproduced on purpose**, by hand (`scripts/spike/loader-hand.sh`: the environment of `LoaderEnvironment.env`, no agent),
+    with `place template minecraft:village/plains/zombie/villagers/unemployed` on a force-loaded chunk. `DIFFICULTY=peaceful`: one
+    `WARN Skipping Entity with id minecraft:zombie_villager` per placement (Fabric 2 of 2; NeoForge with `SEED=1234567` 1 of 1, the
+    same logger `net.minecraft.world.entity.EntityType`). `DIFFICULTY=easy`, same commands: **0**. 150 `place
+    structure minecraft:village_plains` on peaceful (72 answered "not loaded", about 78 placed): 15 WARN lines. So the WARN follows
+    **difficulty and the zombie village variant, not the seed**; the seed decides only whether a village is generated where the
+    server generates chunks.
+  - **Seed:** `locate structure #minecraft:village` puts the nearest village **353 blocks** from spawn with `SEED=1234567`
+    (Fabric hand run), 272 with `SEED=1` and 362 with `SEED=2` (all `village_plains`). The generated area is the spawn chunks plus
+    the join's view distance 4 (about 64 blocks), so the pinned seed cannot produce the WARN and is deterministic. The seed of the
+    red `t809` run is unknown (a red run keeps no world), so "the WARN follows the red run's seed" was **not** tested; the
+    mechanism above was.
+  - Fix: T-M8-21 (pin the seed on loader cells, one constant shared with Paper). Not an allowlist: it is real output of a world
+    nobody tests.
+
+  **2. `WARN net.minecraft.network.Connection: handleDisconnection() called twice` (NeoForge C03, T-M8-15 verifier run 3):
+  mechanism found, a vanilla race, not a double close by the harness.** The `t815v-ev` bundle shows `PSConf lost connection:
+  Disconnected`, `PSConf left the game`, then the WARN, then the test client's login. `PSConf` is the conformance client. Its
+  close is one call: `CellConformance.scenarios` calls `client.close()` once, and `McplSession.close` is
+  `network.disconnect("proofstone closing")`. The server's own code calls the method twice:
+  - `javap -c` on `server-26.3.jar`: `Connection.tick()` ends with `if (!isConnected() && !disconnectionHandled)
+    handleDisconnection()`; `ServerConnectionListener.tick()` calls `connection.tick()` while `isConnected()` and, for a connection
+    that is not connected, `iterator.remove(); connection.handleDisconnection()` **without** the `disconnectionHandled` check;
+    `handleDisconnection()` logs the WARN when the flag is already set. So when the client's close reaches the netty thread between
+    `ServerConnectionListener`'s `isConnected()` check and the tail of `Connection.tick()` (the player's packet-listener tick runs
+    in between), the tail handles the disconnect (`lost connection`, `left the game`) and the **next tick** removes and handles it
+    again.
+  - The timestamps agree: in the 4 older container logs that carry docker timestamps the WARN follows `left the game` by **52, 59,
+    52 and 54 ms**, one 50 ms tick (`t719-ev2`, `t719-base-ev`).
+  - **Reproduced on purpose**, by hand (`scripts/spike/loader-hand.sh` and `DisconnectRace.java`: the real mcpl driver's `connect`
+    and `close`, in a loop on one server: join, `/help`, wait for the reply, close at once, as `ConformanceSmokeTest` C02 does).
+    In that mode: Fabric 4 hits in 1800 cycles, NeoForge 8 in 1200, with and without the agent alike: **12 in 3000, 0.4% of
+    closes**, both loaders. A jitter-only close (join, wait 0 to 100 ms, close): 0 in 500 (Fabric). Hits come early in a run (the
+    server is cold): NeoForge cycles 14, 15, 43, 76, 85, 87, 228, 483.
+  - In the harness, with a cold server per test, 2 of the 210 boots show it, **both green**: `fabric-5` and `fabric-6`, each
+    straight after `left the game` of the **test** client of the 9th and 10th container of the run (by test order
+    `ConformanceLoaderWindowTest` and `ConformanceSmokeTest` C02; the log does not name the test). The guard
+    (`CellInvocation.afterEach`) has already read the log then, so such a hit is invisible to it. It is red only when the close
+    that races is `PSConf`'s, because the conformance runs inside the first test's guard window (the cursor is taken before it,
+    `CellInvocation.beforeEach`): that is what turned `neoforge@26.3` C03 red once. Container logs of earlier evidence
+    directories (not this card's runs): 4 of 104 loader logs with a leave carry it, **0 of 324 Paper-family logs**. Why Paper
+    differs is **not shown** (its jar was not decompiled here).
+  - A red needs the `PSConf` close to race: once per cell run, at the harness rate (2 in about 210) about 1 in 100 invocations.
+    The T-M8-15 verifier saw it once in 3 invocations; this card saw it 0 times in 21.
+  - Fix: T-M8-22. Decision for the maintainer in the card: an allowlist entry with the reason (it is vanilla noise and the guard
+    cannot tell it from a real double handling) or the window change the card is written for (no allowlist).
+
+  **Not done by this card:** any harness or guard change, a run on Paper or another row, a test of the red run's own seed, a look at
+  Paper's jar, a diagnosis of the `no matching item among []` DISAGREE (2 reds in 21 invocations, counted apart).
+
 - **T-M8-20 host IT audit (2026-11-15).** `aFailedStartFailsAtOnceWithTheLogTailAndLeavesNoContainer` (`FabricLoaderHostIT`,
   `NeoForgeLoaderHostIT`) was **red on `main` since T-M8-11**: a mod that throws at init now fails the start as `INVALID test
   declaration` naming the mod (`ModLoad`), and the IT still expected `failed to boot`. T-M8-11 was merged without running these
@@ -1055,7 +1150,7 @@ Each loader `:conformance:run` boots one container per test class (10 per invoca
   review 6), the `Skipping Entity with id
   minecraft:zombie_villager` worldgen WARN (T-M8-09 verifier, Fabric C02). 0 in this review (6 loader conformance invocations, 60
   boots). Lead: loader cells set no `SEED` (`LoaderEnvironment.env`), Paper pins `SEED=1234567` (`PaperHost`), so loader worlds
-  differ per boot. Card T-M8-16 (diagnose first). `PSConf moved too quickly!` on loader cells: **0** in every M8 run.
+  differ per boot. Card T-M8-16 found the cause since (peaceful difficulty plus the 2% zombie village variant, not the seed itself; see "M8 findings", fix T-M8-21). `PSConf moved too quickly!` on loader cells: **0** in every M8 run.
 
 **Paper and topology numbers (apart):** topology 6 of 6 green, 0 join timeouts (first join or switch); `paper@26.3` 3 of 3 green, 0
 join timeouts. Single-server smoke: `PSConf moved too quickly!` 3 of 8 smoke tests red (folia, purpur, spigot @26.3), the same three
