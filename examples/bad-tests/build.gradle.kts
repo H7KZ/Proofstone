@@ -469,3 +469,7 @@ registerMeta(
         "give their own verdict and reason. The mod run boots a Fabric cell; needs Docker and the EULA.",
     modRuns, "proofstone-mod",
 )
+// One cell per invocation (the M8 flake rule): the same checks per cell, so each counted run judges its own fault.
+registerMeta("metaModFabricTest", "metaModTest for the Fabric cell only.", modRuns.filter { it.pin == fabricCell }, "proofstone-mod-fabric")
+registerMeta("metaModNeoForgeTest", "metaModTest for the NeoForge cell only.", modRuns.filter { it.pin == "neoforge@26.3" }, "proofstone-mod-neoforge")
+registerMeta("metaModPaperTest", "metaModTest for the Paper cell only (data pack and resource pack).", modRuns.filter { it.pin == paperCell }, "proofstone-mod-paper")
