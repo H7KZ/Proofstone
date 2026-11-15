@@ -73,9 +73,10 @@ M5 follow-up_
   log guard does not see them. The test-side ERROR allowlist gained `Could not save bukkit.yml` (harness copy issue, see
   paper.md); thread-check text is never allowlisted. _1.21.11, 26.1.2, 26.2, 26.3_
 - **`moved too quickly!` (WARN) on Folia.** In `:conformance:smoke` on folia@26.3 (c02), the reset teleport raced the
-  client's first movement packets, as on Paper. The Folia pack allows it for harness clients only
-  (`^T[0-9a-f]{8} moved too quickly! `, mirrored in `pack.yml`). It is a race, so it shows in some tests and not others.
-  The allowlist entry was added after that red run; the rows were re-run afterwards. _26.3_
+  client's first movement packets, as on Paper. The Folia pack allowed it for harness clients (`^T[0-9a-f]{8} moved too quickly! `).
+  **That entry was dropped in T-M7-19**: the cause was the mcpl driver acknowledging the join teleport before the player's first
+  tick, not the reset teleport (client-driver.md section 3a). `folia@26.3` ran with no entry and 0 such WARNs (ROADMAP
+  "T-M7-19"). _26.3_
 - **C-F01 and C-F02 declare Paper and Purpur too,** with `@Requires(FOLIA_REGIONS)`, so a `paper@latest` or `purpur@<v>`
   selection plans a cell and reports a capability skip with its reason (zero cells stays a loud error). _paper, purpur_
 - **Any other boot ERROR on a new Folia row is invisible to the log guard** (it runs only inside the test window). Read the

@@ -25,6 +25,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.Clientbound
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetExperiencePacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetHealthPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetContentPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundOpenScreenPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundConfigurationAcknowledgedPacket;
@@ -78,6 +79,7 @@ class McplSwitchTest {
     private void joinFirstServer() {
         received(login());
         received(position(10));
+        received(new ClientboundSetHealthPacket(20f, 20, 5f)); // the first tick releases the held join acknowledgement (T-M7-19)
         received(new ClientboundSetExperiencePacket(0.5f, 7, 100));
         received(inventoryOf(APPLE));
         received(new ClientboundOpenScreenPacket(3, ContainerType.GENERIC_9X3, Component.text("lobby chest")));
@@ -119,6 +121,7 @@ class McplSwitchTest {
                 .isInstanceOf(ClientDriverException.class).hasMessageContaining("no window opened");
 
         received(position(500));
+        received(new ClientboundSetHealthPacket(20f, 20, 5f));
         received(inventoryOf(DIAMOND));
         assertThat(session.position()[0]).isEqualTo(500);
         assertThat(session.inventory().slots().get(36).registryId()).isEqualTo(DIAMOND);

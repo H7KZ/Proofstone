@@ -162,18 +162,19 @@ topology numbers.
 
 ### `PSConf moved too quickly!` (unchanged)
 
-The conformance client is named `PSConf`, and the log-guard allowlist covers only harness clients named `T` plus eight hex digits
-and `.`-prefixed ones. The family described under [Known intermittent flakes](#known-intermittent-flakes) is unchanged by M8: it
-was **not seen** in the loader or resource-pack runs. The shared-server cause found in T-M7-15 is fixed (T-M7-17): see the next
-section. A `PSConf` hit makes the cell `INVALID`.
+The conformance client is named `PSConf`. The log-guard allowlist no longer has a `moved too quickly!` entry for it or for `T`
+plus eight hex digits names (dropped in T-M7-19); only `.`-prefixed Clients names keep one. Both causes are fixed: the shared
+server (T-M7-17) and the join teleport acknowledged before the player's first tick (T-M7-19, the mcpl driver now waits for the
+first `SetHealth`). A `PSConf moved too quickly!` now would be a new finding, and makes the cell `INVALID`. If a join fails
+with stage `JOIN_TELEPORT_HELD_NO_HEALTH`, the server never sent its first `SetHealth` after the join position.
 
 ## Known intermittent flakes
 
-These were seen on real servers and are **open**. None is fixed.
+These were seen on real servers and are **open**, except where a line says fixed.
 
-- **`moved too quickly!` (WARN).** The reset teleport races the client's first move packets. It is seen on Paper, Folia,
-  Purpur and Spigot. The log guard allows it only from harness clients (`^T[0-9a-f]{8} moved too quickly! `). Your plugin's
-  own copy of this WARN fails the test.
+- **`moved too quickly!` (WARN), fixed in T-M7-19.** It was seen on Paper, Folia, Purpur and Spigot for harness clients and was
+  allowlisted. The cause was the join teleport acknowledged before the player's first tick; the driver now waits for the first
+  `SetHealth` and the allowlist entries are gone. Any `moved too quickly!` (yours or a harness client's) fails the test.
 - **Two platforms of one version sharing a server (fixed in T-M7-17).** A class with the default `PER_CLASS` isolation used to
   share one server per **Minecraft version**, not per cell: with `paper@26.3` and `folia@26.3` selected, the second cell ran on
   the first cell's Paper server, and the conformance client logged in again at its saved spot, which Paper and Purpur WARN about
@@ -181,7 +182,7 @@ These were seen on real servers and are **open**. None is fixed.
   platform than the cell is refused as `INVALID`. Not caused by that: a `PSConf moved too quickly!` on the **first** login of a
   fresh `purpur@26.3` server was seen once in 8 runs after the fix. Cause found in T-M7-18: Paper and Purpur check the client's
   join-teleport acknowledgement before the player's first tick, so the move is measured from `0, 0, 0` (the WARN shows the login
-  position). Open until the fix card T-M7-19 (ROADMAP "M7 follow-up findings (T-M7-18)").
+  position). Fixed in T-M7-19 (ROADMAP "T-M7-19").
 - **Gradle example on `paper@26.3`.** Red in 2 of 4 runs through the action path (join timeouts, above) and in 1 of 5 plain
   Gradle runs. The plain red was `java.lang.AssertionError` at `VerdictGate.java:150` with no message. The verdict text was
   lost because a later run overwrote the XML. Keep the XML of each red run.
@@ -214,6 +215,6 @@ When you report a red run, paste the Gradle command and the bundle path, and say
 
 - **Bedrock-prefixed logins on bridged cells** stall at ViaProxy. The image bundles ViaBedrock but has no prefix option.
   Not reproduced, no fix. Use native cells for those tests ([docs/platforms/viaproxy.md](../platforms/viaproxy.md)).
-- **Plugins that log `moved too quickly!` or other WARN lines** fail the test. The allowlist is for harness clients only.
+- **Plugins that log `moved too quickly!` or other WARN lines** fail the test. The allowlist has no `moved too quickly!` entry for harness clients any more (T-M7-19).
 - **Boot ERROR lines on Purpur are not checked.** The log guard covers only the test window, as on Paper and Folia.
 - **Maven example:** does not exist yet ([quickstart-maven.md](quickstart-maven.md)).

@@ -11,6 +11,4 @@ capabilities:                    # declared; a cell holds one only when the agen
   CONSOLE: command
 log-patterns:
   errors: []                     # no Purpur error pattern observed yet (docs/platforms/purpur.md, Gotchas)
-  allowlist:                     # only noise that a reviewed Purpur run showed; each entry says why
-    - pattern: "^T[0-9a-f]{8} moved too quickly! "
-      why: Reset teleport races the harness client's first move packets (seen on purpur@26.3, C02-C08). Harness clients only.
+  allowlist: []                  # the harness client's "moved too quickly!" entry was dropped in T-M7-19 (join teleport acknowledged after the first tick)

@@ -685,7 +685,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         int proxyMark = resource.proxy() == null ? 0 : resource.proxy().logs().size();
         ClientSession session;
         try {
-            session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT, packs));
+            session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT, packs, bridged));
         } catch (JoinTimeoutException e) {
             throw reportStall(resource, e, serverMark, proxyMark);
         }

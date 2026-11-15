@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
  */
 final class TopologyScenarios {
 
-    /** A {@code T<8 hex>} name: the log guard knows that a proxied harness client's first lobby moves WARN "moved too quickly" (velocity.md, Gotchas). */
+    /** A {@code T<8 hex>} name, from the time the log guard allowed a "moved too quickly" WARN by name (dropped in T-M7-19, velocity.md). */
     static final String PLAYER = "T7e5c0f01";
     static final String DIRECT_PLAYER = "PSDirect";
     private static final Duration AGENT_WAIT = Duration.ofSeconds(20);

@@ -127,8 +127,9 @@ None declared for a cell. Not a row yet. The agent itself reports `command`, `pl
   switch) and the probe sees it. The console command `velocity info` run through the agent prints a line naming Velocity.
 - `command-rate-limit = 0` (set under `[advanced]`) let P03 type `/server survival` then `/server lobby` back to back with no
   forwarded command.
-- The conformance client is named `T<8 hex>`: on the switch back to the lobby the backend WARNs `moved too quickly!`, which the log
-  guard allows only for that name pattern.
+- The conformance client is named `T<8 hex>`. The backend used to WARN `moved too quickly!` on a join, and the log guard allowed
+  that name pattern. T-M7-19 dropped the entry: the driver acknowledges the join teleport after the first tick (client-driver.md
+  section 3a), and three runs on `velocity@4.3.1+paper@26.3` showed none.
 
 ## Direct join (T-M7-11)
 P02 joins a client to a backend's own game port, around the proxy, with modern forwarding on. Paper refuses it. Observed on
@@ -159,8 +160,8 @@ of the harness's client and not a refusal by the backend (run `velocity-1`, kept
   set it to 0. Not observed with the default.
 - **bStats is on by default** (`plugins/bStats/config.txt`); the spike copies `enabled=false`.
 - **`moved too quickly!` WARNs on the backend** for every proxied client on its first lobby join (`Spike2 moved too
-  quickly! -6.5,-60.0,-9.5`, six lines), as on a direct join. The harness allowlist matches only `T<hex>` names, so a
-  proxied harness client must keep that naming.
+  quickly! -6.5,-60.0,-9.5`, six lines), as on a direct join. This was the spike's own client and the pre-T-M7-19 driver
+  (acknowledging before the first tick). With the T-M7-19 driver the harness client logs none, so the allowlist entry is gone.
 - **`command-rate-limit` is an `[advanced]` key.** Velocity 4.3.1's `default-velocity.toml` (read from the build 45 jar,
   2026-11-10) has `login-ratelimit`, `command-rate-limit` and `forward-commands-if-rate-limited` under `[advanced]`
   only. `VelocityAgentIT` (T-M7-05) set `command-rate-limit = 0` at the top level, where Velocity does not read it, so

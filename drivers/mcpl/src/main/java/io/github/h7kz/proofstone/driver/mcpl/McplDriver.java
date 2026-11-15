@@ -7,6 +7,8 @@ import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.geysermc.mcprotocollib.network.factory.ClientNetworkSessionFactory;
@@ -35,20 +37,32 @@ public final class McplDriver implements ClientDriver {
         return PROTOCOL_VERSION;
     }
 
+    /** A bridged join acknowledges the join teleport at once; a native one holds it for the first tick (T-M7-19). */
+    static McplSession newSession(org.geysermc.mcprotocollib.network.Session network, ConnectSpec spec) {
+        return new McplSession(network, spec.username(), spec.resourcePacks(), ResourcePacks.http(),
+                download -> Thread.ofVirtual().name("mcpl-pack-download").start(download), !spec.bridged());
+    }
+
     @Override
     public ClientSession connect(ConnectSpec spec) {
         ClientNetworkSession network = ClientNetworkSessionFactory.factory()
                 .setAddress(spec.host(), spec.port())
                 .setProtocol(new MinecraftProtocol(spec.username()))
                 .create();
-        McplSession session = new McplSession(network, spec.username(), spec.resourcePacks(), ResourcePacks.http(),
-                download -> Thread.ofVirtual().name("mcpl-pack-download").start(download));
+        McplSession session = newSession(network, spec);
         network.addListener(session.listener());
         network.connect(false);
         String where = spec.username() + " -> " + spec.host() + ":" + spec.port();
+        Instant started = Instant.now();
         try {
             Await.until("play state for " + where, session::state, state -> state != McplSession.State.JOINING,
                     spec.connectTimeout());
+            // The join is not done before the server's first tick, which releases the held teleport acknowledgement
+            // (T-M7-19). Same budget, not a new one: a server that never sends its first SetHealth is a named join
+            // timeout, not a client that goes quiet and fails later with an unrelated message.
+            Duration left = spec.connectTimeout().minus(Duration.between(started, Instant.now()));
+            Await.until("first tick (SetHealth) for " + where, session::joinFinished, finished -> finished,
+                    left.isNegative() || left.isZero() ? Duration.ofMillis(1) : left);
         } catch (AwaitTimeoutException e) {
             session.close();
             // The stage comes from what the client saw (T-M6-14); the harness adds the server's side.

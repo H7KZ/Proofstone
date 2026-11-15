@@ -7,8 +7,8 @@ separate card. Neither card is started.
 **Update (T-M7-15, 2026-11-15):** T-M7-15 found its cause and proposes the fix card **T-M7-17** at the end of this file (not
 started, needs approval).
 
-**Update (T-M7-18, 2026-11-15):** T-M7-18 found the cause of the first-login Purpur WARN and proposes the fix card **T-M7-19**
-at the end of this file (not started, needs approval).
+**Update (T-M7-18, 2026-11-15):** T-M7-18 found the cause of the first-login Purpur WARN and proposed the fix card **T-M7-19**
+at the end of this file (done, see ROADMAP "T-M7-19").
 
 IDs continue M7-proxies.md (T-M7-01 to T-M7-14, T-M7-99), so the next free IDs were T-M7-15 and T-M7-16. They do not block M8.
 
@@ -203,6 +203,10 @@ logged in at `-4.5, -60.0, 4.5` and in the same millisecond got the WARN, before
 - specs: specs/client-driver.md
 - test-first: yes
 
+**Scope change (orchestrator, 2026-11-15).** The hold applies to native cells only: `ConnectSpec` gains a `bridged` flag (small core change,
+approved for this card), set from `Cell.bridged()`; a bridged join acknowledges at once, because bridged 1.8.x rows send no first
+`SetHealth` before the acknowledgement and deadlocked (ROADMAP "T-M7-19").
+
 **Goal.** No harness client triggers `moved too quickly!` on its join, so `PSConf` never fails c02 and the `T<hex>` allowlist
 entries for this WARN can go. Cause (T-M7-18, ROADMAP "M7 follow-up findings (T-M7-18)"): Paper and Purpur handle the 26.3
 accept-teleport position before the player's first tick, when `firstGood` is still `0, 0, 0`.
@@ -227,11 +231,48 @@ accept-teleport position before the player's first tick, when `firstGood` is sti
 - Change the world (spawn height, level type) to make the move small: the race would stay.
 
 **Acceptance.**
-- [ ] The unit test fails on main and passes with the change.
-- [ ] purpur@26.3 alone 10 of 10 and the full smoke 5 of 5 green, XML `skipped 0, failures 0, errors 0`, 0 `moved too quickly!`
-  for harness clients in the container logs.
-- [ ] Allowlist entries that no longer fire are removed, or kept with a corrected reason and the run that needs them.
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The unit test fails on main and passes with the change. Evidence: `McplJoinAckTest`; with stubs on main's behaviour 4 of the
+  first 5 tests failed, `:drivers:mcpl:test` passes (68 tests).
+- [x] purpur@26.3 alone 10 of 10 and the full smoke 5 of 5 green, XML `skipped 0, failures 0, errors 0`, 0 `moved too quickly!`
+  for harness clients in the container logs. Evidence: ROADMAP "T-M7-19" (all four server types in each full run's logs).
+- [x] Allowlist entries that no longer fire are removed, or kept with a corrected reason and the run that needs them. Evidence: the
+  four `T<hex>` entries and the pack.yml mirrors are gone; velocity x3, bungeecord x3, fabric, neoforge (1 red C08 DISAGREE, also red
+  on main 1 of 3) and each single cell ran. The `.`-prefixed entry stays (not this WARN).
+- [x] `bash scripts/gates.sh --max-workers=1` passes. Evidence: PR body.
+- [x] Bridged rows are unchanged: `ConnectSpec.bridged` skips the hold; a `McplSession` unit test shows a bridged join acknowledges
+  at once and a native one holds. Evidence: ROADMAP "T-M7-19" (bridged re-runs). Open: `:conformance:run paper@1.8.8` C04 red 3 of 6 vs 0 of 6 on main, smoke 10 of 10 on both, unexplained (same ROADMAP entry).
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke -Dproofstone.cells=purpur@26.3 --no-parallel --max-workers=1`
+
+### T-M7-20 · Diagnose the bridged `paper@1.8.8` window and cursor flake in C03 to C05
+- tier: opus
+- depends: T-M7-19
+- modules: drivers/mcpl, conformance
+- adrs: 0003, 0007
+- specs: specs/client-driver.md, specs/self-tests.md §1
+- test-first: no
+
+**Goal.** Name why `:conformance:run -Dproofstone.cells=paper@1.8.8` (bridged through ViaProxy) is red in some runs, with C04 "cursor
+after picking up slot A", C05 "renamed sword on the cursor" null, and C03 and C05 INVALID after a C04 failure (ROADMAP "T-M7-19",
+verifier run: main 2 of 5 red, PR 3 of 5; combined 2 of 11 and 6 of 11).
+
+**Do.**
+- At least 10 separate invocations per arm (main and the T-M7-19 merge), same machine and load, copying XML, bundles and container
+  logs aside before each next run. Record red or green per run and which class and assertion failed. A red is kept.
+- From red bundles compare the window packets (open window, set slot, window items, cursor slot) of a red and a green run: does the
+  cursor update (slot -1) arrive late, never, or before the click is answered; is the driver reading the cursor before the
+  server's answer arrives (a race in the harness, in the driver, or in ViaProxy's 1.8 translation)?
+- State the cause as a mechanism backed by packet or log lines, or "unexplained" with counts and what was ruled out. Propose a fix
+  card (an await for the cursor state, a driver fix, or a documented ViaProxy gotcha in `docs/platforms/viaproxy.md`).
+
+**Don't.**
+- Add a sleep, a retry or a timeout raise, weaken a C03 to C05 assertion, or change harness code in this card.
+
+**Acceptance.**
+- [ ] Per-arm red counts over at least 10 runs each, XML read, in a ROADMAP entry.
+- [ ] The cause is named with packet or log lines, or marked unexplained with counts and what was ruled out.
+- [ ] A fix card is proposed. No code changed.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8 --no-parallel --max-workers=1`

@@ -30,15 +30,15 @@ purpur@26.3 with its reason, verified in T-M5-06).
 ## Gotchas
 - **Build variable.** `PAPER_BUILD` does nothing on Purpur. The row's build is passed as `PURPUR_BUILD`, so a cell cannot
   silently run the latest build. _1.21.11, 26.3 · T-M5-04_
-- **Harness clients log `moved too quickly!` (WARN).** The reset teleport races the client's first move packets, as on
-  Paper, Folia and Spigot. Purpur's allowlist covers only the harness's own clients (`^T[0-9a-f]{8} moved too quickly! `).
-  Any other player, or a plugin's own message, still fails the test. The first 26.3 run was red on this WARN in C02, C04,
-  C07 and C08; the entry was added and the row re-run green. Recorded here, not hidden. _26.3 · T-M5-04_
+- **Harness clients logged `moved too quickly!` (WARN), fixed in T-M7-19.** The first 26.3 run was red on this WARN in C02,
+  C04, C07 and C08 and the entry `^T[0-9a-f]{8} moved too quickly! ` was added (T-M5-04). The cause is below; the entry was
+  dropped in T-M7-19 and any such WARN now fails the test. Recorded here, not hidden. _26.3 · T-M5-04_
 - **Cause of that WARN (T-M7-18): the join, not the reset.** In 26.3 the accept-teleport packet carries a position, and
   Purpur (like Paper) checks it before the player's first tick, while `firstGood` is still `0, 0, 0`: the WARN's numbers are the
   login position. The mcpl driver acknowledges at once, so every warm login WARNs; the first login of a fresh server usually does
-  not, and `PSConf` failed c02 in 2 of 12 full smoke runs (0 of 11 alone). Fix proposed in T-M7-19 (ROADMAP "M7 follow-up
-  findings (T-M7-18)"). _26.3 · T-M7-18_
+  not, and `PSConf` failed c02 in 2 of 12 full smoke runs (0 of 11 alone). **Fixed in T-M7-19:** the driver acknowledges the
+  join teleport after the first `SetHealth` (client-driver.md section 3a); purpur@26.3 alone 10 of 10 and the full smoke 5 of 5
+  green, 0 such WARNs (ROADMAP "T-M7-19"). _26.3 · T-M7-18, T-M7-19_
 - **Folia-only tests need Purpur in their matrix.** Without it, `purpur@<v>` plans no cell for C-F01 and C-F02 and the
   run fails with "no cell to run". Both declare Purpur and skip there through `@Requires(FOLIA_REGIONS)`. _26.3 · T-M5-04_
 - **Boot ERROR lines on Purpur were not checked.** The log guard covers only the test window, as for Paper and Folia.
