@@ -16,6 +16,7 @@ import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import io.github.h7kz.proofstone.core.host.LoaderHost;
 import io.github.h7kz.proofstone.core.host.LoaderHostOptions;
+import io.github.h7kz.proofstone.core.host.ModFault;
 import io.github.h7kz.proofstone.core.host.PaperHost;
 import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.host.LeakDetector;
@@ -227,6 +228,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (!declaredPacks.isEmpty()) {
             String notLoaded = DataPackLoad.invalid(declaredPacks, host.request("GET", "/v1/datapacks", null), cellId(),
                     host.logTail());
+            // Enabled is not loaded well: the server skips a function that does not parse and logs it at load, before the
+            // agent's log window starts, so the host's log of the whole boot is read (T-M8-11).
+            if (notLoaded == null) {
+                notLoaded = DataPackLoad.errorsLogged(host.dataPackNamespaces(), host.logs().all(), cellId());
+            }
             if (notLoaded != null) {
                 state.invalid = new AssertionError(notLoaded);
                 throw state.invalid;
@@ -277,7 +283,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 // No server, so no bundle: the report still counts the run as the failure it was.
                 String reason = context.getExecutionException().map(CellInvocation::detail)
                         .orElse("the server or the client did not start; see the failure reported for this run");
-                report(context, new CellResult(reportName(context), cellId(), Verdict.FAIL, reason, null, 1));
+                // A mod that crashed at load is INVALID, not a plain failed start (T-M8-11): the report says what JUnit says.
+                report(context, new CellResult(reportName(context), cellId(),
+                        VerdictGate.invalidDeclaration(reason) ? Verdict.INVALID : Verdict.FAIL, reason, null, 1));
             }
             return;
         }
@@ -619,6 +627,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         LoaderHostOptions options = LoaderHostOptions.of(Path.of(jar), true, Path.of(cache).toAbsolutePath())
                 .withMods(Path.of("").toAbsolutePath(), List.of())
                 .withDataPacks(controlRun ? List.of() : List.of(config.datapacks()));
+        // T-M8-11: a mod under test that crashes at load, for the bad test. Never set in a user suite.
+        options = ModFault.fromSystemProperty().apply(options, System.getProperty(ModFault.EXAMPLE_MOD));
         LoaderHost host = LoaderHost.start(loader, options);
         System.err.println("PROOFSTONE LOADER BOOT " + loader.identity() + ": " + host.bootTime().toMillis()
                 + " ms from container start to \"Done (\" (host finding, not a join timeout)");

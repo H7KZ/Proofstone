@@ -41,6 +41,15 @@ val copyFixturePlugin = tasks.register<Copy>("copyFixturePlugin") {
 
 val agentJar = rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar")
 
+// The resource pack of the wrong-hash bad test (T-M8-11), zipped from its source, never committed as a binary.
+val zipWrongHashPack = tasks.register<Zip>("zipWrongHashPack") {
+    from(layout.projectDirectory.dir("src/test/resourcepacks/wrong-hash"))
+    archiveFileName.set("wrong-hash.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("resourcepacks"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
 /** Copies each named `-D` property from the Gradle command line into the test JVM, when it is set there. */
 fun Test.forwardCommandLineProperties(names: List<String>) {
     for (name in names) {
@@ -57,7 +66,7 @@ fun Test.badTestSetup(pinnedCell: String? = null) {
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform()
-    dependsOn(copyFixturePlugin)
+    dependsOn(copyFixturePlugin, zipWrongHashPack)
     // The agent jar is built, never committed (AGENTS.md §3).
     dependsOn(":platforms:bukkit:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
@@ -126,6 +135,8 @@ tasks.test {
     if (!explicitTests) {
         // The topology fault test (T-M7-13) is INVALID by design too, and boots three containers: metaTopology* only.
         exclude("**/invalid/**", "**/leak/**", "**/expect/**", "**/requires/**", "**/topology/**")
+        // T-M8-11: the mod, data-pack and resource-pack faults are red by design too; metaModTest only.
+        exclude("**/mod/**", "**/datapack/**", "**/resourcepack/**")
     }
 }
 
@@ -145,6 +156,12 @@ data class BadRun(
     val mustNotContain: List<String> = emptyList(),
     /** A topology run needs the proxy agent jars in the test JVM (T-M7-13). */
     val topology: Boolean = false,
+    /** A loader run needs this loader's agent jar and the example mod in the test JVM (T-M8-11): `fabric`. */
+    val loader: String? = null,
+    /** The failure is the test body's own assertion (a plain FAIL), not a message the harness prefixes with the verdict. */
+    val plainFailure: Boolean = false,
+    /** The verdict the run's proofstone-report.json must hold for the test, so the report agrees with the XML (T-M8-11). */
+    val reportVerdict: String? = null,
 )
 
 val badRuns = listOf(
@@ -210,7 +227,34 @@ val topologyRuns = listOf(
         "container server-survival", "hop: proxy to backend survival",
     ),
 )
-val allRuns = badRuns + topologyRuns
+// T-M8-11: the M8 negative controls, each on its own cell and with the reason it must give. Not part of metaTest: the mod run
+// needs the Fabric agent (a Java 25 toolchain and a build-time download), which metaTest must not depend on. `metaModTest`.
+val fabricCell = "fabric@26.3"
+val paperCell = "paper@26.3"
+val modRuns = listOf(
+    BadRun(
+        "metaModCrash", "**/mod/**", "INVALID", mapOf("proofstone.injectModFault" to "crash-at-load"), pin = fabricCell,
+        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-example-mod.jar", "example mod was asked to fail"),
+        mustNotContain = listOf("timed out", "BOOT TIMEOUT", "the body ran"), loader = "fabric", reportVerdict = "INVALID",
+    ),
+    BadRun(
+        "metaModCrashNeoForge", "**/mod/**", "INVALID", mapOf("proofstone.injectModFault" to "crash-at-load"),
+        pin = "neoforge@26.3",
+        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-example-mod.jar", "example mod was asked to fail"),
+        mustNotContain = listOf("timed out", "BOOT TIMEOUT", "the body ran"), loader = "neoforge", reportVerdict = "INVALID",
+    ),
+    BadRun(
+        "metaModDataPack", "**/datapack/**", "INVALID", emptyMap(), pin = paperCell,
+        mustContain = listOf("INVALID ", "file/broken-function.zip", "proofstone_broken:hello"),
+        mustNotContain = listOf("timed out", "the body ran"), reportVerdict = "INVALID",
+    ),
+    BadRun(
+        "metaModPackHash", "**/resourcepack/**", "FAIL", emptyMap(), pin = paperCell,
+        mustContain = listOf("FAILED_DOWNLOAD", "hash mismatch: expected 0000000000000000000000000000000000000000, got "),
+        mustNotContain = listOf("timed out", "CONFIGURATION_STALLED", "kicked"), plainFailure = true, reportVerdict = "FAIL",
+    ),
+)
+val allRuns = badRuns + topologyRuns + modRuns
 
 // The task's own JUnit XML directory, and the expectation, as plain values: the metaTest action must not capture the
 // script's objects, because the configuration cache cannot store them.
@@ -225,6 +269,15 @@ allRuns.forEach { run ->
         description = "Runs the bad test that must produce ${run.verdict}. Part of metaTest; not a user suite."
         include(run.include)
         run.switches.forEach { (name, value) -> systemProperty(name, value) }
+        if (run.loader != null) {
+            // The loader agent and the example mod are built, never committed (AGENTS.md section 3). Built only for this run:
+            // they need a Java 25 toolchain and a build-time download that no Paper run must pay for or depend on.
+            val agent = rootProject.layout.projectDirectory.dir("platforms/${run.loader}/agent")
+            dependsOn(":platforms:${run.loader}:agent:shadowJar", ":platforms:${run.loader}:agent:exampleModJar")
+            systemProperty("proofstone.${run.loader}.agentJar", agent.file("build/libs/agent-all.jar").asFile.absolutePath)
+            systemProperty("proofstone.exampleMod", agent.file("build/example-mod/proofstone-example-mod.jar").asFile.absolutePath)
+            systemProperty("proofstone.loaderCache", layout.buildDirectory.dir("loader-cache").get().asFile.absolutePath)
+        }
         if (run.topology) {
             // The proxy agents are built, never committed (AGENTS.md section 3); the host finds them by these properties.
             dependsOn(":platforms:velocity:agent:shadowJar", ":platforms:bungee:agent:shadowJar")
@@ -259,6 +312,8 @@ tasks.register(taskName) {
     val expectations = runs.map { run -> run.task to run.verdict }
     val mustContainByTask = runs.associate { run -> run.task to run.mustContain }
     val mustNotContainByTask = runs.associate { run -> run.task to run.mustNotContain }
+    val plainByTask = runs.associate { run -> run.task to run.plainFailure }
+    val reportVerdictByTask = runs.associate { run -> run.task to run.reportVerdict }
     val dirsByTask = badRunDirs
     val reportDirsByTask = badRunReportDirs
     val mergedDir = layout.buildDirectory.dir(mergedName).get().asFile
@@ -297,7 +352,10 @@ tasks.register(taskName) {
                     val message = failure.getAttribute("message").replaceFirst(Regex("^[\\w.$]+: "), "")
                     // JUnit reports the test method's own failure first; a verdict from afterEach (the flake judgement)
                     // is attached to it as a suppressed exception, which the XML keeps in its body.
-                    val named = message.startsWith("$verdict ") ||
+                    // A plain FAIL (T-M8-11) is the test body's own assertion; only an assertion counts, so a timeout or any
+                    // other exception cannot satisfy the run, and the message must still carry the fault's own reason.
+                    val plain = plainByTask.getValue(task) && failure.getAttribute("type").endsWith("AssertionFailedError")
+                    val named = plain || message.startsWith("$verdict ") ||
                         failure.textContent.contains(Regex("Suppressed: [\\w.$]+: $verdict "))
                     if (named) {
                         verdictFailures++
@@ -345,6 +403,15 @@ tasks.register(taskName) {
                 }
                 if (!topology) {
                     problems += "$task: no SKIPPED report naming the missing capability TOPOLOGY"
+                }
+            }
+            // The report must say what the XML says (T-M8-11): a fault that JUnit shows red must not be green in the report.
+            reportVerdictByTask.getValue(task)?.let { wanted ->
+                val file = File(reportDirsByTask.getValue(task), "proofstone-report.json")
+                val rows = if (file.isFile) (groovy.json.JsonSlurper().parse(file) as Map<*, *>)["results"] as List<*> else emptyList<Any>()
+                if (rows.isEmpty() || !rows.filterIsInstance<Map<*, *>>().all { row -> row["verdict"] == wanted }) {
+                    problems += "$task: the proofstone report does not hold $wanted for every test: " +
+                        rows.filterIsInstance<Map<*, *>>().joinToString { "${it["test"]}=${it["verdict"]}" }
                 }
             }
             if (verdictFailures == 0) {
@@ -395,3 +462,14 @@ registerMeta(
         "its container and hop in the message. Boots a proxy and two backends per run; needs Docker and the EULA.",
     topologyRuns, "proofstone-topology",
 )
+// T-M8-11: the broken mod, the data pack with a broken function and the resource pack with a wrong hash, each with its own reason.
+registerMeta(
+    "metaModTest",
+    "Asserts that a mod that crashes at load, a data pack with a broken function and a resource pack with a wrong hash each " +
+        "give their own verdict and reason. The mod run boots a Fabric cell; needs Docker and the EULA.",
+    modRuns, "proofstone-mod",
+)
+// One cell per invocation (the M8 flake rule): the same checks per cell, so each counted run judges its own fault.
+registerMeta("metaModFabricTest", "metaModTest for the Fabric cell only.", modRuns.filter { it.pin == fabricCell }, "proofstone-mod-fabric")
+registerMeta("metaModNeoForgeTest", "metaModTest for the NeoForge cell only.", modRuns.filter { it.pin == "neoforge@26.3" }, "proofstone-mod-neoforge")
+registerMeta("metaModPaperTest", "metaModTest for the Paper cell only (data pack and resource pack).", modRuns.filter { it.pin == paperCell }, "proofstone-mod-paper")

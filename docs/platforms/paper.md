@@ -26,6 +26,12 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
+- **A data pack's broken function is logged at boot, before the agent exists, and the pack stays enabled** (T-M8-11,
+  `metaModDataPack`, paper 26.3 build 244). The server logs `[ERROR]: Failed to load function <ns>:<name>` and the parse error
+  (`Whilst parsing command on line 2: Unknown or incomplete command`) while it loads the pack, then lists the pack as enabled.
+  The agent's log (and so the per-test log guard) starts at plugin enable and never sees it, so the host's log of the whole boot
+  is read for WARN or worse lines that name a namespace of the pack.
+
 > Version-span entries (1.8.8 to 26.3) were observed on local real-server runs through the Docker lock. CI smoke is
 > manual since [PR #40](https://github.com/H7KZ/Proofstone/pull/40) (billed Actions minutes), so no CI run backs them.
 > Each entry links its merged PR (the PR description holds the real-server output) and the commit. No repro bundle

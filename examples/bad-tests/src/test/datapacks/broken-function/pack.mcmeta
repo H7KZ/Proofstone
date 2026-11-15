@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Proofstone T-M8-11 bad data pack: its function does not parse (26.3: data format 121.0)",
+    "min_format": 121,
+    "max_format": 121
+  }
+}

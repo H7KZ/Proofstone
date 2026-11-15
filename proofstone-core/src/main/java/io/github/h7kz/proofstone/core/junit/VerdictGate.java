@@ -126,9 +126,18 @@ final class VerdictGate {
                 throw new IllegalStateException(name + " passed, but its cell has no conformance result");
             }
             String detail = attempts.get(0).detail();
-            return new CellResult(name, cell, Verdict.FAIL, detail, null, attempts.size());
+            return new CellResult(name, cell, invalidDeclaration(detail) ? Verdict.INVALID : Verdict.FAIL, detail, null,
+                    attempts.size());
         }
         return resolve(name, cell, attempts, controlRun, expectation, conformance, disagreement);
+    }
+
+    /**
+     * Whether a failure before conformance is the harness refusing the test's declaration (a mod that crashes at load, a data
+     * pack that did not load well): its message starts with {@code INVALID}, and the report says INVALID too (T-M8-11).
+     */
+    static boolean invalidDeclaration(String detail) {
+        return detail != null && detail.startsWith("INVALID");
     }
 
     private static Optional<ControlRun> expectation(Method test, String id) {

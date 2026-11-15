@@ -51,6 +51,14 @@ class DataPackTest {
     }
 
     @Test
+    void thePackKnowsTheNamespacesItDefines() throws IOException {
+        writeZip(dir.resolve("my.zip"), "pack.mcmeta", MCMETA, "data/alpha/function/f.mcfunction", "say hi",
+                "data/beta/recipe/r.json", "{}", "data/alpha/recipe/r.json", "{}");
+
+        assertThat(DataPack.resolve(dir, List.of("my.zip")).get(0).namespaces()).containsExactly("alpha", "beta");
+    }
+
+    @Test
     void theZipOfADirectoryIsTheSameBytesEveryTime() throws IOException {
         Path pack = dir.resolve("p");
         Files.createDirectories(pack.resolve("data/x"));

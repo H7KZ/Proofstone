@@ -157,6 +157,10 @@ Observed in the spike, not yet tokens:
 - **Resource packs:** not run on NeoForge (run on Fabric and the vanilla path; see [fabric.md](fabric.md)).
 
 ## Gotchas
+- **A mod that throws at construction ends the container, with no `Failed to start FML` line seen** (T-M8-11, `metaModCrashNeoForge`,
+  dev run). FML logs `[modloading-worker-0/ERROR] [ne.ne.fm.ja.FMLModContainer/LOADING]: Failed to create mod instance.
+  ModID: <id>, class <mod class>` and the exception's message, then the container exits. The host fails on the exit (not the
+  boot timeout), and the first line names the mod, so the test is `INVALID` naming it.
 - **FML refuses a mod jar whose `META-INF/services` file names a class it does not hold** (T-M8-06, first dev run): FML
   reads every mod jar as an automatic module, and the shaded agent kept Jackson's `META-INF/services/com.fasterxml.jackson.core.JsonFactory`
   after relocating the class. The boot failed before any mod loaded: `Failed to start FML:

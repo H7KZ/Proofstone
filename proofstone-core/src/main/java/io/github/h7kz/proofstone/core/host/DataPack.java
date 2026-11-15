@@ -137,6 +137,22 @@ final class DataPack {
         return DIR + name;
     }
 
+    /** The namespaces the pack defines, the folder names under {@code data/}: how a log line is attributed to this pack. */
+    List<String> namespaces() {
+        Set<String> found = new java.util.TreeSet<>();
+        try (java.util.zip.ZipInputStream in = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(zip))) {
+            for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+                String[] parts = entry.getName().split("/");
+                if (parts.length > 2 && parts[0].equals("data")) {
+                    found.add(parts[1]);
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot read the namespaces of data pack " + name, e);
+        }
+        return List.copyOf(found);
+    }
+
     byte[] zip() {
         return zip;
     }
