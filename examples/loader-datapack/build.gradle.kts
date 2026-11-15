@@ -37,12 +37,8 @@ tasks.register<Test>("loaderExample") {
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform()
-    dependsOn("testClasses", ":platforms:fabric:agent:shadowJar", ":platforms:bukkit:agent:shadowJar")
+    dependsOn("testClasses", ":platforms:fabric:agent:shadowJar")
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
-    // CellInvocation.boot reads proofstone.agentJar (the Bukkit agent) before it branches to the loader host, so a loader run
-    // must set it although a Fabric cell never loads that jar (finding, T-M8-12; the conformance task sets it the same way).
-    systemProperty("proofstone.agentJar",
-        rootProject.layout.projectDirectory.file("platforms/bukkit/agent/build/libs/agent-all.jar").asFile.absolutePath)
     systemProperty("proofstone.fabric.agentJar", fabricAgentJar.asFile.absolutePath)
     // The loader's pinned downloads (launcher, Fabric API), reused only when the sha256 matches (ADR-0017 section 3).
     systemProperty("proofstone.loaderCache", layout.buildDirectory.dir("loader-cache").get().asFile.absolutePath)

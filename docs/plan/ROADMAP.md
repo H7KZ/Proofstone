@@ -1072,7 +1072,13 @@ player file persisted between tests) and the WARN fires on that login, before th
   #121 972, #123 493, #124 838, #125 438. #120, #121 and #124 said so in the PR; #118, #119, #123 and #125 did not. No split was made.
 - **About 950 duplicated lines** between the Fabric and NeoForge agents (`MinecraftView`, `ItemJson`, `TickCounter`, `ServerThread`,
   `Values`, `GameView`, test `MockView`, `AgentClient`; 2 to 44 changed lines per file). Card T-M8-15.
-- **`proofstone.agentJar` is required on the loader path** though no loader loads it (T-M8-12 run 1). Card T-M8-14.
+- **`proofstone.agentJar` was required on the loader path** though no loader loads it (T-M8-12 run 1). Card T-M8-14, done
+  2026-11-15: `CellInvocation.agentJar(loaderId)` reads only the property the cell uses (the Bukkit one for `bootPaper`, the
+  loader's own for `bootLoader`), the example's workaround is removed, and `AgentJarPropertyTest` (4 tests) covers both paths.
+  `:examples:loader-datapack:loaderExample -Dproofstone.cells=fabric@26.3` 3 of 3 green without the workaround, 1 test each,
+  `skipped="0" failures="0" errors="0"`, loader boot 14.7, 14.3, 14.6 s; `:conformance:smoke` on `paper@26.3` (2 tests) and
+  `:conformance:run` on `fabric@26.3` (11 tests) green, 0 skipped; no `zombie_villager` WARN seen in those logs;
+  `printMatrix --scope=pr` identical before and after.
 - **No leak bad test on a loader cell** (robustness R6). Card T-M8-18.
 - **Card boxes:** T-M8-01, 08, 09, 10 and 11 acceptance boxes are still unticked in `M8-mods.md` though merged. Left as they are;
   the evidence above is what counts.
