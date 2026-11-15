@@ -42,10 +42,10 @@ Local real-server runs, one full `:conformance:run` per row, through this ViaPro
   ViaProxy, so this image is not a Bedrock bridge.
 
 ## Gotchas
-- **1.8.x bridged rows fail the join since T-M7-19.** The mcpl driver holds the join teleport acknowledgement until the first
-  `SetHealth` (client-driver.md section 3a). Behind ViaProxy, `paper@1.8.8` and `spigot@1.8.8` send none before the
-  acknowledgement and ViaProxy resends the position, so the join times out as `JOIN_TELEPORT_HELD_NO_HEALTH`. Green on main
-  before. `paper@1.21.11` bridged is fine. Open decision in ROADMAP "T-M7-19". _1.8.8 (bridged) · T-M7-19_
+- **Bridged joins acknowledge the join teleport at once (T-M7-19).** The mcpl driver holds that acknowledgement for the first
+  `SetHealth` on native joins only (client-driver.md section 3a). Behind ViaProxy, `paper@1.8.8` and `spigot@1.8.8` send no
+  `SetHealth` before the acknowledgement and ViaProxy resends the position, so holding deadlocked the join; `ConnectSpec.bridged`
+  turns the hold off. _1.8.8 (bridged) · T-M7-19_
 
 ### Bridged login stall (M5 follow-up, 2026-11-08)
 - **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,

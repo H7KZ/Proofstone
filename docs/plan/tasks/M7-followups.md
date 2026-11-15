@@ -8,7 +8,7 @@ separate card. Neither card is started.
 started, needs approval).
 
 **Update (T-M7-18, 2026-11-15):** T-M7-18 found the cause of the first-login Purpur WARN and proposed the fix card **T-M7-19**
-at the end of this file (done, see ROADMAP "T-M7-19"; one open decision about 1.8.x bridged rows).
+at the end of this file (done, see ROADMAP "T-M7-19").
 
 IDs continue M7-proxies.md (T-M7-01 to T-M7-14, T-M7-99), so the next free IDs were T-M7-15 and T-M7-16. They do not block M8.
 
@@ -203,6 +203,10 @@ logged in at `-4.5, -60.0, 4.5` and in the same millisecond got the WARN, before
 - specs: specs/client-driver.md
 - test-first: yes
 
+**Scope change (orchestrator, 2026-11-15).** The hold applies to native cells only: `ConnectSpec` gains a `bridged` flag (small core change,
+approved for this card), set from `Cell.bridged()`; a bridged join acknowledges at once, because bridged 1.8.x rows send no first
+`SetHealth` before the acknowledgement and deadlocked (ROADMAP "T-M7-19").
+
 **Goal.** No harness client triggers `moved too quickly!` on its join, so `PSConf` never fails c02 and the `T<hex>` allowlist
 entries for this WARN can go. Cause (T-M7-18, ROADMAP "M7 follow-up findings (T-M7-18)"): Paper and Purpur handle the 26.3
 accept-teleport position before the player's first tick, when `firstGood` is still `0, 0, 0`.
@@ -235,8 +239,8 @@ accept-teleport position before the player's first tick, when `firstGood` is sti
   four `T<hex>` entries and the pack.yml mirrors are gone; velocity x3, bungeecord x3, fabric, neoforge (1 red C08 DISAGREE, also red
   on main 1 of 3) and each single cell ran. The `.`-prefixed entry stays (not this WARN).
 - [x] `bash scripts/gates.sh --max-workers=1` passes. Evidence: PR body.
-- [ ] Open: bridged paper@1.8.8 and spigot@1.8.8 time out the join as `JOIN_TELEPORT_HELD_NO_HEALTH` (green on main). Decision needed,
-  ROADMAP "T-M7-19".
+- [x] Bridged rows are unchanged: `ConnectSpec.bridged` skips the hold; a `McplSession` unit test shows a bridged join acknowledges
+  at once and a native one holds. Evidence: ROADMAP "T-M7-19" (bridged re-runs). Open: `:conformance:run paper@1.8.8` C04 red 3 of 6 vs 0 of 6 on main, smoke 10 of 10 on both, unexplained (same ROADMAP entry).
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke -Dproofstone.cells=purpur@26.3 --no-parallel --max-workers=1`

@@ -1320,7 +1320,7 @@ acknowledged at once; a new `ClientboundLoginPacket` starts the hold again. `Mcp
 release, so a server without a first `SetHealth` is a `JoinTimeoutException` naming stage `JOIN_TELEPORT_HELD_NO_HEALTH` (or
 `JOIN_NO_FIRST_HEALTH` with no position either). Spec: client-driver.md section 3a. Then the `^T[0-9a-f]{8} moved too quickly! `
 entries were dropped from the Paper, Folia, Purpur and Spigot packs and the three `pack.yml` mirrors (separate commit); the
-`.`-prefixed Clients entry stays (not this card's WARN).
+`.`-prefixed Clients entry stays (not this card's WARN). Bridged joins do not hold (see "Bridged rows" below).
 
 **Test first.** `McplJoinAckTest` (7 tests, no Docker). With only method and enum stubs on main's behaviour, 4 of the first 5 tests
 failed (the hold, the newest position, the new login, the stage name); the connect-wait tests were added with the later change.
@@ -1352,16 +1352,37 @@ diagnosed here. Kept as a finding, counted separately from the WARN.
 **Rows that send the first `SetHealth`** (the join completes): paper, folia, purpur, spigot @26.3; the velocity and bungeecord
 topologies with paper@26.3 backends; fabric@26.3 and neoforge@26.3; bridged paper@1.21.11. A row without it can no longer finish a join.
 
-**Rows that do not (regression, decision needed):** bridged `paper@1.8.8` and `spigot@1.8.8`. The join times out as
-`stalled at JOIN_TELEPORT_HELD_NO_HEALTH` after 30 s (protocol offered 777), the loud failure the card asks for. On main both were
-green (paper@1.8.8 2 of 2, spigot@1.8.8 1 of 1). In a debug run (transcript tail widened to 400 entries, not kept) ViaProxy resent the
-1.8 server's position with `SetDefaultSpawnPosition` in a loop and no `SetHealth` arrived before the client acknowledged: the hold and
-the bridge wait on each other. Those rows logged no `moved too quickly!` on main (0 in the container logs), so they gain nothing from
-the hold. `paper@1.12.2` and `paper@1.16.5` are red the same way on main and with the change ("`list` gave a blank reply, so the
-console path is unverified", 2 of 2 each), unrelated. Not tested: other 1.8.x to 1.12.x bridged rows, spigot@1.21.11.
+**Bridged rows (scope change, orchestrator 2026-11-15).** The first iteration held the acknowledgement on every row. Bridged
+`paper@1.8.8` and `spigot@1.8.8` then failed the join (`JOIN_TELEPORT_HELD_NO_HEALTH` after 30 s, protocol offered 777), because
+ViaProxy resends the 1.8 server's position and no `SetHealth` arrives before the client acknowledges (seen in a debug run with the
+transcript tail widened to 400 entries, not kept). Both were green on main and never logged the WARN (0 in container logs). So the
+hold is now native only: `ConnectSpec` gained a `bridged` flag (default false, set from `Cell.bridged()` by `CellInvocation`; small
+core change approved for this card), and `McplDriver.newSession` passes `!bridged` as the hold. A native row that never sends the
+first `SetHealth` still fails loudly. The topology joins (`TopologyInvocation`) stay native: the driver talks to the proxy, whose
+backends are native paper@26.3 rows. Unit tests: `McplJoinAckTest.aBridgedJoinAcknowledgesTheJoinTeleportAtOnce` failed before the
+flag (the session still held) and `aNativeJoinStillHoldsTheJoinTeleport` passes.
 
-**Decision needed.** Keep the hold for every row and accept that 1.8.x bridged rows go red, or skip the hold on bridged cells (the
-driver does not know a cell is bridged; `ConnectSpec` would need a flag from `Cell.bridged()`, a core change outside this card).
-Not done here.
+The native-path evidence above (the table, runs 1 to 5 of the final iteration) was taken before the flag. The flag changes no native
+code path (`holdJoinAcknowledgement` is true for every native join) but I re-ran, after the flag:
+
+| Invocation (after the flag) | Runs | Result | XML / note |
+|---|---|---|---|
+| `:conformance:smoke -Dproofstone.cells=purpur@26.3` | 3 | 3 green | tests 2, 0/0/0; 0 WARN |
+| `:conformance:smoke` full 4-cell | 3 | 3 green | tests 8, 0/0/0; 0 WARN, all four server types in the logs |
+| `:conformance:run velocity@4.3.1+paper@26.3` | 1 | green | tests 2, 0/0/0 |
+| `:conformance:run fabric@26.3` | 1 | green | 0/0/0 per suite |
+| `:conformance:run neoforge@26.3` | 1 | green | 0/0/0 per suite (2 suites skipped with a reason) |
+| `:conformance:run paper@1.8.8` (bridged) | 6 | **3 red**, 3 green | red: `C04ChestMoveTest` `cursor after picking up slot A ==> expected: <true> but was: <false>` (run 1 also failed C03, C05 to C08 and the smoke class through the shared cell, 8 failures; runs 5 and 6 1 failure each) |
+| `:conformance:run paper@1.8.8` on main (`a322fdb`) | 6 | 6 green | same selector |
+| `:conformance:smoke paper@1.8.8` after the flag / on main, alternating | 10 / 10 | 10 green / 10 green | tests 2, 0/0/0 |
+| `:conformance:run spigot@1.8.8` (bridged) | 3 | 3 with only `has no cell to run` (CD01, CD02, CR01 x3, CR02), C01 to C08 green | the known single-cell selection gotcha; no other failure |
+| `:conformance:run paper@1.21.11` (bridged) | 1 | green | 0 WARN |
+| `:conformance:run paper@1.12.2` / `paper@1.16.5` | 1 each | red as on main | `list` gave a blank reply (unchanged; 1.16.5 also `GET /v1/datapacks` ClassNotFoundException from the agent in CD01 and CD02, new in `run`, not compared on main) |
+
+**Open finding, unexplained.** `:conformance:run paper@1.8.8` failed C04 in 3 of 6 runs after the flag and in 0 of 6 on main, while
+the 10 vs 10 alternating `smoke` runs were all green. The bridged code path is meant to be identical to main (immediate
+acknowledgement, no wait in `connect`: `joinFinished()` is true when not holding), so a driver cause is not found, and 3 of 6
+against 0 of 6 is not proof of a regression (p about 0.1) but is not dismissed either. Evidence is kept in `C:\pw\t719-ev` (`b-paper@1.8.8-1`
+to `-6`) and `C:\pw\t719-base-ev`. Decision for the orchestrator: merge as is, or repeat on a quiet machine first.
 
 Known families, counted separately: single-server join timeouts and the zombie_villager worldgen WARN were not seen in these runs.
