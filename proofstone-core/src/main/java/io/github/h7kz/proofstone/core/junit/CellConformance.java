@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.core.junit;
 
 import io.github.h7kz.proofstone.api.Agent;
+import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.conformance.C03GiveRoundTrip;
 import io.github.h7kz.proofstone.core.conformance.C04ChestMove;
 import io.github.h7kz.proofstone.core.conformance.C05AnvilRenameCost;
@@ -10,6 +11,7 @@ import io.github.h7kz.proofstone.core.conformance.C08ShiftClickCraft;
 import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -43,6 +45,9 @@ final class CellConformance {
 
     /** The budget of each wait on the conformance client's leave: the same as every other client wait. */
     static final Duration LEAVE_WAIT = Duration.ofSeconds(10);
+
+    /** The ticks that pass after the leave line: the vanilla second handling is one tick after the first. */
+    static final int LEAVE_TICKS = 2;
 
     /** Which conformance-breaking override is on. */
     enum Fault {
@@ -116,6 +121,8 @@ final class CellConformance {
      */
     static ConformanceResult session(String cell, ServerHost host, ErrorLogGuard.Patterns patterns, Duration wait,
             Function<String, SessionClient> join, Consumer<SessionClient> body, Supplier<String> current) {
+        // Taken before the join, so what the join logs is the conformance's own.
+        long window = ErrorLogGuard.cursor(host);
         SessionClient client;
         try {
             client = join.apply(CLIENT);
@@ -128,14 +135,48 @@ final class CellConformance {
         } catch (RuntimeException | AssertionError e) {
             result = failed(cell, current.get() + " failed", e);
         }
+        if (result == null) {
+            // Up to just before the close: a record here is the conformance's own failure, and it is named. The leave is
+            // not in this window (T-M8-22).
+            try {
+                ErrorLogGuard.check(host, window, patterns);
+            } catch (AssertionError e) {
+                result = failed(cell, "the server logged errors during the conformance", e);
+            }
+        }
+        int mark = host.logs().size();
         try {
             client.close();
         } catch (RuntimeException e) {
             if (result == null) {
                 result = failed(cell, "the conformance client could not disconnect", e);
             }
+            return result == null ? ConformanceResult.pass(cell) : result;
+        }
+        long left = System.nanoTime();
+        try {
+            awaitLeft(host, mark, wait);
+            System.err.println("PROOFSTONE CONFORMANCE " + cell + " leave confirmed in " + millis(left) + " ms");
+        } catch (RuntimeException e) {
+            if (result == null) {
+                result = failed(cell, "the conformance client's leave could not be confirmed", e);
+            }
         }
         return result == null ? ConformanceResult.pass(cell) : result;
+    }
+
+    /**
+     * Waits until the server has handled the conformance client's leave, so the first test's log window starts after it.
+     * Vanilla's {@code ServerConnectionListener.tick} and {@code Connection.tick} can run {@code handleDisconnection()}
+     * a second time one tick after the first (T-M8-16, about 0.4% of closes on the loaders). The first handling is on
+     * the tick that sees the close and logs "left the game", and the second is on the next, so two more ticks pass
+     * after the line. Both waits fail loudly: a leave that cannot be confirmed is a failed conformance.
+     */
+    private static void awaitLeft(ServerHost host, int mark, Duration wait) {
+        String line = CLIENT + " left the game";
+        Await.until("the host log line \"" + line + "\"", () -> host.logs().since(mark),
+                lines -> lines.stream().anyMatch(each -> each.contains(line)), wait);
+        host.request("POST", "/v1/ticks/await", Map.of("n", LEAVE_TICKS, "timeoutMs", wait.toMillis()));
     }
 
     /** Runs one scenario and prints how long it took, so the cost per cell is in the log (robustness.md section 4). */
