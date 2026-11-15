@@ -861,6 +861,30 @@ session prompt: `docs/plan/NEXT-SESSION-M8-PROMPT.md`.
 Reds and surprises from M8 real-server runs, per the M8 Flake rule. Mod-cell join timeouts are counted apart from the
 Paper and topology numbers.
 
+- **T-M8-20 host IT audit (2026-11-15).** `aFailedStartFailsAtOnceWithTheLogTailAndLeavesNoContainer` (`FabricLoaderHostIT`,
+  `NeoForgeLoaderHostIT`) was **red on `main` since T-M8-11**: a mod that throws at init now fails the start as `INVALID test
+  declaration` naming the mod (`ModLoad`), and the IT still expected `failed to boot`. T-M8-11 was merged without running these
+  module ITs. Fixed in the IT (same `PaperHostException`, fast-failure bound, log tail and no-container checks kept); the verifier
+  checklist now says to run the `integrationTest` of every module a PR touches or depends on. Audit, each module once on
+  `main` plus the fix under the Docker lock, `--no-parallel --max-workers=1`, XML read, no other red found:
+
+  | Module | Invocation | tests / skipped / failures / errors | Result |
+  |---|---|---|---|
+  | fabric agent, `FabricLoaderHostIT` (before the fix) | `:platforms:fabric:agent:integrationTest --tests '*FabricLoaderHostIT*'` | 2 / 0 / 1 / 0 on main | RED |
+  | fabric agent, `FabricLoaderHostIT`, 3 invocations | same | 2 / 0 / 0 / 0 each | green |
+  | neoforge agent, `NeoForgeLoaderHostIT`, 3 invocations | `:platforms:neoforge:agent:integrationTest --tests '*NeoForgeLoaderHostIT*'` | 2 / 0 / 0 / 0 each | green |
+  | fabric agent, `FabricAgentIT` | same task, `--tests '*FabricAgentIT*'` | 11 / 0 / 0 / 0 | green |
+  | neoforge agent, `NeoForgeAgentIT` | same task, `--tests '*NeoForgeAgentIT*'` | 11 / 0 / 0 / 0 | green |
+  | bukkit agent | `:platforms:bukkit:agent:integrationTest` | 25 / 0 / 0 / 0 | green |
+  | velocity agent | `:platforms:velocity:agent:integrationTest` | 10 / 0 / 0 / 0 | green |
+  | bungee agent | `:platforms:bungee:agent:integrationTest` | 12 / 0 / 0 / 0 | green |
+  | drivers/mcpl | `:drivers:mcpl:integrationTest` | 5 / 0 / 0 / 0 | green |
+  | drivers/mineflayer-ref | `:drivers:mineflayer-ref:integrationTest` | 2 / 0 / 0 / 0 | green |
+  | proofstone-core | `:proofstone-core:integrationTest` | 4 / 0 / 0 / 0 | green |
+  | proofstone-core topology | `:proofstone-core:topologyTest` | 14 / 0 / 0 / 0 | green |
+
+  `conformance` and `examples` have no `integrationTest` task (their `smoke`, `run`, `loaderExample` and meta tasks are run by
+  their own cards). Evidence: local copies of the XML and logs (not committed).
 - **T-M8-12 docs and example (2026-11-15).** `examples/loader-datapack` (`DataPackFunctionE2E`, C-D01 cut down) on
   `fabric@26.3`: `:examples:loader-datapack:loaderExample -Dproofstone.cells=fabric@26.3`, one invocation each under the Docker
   lock, warm loader cache. Run 1 **RED before any server started** (`ParameterResolutionException`: `CellInvocation.boot` reads

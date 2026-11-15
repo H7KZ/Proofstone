@@ -19,6 +19,8 @@
    - the acceptance checklist, ticked with evidence;
    - the gate output;
    - any gotchas learned, which go into `docs/platforms/*.md` in the same PR.
+   - **Verifier:** run the `integrationTest` of every module the PR touches or depends on, under
+     `scripts/dockerlock.sh`, and read the XML (T-M8-11 merged with red host ITs because this was skipped; T-M8-20).
 7. **Review** according to [model-tiering.md](model-tiering.md).
 8. **Merge.** Mark the card done: tick its checkbox in `docs/plan/tasks/M*.md`, or close the issue.
 

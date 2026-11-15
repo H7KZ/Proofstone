@@ -85,7 +85,9 @@ class FabricLoaderHostIT {
         System.out.println("LOADER-HOST " + cell.identity() + " failure: " + failure.getMessage().lines().findFirst().orElse(""));
         assertThat(failure)
                 .isInstanceOf(PaperHostException.class)
-                .hasMessageContaining("fabric@26.3 failed to boot")
+                // T-M8-11: a mod that throws at init is INVALID naming the mod, not a plain "failed to boot" (ModLoad).
+                .hasMessageContaining("INVALID test declaration")
+                .hasMessageContaining("mod proofstone_example (proofstone-example-mod.jar) crashed the server at load on fabric@26.3")
                 .hasMessageContaining("Failed to start the minecraft server")
                 .hasMessageContaining("--- log tail ---")
                 .hasMessageContaining("example mod was asked to fail")

@@ -204,3 +204,38 @@ and both mod agents serve `snapshot` and the world rules. No bad test exercises 
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaModFabricTest --no-parallel --max-workers=1`
+
+### T-M8-20 · Fix the red loader host ITs and audit every module's integration tests
+- tier: sonnet
+- depends: T-M8-99
+- modules: platforms/fabric/agent, platforms/neoforge/agent, docs/ai
+- adrs: 0017
+- specs: specs/self-tests.md
+- test-first: no
+
+**Goal.** `aFailedStartFailsAtOnceWithTheLogTailAndLeavesNoContainer` (`FabricLoaderHostIT`, `NeoForgeLoaderHostIT`) is red on `main`
+since T-M8-11, which made a mod that crashes at load fail the start as `INVALID test declaration` naming the mod, not `failed to
+boot`. The IT asserts what a failed start now is, and every module's `integrationTest` is run once so no other stale expectation hides.
+
+**Evidence.** The red IT fails identically on the T-M8-11 merge: the orchestrator merged T-M8-11 without running these module ITs,
+because the verifier checklist did not say to.
+
+**Do.**
+- Reproduce the red on `main`, copy the XML aside.
+- Update the two ITs to the current shape: still `PaperHostException`, message `INVALID test declaration` naming the mod and the
+  cell, the loader's give-up line, `--- log tail ---`, no `BOOT TIMEOUT`, failure well under half the boot timeout, no container left.
+- Audit: run `integrationTest` once for every module that has it (and the `topologyTest` ITs of `proofstone-core`) on `main` plus the fix, under the Docker lock,
+  one module per invocation. Fix a clearly stale expectation in its own commit with the reason; record any other red in the ROADMAP
+  "M8 findings" and propose a card.
+- Add to `docs/ai/workflow.md`: the verifier runs the `integrationTest` of every module a PR touches or depends on.
+
+**Don't.**
+- Weaken an assertion, raise a timeout, add a retry, a sleep or an allowlist.
+
+**Acceptance.**
+- [ ] Both `*LoaderHostIT*` classes (all tests) are green in three separate invocations each.
+- [ ] The audit table (module, invocation, XML counts, result) is in the PR and the ROADMAP.
+- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:fabric:agent:integrationTest --tests '*LoaderHostIT*' --no-parallel --max-workers=1`
