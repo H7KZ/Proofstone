@@ -48,7 +48,11 @@ public final class PaperHost implements ServerHost, AutoCloseable {
     public static final int GAME_PORT = 25565;
     private static final int TAIL_LINES = 60;
     private static final String BUKKIT_YML = "settings:\n  connection-throttle: -1\n";
-    private static final String SEED = "1234567";
+    /**
+     * The world seed of every cell, Paper and loaders alike (T-M8-21): one generated world each boot. Its nearest village
+     * is far from spawn, so a zombie village cannot log the {@code Skipping Entity} WARN under {@code DIFFICULTY=peaceful}.
+     */
+    static final String SEED = "1234567";
     private static final String WORLD_SPAWN = "setworldspawn 0 64 0";
     private static final ObjectMapper JSON = AgentClient.JSON;
     private static final Pattern JAVA_MAJOR = Pattern.compile("version \"(\\d+)(?:\\.(\\d+))?");

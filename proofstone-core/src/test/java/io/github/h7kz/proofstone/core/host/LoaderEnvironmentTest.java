@@ -57,6 +57,16 @@ class LoaderEnvironmentTest {
     }
 
     @Test
+    void everyLoaderCellPinsTheSameWorldSeedAsPaper() {
+        // T-M8-21: the same world every boot, so a zombie village near spawn cannot reach the log guard. 1234567 has its
+        // nearest village 353 blocks from spawn on Fabric; Paper has run with it since M1.
+        for (LoaderCell cell : List.of(FABRIC, NEOFORGE)) {
+            assertThat(LoaderEnvironment.env(cell, "t", 1)).containsEntry("SEED", PaperHost.SEED);
+        }
+        assertThat(PaperHost.SEED).isEqualTo("1234567");
+    }
+
+    @Test
     void noEnvironmentValueIsAnUnpinnedVersionOrLatest() {
         for (LoaderCell cell : List.of(FABRIC, NEOFORGE)) {
             assertThat(LoaderEnvironment.env(cell, "t", 1).values()).noneMatch(value -> value.contains("latest")
