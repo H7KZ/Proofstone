@@ -49,6 +49,13 @@ class HostKeyTest {
     }
 
     @Test
+    void theDifferentialKeyIsPerCellToo() {
+        assertThat(CellInvocation.differentialKey("C", "m", cell("paper", "26.3", 244)))
+                .isNotEqualTo(CellInvocation.differentialKey("C", "m", cell("folia", "26.3", 12)))
+                .isEqualTo(CellInvocation.differentialKey("C", "m", cell("paper", "26.3", 244)));
+    }
+
+    @Test
     void aServerOfAnotherPlatformIsRefused() {
         Health paper = new Health("0.1.0", "1.0", "paper", "26.3", List.of());
         assertThatThrownBy(() -> CellInvocation.requirePlatform(cell("folia", "26.3", 12), paper))
