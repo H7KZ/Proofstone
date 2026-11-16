@@ -71,7 +71,17 @@ public final class ProxyHost implements AgentEndpoint, AutoCloseable {
         return host;
     }
 
-    private void configure(Network network, Map<String, String> files) {
+    /** A configured-never-started host, for a test (T-M8-25). */
+    static ProxyHost unstarted(ProxyHostOptions options) {
+        return new ProxyHost(options);
+    }
+
+    /** The container, for a test that reads how it is configured (T-M8-25). */
+    GenericContainer<?> container() {
+        return container;
+    }
+
+    void configure(Network network, Map<String, String> files) {
         ProxyKind kind = options.kind();
         container.withEnv("TYPE", kind.imageType())
                 // The image would otherwise fetch an RCON plugin and default configs from GitHub (ADR-0016 section 2).

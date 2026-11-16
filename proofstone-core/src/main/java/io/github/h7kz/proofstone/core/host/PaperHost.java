@@ -132,6 +132,11 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         return container.getEnvMap();
     }
 
+    /** The container, for a test that reads how it is configured (T-M8-25). */
+    GenericContainer<?> container() {
+        return container;
+    }
+
     void configure(List<Path> artefacts, Path serverJar) {
         container
                 .withEnv("EULA", "TRUE")

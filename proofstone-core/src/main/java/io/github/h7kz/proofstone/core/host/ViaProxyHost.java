@@ -28,7 +28,7 @@ public final class ViaProxyHost implements AutoCloseable {
     private final GenericContainer<?> container;
     private final LogBuffer logs = new LogBuffer();
 
-    private ViaProxyHost(Cell cell, ImagePin image, Network network) {
+    ViaProxyHost(Cell cell, ImagePin image, Network network) {
         this.cell = cell;
         this.container = new GenericContainer<>(DockerImageName.parse(image.reference()))
                 .withNetwork(network)
@@ -42,6 +42,11 @@ public final class ViaProxyHost implements AutoCloseable {
                         "--target-version", cell.mc(),
                         "--auth-method", "NONE")
                 .withLogConsumer(frame -> logs.append(frame.getUtf8String()));
+    }
+
+    /** The container, for a test that reads how it is configured (T-M8-25). */
+    GenericContainer<?> container() {
+        return container;
     }
 
     /**
