@@ -354,3 +354,48 @@ No allowlist, sleep, retry or timeout change; the driver's close is untouched.
   race is fixed (about 1 in 100 invocations), the unit cases do.
 - By hand (`loader-hand.sh`, `RACE="600 0 help"`, the harness not involved): `handleDisconnection() called twice` appeared 1 time in
   600 closes on Fabric and 1 in 600 on NeoForge, so the line is still in the server log at the old rate (small sample).
+
+### T-M8-23 · Diagnose and fix the `no matching item among []` DISAGREE family (C06, C08) on loader cells
+- tier: sonnet
+- depends: T-M8-22
+- modules: proofstone-core, conformance, docs/platforms
+- adrs: 0003, 0017
+- specs: specs/self-tests.md §1
+- test-first: yes
+
+**Goal.** C06 and C08 stop going red on `fabric@26.3` and `neoforge@26.3` with `DISAGREE: present in the inventory ... no matching
+item among []`, with the mechanism shown by run evidence and the fix an await on the client's own slot state.
+
+**Evidence so far.** Seen as fabric C08 (1 of 3 on #137), neoforge C08 (several), fabric C06 (once), and in ROADMAP "M8 findings"
+(T-M8-16). Lead: the same race T-M8-09 found in C-D02: the scenario closes the window before the server's slot update for the
+player's own slot reached the client, and the driver (like the vanilla client) ignores the packets of a closed window.
+
+**Do.**
+- Copy the XML, the bundle and the container log aside after every run. At least 10 `:conformance:run` invocations per loader row
+  (`fabric@26.3`, `neoforge@26.3`), one cell per invocation. Record per run red or green and, for a red, the driver transcript lines
+  around `ServerboundContainerClosePacket`.
+- Name the mechanism with those lines, or say "unexplained" with the counts.
+- Test first: a unit test with a fake window whose server update for the player's slot only arrives after `close()`; it must be
+  red against the scenario as it is. Then make C08 and C06 await the result in the window's own player slots before closing, as
+  C-D02 does (own commit), and check C04, C05 and C07 for the same shape.
+
+**Don't.**
+- Add a sleep, a retry, raise a timeout, weaken or drop an assertion, or allowlist anything. Change the driver.
+
+**Acceptance.**
+- [x] The mechanism is shown by transcript lines of a red run, or named unexplained. (Ordering shown from a transcript, the DISAGREE
+  not reproduced in 32 invocations: stated as such, ROADMAP "M8 findings" T-M8-23.)
+- [x] The unit test is red before and green after. (`ConformanceCloseRaceTest`, 3 of 5 red before.)
+- [x] `:conformance:run` on `fabric@26.3` and `neoforge@26.3`, three separate invocations each after the fix; a red is a finding,
+  never replaced by a later green. (6 of 6 green.)
+- [x] `bash scripts/gates.sh --max-workers=1` passes; the `integrationTest` of every module touched is run. (Below.)
+
+**Verify.**
+`./gradlew :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=neoforge@26.3 --no-parallel --max-workers=1`
+
+**Result (2026-11-16).** Diagnosed and fixed as the lead said, with the limit that no live DISAGREE was caught. Numbers and the
+transcript ordering are in ROADMAP "M8 findings" (T-M8-23). C08 and `ConformanceFixture.placeCursorInInventory` (C05, C06, C07) now
+await the result in the client's own slot state before the window closes. Before: 20 idle invocations (10 per row) and 12 under
+CPU load, 0 DISAGREE, 1 unrelated red (`handleDisconnection() called twice` on a conformance client, T-M8-22's family, kept aside).
+After: 6 of 6 green. `:proofstone-core:test` and `docsCheck` through `bash scripts/gates.sh --max-workers=1`: OK. `:proofstone-core:integrationTest`
+(`PaperHostIT`, 4 tests, 0 skipped, 0 failures, 0 errors) green under the Docker lock. Not done: the red above is not diagnosed here.
