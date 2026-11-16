@@ -46,6 +46,10 @@ Paper or Folia versions newer than a platform's newest row, as `experimental`. I
 for. Before merging, run `bash scripts/gates.sh` and the affected rows' `:conformance:run` cells locally, each under
 `scripts/dockerlock.sh`. `VERSION_WATCH_TOKEN` is no longer needed.
 
+**Config files are pinned too.** `PaperHost` sets `SKIP_DOWNLOAD_DEFAULTS=true`, so the image no longer copies Paper's default
+configs from an unpinned GitHub branch at boot (T-M8-19, paper.md Gotchas). A new image digest must keep that variable working;
+check with `docker run --add-host raw.githubusercontent.com:127.0.0.1` that no "not available" warning appears.
+
 **No code change is needed for a version unless conformance shows a real behaviour change.** A real
 change becomes a card against the pack, with the gotcha recorded in `docs/platforms/<id>.md`.
 

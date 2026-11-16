@@ -436,11 +436,28 @@ ITs already set `SKIP_DOWNLOAD_DEFAULTS=true` (ADR-0016); `PaperHost.configure` 
   allowlist, weaken a test, edit the wire protocol. If SKIP turns out to need a new image, stop and report.
 
 **Acceptance.**
-- [ ] The unit test is red before and green after.
-- [ ] Container log evidence of the fetch before and none after.
-- [ ] `:conformance:smoke` three separate invocations and `:conformance:run -Dproofstone.cells=paper@26.3` three separate
-  invocations, XML read, a red is a finding.
-- [ ] The `integrationTest` of every module touched is run; `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The unit test is red before and green after. (`PaperHostEnvTest`, 3 of 3 red, then 3 of 3 green.)
+- [x] Container log evidence of the fetch before and none after. (Below.)
+- [x] `:conformance:smoke` three separate invocations and `:conformance:run -Dproofstone.cells=paper@26.3` three separate
+  invocations, XML read, a red is a finding. (6 of 6 green, below.)
+- [x] The `integrationTest` of every module touched is run; `bash scripts/gates.sh --max-workers=1` passes. (See Result; one pre-existing red, not caused by this card.)
 
 **Verify.**
 `./gradlew :proofstone-core:test --tests '*PaperHostEnvTest*'`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1`
+
+**Result (2026-11-16).** Fixed with one env variable on the existing pinned image, no digest change: `PaperHost.configure` sets
+`SKIP_DOWNLOAD_DEFAULTS=true` (`PaperHostEnvTest`: Paper, Folia and a built Spigot jar).
+- Fetch evidence: `docker run` of the java25 digest (`TYPE=PAPER VERSION=26.3`) with `--add-host raw.githubusercontent.com:127.0.0.1`.
+  Without the variable: two `mc-image-helper mcopy` ERRORs (`Connection refused: raw.githubusercontent.com/127.0.0.1:443`) and the
+  WARNs `One or more default config files were not available from .../main/26.3/paper-global.yml,...paper-world-defaults.yml` and
+  `... default files ... bukkit.yml,...spigot.yml`; the server still reached `Done`. With it: no such line, `Done (6.1s)`.
+  One boot each, java25 image only; the other four digests carry the same script text (grepped), not booted.
+- `:conformance:smoke` 3 separate invocations: 8 tests each, 0 skipped, 0 failures, 0 errors.
+  `:conformance:run -Dproofstone.cells=paper@26.3` 3 separate invocations: all green; the only skips (2 per run) are the Folia-only
+  tests, `missing capability FOLIA_REGIONS on cell paper@26.3`, with their reason.
+- `:proofstone-core:integrationTest` (`PaperHostIT`, 4 tests) green; `topologyTest` (Velocity and BungeeCord suites) green except
+  `TopologyFaultIT`, red in the full run (1 of 2 tests: `aBackendThatNeverBecomesReady...`, `container server-lobby did not become
+  ready: ... Container startup failed`). Finding, not fixed here: with the fix, 3 reruns of `TopologyFaultIT` alone gave 2 green and 1
+  red (same message); with the fix removed (baseline), 4 reruns gave 2 red (both tests failed, same `server-lobby ... Container
+  startup failed`) and 2 green. So it exists without this change; cause not diagnosed (the lobby log tail ends at the known
+  `No key layers in MapLike[{}]` ERROR a few seconds after start). Needs its own card.
