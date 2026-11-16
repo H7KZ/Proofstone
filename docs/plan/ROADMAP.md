@@ -1664,3 +1664,35 @@ inferred from the null value and the close time); the C04 red's packet record; w
 **Fix card proposed:** T-M7-21 in [M7-followups.md](tasks/M7-followups.md): C04 and C05 await the cursor before asserting it (the
 T-M8-23 style, `Await`, no sleep), same assertion text, and a second commit keeps the conformance client's transcript when the cell
 conformance fails.
+
+## T-M7-21 await the cursor after a pick-up click (C04, C05)
+
+Date 2026-11-16. Branch `card/T-M7-21-await-cursor`. Local, Windows 11, Docker Desktop, JDK 21. Every real-server run is its own invocation
+under `scripts/dockerlock.sh`, EULA in the command environment only, `--no-parallel --max-workers=1`; evidence (XML, bundles, Gradle logs)
+copied aside after each run (`C:\pw	721-ev`, local, not committed).
+
+**Change.** C04 and C05 call `ConformanceFixture.awaitCursor` (`Await`, the 10 s client budget) after the pick-up click, then assert with the
+same message and expectation as before. No sleep, retry, timeout raise or looser assertion; a cursor that never shows fails with
+`AwaitTimeoutException` at the timeout. Second commit: a failed cell conformance keeps the conformance client's driver transcript in the bundle
+of every test it makes INVALID (`conformance-driver-transcript.jsonl`; before, the INVALID tests' bundles held 0 transcript lines). That commit
+has a `BundleWriterTest` case; it was not seen red first, and no real-server run produced a failed conformance, so the file is not seen on a real bundle.
+
+**Driver-side alternative, not taken.** `McplSession.click` on pre-1.17 bridged rows could also wait for the cursor packet. The cursor is the
+last packet of the answer and has no marker (T-M7-20: it follows the resync 0 to 9 ms later, and over 72 answers it came with it 63 times), so the
+driver cannot know that a cursor is coming without a timeout of its own, which would be a wait with no end condition. The scenario await names
+its end condition (the expected cursor), so it is the default. Other scenarios that read a cursor right after a pick-up click would need the same
+await; none of C03 to C08 does besides C04 and C05 (T-M7-20).
+
+**Counts.**
+
+| Run | Result |
+|---|---|
+| `ConformanceCursorRaceTest` before the fix | 3 of 4 red (C04, C05 on the cursor assertion; never-shows with `AssertionError`, not `AwaitTimeoutException`) |
+| `ConformanceCursorRaceTest` after | 4 of 4 green |
+| `bash scripts/gates.sh --max-workers=1` | OK |
+| `:conformance:run -Dproofstone.cells=paper@1.8.8`, 10 invocations | 10 of 10 green: tests 17, skipped 10, failures 0, errors 0 each; no join stall |
+| `:conformance:smoke -Dproofstone.cells=paper@1.8.8`, 3 invocations | 3 of 3 green: tests 2, skipped 0, failures 0, errors 0 |
+| `:proofstone-core:integrationTest`, 3 invocations | **2 of 3 green**; run 2 red: `PaperHostIT.serverWithoutTheAgentFailsReadinessWithTheLogTail`, `paper@26.3 failed to start: Container startup failed ...` (same message start as the intermittent startup failure T-M8-24 diagnoses; not investigated here, this PR does not touch `PaperHost`) |
+
+10 greens do not prove the fix: at the earlier 20 to 30 percent rate, 10 greens happen about 3 to 6 percent of the time. The mechanism (T-M7-20) and
+the unit case are what carry it.
