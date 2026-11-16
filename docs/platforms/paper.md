@@ -26,6 +26,13 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
+- **A Paper cell fails as `Container startup failed` (`HostPortWaitStrategy`) when the boot takes over 60 s, which a busy host
+  does** (T-M8-24, `paper@1.21.11` bridged, Testcontainers 2.0.5). `PaperHost` sets no wait strategy, so the default port wait
+  with its 60 s `startupTimeout` runs beside the harness's own 3 minute `bootTimeout`, and Paper binds 25565 only 1 to 3 s before
+  `Done (`. Idle, the bind came at 23 s (bridged) and 20 s (single), worst of 280 boots 42 s, 0 reds in 20 runs. With 20 busy host
+  loops it came at 55 to 61 s and 3 of 10 runs were red (10 of 140 boots killed at 61 s while still booting). The fetch and patch
+  stages (jar download, Paperclip) grow 3 to 4x, the later stages do not. `LoaderHost` already has a no-op wait for this reason;
+  the fix is proposed as T-M8-25, not made. A red of this message on a busy host is not a server fault.
 - **A data pack's broken function is logged at boot, before the agent exists, and the pack stays enabled** (T-M8-11,
   `metaModDataPack`, paper 26.3 build 244). The server logs `[ERROR]: Failed to load function <ns>:<name>` and the parse error
   (`Whilst parsing command on line 2: Unknown or incomplete command`) while it loads the pack, then lists the pack as enabled.

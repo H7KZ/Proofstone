@@ -1118,6 +1118,17 @@ Paper and topology numbers.
     2 skipped: CD01, CD02 `DATAPACKS_VANILLA`, by design). A run cannot prove the fix (the race did not show in 32 runs before it);
     the unit cases do.
 
+- **T-M8-24 intermittent `Container startup failed` (2026-11-16).** Diagnosis only, no code change; mechanism named, fix proposed as
+  T-M8-25 (not approved). Local, one invocation at a time under `scripts/dockerlock.sh`, EULA in the command environment only,
+  evidence copied aside (`C:\pw\t824-ev`, not committed).
+  - **Runs:** idle `paper@1.21.11` bridged 10 of 10 green (140 server boots), idle `paper@26.3` 10 of 10 green (140), idle
+    `TopologyFaultIT` 10 of 10 green (30); `paper@1.21.11` bridged with 20 busy shell loops on the host **7 green, 3 red** (10 of
+    140 server boots failed).
+  - **Mechanism:** `PaperHost` keeps Testcontainers' default `HostPortWaitStrategy` and its 60 s `startupTimeout`; Paper binds the
+    game port late in a boot of 23 s idle and 55 to 61 s loaded, and the container was killed at 61 s while still booting (event
+    times and log tails in the card). The harness's own `bootTimeout` is 3 minutes and was not the clock that fired.
+  - **Not shown:** that the #138 and `TopologyFaultIT` reds were this; they did not reproduce idle and no log of them exists.
+
 ### T-M8-18: a leak bad test on a loader cell
 
 - **Added:** `leak/loader/LoaderLeakE2E`, pinned to `fabric@26.3`, sets `random_tick_speed` to 7 and leaves it. Task `metaLeakFabric`,

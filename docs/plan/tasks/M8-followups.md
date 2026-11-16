@@ -461,3 +461,121 @@ ITs already set `SKIP_DOWNLOAD_DEFAULTS=true` (ADR-0016); `PaperHost.configure` 
   red (same message); with the fix removed (baseline), 4 reruns gave 2 red (both tests failed, same `server-lobby ... Container
   startup failed`) and 2 green. So it exists without this change; cause not diagnosed (the lobby log tail ends at the known
   `No key layers in MapLike[{}]` ERROR a few seconds after start). Needs its own card.
+
+### T-M8-24 · Diagnose the intermittent `Container startup failed` / `HostPortWaitStrategy` on Paper cells
+- tier: sonnet
+- depends: none
+- modules: proofstone-core, docs/platforms
+- adrs: 0005, 0016
+- specs: specs/self-tests.md
+- test-first: no
+
+**Goal.** Name the mechanism of the red that went away on a rerun (`paper@1.21.11` bridged x5 and `metaTest` `paper@26.1.2` once
+during the #138 verification; `TopologyFaultIT` red in 2 of 4 reruns on the baseline of T-M8-19 and 1 of 3 with its fix, `container
+server-lobby did not become ready ... Container startup failed`), with counts per arm and log lines, and propose the fix card.
+Diagnosis only: no code change.
+
+**Evidence (2026-11-16).** Local, Windows 11, Docker Desktop (server 29.9.2, 20 cores, WSL2 `memory=16GB`), JDK 21, `origin/main` at
+`3cde4e8`. One Gradle invocation per run under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the command
+environment only. Per run: `docker events`, a read-only `docker logs -f -t` of every container of ours, a Windows CPU sample every
+5 s, the JUnit XML and bundle copied aside (`C:\pw\t824-ev`, local, not committed). Reds are counted, never replaced.
+
+| Arm | Task | Runs | Red runs | Red server starts |
+|---|---|---|---|---|
+| idle, bridged | `:conformance:run -Dproofstone.cells=paper@1.21.11` | 10 | **0** | 0 of 140 |
+| idle, single server | `:conformance:run -Dproofstone.cells=paper@26.3` | 10 | **0** | 0 of 140 |
+| idle, topology | `:proofstone-core:topologyTest --tests '*TopologyFaultIT*'` | 10 | **0** | 0 of 30 |
+| loaded, bridged | the bridged task, with 20 busy shell loops running on the host | 10 | **3** (runs 3, 7, 9) | **10 of 140** |
+
+The load is 20 `while :; do :; done` loops, started before the run and killed after it (run 1 of the loaded arm used 20 `yes`
+processes instead; green). Each loop got about 0.3 of a core. The Windows `LoadPercentage` sample read lower in the loaded arm (mean
+24%) than in the idle one (mean 42%), so it does not measure what the Docker VM got; the run time does: a bridged run took 7.7 to 9.2
+minutes idle and 16.5 to 17.4 minutes loaded.
+
+**Mechanism.** `PaperHost` sets no wait strategy, so Testcontainers (2.0.5) uses its default `HostPortWaitStrategy` with the
+default `startupTimeout` of **60 s** (the `AbstractWaitStrategy` constructor, read with `javap`). On the exposed game port it runs in
+the container, in a loop, `grep -i ':0*63dd' /proc/net/tcp* || nc ...` (the `exec_create` event right after every `start`; 63dd is
+25565). Paper binds 25565 late in its boot, 1 to 3 s before `Done (`, so the 60 s is the whole boot: the image downloads the pinned
+Paper jar, Paperclip downloads the Mojang jar and patches it, Paper remaps, loads the world. Offsets from the container's first log
+line, medians over every server container:
+
+| Stage | idle bridged (140) | idle single (140) | loaded bridged (140) |
+|---|---|---|---|
+| Paper jar downloaded | 5.3 s | 5.4 s | 21.8 s |
+| `Starting org.bukkit.craftbukkit.Main` (after Paperclip) | 14.2 s | 14.8 s | 48.2 s |
+| `Done remapping server` | 18.2 s | not logged | 52.0 s |
+| `Starting Minecraft server on *:25565` (the bind) | 23.1 s (max 30.5) | 19.5 s (max 42.0) | 56.7 s (max 60.9) |
+
+The two stages that fetch and patch (jar download 4x, Paperclip 3x) grow; the stages after them do not (remap 4.0 s idle, 3.8 s
+loaded; remap to bind 4.9 s and 4.7 s). Idle, the worst bind of 280 server containers was 42 s (the very first run, which also built
+the project). Loaded, 131 of 140 containers bound between 55.1 and 60.9 s; **9 never bound before the 60 s and a tenth bound 0.9 s
+before its kill**. The failed containers by event time: `loaded-3` start 16:12:08, kill 16:13:09 (61 s); `loaded-7` start 17:32:11
+kill 17:33:13 (62 s) and start 17:33:17 kill 17:34:18 (61 s); `loaded-9` seven more. Every log is still booting at the kill
+(`Loaded 1584 advancements`, `Initialized 1 plugin`, `Enabling ProofstoneAgent`), and the XML failure is `paper@1.21.11 failed to
+start: Container startup failed for image itzg/minecraft-server@sha256:04b5ee18...`, root `ContainerLaunchException at
+HostPortWaitStrategy.java:112`. Only the Paper server container failed here. ViaProxy has its own 60 s `awaitListening`;
+neither it nor a proxy failed.
+
+The harness's own budgets are not the clock that fired: `PaperHostOptions` has `bootTimeout` 3 minutes for `Done (` and 30 s for the
+agent. `LoaderHost` already replaces the default wait with a no-op for this reason (its comment: "a second timeout that would hide a
+slow boot").
+
+**Not shown.** The #138 and `TopologyFaultIT` reds themselves: they did not reproduce idle (0 of 10 topology runs, 0 of 20 bridged
+and single runs) and no log of them was kept, so that they were this 60 s on a busy host is **inferred** from the identical message
+and code path, not seen. What loaded the host then is unknown. Why 20 busy host loops slow the fetch and patch stages 3 to 4x and
+not the remap is not diagnosed (Docker Desktop and WSL2 scheduling of the network path, or disk; not separated here). `metaTest`
+`paper@26.1.2` was not run.
+
+**Do.** Read the code, run the arms, write this and the proposed card below. No change to any source file.
+
+**Don't.** Change code, add a sleep, a retry, a timeout raise or an allowlist, weaken an assertion, run in parallel.
+
+**Acceptance.**
+- [x] At least 10 runs per arm, red counts per arm, in the table above.
+- [x] The failing container and its wait strategy named, with log lines and event times.
+- [x] A fix card proposed (T-M8-25).
+- [x] `bash scripts/gates.sh --max-workers=1` passes (docs only).
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`
+
+### T-M8-25 · One boot clock for Paper cells: no hidden 60 s port wait in `PaperHost`, `ViaProxyHost`, `ProxyHost`
+- tier: sonnet
+- depends: T-M8-24
+- modules: proofstone-core, docs/platforms
+- adrs: 0005, 0016
+- specs: specs/self-tests.md
+- test-first: yes
+
+**Not approved; not started.** Proposal from T-M8-24 for the maintainer.
+
+**Goal.** A slow but healthy Paper boot is judged by the harness's one documented budget (`bootTimeout` 3 minutes for `Done (`, then
+the agent's 30 s), and a boot that really stalls fails with that message and the log tail, not as `Container startup failed` at
+60 s. `LoaderHost.configure` already does this; the Paper, proxy and ViaProxy containers still use the default wait.
+
+**Do.**
+- Test first, no Docker: the container of a `PaperHost` built for a Paper cell does not wait on the port (assert the configured
+  strategy). Red before.
+- In `PaperHost.configure`, `ProxyHost.configure` and `ViaProxyHost`, replace the default wait with the no-op strategy of
+  `LoaderHost` (share it as one package-private class), with the why in a comment. `awaitDone`, `awaitAgent`, `awaitListening` and
+  the proxy's ready-line await stay as they are and keep failing fast when the container is not running.
+- Show it: re-run the loaded arm of T-M8-24 (20 busy loops, `paper@1.21.11` bridged, 10 invocations). Expected: no
+  `Container startup failed`; a boot that passes 60 s is green, a boot that passes 180 s fails as `timed out waiting for server log
+  shows "Done ("`.
+
+**Decision for the maintainer first.** (A) This card as written. (B) Also cut the per-boot fetch and patch work (about 14 s of 23 idle
+and 48 s of 57 loaded: the Paper jar download and Paperclip's Mojang jar download and patch): copy a pre-patched jar in, which needs
+a pinned artefact and an image or `versions.yml` change (ADR-0008, 0013). Bigger, and it changes what a cell runs; A does not.
+
+**Don't.**
+- Raise the 60 s (it keeps a second clock and only moves the failure), add a sleep, a retry or an allowlist, change a digest.
+- Change the `bootTimeout` or `agentTimeout` values.
+
+**Acceptance.**
+- [ ] The unit case is red before and green after.
+- [ ] The loaded arm: 10 invocations, XML read, 0 `Container startup failed`; any other red is a finding.
+- [ ] Idle `:conformance:smoke` and `:conformance:run -Dproofstone.cells=paper@1.21.11`, three invocations each, green.
+- [ ] The `integrationTest` and `topologyTest` of every module touched; `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`./gradlew :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :proofstone-core:topologyTest --tests '*TopologyFaultIT*' --no-parallel --max-workers=1`
