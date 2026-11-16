@@ -8,6 +8,8 @@ import io.github.h7kz.proofstone.api.ItemView;
 import io.github.h7kz.proofstone.api.PlayerHandle;
 import io.github.h7kz.proofstone.api.Position;
 import io.github.h7kz.proofstone.api.Window;
+import io.github.h7kz.proofstone.core.await.Await;
+import java.time.Duration;
 import java.util.List;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Assertions;
@@ -23,6 +25,8 @@ import org.junit.jupiter.api.Assertions;
 public final class ConformanceFixture {
 
     private static final int PLAYER_SLOTS = 36;
+    /** The same wait budget as every other client wait (DualAssert.DEFAULT_TIMEOUT). */
+    private static final Duration AWAIT = Duration.ofSeconds(10);
     static final BlockPos ANVIL = new BlockPos(0, 64, 2);
     public static final BlockPos CHEST = new BlockPos(-1, 64, 0);
     /** C07 only: a grindstone, placed by {@link #placeBlock} because 1.12.2 has none (docs/platforms/paper.md). */
@@ -75,18 +79,48 @@ public final class ConformanceFixture {
 
     /**
      * Puts the carried stack into the first empty slot of the player's own 36 slots, which trail every window's own
-     * slots. Not {@code dropCursorIntoFirstEmptySlot}: that takes the anvil's empty input slot, and closing the anvil
-     * returns that to the inventory on 26.3 but drops it on the ground on 1.8.8 (docs/platforms/paper.md).
+     * slots, and returns once the client's own view of that slot holds a stack. Not {@code dropCursorIntoFirstEmptySlot}:
+     * that takes the anvil's empty input slot, and closing the anvil returns that to the inventory on 26.3 but drops it
+     * on the ground on 1.8.8 (docs/platforms/paper.md).
+     *
+     * <p>The wait is the point (T-M8-23): a click returns on the first stateId change, which can be a late packet of
+     * the click before, so it may return before the server's update for this slot arrived. A close sent in that gap makes
+     * the driver, like the vanilla client, ignore the update, and the inventory never gets the stack.
      */
     static void placeCursorInInventory(Window window) {
         List<ItemView> slots = window.slots();
         for (int i = Math.max(0, slots.size() - PLAYER_SLOTS); i < slots.size(); i++) {
             if (slots.get(i).isEmpty()) {
-                window.click(i, Click.LEFT);
+                int target = i;
+                window.click(target, Click.LEFT);
+                awaitPlayerSlot(window, "the carried stack in player slot " + target + " of " + window.type(),
+                        slot -> !slot.isEmpty(), target);
                 return;
             }
         }
         throw new IllegalStateException("no empty player slot in " + window.type());
+    }
+
+    /**
+     * Waits until the client's view of one slot of the window satisfies the predicate. A scenario calls this before it
+     * closes a window whose last click the server answers with more than one packet (T-M8-23).
+     *
+     * @throws io.github.h7kz.proofstone.core.await.AwaitTimeoutException when it never does within the budget
+     */
+    static void awaitPlayerSlot(Window window, String description, Predicate<ItemView> predicate, int slot) {
+        Await.until(description, () -> window.slots().get(slot), predicate, AWAIT);
+    }
+
+    /**
+     * Waits until some one of the player's own 36 slots, in the client's view of the window, satisfies the predicate.
+     * The server sends a craft's result slot first and the player's slot after it, so this is the wait that must come
+     * before the close (T-M8-23).
+     */
+    public static void awaitInPlayerSlots(Window window, String description, Predicate<ItemView> predicate) {
+        Await.until(description, () -> {
+            List<ItemView> slots = window.slots();
+            return slots.subList(Math.max(0, slots.size() - PLAYER_SLOTS), slots.size()).stream().anyMatch(predicate);
+        }, found -> found, AWAIT);
     }
 
     /** The diamond sword, matched on either oracle's view. */

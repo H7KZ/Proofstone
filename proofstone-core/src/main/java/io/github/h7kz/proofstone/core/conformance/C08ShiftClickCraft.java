@@ -46,6 +46,10 @@ public final class C08ShiftClickCraft {
 
             table.click(0, Click.SHIFT_LEFT);
             table.awaitSlot(0, ItemView::isEmpty);
+            // The result slot empties first and the player's own slot is updated after it. A close in between drops
+            // that update (the driver, like the vanilla client, ignores a closed window), T-M8-23.
+            ConformanceFixture.awaitInPlayerSlots(table, "the paper in the window's player slots",
+                    item -> item.is("paper") && item.amount() == 3);
             Assertions.assertTrue(table.cursor().isEmpty(), "cursor after shift-click");
             Assertions.assertTrue(table.slots().subList(1, GRID_LAST_SLOT + 1).stream().allMatch(ItemView::isEmpty),
                     "crafting grid after the craft");
