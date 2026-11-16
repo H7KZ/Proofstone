@@ -178,8 +178,8 @@ never logged it.
 - Change code, a schema, `versions.yml`, or any decision the runs did not contradict.
 
 **Acceptance.**
-- [ ] The amendment lists each change with the run or file that shows it.
-- [ ] `./gradlew docsCheck` passes.
+- [x] The amendment lists each change with the run or file that shows it. (ADR-0017 "Amendments", 2026-11-16.)
+- [x] `./gradlew docsCheck` passes. (Through `bash scripts/gates.sh --max-workers=1`, in the PR.)
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`

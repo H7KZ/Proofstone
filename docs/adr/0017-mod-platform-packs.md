@@ -1,6 +1,6 @@
 # ADR-0017: Mod platform packs, artefact types and loader rows
 
-- Status: Accepted
+- Status: Accepted (amended 2026-11-16, see Amendments)
 - Date: 2026-11-14
 - Deciders: maintainer delegated the M8 decisions; decided by the T-M8-03 agent on the orchestrator's decisions (scope,
   Fabric readiness signal, resource-pack source preference, the Mojang question to be decided here). Section 6 (Mojang
@@ -223,3 +223,118 @@ A cell holds a capability when its pack declares it **and** its agent reports th
   no mod-side hook was run.
 - **NeoForge content mods in scope:** rejected until a run shows a mod-added item reaching the client and both oracles
   reading it.
+
+## Amendments
+
+### 2026-11-16: what the M8 runs showed (T-M8-17)
+Docs only. No decision is re-decided and no code, schema or `versions.yml` changes. Each item names the section it corrects and
+the run or file that shows it. Sources are merged docs, cards and the ROADMAP ("M8 findings", "M8 review (T-M8-99)"); a claim here
+is only what those record as run.
+
+- **Section 4, data-pack load check: the log guard does not catch a broken function.** A data pack whose function does not parse
+  stays enabled, and the server logs `Failed to load function proofstone_broken:hello` and the parse error at boot, before the
+  agent's log window opens. So "caught by the log guard: `FAIL`" did not hold (T-M8-11 negative controls, ROADMAP "M8 review").
+  As built, the host reads its own log of the whole boot for WARN or worse lines that name a namespace of the pack
+  (`DataPackLoad.errorsLogged`), and a hit is `INVALID` naming the pack and quoting the line, not `FAIL`. Run: `paper@26.3`,
+  `metaModPaperTest` 3 of 3 (two faults each run), XML read; a pack whose function parses reads "no test produced INVALID"
+  (mutation check, one run). The declared-pack check (`file/<name>` in `GET /v1/datapacks`) is unchanged. Found by the same runs:
+  a failure before the conformance (a mod crash, an unloaded or noisy data pack) is `INVALID` in `proofstone-report.json`, as in
+  JUnit (it was `FAIL` in the report).
+- **Section 5, build: Loom and ModDevGradle are not used.** Both agents compile with plain `javac` against pinned jars, the
+  fallback section 5 allows. Fabric: the vanilla 26.3 server jar, Fabric loader 0.20.1 and Fabric API 0.166.2+26.3. NeoForge:
+  six jars, namely NeoForge universal 26.3.0.103, FML loader 12.0.12, bus 8.0.5, mergetool api 2.0.7, maven-artifact 3.10.0,
+  and typetools 0.6.3 (for tests). Each jar is checked by sha256 at build time; the versions and hashes are in
+  `gradle/libs.versions.toml`, and `FabricPinsTest` and `NeoForgePinsTest` check the catalog against the `versions.yml` rows.
+  The consequence "two build plugins enter the build" does not hold; the Java 25 toolchain and `--release 25` do.
+  Since T-M8-15 (merged) the vanilla game-view code (`MinecraftView`, `ItemJson`, `TickCounter`, `ServerThread`, `Values`,
+  `GameView`) is one copy in `platforms:vanilla-view` (709 main lines, 227 fixture lines), shaded into both agents, replacing
+  about 950 duplicated lines. Loader-specific code stays in each agent; `FabricGame`/`NeoForgeGame` and
+  `FabricAgent`/`NeoForgeAgent` remain near-copies (about 250 lines, 24 differing, ROADMAP).
+- **Section 7, resource-pack status: the server-side status comes from a play-phase push, not from `server.properties`.** The
+  assumption that the Bukkit agent reads the status through the event probe failed for the configuration-phase push: Paper 26.3
+  (build 244) fires no `PlayerResourcePackStatusEvent` for it, because the event needs a `Player` and a configuration-phase
+  connection is not one (T-M8-10, [paper.md](../platforms/paper.md) Gotchas). A pack pushed in play by a fixture plugin
+  (`Player#addResourcePack`) fires it at MONITOR with `ACCEPTED`, `DOWNLOADED`, `SUCCESSFULLY_LOADED` or `ACCEPTED`,
+  `FAILED_DOWNLOAD`. So the configuration-phase push is checked on the driver side only, and the server-side status is read from
+  the play-phase push. The driver contract, the loopback harness source and the declared answer hold as written. Runs: C-R01
+  and C-R02 green 3 of 3 on `paper@26.3` (T-M8-10 and again in the review), `metaModPaperTest` wrong-hash pack `FAIL` with
+  `statuses=[ACCEPTED, FAILED_DOWNLOAD]` and `hash mismatch`, 3 of 3. `RESOURCE_PACKS` stays Paper-native only; loader cells do
+  not hold it (no read-only status hook was run). Not run: a resource pack on any loader cell, a bridged push.
+- **Section 8, `MODS` and `@Proofstone(mods)` exist now (T-M8-13, merged).** Sections 4 and 8 named them, but the API had
+  neither: `CellInvocation.bootLoader` passed an empty mod list and the only mod that reached `/mods` came through a test-only
+  switch (M8 review, exit item 2 NOT MET). T-M8-13 added `Proofstone.mods` and `Capability.MODS` (`api-baseline.txt`: 2 lines
+  added, 0 removed). A declared mod is resolved by glob (exactly one match, all before Docker), `fabric-api` is `INVALID test
+  declaration`, a cell without `MODS` is `SKIPPED` with `CAPABILITY_MISSING`, a control run installs no declared mod, and
+  `ModsLoaded` checks each declared id against `GET /v1/mods` after the capability check. The switch
+  `-Dproofstone.injectModFault` is removed; `metaModCrash` and `metaModCrashNeoForge` declare the crashing example mod through
+  `mods`. Runs: `examples/loader-mod` `ServerOnlyModE2E` 3 of 3 green on `fabric@26.3` and on `neoforge@26.3`;
+  `metaModFabricTest` 3 of 3 and `metaModNeoForgeTest` 3 of 3 `INVALID` naming `proofstone_example` and
+  `proofstone-crashing-mod.jar`; `:proofstone-api:test :proofstone-core:test` 484 tests, 0 skipped. Not run on a real server: a
+  control run on a loader cell, and a declared mod the agent does not list (unit-tested only). Only the repository's example mod
+  was run as a user mod; it registers nothing.
+  Section 8's `DATAPACKS_VANILLA` row names `paper` and `fabric`. As run, NeoForge serves no `/v1/datapacks`: C-D01 and C-D02 are
+  `SKIPPED` naming `DATAPACKS_VANILLA` on `neoforge@26.3` (3 of 3 in the review).
+- **Section 6, Mojang at cold start: still ACCEPTED, not re-decided.** The maintainer can still veto it; the point stays open
+  until they do. T-M8-07 measured the host list with a Docker `--internal` network whose only way out was a logging proxy (one
+  cold start per loader):
+  - Fabric: `launchermeta.mojang.com`, `piston-meta.mojang.com`, `piston-data.mojang.com` (the vanilla jar), `maven.fabricmc.net`
+    and `meta.fabricmc.net`, 14 s to `Done`.
+  - NeoForge: `piston-meta.mojang.com`, `piston-data.mojang.com`, `libraries.minecraft.net`, `maven.neoforged.net`,
+    `mirrors.neoforged.net` and `neoforged.net`, 18 s to `Done`.
+  - The harness JVM itself downloads the pins from `meta.fabricmc.net`, `maven.fabricmc.net` and `maven.neoforged.net`. One start
+    was measured per loader, so a host reached on another path is not listed; `LoaderEnvironmentTest` holds the list and a new
+    host is a finding. `vanilla-sha256` is filled from the run (the vanilla jar is the same bytes on both loaders, sha1 equal to
+    Mojang's manifest). A cold start without network fails by design; a Mojang or maven outage was never seen. One NeoForge
+    `:conformance:run` (T-M8-22) was red when the installer's library download timed out (`SocketTimeoutException: Read timed
+    out`, before any test); it is a host finding under section 6's failure rule, not a harness change.
+
+#### Loader cell follow-ups that changed behaviour without contradicting a section
+Recorded so the ADR is not read as the whole story; none changes a decision.
+- **T-M8-14:** `proofstone.agentJar` (the Bukkit agent) is read only on the Bukkit-family path; a loader cell reads only
+  `proofstone.<loader>.agentJar` (`AgentJarPropertyTest`, 4 tests; `loader-datapack` 3 of 3 green on `fabric@26.3` without the
+  workaround).
+- **T-M8-20:** `FabricLoaderHostIT` and `NeoForgeLoaderHostIT` `aFailedStart...` were red on `main` since T-M8-11 (a mod that
+  throws is now `INVALID test declaration` naming the mod). Fixed in the IT; green 3 invocations each; the audit of every
+  module's `integrationTest` and `topologyTest` found no other red (12 rows, ROADMAP). The verifier now runs the
+  `integrationTest` of every module a PR touches or depends on (`docs/ai/workflow.md`).
+- **T-M8-21:** loader cells pin `SEED=1234567`, the constant `PaperHost` uses, in `LoaderEnvironment.env`
+  (`LoaderEnvironmentTest`). Cause (T-M8-16): `DIFFICULTY=peaceful` makes `EntityType.create` return null for the zombie villager of
+  a zombie village template, logged as `Skipping Entity with id minecraft:zombie_villager`, about 1 boot in 430 with an unpinned
+  world. By hand on Fabric, `locate structure #minecraft:village` answers `village_plains` 353 blocks from spawn, outside the
+  generated area (about 64 blocks). `GENERATE_STRUCTURES=false` stays the fallback if a mod under test moves worldgen.
+- **T-M8-22 (merged 2026-11-16, option B, no allowlist):** the second loader WARN, `handleDisconnection() called twice`, is a
+  vanilla race (`Connection.tick` and `ServerConnectionListener.tick`), about 0.4% of client closes on both loaders (12 in 3000 by
+  hand), 0 of 324 Paper-family logs (why Paper differs is not shown). The conformance now waits for `PSConf left the game` and two
+  server ticks after its own close, and the first test's log cursor starts after that (`ConformanceLeaveTest`, 6 cases). A run
+  cannot prove the fix (about 1 in 100 invocations); the unit cases do. By hand the line still appears in the server log at the
+  old rate (1 in 600 on each loader).
+- **T-M8-23 (merged 2026-11-16):** the `no matching item among []` DISAGREE (C06, C08) on loader cells is a window closed before
+  the server's slot update for the player's own slot reached the client; the driver, like the vanilla client, ignores a closed
+  window's packets. The ordering is shown from one driver transcript; **no live DISAGREE was caught** (0 in 32 invocations), and the
+  C06 variant is inferred, not seen. C08 and `ConformanceFixture.placeCursorInInventory` (C05 to C07) now await the result in the
+  client's own slots before closing (`ConformanceCloseRaceTest`, red before and green after); 6 of 6 `:conformance:run`
+  invocations green after (both rows, 3 each).
+- **Loader log-guard reds (M8 review):** 1 in 22 recorded loader `:conformance:run` invocations after T-M8-08 (the
+  `zombie_villager` family, since fixed by T-M8-21).
+
+#### Cell-wide changes from the M7 follow-ups (mcpl driver and host; they apply to loader cells too)
+- **T-M7-17:** the shared host and the differential key are keyed by the full cell, not the mc version. Before, `paper@26.3` and
+  `folia@26.3` in one `PER_CLASS` class shared the first cell's server, which caused `PSConf moved too quickly!` in the full
+  smoke. C01 now asserts the server is the cell's platform. Full four-cell smoke: 7 invocations, 6 green, 1 red (a first-login
+  `PSConf` WARN on a fresh Purpur server), so the card's "5 of 5" was **not** met as stated.
+- **T-M7-18:** diagnosis only. The join-teleport acknowledgement was handled before the player's first tick, so `firstGood` was
+  still `0, 0, 0` and the WARN carried the login position (21 of 21). Spike: an immediate acknowledgement WARNs 9 of 10 joins,
+  after-first-tick 0 of 10 (Paper and Purpur). Purpur alone 0 of 10 red, full smoke 1 of 5.
+- **T-M7-19:** the mcpl driver holds the join acknowledgement until the first `ClientboundSetHealthPacket`, on **native joins
+  only** (`ConnectSpec.bridged`): bridged 1.8.x rows send no first `SetHealth` before the acknowledgement and deadlocked. The
+  harness-client `moved too quickly!` allowlist entries were removed (`McplJoinAckTest`, `:drivers:mcpl:test` 68 tests); purpur
+  alone 10 of 10 and the full smoke 5 of 5 green, 0 `moved too quickly!` for harness clients. Loader cells: 0 in every M8 run.
+  Open: `:conformance:run -Dproofstone.cells=paper@1.8.8` (bridged) C04 red 3 of 6 against 0 of 6 on `main`, unexplained; the
+  verifier saw main 2 of 5 red and the PR 3 of 5.
+- **T-M7-20: pending, not done.** The card diagnoses that bridged `paper@1.8.8` C03 to C05 window and cursor flake (at least 10
+  invocations per arm). No result is claimed here and the cause is unknown. It does not touch the loader rows.
+
+#### Still open after this amendment
+Content mods on Fabric (refused by design) and on NeoForge (`unverified`); any loader row other than 26.3 and any bridged loader
+row (refused by the planner); resource packs on a loader cell; a `LEAK` verdict (T-M8-18) and a differential run on a loader
+cell; data packs on NeoForge; row promotion (ADR-0015, a separate decision). The loader rows stay `experimental`.
