@@ -250,7 +250,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             }
         }
         // Conformance comes first (self-tests section 1): on a failed cell the test body never runs, and the test is INVALID.
-        state.conformance = conformance(context, resource, state.capabilities);
+        state.conformance = conformance(context, resource, state.capabilities, state);
         AssertionError invalid = VerdictGate.judgeInvalid(context.getRequiredTestMethod(), cellId(),
                 state.conformance);
         if (invalid != null) {
@@ -427,13 +427,19 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * failure of the run itself, rather than a failed scenario, is an error and is not cached.
      */
     private ConformanceResult conformance(ExtensionContext context, HostResource resource,
-            Set<io.github.h7kz.proofstone.api.Capability> capabilities) {
+            Set<io.github.h7kz.proofstone.api.Capability> capabilities, TestState state) {
         ConformanceCache cache = context.getRoot().getStore(NAMESPACE)
                 .getOrComputeIfAbsent(CONFORMANCE, key -> new ConformanceCache(), ConformanceCache.class);
         // The per-cell check joins its own client through this invocation's driver (T-M4-10b).
-        return cache.get(cellId(), () -> CellConformance.run(cellId(), resource.host(),
-                new CellView(cell, bridged, capabilities),
-                name -> connect(resource, name, ResourcePackDeclaration.forHarness(resource.pack()))));
+        return cache.get(cellId(), () -> {
+            ConformanceResult result = CellConformance.run(cellId(), resource.host(),
+                    new CellView(cell, bridged, capabilities),
+                    name -> connect(resource, name, ResourcePackDeclaration.forHarness(resource.pack())));
+            // Only the invocation that ran it: the conformance's records and its client's leave are not this test's, and
+            // the conformance checked its own window (T-M8-22). A cached result leaves the cursor where beforeEach put it.
+            state.logCursor = ErrorLogGuard.cursor(resource.host());
+            return result;
+        });
     }
 
     /** The two runs of one test on one cell share this key, so the second one finds the first one's evidence. */

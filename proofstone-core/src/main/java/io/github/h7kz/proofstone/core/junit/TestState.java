@@ -14,7 +14,11 @@ import java.util.concurrent.ConcurrentHashMap;
 final class TestState implements AutoCloseable {
 
     final ServerHost host;
-    final long logCursor;
+    /**
+     * Where this test's log window starts. {@code beforeEach} sets it before the join; the invocation that runs the cell's
+     * conformance moves it past the conformance's own leave (T-M8-22), so the conformance client's close is not this test's.
+     */
+    long logCursor;
     /** {@code null} for an unbridged cell; its log goes into the repro bundle when set. */
     ViaProxyHost proxy;
     final Set<String> patchedPlugins = ConcurrentHashMap.newKeySet();

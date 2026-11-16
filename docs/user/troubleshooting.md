@@ -153,17 +153,24 @@ topology numbers.
 - **If it shows up again:** a mod under test may have moved worldgen. Keep the XML and bundle of the red run, do not retry it into
   green, and report it with the line quoted.
 
-### Fabric and NeoForge: `handleDisconnection() called twice` fails the first test
+### Fabric and NeoForge: `handleDisconnection() called twice` in the server log
 
 - **Seen:** once, `neoforge@26.3` C03 (T-M8-15 verifier): `WARN net.minecraft.network.Connection: handleDisconnection() called
   twice`, right after `PSConf left the game`. In the T-M8-16 runs it was in the server log of 2 of 210 boots (Fabric), both green,
   because it came after a test's log check.
 - **Cause (T-M8-16):** a vanilla race, not a double close by the harness. `Connection.tick` and `ServerConnectionListener.tick` can
   both handle the same disconnect when the client's close lands in the middle of that connection's tick; the second call runs one
-  tick later. About 0.4% of client closes in a hand loop, on both loaders. It fails a test only when the closing client is the
-  conformance client `PSConf`, whose close is inside the first test's log window. It is **not allowlisted**; card T-M8-22 holds
-  the options.
-- **What to do:** as above: keep the evidence, do not retry it into green, report it with the line quoted.
+  tick later. About 0.4% of client closes in a hand loop, on both loaders. Before T-M8-22 it failed a test when the closing
+  client was the conformance client `PSConf`, whose close was inside the first test's log window.
+- **Since T-M8-22 it cannot fail a test.** The conformance checks its own log window up to just before `PSConf` closes (a hit
+  there fails the conformance, naming the line, and every test on the cell is `INVALID`). After the close it waits for the
+  `PSConf left the game` line in the host log, then two server ticks (`POST /v1/ticks/await`), and only then does the first
+  test's log window start. The line is **not allowlisted**: it can still be in the server log, between the conformance's last
+  check and the first test's cursor, and nothing reads it there. Every other record is checked as before. The wait costs
+  about 0.2 s per cell per run (155 to 215 ms, median 166 ms, 26 conformances; printed as `leave confirmed in N ms`).
+- **What to do:** if a test or the conformance still names this line, the second handling came outside the gap or the server
+  changed: keep the evidence, do not retry it into green, report it with the line quoted. A conformance that says it could not
+  confirm the leave (no `left the game` line, or no ticks, in the wait budget) is a real failure of the cell.
 
 ### `Failed to start FML` and `Failed to start the minecraft server` fail the start at once
 

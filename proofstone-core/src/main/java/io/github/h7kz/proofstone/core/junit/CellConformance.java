@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.core.junit;
 
 import io.github.h7kz.proofstone.api.Agent;
+import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.conformance.C03GiveRoundTrip;
 import io.github.h7kz.proofstone.core.conformance.C04ChestMove;
 import io.github.h7kz.proofstone.core.conformance.C05AnvilRenameCost;
@@ -9,8 +10,12 @@ import io.github.h7kz.proofstone.core.conformance.C07Grindstone;
 import io.github.h7kz.proofstone.core.conformance.C08ShiftClickCraft;
 import io.github.h7kz.proofstone.core.host.ServerHost;
 import io.github.h7kz.proofstone.core.verdict.ConformanceResult;
+import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * The conformance run of one cell (self-tests section 1), run once per cell per run through {@code ConformanceCache}.
@@ -37,6 +42,12 @@ final class CellConformance {
     static final String FAULT_EXPECTED = "PROOFSTONE-CONFORMANCE-FAULT";
     /** The name of the client the conformance run joins with. Tests use their own names (see CellInvocation). */
     static final String CLIENT = "PSConf";
+
+    /** The budget of each wait on the conformance client's leave: the same as every other client wait. */
+    static final Duration LEAVE_WAIT = Duration.ofSeconds(10);
+
+    /** The ticks that pass after the leave line: the vanilla second handling is one tick after the first. */
+    static final int LEAVE_TICKS = 2;
 
     /** Which conformance-breaking override is on. */
     enum Fault {
@@ -78,6 +89,40 @@ final class CellConformance {
     private static ConformanceResult scenarios(String cell, ServerHost host, CellView view,
             Function<String, SessionClient> join, boolean windowFault) {
         Agent agent = new HostAgent(host, Set.of());
+        String[] current = {"C03"};
+        return session(cell, host, ErrorLogGuard.Patterns.of(view.platform()), LEAVE_WAIT, join, client -> {
+            timed(cell, "C03", () -> C03GiveRoundTrip.run(view, agent, client));
+            if (view.bridged()) {
+                current[0] = "C04";
+                timed(cell, "C04", () -> C04ChestMove.run(view, agent, client, windowFault));
+                current[0] = "C05";
+                timed(cell, "C05", () -> C05AnvilRenameCost.run(view, agent, client));
+                current[0] = "C06";
+                timed(cell, "C06", () -> C06AnvilCombine.run(view, agent, client));
+                current[0] = "C07";
+                if (C07Grindstone.hasGrindstone(view.version())) {
+                    timed(cell, "C07", () -> C07Grindstone.run(view, agent, client));
+                } else {
+                    System.err.println("PROOFSTONE CONFORMANCE " + cell + ": C07 skipped, grindstone arrived in 1.14");
+                }
+                current[0] = "C08";
+                timed(cell, "C08", () -> C08ShiftClickCraft.run(view, agent, client));
+            }
+        }, () -> current[0]);
+    }
+
+    /**
+     * One conformance client's whole life: join, the scenarios, the log check, the leave.
+     *
+     * @param patterns the cell's platform pack, for the log check
+     * @param wait     the budget of each wait on the leave
+     * @param body     the scenarios; a failing one throws
+     * @param current  names the running scenario, for the failure detail
+     */
+    static ConformanceResult session(String cell, ServerHost host, ErrorLogGuard.Patterns patterns, Duration wait,
+            Function<String, SessionClient> join, Consumer<SessionClient> body, Supplier<String> current) {
+        // Taken before the join, so what the join logs is the conformance's own.
+        long window = ErrorLogGuard.cursor(host);
         SessionClient client;
         try {
             client = join.apply(CLIENT);
@@ -85,36 +130,53 @@ final class CellConformance {
             return failed(cell, "the conformance client could not join", e);
         }
         ConformanceResult result = null;
-        String current = "C03";
         try {
-            timed(cell, "C03", () -> C03GiveRoundTrip.run(view, agent, client));
-            if (view.bridged()) {
-                current = "C04";
-                timed(cell, "C04", () -> C04ChestMove.run(view, agent, client, windowFault));
-                current = "C05";
-                timed(cell, "C05", () -> C05AnvilRenameCost.run(view, agent, client));
-                current = "C06";
-                timed(cell, "C06", () -> C06AnvilCombine.run(view, agent, client));
-                current = "C07";
-                if (C07Grindstone.hasGrindstone(view.version())) {
-                    timed(cell, "C07", () -> C07Grindstone.run(view, agent, client));
-                } else {
-                    System.err.println("PROOFSTONE CONFORMANCE " + cell + ": C07 skipped, grindstone arrived in 1.14");
-                }
-                current = "C08";
-                timed(cell, "C08", () -> C08ShiftClickCraft.run(view, agent, client));
-            }
+            body.accept(client);
         } catch (RuntimeException | AssertionError e) {
-            result = failed(cell, current + " failed", e);
+            result = failed(cell, current.get() + " failed", e);
         }
+        if (result == null) {
+            // Up to just before the close: a record here is the conformance's own failure, and it is named. The leave is
+            // not in this window (T-M8-22).
+            try {
+                ErrorLogGuard.check(host, window, patterns);
+            } catch (AssertionError e) {
+                result = failed(cell, "the server logged errors during the conformance", e);
+            }
+        }
+        int mark = host.logs().size();
         try {
             client.close();
         } catch (RuntimeException e) {
             if (result == null) {
                 result = failed(cell, "the conformance client could not disconnect", e);
             }
+            return result == null ? ConformanceResult.pass(cell) : result;
+        }
+        long left = System.nanoTime();
+        try {
+            awaitLeft(host, mark, wait);
+            System.err.println("PROOFSTONE CONFORMANCE " + cell + " leave confirmed in " + millis(left) + " ms");
+        } catch (RuntimeException e) {
+            if (result == null) {
+                result = failed(cell, "the conformance client's leave could not be confirmed", e);
+            }
         }
         return result == null ? ConformanceResult.pass(cell) : result;
+    }
+
+    /**
+     * Waits until the server has handled the conformance client's leave, so the first test's log window starts after it.
+     * Vanilla's {@code ServerConnectionListener.tick} and {@code Connection.tick} can run {@code handleDisconnection()}
+     * a second time one tick after the first (T-M8-16, about 0.4% of closes on the loaders). The first handling is on
+     * the tick that sees the close and logs "left the game", and the second is on the next, so two more ticks pass
+     * after the line. Both waits fail loudly: a leave that cannot be confirmed is a failed conformance.
+     */
+    private static void awaitLeft(ServerHost host, int mark, Duration wait) {
+        String line = CLIENT + " left the game";
+        Await.until("the host log line \"" + line + "\"", () -> host.logs().since(mark),
+                lines -> lines.stream().anyMatch(each -> each.contains(line)), wait);
+        host.request("POST", "/v1/ticks/await", Map.of("n", LEAVE_TICKS, "timeoutMs", wait.toMillis()));
     }
 
     /** Runs one scenario and prints how long it took, so the cost per cell is in the log (robustness.md section 4). */

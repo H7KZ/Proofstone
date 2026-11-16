@@ -276,7 +276,8 @@ Observed in the spike, not yet tokens:
   A mod under test that moves worldgen could bring a village near spawn; `GENERATE_STRUCTURES=false` stays the fallback.
 - **`handleDisconnection() called twice` (WARN) is a vanilla race** (T-M8-16): `Connection.tick` and `ServerConnectionListener.tick`
   both handle a disconnect that lands mid-tick, the second one tick later (52 to 59 ms in the logs), about 0.4% of client closes.
-  Card T-M8-22.
+  Not allowlisted. T-M8-22 moved the guard window instead: the conformance waits for `PSConf left the game` and two ticks after
+  its own close, and the first test's cursor starts after that, so the conformance client's close is nobody's test.
 - **Boot ERROR lines:** `No key layers in MapLike[{}]` (flat world without generator settings, the same line Paper's
   allowlist holds) on every Fabric run. With the network disconnected, log4j adds `main ERROR Could not determine local
   host name` (offline restart only).
