@@ -158,6 +158,8 @@ data class BadRun(
     val topology: Boolean = false,
     /** A loader run needs this loader's agent jar in the test JVM and its crashing example mod under build/fixture-mods (T-M8-13). */
     val loader: String? = null,
+    /** The run declares the crashing example mod (T-M8-13); a loader run that needs no mod (the leak test, T-M8-18) does not build it. */
+    val crashingMod: Boolean = loader != null,
     /** The failure is the test body's own assertion (a plain FAIL), not a message the harness prefixes with the verdict. */
     val plainFailure: Boolean = false,
     /** The verdict the run's proofstone-report.json must hold for the test, so the report agrees with the XML (T-M8-11). */
@@ -178,7 +180,7 @@ val badRuns = listOf(
         mapOf("proofstone.injectConformanceFault" to "window"),
         pin = "paper@26.1.2",
     ),
-    BadRun("metaLeak", "**/leak/**", "LEAK", emptyMap(), pin = "paper@26.1.2"),
+    BadRun("metaLeak", "**/leak/LeakE2E*", "LEAK", emptyMap(), pin = "paper@26.1.2"),
     BadRun("metaExpect", "**/expect/**", "FAIL", emptyMap()),
     BadRun("metaRequires", "**/requires/**", "SKIPPED", emptyMap()),
 )
@@ -237,6 +239,14 @@ val modRuns = listOf(
         mustContain = listOf("INVALID ", "proofstone_example", "proofstone-crashing-mod.jar", "example mod was asked to fail"),
         mustNotContain = listOf("timed out", "BOOT TIMEOUT", "the body ran"), loader = "fabric", reportVerdict = "INVALID",
     ),
+    // T-M8-18: the leak detector on a loader cell. The rule is the Paper leak test's (robustness R6), read back through the Fabric
+    // agent's console; the failure is a plain AssertionFailedError starting LEAK, never a boot or join timeout.
+    BadRun(
+        "metaLeakFabric", "**/leak/loader/LoaderLeakE2E*", "LEAK", emptyMap(), pin = fabricCell,
+        mustContain = listOf("LEAK LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind on fabric@26.3", "random_tick_speed: ", "is currently set to 7"),
+        mustNotContain = listOf("timed out", "BOOT TIMEOUT", "INVALID "), loader = "fabric", crashingMod = false,
+        reportVerdict = "FAIL",
+    ),
     BadRun(
         "metaModCrashNeoForge", "**/mod/BrokenNeoForgeModE2E*", "INVALID", emptyMap(),
         pin = "neoforge@26.3",
@@ -284,7 +294,10 @@ allRuns.forEach { run ->
             // run: they need a Java 25 toolchain and a build-time download that no Paper run must pay for or depend on. The mod
             // is the test's own @Proofstone(mods) declaration, copied to the path the test names (T-M8-13).
             val agent = rootProject.layout.projectDirectory.dir("platforms/${run.loader}/agent")
-            dependsOn(":platforms:${run.loader}:agent:shadowJar", copyCrashingMod.getValue(run.loader))
+            dependsOn(":platforms:${run.loader}:agent:shadowJar")
+            if (run.crashingMod) {
+                dependsOn(copyCrashingMod.getValue(run.loader))
+            }
             systemProperty("proofstone.${run.loader}.agentJar", agent.file("build/libs/agent-all.jar").asFile.absolutePath)
             systemProperty("proofstone.loaderCache", layout.buildDirectory.dir("loader-cache").get().asFile.absolutePath)
         }

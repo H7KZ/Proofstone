@@ -16,6 +16,8 @@ expected to produce one verdict, and `metaTest` asserts it:
   (`proofstone.injectConformanceFault=window`), so every test on it must report `INVALID` (`metaInvalidWindow`).
 - `leak/LeakE2E` (T-M4-07) changes the world's `random_tick_speed` and leaves it changed, so the leak detector must
   fail it with `LEAK` (self-tests section 4b).
+- `leak/loader/LoaderLeakE2E` (T-M8-18) is the same leak on a Fabric cell: it sets `random_tick_speed` to 7 and leaves it, and the
+  detector must fail it with `LEAK` naming the rule (`metaLeakFabric`, run by `metaModTest` and `metaModFabricTest`).
 - `expect/ExpectFailsE2E` (T-M4-15) has one wrong per-cell `@Expect` (it claims a capability Paper never reports) and one
   holding one. The wrong one must report `FAIL` with the expectation's message (`metaExpect`); the holding one passes.
 - `requires/RequiresSkipsE2E` (T-M5-01) requires `FOLIA_REGIONS` on a Paper cell, so it must be `SKIPPED` with reason
@@ -83,6 +85,7 @@ other cell is refused in that task's `doFirst`, before any server starts. The re
 | `metaInvalid` | `invalid/InvalidConformanceE2E` | `latest` | any Paper cell |
 | `metaInvalidWindow` | `invalid/window/WindowConformanceInvalidE2E` | `26.1.2` | `paper@26.1.2` only |
 | `metaLeak` | `leak/LeakE2E` | `26.1.2` | `paper@26.1.2` only |
+| `metaLeakFabric` | `leak/loader/LoaderLeakE2E` | `26.3` (Fabric) | `fabric@26.3` only |
 | `metaExpect` | `expect/ExpectFailsE2E` | `latest` | any Paper cell |
 | `metaRequires` | `requires/RequiresSkipsE2E` | `latest` | any Paper cell |
 | `metaTopoVelocity*` (4 tasks) | `topology/TopologyFaultE2E` | `latest` | `velocity@4.3.1+paper@26.3` only |
@@ -92,7 +95,8 @@ other cell is refused in that task's `doFirst`, before any server starts. The re
 | `metaModDataPack` | `datapack/BrokenFunctionE2E` | `26.3` | `paper@26.3` only |
 | `metaModPackHash` | `resourcepack/WrongHashPackE2E` | `26.3` | `paper@26.3` only |
 
-`-Dproofstone.cells=paper@26.3` on `metaTest` is therefore refused at `metaInvalidWindow`, `metaDisagree` and `metaLeak`. Run
+`-Dproofstone.cells=paper@26.3` on `metaTest` is therefore refused at `metaInvalidWindow`, `metaDisagree` and `metaLeak`; on `metaLeakFabric`
+any cell but `fabric@26.3` is refused. Run
 the cell-agnostic tasks on another cell by name, for example `:examples:bad-tests:metaVacuous -Dproofstone.cells=paper@26.3`.
 `metaTest` without a selector is the full check.
 
@@ -138,6 +142,7 @@ boot or join timeout. The run's `proofstone-report.json` must say the same verdi
 |---|---|---|---|
 | `metaModCrash` | the test declares the crashing example mod through `@Proofstone(mods)`; it throws at init, Fabric | `INVALID` | `mod proofstone_example (proofstone-crashing-mod.jar) crashed the server at load`, the loader's line, `example mod was asked to fail` |
 | `metaModCrashNeoForge` | the same on NeoForge | `INVALID` | the same, from `FMLModContainer` (`Failed to create mod instance`) |
+| `metaLeakFabric` | the test sets `random_tick_speed` 7 on a Fabric cell and leaves it | `LEAK` (a plain failure starting `LEAK`; the report says `FAIL`) | `LEAK LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind on fabric@26.3`, `random_tick_speed: ... currently set to 3 -> ... currently set to 7`; never a boot or join timeout |
 | `metaModDataPack` | a data pack whose function does not parse | `INVALID` | `data pack file/broken-function.zip logged an error`, `Failed to load function proofstone_broken:hello`, the parse error |
 | `metaModPackHash` | `@ServerResourcePack(sha1 = <not the pack's>)`, the test expects the pack to load | `FAIL` | the pack's record: `FAILED_DOWNLOAD` and `hash mismatch: expected 000..., got <sha1>` |
 
@@ -157,5 +162,7 @@ One fault alone, for example `:examples:bad-tests:metaModDataPack`. Notes:
   name a namespace of the pack.
 - On Paper a wrong hash does not kick: the client reaches play and reports `FAILED_DOWNLOAD` (T-M8-10). The bad test's
   assertion is the test author's own (the pack must load), so a wrong hash is a plain `FAIL` there.
+- `LoaderLeakE2E` sets 7, not 3: `LoaderHost` does not set the deterministic-world rules (`PaperHost` does), so a Fabric cell holds the
+  rule's default 3 before the test, and setting 3 changes nothing (the first run of T-M8-18 passed the test for that reason).
 - Not in `scripts/release-mutation-check.sh` (T-M8-11 asks the maintainer; the PR holds the measured runtime). The pin refusals
   are checked by `scripts/bad-tests-pin-check.sh`.
