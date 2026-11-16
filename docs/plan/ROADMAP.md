@@ -1088,6 +1088,36 @@ Paper and topology numbers.
   T-M8-09 Fabric acceptance is therefore **not ticked as 3 of 3**: the agent's fresh set was 3 of 3 green, the verifier set
   was 2 green and 1 red from this family. For the T-M8-99 review to decide: a card for the family, or a counted rate.
 
+- **T-M8-23 `no matching item among []` (C06, C08) on loader cells (2026-11-16).** Mechanism named from ordering evidence; the
+  DISAGREE itself did **not** reproduce. Local, one invocation at a time under `scripts/dockerlock.sh`, EULA in the command
+  environment only, `conformance/build/{test-results,proofstone}` copied aside after every run (`C:\pw\ev823`, not committed).
+  - **Runs before the fix** (`:conformance:run --tests C04..C08`, one cell per invocation): `fabric@26.3` 10 of 10 green and
+    `neoforge@26.3` 10 of 10 green, 5 tests each (50 + 50 scenario runs, 0 DISAGREE); then 6 `neoforge@26.3` and 6 `fabric@26.3`
+    with 20 busy-loop processes on the 20-core host: 11 green, **1 red** (neoforge run 3, C08, **not this family**:
+    `WARN net.minecraft.network.Connection: handleDisconnection() called twice`, logged at 04:12:00 before the test client's login,
+    that is the T-M8-22 race of the conformance client; kept aside, counted apart; T-M8-22's wait did not cover it, a finding for
+    that card, not looked at further here). So the family is rarer than the earlier counts (2 in 21, then 1 in 3 on #137) on an idle host.
+  - **Mechanism (ordering, from the driver transcript of that red run, which is the only transcript written, a green run keeps
+    none):** the server answers the C08 shift-click in two flushes 2 ms apart: `ContainerSetSlot` for slots 0, 0, 0, 7, 8, 9 (the
+    result slot and the grid), three `RecipeBookAdd`, then `ContainerSetSlot id=1 slot=45` (the paper, the player's own slot) and
+    `SetCursorItem`. The scenario's `click` returns on the first stateId change, so it can return between the two flushes, and C08
+    then asserted an empty result slot and closed. `McplSession.target` ignores the packets of a closed window and `retire` copies
+    the window's player slots into the player inventory at close, so a slot update after the close is lost
+    (`ContainerSetSlot id=1 (not applied: unknown window or slot)` right after `ServerboundContainerClosePacket`, the lines of
+    T-M8-16's two reds). The same shape in C06 (and C05, C07): `placeCursorInInventory` clicks an empty player slot and the click
+    can return on a late packet of the click before, before its own slot update. The poll interval of `Await` (25 ms first
+    pause) makes the window 2 ms of about 25: a few percent per run, more when the server's flushes are further apart (load).
+  - **Not shown:** a live DISAGREE with its transcript (0 in 32 invocations here); that the C06 variant is the late-packet-of-the-
+    click-before one (inferred from `McplSession.click`, not seen); why neoforge had "several" and fabric once.
+  - **Fix** (own commit, test first): C08 awaits the 3 paper in the window's own player slots before it closes, and
+    `ConformanceFixture.placeCursorInInventory` (C05, C06, C07) awaits the stack in the slot it clicked, both with the `Await`
+    helper and the 10 s budget used by every client wait; no driver change, no sleep, retry, allowlist or weakened assertion.
+    `ConformanceCloseRaceTest` (5 cases, no Docker, a fake window whose slot update arrives 250 ms after the click and is dropped if
+    the window closed): the C08 case and the two `placeCursorInInventory` cases are red before and green after.
+  - **After the fix:** `:conformance:run` `fabric@26.3` 3 of 3 green (11 tests, 0 skipped) and `neoforge@26.3` 3 of 3 green (11 tests,
+    2 skipped: CD01, CD02 `DATAPACKS_VANILLA`, by design). A run cannot prove the fix (the race did not show in 32 runs before it);
+    the unit cases do.
+
 ## M8 review (T-M8-99)
 
 Date 2026-11-15. Ran on `card/T-M8-99-review` from origin/main `d89cb4e` (PRs #115 to #126 merged; M8 diff `18432ae..d89cb4e`).

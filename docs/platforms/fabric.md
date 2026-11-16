@@ -289,3 +289,8 @@ Observed in the spike, not yet tokens:
   path instead.
 - **Minecraft's `log4j2.xml` rides along with the game jar.** On a unit-test classpath it writes `logs/latest.log` into the
   working directory; the agent module's tests run in `build/test-work`.
+- **A client's window close can drop the server's last slot update (T-M8-23).** The server answers a craft's shift-click, or a click
+  that places the result, in two flushes about 2 ms apart (the result and grid slots, then the player's own slot). The driver's
+  `click` returns on the first stateId change and ignores a closed window's packets, so a scenario that closes at once loses the
+  item (`DISAGREE ... no matching item among []`). Await the stack in the window's own player slots before the close
+  (`ConformanceFixture.awaitInPlayerSlots`, `placeCursorInInventory`). Not reproduced live in 32 Fabric runs; see ROADMAP "M8 findings".

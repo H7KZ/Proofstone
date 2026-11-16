@@ -190,3 +190,8 @@ Observed in the spike, not yet tokens:
   log), unlike Fabric's `[STDOUT]` wrapping. Log-line ordering against `Done` is therefore not reliable for stdout.
 - Java 25 prints `WARNING: A restricted method in java.lang.System has been called` (JNA) and `sun.misc.Unsafe` warnings at
   start; not errors.
+- **A client's window close can drop the server's last slot update (T-M8-23).** The server answers a craft's shift-click, or a click
+  that places the result, in two flushes about 2 ms apart (the result and grid slots, then the player's own slot). The driver's
+  `click` returns on the first stateId change and ignores a closed window's packets, so a scenario that closes at once loses the
+  item (`DISAGREE ... no matching item among []`). Await the stack in the window's own player slots before the close
+  (`ConformanceFixture.awaitInPlayerSlots`, `placeCursorInInventory`). Not reproduced live in 32 NeoForge runs; see ROADMAP "M8 findings".

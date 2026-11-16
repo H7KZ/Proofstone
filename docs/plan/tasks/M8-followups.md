@@ -383,11 +383,19 @@ player's own slot reached the client, and the driver (like the vanilla client) i
 - Add a sleep, a retry, raise a timeout, weaken or drop an assertion, or allowlist anything. Change the driver.
 
 **Acceptance.**
-- [ ] The mechanism is shown by transcript lines of a red run, or named unexplained.
-- [ ] The unit test is red before and green after.
-- [ ] `:conformance:run` on `fabric@26.3` and `neoforge@26.3`, three separate invocations each after the fix; a red is a finding,
-  never replaced by a later green.
-- [ ] `bash scripts/gates.sh --max-workers=1` passes; the `integrationTest` of every module touched is run.
+- [x] The mechanism is shown by transcript lines of a red run, or named unexplained. (Ordering shown from a transcript, the DISAGREE
+  not reproduced in 32 invocations: stated as such, ROADMAP "M8 findings" T-M8-23.)
+- [x] The unit test is red before and green after. (`ConformanceCloseRaceTest`, 3 of 5 red before.)
+- [x] `:conformance:run` on `fabric@26.3` and `neoforge@26.3`, three separate invocations each after the fix; a red is a finding,
+  never replaced by a later green. (6 of 6 green.)
+- [x] `bash scripts/gates.sh --max-workers=1` passes; the `integrationTest` of every module touched is run. (Below.)
 
 **Verify.**
 `./gradlew :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=neoforge@26.3 --no-parallel --max-workers=1`
+
+**Result (2026-11-16).** Diagnosed and fixed as the lead said, with the limit that no live DISAGREE was caught. Numbers and the
+transcript ordering are in ROADMAP "M8 findings" (T-M8-23). C08 and `ConformanceFixture.placeCursorInInventory` (C05, C06, C07) now
+await the result in the client's own slot state before the window closes. Before: 20 idle invocations (10 per row) and 12 under
+CPU load, 0 DISAGREE, 1 unrelated red (`handleDisconnection() called twice` on a conformance client, T-M8-22's family, kept aside).
+After: 6 of 6 green. `:proofstone-core:test` and `docsCheck` through `bash scripts/gates.sh --max-workers=1`: OK. `:proofstone-core:integrationTest`
+(`PaperHostIT`, 4 tests, 0 skipped, 0 failures, 0 errors) green under the Docker lock. Not done: the red above is not diagnosed here.
