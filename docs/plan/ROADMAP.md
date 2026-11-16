@@ -1584,3 +1584,72 @@ C05 "the renamed sword on the cursor" expected `Blade` but was null, run 5 one f
 0 of 6) the totals are PR 6 of 11 and main 2 of 11. The same family (window and cursor state on the bridged 1.8.8 row) fails on
 main, so the PR is not shown to be worse, and the bridged path is unchanged by construction (`ConnectSpec.bridged` skips the hold).
 Cause unexplained. Two PR full 4-cell smokes were green (tests 8, skipped 0, failures 0, errors 0). Card T-M7-20 diagnoses the flake.
+
+
+## T-M7-20 the bridged paper@1.8.8 cursor flake
+
+Date 2026-11-16. Diagnosis only, no code changed. Branch `card/T-M7-20-bridged-flake`. Local, Windows 11, Docker Desktop, JDK 21, one
+invocation per run under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the command environment only. Evidence
+(XML, `build/proofstone` bundles, Gradle log, container logs captured by a read-only `docker logs -f` watcher) copied aside after every
+run (`C:\pw\ev`, local, not committed). No sleep, retry, timeout raise or harness change.
+
+**Counts** (`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8
+--no-parallel --max-workers=1`, 10 separate invocations per arm, XML read; a run is red when any C03 to C06, C08 or smoke test is not
+PASS; C07 is a known Assumption skip on 1.8.8):
+
+| Arm | Red | Where |
+|---|---|---|
+| `3cde4e8` (main, includes T-M7-19 and T-M8-23) | **3 of 10** | run 7: C04 in the cell conformance, "cursor after picking up slot A" `expected: <true> but was: <false>`, so C03, C04, C05, C06, C08 and both smoke tests INVALID (8 failures); runs 9 and 10: C05 "the renamed sword on the cursor" `expected: <Blade> but was: <null>` |
+| `b8d27da` (parent of the T-M7-19 merge, before it) | **2 of 10** | runs 4 and 9: C05 "the renamed sword on the cursor" `expected: <Blade> but was: <null>` |
+
+3 of 10 against 2 of 10 is no difference. The flake **predates T-M7-19** (red 2 of 10 without it, and 2 of 5 on main in the verifier
+run) and **survives T-M8-23**. It is not shown that T-M7-19 changed the rate.
+
+Extra, counted apart (not in the table): `:conformance:run ... -Dproofstone.repeat=10 --tests '*C05AnvilRenameCostTest*'` on main:
+FLAKY, runs 1 and 7 red with the same C05 assertion, run 9 a bridged join `CONFIGURATION_STALLED` (login acknowledged, configuration
+never finished; the known bridged login stall of viaproxy.md, not this family), 7 green. Same with `--tests '*C04ChestMoveTest*'`: 10 of
+10 green. The repeat mode keeps every run's driver transcript, so it is the only source of green packets: a green run of the plain
+invocation keeps no bundle.
+
+**What the evidence does not have.** The red in run 7 is the *conformance* client `PSConf`. A conformance failure writes the bundles of
+the tests it made INVALID, whose client never ran a scenario (0 lines in `driver-transcript.jsonl`), so there is no packet record of
+that red. The mechanism is read from the 4 red C05 test transcripts (main runs 9 and 10, before runs 4 and 9), 2 repeat reds and the
+click answers of the repeat runs; C04's red is attributed to it by the identical assertion shape, not by a packet record.
+
+**Mechanism: the driver releases `click()` on the full resync, and on 1.8.8 the cursor arrives in a separate packet after it.**
+- Answer to the third click of main run 9 C05 (ms after the send): `ContainerSetSlot id=1 slot=0` 91.3, `slot=2` 91.3,
+  `ClientboundPingPacket` 93.3 (pong sent at once), `ContainerSetContentPacket id=1 slots=39` 93.3, **`ClientboundSetCursorItemPacket`
+  96.3**, then the failing test's `ServerboundContainerClosePacket` at 96.3. The ping turns the server's rejection into a resync
+  (viaproxy.md, "Version span, pre-1.17"). The 1.8 window items have no carried stack, so `ContainerSetContent` carries an empty
+  cursor and the real cursor follows as its own packet, 0 to 9 ms later. Over the 72 transcripted answers of the repeat runs the cursor
+  came with the content (same timestamp) 63 times and after it 9 times (0.4, 0.7, 1.0, 1.0, 2.0 x4, 8.8 ms); never before it.
+- `McplSession.click` waits on `model.stateId() != sent || model.syncs() != sentSyncs` (`syncs` counts `ContainerSetContent`), so it
+  returns on the content packet. `applyContent` sets the player cursor from the content's empty carried item, so a read between the
+  content and the cursor packet sees an **empty cursor**, `ItemView.name()` null: exactly "was: <null>". The same read in C04 is
+  `cursor().is("diamond_sword")` false.
+- Only **pick-up** reads are exposed: C04 after `click(SLOT_A)` and C05 after `click(2)`. Placing clicks expect an empty cursor, which
+  the content already says, so "cursor after placing" cannot go red this way. This matches every red seen.
+- Why a few percent: the test thread polls with `Await` (25 ms, then 50, 100, 200). In the repeat runs the click returned at 93 to 96 ms
+  after the send (probe 3) or about 205 ms (probe 4) in nearly every click, and the server's answer arrives at 78 to 98 ms, so the probe
+  lands inside the answer far more often than a uniform draw would. In every red the close is 0 to 3 ms after the `SetCursorItem`
+  record (main run 10: content 92.3, cursor 93.3, close 96.0; before run 4: content 91.2, cursor 94.6, close 95.6), so the read came
+  before the cursor was applied and after the content released the click.
+- Per exposed read (4 per run: conformance C04, C05 and the two tests): main 3 of 40, before 2 of 40.
+- It is a race in the driver's release condition (answer = the content packet) meeting a ViaProxy 1.8 translation that splits the
+  answer. Not ViaProxy dropping the cursor: it arrived in all 6 reds.
+- **Same shape as T-M8-23, a different packet.** T-M8-23: `click` returns on the first stateId change and a close beats a later slot
+  update (loader rows), fixed in the scenarios by awaiting the client's own slot. Here `click` returns on the content and the cursor
+  update is later. T-M8-23's `placeCursorInInventory` and `awaitInPlayerSlots` do not cover a cursor read, so this red survives it.
+  The close-before-slot-update shape was not seen on this row: no `(no such window, ignored)` or `(not applied` line followed a close
+  in the 6 red transcripts.
+
+**Ruled out.** The cursor never arriving; the cursor arriving before the content; T-M7-19's hold (bridged joins skip it, and the
+before arm is red 2 of 10); a rejected-click lock (every answer was the normal ping plus resync).
+
+**Not shown.** A direct measurement of the release instant (the transcript records packets, not the test thread's read; the order is
+inferred from the null value and the close time); the C04 red's packet record; why the content and cursor split varies up to 9 ms
+(not attributed to Paper or to ViaProxy).
+
+**Fix card proposed:** T-M7-21 in [M7-followups.md](tasks/M7-followups.md): C04 and C05 await the cursor before asserting it (the
+T-M8-23 style, `Await`, no sleep), same assertion text, and a second commit keeps the conformance client's transcript when the cell
+conformance fails.
