@@ -51,6 +51,15 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   [PR #38](https://github.com/H7KZ/Proofstone/pull/38), [PR #39](https://github.com/H7KZ/Proofstone/pull/39)_
 - **Docker Desktop answered `InternalServerError` for one cell (26.1.2) in a nine-cell run.** The cell passed when run
   again alone. Treat a 500 from Docker as infrastructure, not a result. _26.1.2 · [PR #38](https://github.com/H7KZ/Proofstone/pull/38)_
+- **The image fetched Paper's default configs from an unpinned GitHub branch on every boot.** `start-deployPaper` (Paper and
+  Folia, all five pinned digests) copies `paper-global.yml`, `paper-world-defaults.yml` (1.19 and later), `bukkit.yml`,
+  `spigot.yml` (and `paper.yml` before 1.19) from `raw.githubusercontent.com/Shonz1/minecraft-default-configs/main`, a branch,
+  not a commit, unless `SKIP_DOWNLOAD_DEFAULTS` is true; a failed fetch is only a `[WARN] One or more default ... files were not
+  available`, so an offline boot still "worked" with Paper's own defaults. `PaperHost` now sets `SKIP_DOWNLOAD_DEFAULTS=true`
+  (the proxy hosts already did), so Paper writes its own defaults. Shown by a container run with `raw.githubusercontent.com`
+  pointed at 127.0.0.1: without the variable two `mcopy` ERRORs (connection refused) and two WARNs, with it none and the server
+  `Done`. Files the harness copies in (`/config/paper-global.yml` of a topology backend) were never touched by the fetch
+  (`--skip-existing`). _T-M8-19, 26.3_
 - **A file copied into a container is root-owned, so the server cannot write it: `Could not save bukkit.yml (Permission denied)`
   at ERROR during startup (and `spigot.yml` on topology backends).** Docker unpacks a copy with the owner the tar entry names,
   and Testcontainers names root. The host now copies every config file as uid/gid 1000 (the itzg server user), mode 0644

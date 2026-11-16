@@ -71,7 +71,7 @@ public final class PaperHost implements ServerHost, AutoCloseable {
     private final AgentClient agent;
     private Health health;
 
-    private PaperHost(Cell cell, PaperHostOptions options) {
+    PaperHost(Cell cell, PaperHostOptions options) {
         this.cell = cell;
         this.options = options;
         this.token = AgentClient.randomToken();
@@ -127,7 +127,12 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         }
     }
 
-    private void configure(List<Path> artefacts, Path serverJar) {
+    /** The env the container will start with, for a test that configures a host and never starts it (T-M8-19). */
+    Map<String, String> containerEnv() {
+        return container.getEnvMap();
+    }
+
+    void configure(List<Path> artefacts, Path serverJar) {
         container
                 .withEnv("EULA", "TRUE")
                 .withEnv("TYPE", serverJar == null ? cell.platform().toUpperCase(Locale.ROOT) : "CUSTOM")
@@ -140,6 +145,9 @@ public final class PaperHost implements ServerHost, AutoCloseable {
                 .withEnv("DIFFICULTY", "peaceful")
                 .withEnv("VIEW_DISTANCE", "4")
                 .withEnv("ENABLE_RCON", "false")
+                // Else start-deployPaper (Paper and Folia) copies paper-global.yml, paper-world-defaults.yml, bukkit.yml and
+                // spigot.yml from an unpinned GitHub branch on every boot, and offline only logs a warning (T-M8-19, ADR-0006).
+                .withEnv("SKIP_DOWNLOAD_DEFAULTS", "true")
                 .withEnv("PROOFSTONE_AGENT_TOKEN", token)
                 .withEnv("PROOFSTONE_AGENT_PORT", Integer.toString(AGENT_PORT))
                 .withLogConsumer(frame -> logs.append(frame.getUtf8String()));

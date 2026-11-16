@@ -399,3 +399,65 @@ await the result in the client's own slot state before the window closes. Before
 CPU load, 0 DISAGREE, 1 unrelated red (`handleDisconnection() called twice` on a conformance client, T-M8-22's family, kept aside).
 After: 6 of 6 green. `:proofstone-core:test` and `docsCheck` through `bash scripts/gates.sh --max-workers=1`: OK. `:proofstone-core:integrationTest`
 (`PaperHostIT`, 4 tests, 0 skipped, 0 failures, 0 errors) green under the Docker lock. Not done: the red above is not diagnosed here.
+
+### T-M8-19 · Stop the image fetching Paper's default configs from an unpinned GitHub branch
+- tier: sonnet
+- depends: T-M8-23
+- modules: proofstone-core, docs/platforms
+- adrs: 0006, 0008, 0013
+- specs: specs/versions-yml.md
+- test-first: yes
+
+**Goal.** A Paper or Folia cell boot makes no network fetch of `paper-global.yml`, `paper-world-defaults.yml`, `bukkit.yml` or
+`spigot.yml` (or `paper.yml` below 1.19), with the mechanism shown by the image's own scripts and a container log, and the
+cells still green. "Pin everything" (AGENTS.md section 3) has no exception for config files.
+
+**Diagnosis (read from the pinned images, 2026-11-16).** In every one of the five pinned `itzg/minecraft-server` digests,
+`start-deployPaper` (also used by `TYPE=FOLIA`) sets `PAPER_CONFIG_DEFAULTS_REPO` to
+`https://raw.githubusercontent.com/Shonz1/minecraft-default-configs/main` (branch `main`, not a commit), builds
+`<repo>/<VERSION>/paper-global.yml,paper-world-defaults.yml` into `DOWNLOAD_DEFAULT_CONFIGS` (1.19 and later) and
+`<repo>/<VERSION>/bukkit.yml,spigot.yml[,paper.yml]` into `DOWNLOAD_DEFAULTS`. `start-setupEnvVariables` then runs
+`mc-image-helper mcopy --skip-existing` for both lists unless `SKIP_DOWNLOAD_DEFAULTS` is true. A failed fetch is only
+`logWarning "One or more default ... files were not available"` (and `--ignore-missing-sources`), so offline the boot still
+succeeds, with the server's own generated defaults, and the files differ per day. `TYPE=PURPUR` fetches only when
+`PURPUR_CONFIG_REPO` is set (it is not); `TYPE=CUSTOM` (Spigot) and Fabric/NeoForge fetch nothing. `ProxyHost` and the two proxy
+ITs already set `SKIP_DOWNLOAD_DEFAULTS=true` (ADR-0016); `PaperHost.configure` does not.
+
+**Do.**
+- Test first: a unit test builds a `PaperHost` for a Paper, a Folia and a Spigot-jar cell without Docker and asserts the container
+  env has `SKIP_DOWNLOAD_DEFAULTS=true` and no `PAPER_CONFIG_*` override. Red before.
+- Set `SKIP_DOWNLOAD_DEFAULTS=true` in `PaperHost.configure`, with the why in a comment. No image change.
+- Show by container log that the fetch no longer happens: the same boot with `raw.githubusercontent.com` resolving to 127.0.0.1
+  (`--add-host`) logs the "not available" warning before and not after.
+- Docs: paper.md Gotchas and versioning say what ran.
+
+**Don't.**
+- Change an image digest, build or rebuild an image, add a workflow, a dependency, a sleep, a retry, a timeout raise or an
+  allowlist, weaken a test, edit the wire protocol. If SKIP turns out to need a new image, stop and report.
+
+**Acceptance.**
+- [x] The unit test is red before and green after. (`PaperHostEnvTest`, 3 of 3 red, then 3 of 3 green.)
+- [x] Container log evidence of the fetch before and none after. (Below.)
+- [x] `:conformance:smoke` three separate invocations and `:conformance:run -Dproofstone.cells=paper@26.3` three separate
+  invocations, XML read, a red is a finding. (6 of 6 green, below.)
+- [x] The `integrationTest` of every module touched is run; `bash scripts/gates.sh --max-workers=1` passes. (See Result; one pre-existing red, not caused by this card.)
+
+**Verify.**
+`./gradlew :proofstone-core:test --tests '*PaperHostEnvTest*'`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1`
+
+**Result (2026-11-16).** Fixed with one env variable on the existing pinned image, no digest change: `PaperHost.configure` sets
+`SKIP_DOWNLOAD_DEFAULTS=true` (`PaperHostEnvTest`: Paper, Folia and a built Spigot jar).
+- Fetch evidence: `docker run` of the java25 digest (`TYPE=PAPER VERSION=26.3`) with `--add-host raw.githubusercontent.com:127.0.0.1`.
+  Without the variable: two `mc-image-helper mcopy` ERRORs (`Connection refused: raw.githubusercontent.com/127.0.0.1:443`) and the
+  WARNs `One or more default config files were not available from .../main/26.3/paper-global.yml,...paper-world-defaults.yml` and
+  `... default files ... bukkit.yml,...spigot.yml`; the server still reached `Done`. With it: no such line, `Done (6.1s)`.
+  One boot each, java25 image only; the other four digests carry the same script text (grepped), not booted.
+- `:conformance:smoke` 3 separate invocations: 8 tests each, 0 skipped, 0 failures, 0 errors.
+  `:conformance:run -Dproofstone.cells=paper@26.3` 3 separate invocations: all green; the only skips (2 per run) are the Folia-only
+  tests, `missing capability FOLIA_REGIONS on cell paper@26.3`, with their reason.
+- `:proofstone-core:integrationTest` (`PaperHostIT`, 4 tests) green; `topologyTest` (Velocity and BungeeCord suites) green except
+  `TopologyFaultIT`, red in the full run (1 of 2 tests: `aBackendThatNeverBecomesReady...`, `container server-lobby did not become
+  ready: ... Container startup failed`). Finding, not fixed here: with the fix, 3 reruns of `TopologyFaultIT` alone gave 2 green and 1
+  red (same message); with the fix removed (baseline), 4 reruns gave 2 red (both tests failed, same `server-lobby ... Container
+  startup failed`) and 2 green. So it exists without this change; cause not diagnosed (the lobby log tail ends at the known
+  `No key layers in MapLike[{}]` ERROR a few seconds after start). Needs its own card.
