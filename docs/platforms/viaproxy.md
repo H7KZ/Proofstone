@@ -47,6 +47,11 @@ Local real-server runs, one full `:conformance:run` per row, through this ViaPro
   `SetHealth` before the acknowledgement and ViaProxy resends the position, so holding deadlocked the join; `ConnectSpec.bridged`
   turns the hold off. _1.8.8 (bridged) · T-M7-19_
 
+- **On a pre-1.17 server the cursor is a separate packet after the full resync.** `ContainerSetContent` has no carried stack on 1.8.8,
+  so it says "empty cursor" and the real cursor follows 0 to 9 ms later as `SetCursorItem`. `McplSession.click` returns on the content,
+  so a cursor read right after a pick-up click can see an empty cursor (C04 "cursor after picking up slot A", C05 "the renamed sword
+  on the cursor", about 3 in 10 full runs). Await the cursor, do not read it at once. _1.8.8 (bridged) · T-M7-20_
+
 ### Bridged login stall (M5 follow-up, 2026-11-08)
 - **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,
   Java 25) lists `--auth-method` (default NONE), `--proxy-online-mode` (default false), `--chat-signing`,

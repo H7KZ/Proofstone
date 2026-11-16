@@ -270,9 +270,48 @@ verifier run: main 2 of 5 red, PR 3 of 5; combined 2 of 11 and 6 of 11).
 - Add a sleep, a retry or a timeout raise, weaken a C03 to C05 assertion, or change harness code in this card.
 
 **Acceptance.**
-- [ ] Per-arm red counts over at least 10 runs each, XML read, in a ROADMAP entry.
-- [ ] The cause is named with packet or log lines, or marked unexplained with counts and what was ruled out.
-- [ ] A fix card is proposed. No code changed.
+- [x] Per-arm red counts over at least 10 runs each, XML read, in a ROADMAP entry. Evidence: ROADMAP "T-M7-20", main 3 of 10, before T-M7-19 2 of 10.
+- [x] The cause is named with packet or log lines, or marked unexplained with counts and what was ruled out. Evidence: ROADMAP "T-M7-20".
+- [x] A fix card is proposed. No code changed. Evidence: T-M7-21 below.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8 --no-parallel --max-workers=1`
+
+
+**Result (2026-11-16).** Red on both arms, 3 of 10 (main) and 2 of 10 (before T-M7-19), so the flake predates T-M7-19 and survives
+T-M8-23. Mechanism: `McplSession.click` returns on the `ContainerSetContent`, whose carried stack is empty on 1.8.8, and the real
+cursor is a separate `SetCursorItem` 0 to 9 ms later; a pick-up read in C04 or C05 in that gap sees an empty cursor. Details and packet
+lines in ROADMAP "T-M7-20".
+
+### T-M7-21 · Await the cursor after a pick-up click on bridged pre-1.17 rows (C04, C05)
+- tier: sonnet
+- depends: T-M7-20
+- modules: proofstone-core, conformance
+- adrs: 0003, 0007
+- specs: specs/self-tests.md §1
+- test-first: yes
+
+**Goal.** C04 "cursor after picking up slot A" and C05 "the renamed sword on the cursor" stop going red on bridged `paper@1.8.8`
+(about 3 in 10 full runs, ROADMAP "T-M7-20").
+
+**Do.**
+- Test first, no Docker (the `ConformanceCloseRaceTest` style): a fake window whose cursor update arrives after the click returns; the
+  C04 and C05 pick-up read is red before and green after.
+- In C04 and C05 await the cursor with the `Await` helper and the 10 s client budget, then assert with the same message and
+  expectation. Not a sleep, not a retry, not a looser assertion: a cursor that never shows still fails at the timeout.
+- Weigh in the PR a driver-side alternative: `McplSession.click` on pre-1.17 bridged rows also waits for the cursor packet. It has no
+  marker for it (the cursor is the last packet of the answer), so the scenario await is the default.
+- Separate commit: keep the conformance client's driver transcript in the bundle when the cell conformance fails (today the INVALID
+  tests' bundles hold 0 lines and the failing client has no packet record).
+- Run `:conformance:run -Dproofstone.cells=paper@1.8.8` 10 times, XML read, reds kept.
+
+**Don't.**
+- Weaken C03 to C05, raise a timeout, add a sleep or a retry, or change the wire protocol.
+
+**Acceptance.**
+- [ ] The unit cases fail before and pass after.
+- [ ] 10 of 10 `:conformance:run` paper@1.8.8 runs show no cursor red (join stalls counted apart), XML `skipped` only the known skips.
+- [ ] `bash scripts/gates.sh --max-workers=1` passes.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8 --no-parallel --max-workers=1`
