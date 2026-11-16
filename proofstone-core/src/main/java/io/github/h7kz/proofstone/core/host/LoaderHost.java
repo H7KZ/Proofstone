@@ -21,7 +21,6 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -145,12 +144,7 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
         }
         container.addExposedPort(GAME_PORT);
         // Readiness is ours: the default wait is a 60 s port wait, a second timeout that would hide a slow boot.
-        container.waitingFor(new AbstractWaitStrategy() {
-            @Override
-            protected void waitUntilReady() {
-                // Nothing: awaitDone and awaitAgent wait, and fail fast.
-            }
-        });
+        container.waitingFor(new NoPortWait());
     }
 
     /** {@code Done (} in the log, or the loader's give-up line or an exit, which fail now and not at the timeout. */

@@ -139,6 +139,8 @@ public final class PaperHost implements ServerHost, AutoCloseable {
 
     void configure(List<Path> artefacts, Path serverJar) {
         container
+                // Readiness is awaitDone and awaitAgent: the default 60 s port wait would be a second boot clock (T-M8-25).
+                .waitingFor(new NoPortWait())
                 .withEnv("EULA", "TRUE")
                 .withEnv("TYPE", serverJar == null ? cell.platform().toUpperCase(Locale.ROOT) : "CUSTOM")
                 .withEnv("VERSION", cell.mc())

@@ -34,6 +34,8 @@ public final class ViaProxyHost implements AutoCloseable {
                 .withNetwork(network)
                 .withNetworkAliases("viaproxy")
                 .withExposedPorts(PROXY_PORT)
+                // Readiness is awaitListening: the default 60 s port wait would be a second clock (T-M8-25).
+                .waitingFor(new NoPortWait())
                 // The image's entrypoint reads a config file; the cli mode takes flags instead, so nothing is copied.
                 .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint("java", "-jar", "/app/ViaProxy.jar"))
                 .withCommand("cli",

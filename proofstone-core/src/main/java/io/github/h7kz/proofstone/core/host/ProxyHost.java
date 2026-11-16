@@ -83,7 +83,9 @@ public final class ProxyHost implements AgentEndpoint, AutoCloseable {
 
     void configure(Network network, Map<String, String> files) {
         ProxyKind kind = options.kind();
-        container.withEnv("TYPE", kind.imageType())
+        // Readiness is the ready line and the agent health: the default 60 s port wait would be a second clock (T-M8-25).
+        container.waitingFor(new NoPortWait())
+                .withEnv("TYPE", kind.imageType())
                 // The image would otherwise fetch an RCON plugin and default configs from GitHub (ADR-0016 section 2).
                 .withEnv("ENABLE_RCON", "false")
                 .withEnv("SKIP_DOWNLOAD_DEFAULTS", "true")
