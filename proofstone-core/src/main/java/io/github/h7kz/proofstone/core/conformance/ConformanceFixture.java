@@ -123,6 +123,17 @@ public final class ConformanceFixture {
         }, found -> found, AWAIT);
     }
 
+    /**
+     * Waits until the client's view of the window's cursor satisfies the predicate, and returns it. A scenario calls this
+     * right after a pick-up click: on a pre-1.17 server behind ViaProxy the click returns on the full resync, whose
+     * carried stack is empty, and the real cursor is a separate packet 0 to 9 ms later (T-M7-21, viaproxy.md).
+     *
+     * @throws io.github.h7kz.proofstone.core.await.AwaitTimeoutException when it never does within the budget
+     */
+    static ItemView awaitCursor(Window window, String description, Predicate<ItemView> predicate) {
+        return Await.until(description, window::cursor, predicate, AWAIT);
+    }
+
     /** The diamond sword, matched on either oracle's view. */
     public static Predicate<ItemView> sword() {
         return item -> item.is("diamond_sword");

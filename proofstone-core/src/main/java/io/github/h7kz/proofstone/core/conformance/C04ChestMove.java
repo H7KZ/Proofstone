@@ -46,6 +46,9 @@ public final class C04ChestMove {
             chest.awaitSlot(SLOT_A, ConformanceFixture.sword());
 
             chest.click(SLOT_A, Click.LEFT);
+            // The cursor can trail the click on bridged pre-1.17 rows (T-M7-21), so wait for it, then assert as before.
+            ConformanceFixture.awaitCursor(chest, "the sword on the cursor after picking up slot A",
+                    cursor -> cursor.is("diamond_sword"));
             Assertions.assertTrue(chest.cursor().is("diamond_sword"), "cursor after picking up slot A");
             chest.click(SLOT_B, Click.LEFT);
 
