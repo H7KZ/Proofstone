@@ -1669,7 +1669,7 @@ conformance fails.
 
 Date 2026-11-16. Branch `card/T-M7-21-await-cursor`. Local, Windows 11, Docker Desktop, JDK 21. Every real-server run is its own invocation
 under `scripts/dockerlock.sh`, EULA in the command environment only, `--no-parallel --max-workers=1`; evidence (XML, bundles, Gradle logs)
-copied aside after each run (`C:\pw	721-ev`, local, not committed).
+copied aside after each run (`C:/pw/t721-ev`, local, not committed).
 
 **Change.** C04 and C05 call `ConformanceFixture.awaitCursor` (`Await`, the 10 s client budget) after the pick-up click, then assert with the
 same message and expectation as before. No sleep, retry, timeout raise or looser assertion; a cursor that never shows fails with
