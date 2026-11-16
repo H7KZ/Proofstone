@@ -80,6 +80,23 @@ class BundleWriterTest {
         assertThat(Files.exists(without.resolve("join-stall.txt"))).isFalse();
     }
 
+    /** T-M7-21: a failed cell conformance makes the test INVALID before its client ran, so the conformance client's packets are kept. */
+    @Test
+    void theConformanceClientsTranscriptIsKeptRedactedAndAbsentWhenTheConformancePassed() throws IOException {
+        BundleWriter.Contents base = contents("log", null);
+        BundleWriter.Contents failed = new BundleWriter.Contents(base.serverLog(), base.viaproxyLog(),
+                base.agentTranscript(), List.of(), base.cell(), base.snapshot(), base.host(), base.rerun(),
+                base.joinStall(), base.secret(), List.of("0.0 click slot 2", "93.3 ContainerSetContent " + TOKEN));
+
+        Path with = BundleWriter.write(tmp.resolve("with"), failed);
+        Path without = BundleWriter.write(tmp.resolve("without"), base);
+
+        assertThat(Files.readString(with.resolve("conformance-driver-transcript.jsonl")))
+                .contains("click slot 2", "ContainerSetContent", BundleWriter.REDACTED).doesNotContain(TOKEN);
+        assertThat(Files.readString(with.resolve("driver-transcript.jsonl"))).isBlank();
+        assertThat(Files.exists(without.resolve("conformance-driver-transcript.jsonl"))).isFalse();
+    }
+
     @Test
     void theTokenIsAbsentFromEveryBundleFile() throws IOException {
         Path dir = BundleWriter.write(tmp.resolve("bundle"),

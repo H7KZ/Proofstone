@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.opentest4j.TestAbortedException;
 import org.testcontainers.containers.Network;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -80,6 +81,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private static final String STATE = "state";
     /** The root-store key of the conformance cache: one per run, so each cell's conformance runs once (section 1). */
     static final String CONFORMANCE = "conformance";
+    /** The root-store key of the failed conformances' driver transcripts, by cell id (T-M7-21). */
+    static final String CONFORMANCE_TRANSCRIPTS = "conformance-transcripts";
     /** The root-store key of the run's report collector (RunReport). */
     private static final String REPORT = "report";
 
@@ -426,20 +429,34 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * The cell's conformance result, run once per cell per run and cached in the root store (self-tests section 1). A
      * failure of the run itself, rather than a failed scenario, is an error and is not cached.
      */
+    @SuppressWarnings("unchecked")
     private ConformanceResult conformance(ExtensionContext context, HostResource resource,
             Set<io.github.h7kz.proofstone.api.Capability> capabilities, TestState state) {
         ConformanceCache cache = context.getRoot().getStore(NAMESPACE)
                 .getOrComputeIfAbsent(CONFORMANCE, key -> new ConformanceCache(), ConformanceCache.class);
         // The per-cell check joins its own client through this invocation's driver (T-M4-10b).
-        return cache.get(cellId(), () -> {
+        Map<String, List<String>> transcripts = context.getRoot().getStore(NAMESPACE)
+                .getOrComputeIfAbsent(CONFORMANCE_TRANSCRIPTS, key -> new ConcurrentHashMap<String, List<String>>(),
+                        Map.class);
+        ConformanceResult cached = cache.get(cellId(), () -> {
+            SessionClient[] joined = {null};
             ConformanceResult result = CellConformance.run(cellId(), resource.host(),
                     new CellView(cell, bridged, capabilities),
-                    name -> connect(resource, name, ResourcePackDeclaration.forHarness(resource.pack())));
+                    name -> {
+                        joined[0] = connect(resource, name, ResourcePackDeclaration.forHarness(resource.pack()));
+                        return joined[0];
+                    });
+            // A failed conformance keeps its client's packets for the bundles of every test it makes INVALID (T-M7-21).
+            if (!result.passed() && joined[0] != null) {
+                transcripts.put(cellId(), joined[0].transcript());
+            }
             // Only the invocation that ran it: the conformance's records and its client's leave are not this test's, and
             // the conformance checked its own window (T-M8-22). A cached result leaves the cursor where beforeEach put it.
             state.logCursor = ErrorLogGuard.cursor(resource.host());
             return result;
         });
+        state.conformanceTranscript = transcripts.getOrDefault(cellId(), List.of());
+        return cached;
     }
 
     /** The two runs of one test on one cell share this key, so the second one finds the first one's evidence. */

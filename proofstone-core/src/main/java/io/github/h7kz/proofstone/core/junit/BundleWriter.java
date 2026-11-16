@@ -55,7 +55,13 @@ final class BundleWriter {
      */
     record Contents(String serverLog, String viaproxyLog, List<String> agentTranscript,
             List<String> driverTranscript, Object cell, String snapshot, String host, String rerun, String joinStall,
-            String secret) {
+            String secret, List<String> conformanceTranscript) {
+
+        Contents(String serverLog, String viaproxyLog, List<String> agentTranscript, List<String> driverTranscript,
+                Object cell, String snapshot, String host, String rerun, String joinStall, String secret) {
+            this(serverLog, viaproxyLog, agentTranscript, driverTranscript, cell, snapshot, host, rerun, joinStall,
+                    secret, List.of());
+        }
     }
 
     private BundleWriter() {
@@ -91,7 +97,8 @@ final class BundleWriter {
                 hostInfo(catalog, driverId, state.proxy != null),
                 rerun(context, cell),
                 joinStall,
-                state.host.agentToken()));
+                state.host.agentToken(),
+                state.conformanceTranscript));
     }
 
     /** {@code build/proofstone/<platform>@<mc>}, the directory of a single-server cell's bundles. */
@@ -130,6 +137,11 @@ final class BundleWriter {
         files.put("agent-transcript.jsonl", lines(contents.agentTranscript()));
         files.put("driver-transcript.jsonl", lines(contents.driverTranscript().stream()
                 .map(line -> JSON.createObjectNode().put("line", line).toString()).toList()));
+        if (!contents.conformanceTranscript().isEmpty()) {
+            // A failed cell conformance makes the test INVALID before its own client runs anything (T-M7-21).
+            files.put("conformance-driver-transcript.jsonl", lines(contents.conformanceTranscript().stream()
+                    .map(line -> JSON.createObjectNode().put("line", line).toString()).toList()));
+        }
         files.put("cell.json", JSON.valueToTree(contents.cell()).toPrettyString() + "\n");
         files.put("snapshot.json", contents.snapshot() + "\n");
         files.put("host.json", contents.host() + "\n");
