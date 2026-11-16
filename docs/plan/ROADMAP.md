@@ -1118,6 +1118,23 @@ Paper and topology numbers.
     2 skipped: CD01, CD02 `DATAPACKS_VANILLA`, by design). A run cannot prove the fix (the race did not show in 32 runs before it);
     the unit cases do.
 
+### T-M8-18: a leak bad test on a loader cell
+
+- **Added:** `leak/loader/LoaderLeakE2E`, pinned to `fabric@26.3`, sets `random_tick_speed` to 7 and leaves it. Task `metaLeakFabric`,
+  part of `metaModTest` and `metaModFabricTest`; the pin refusal is in `scripts/bad-tests-pin-check.sh` (red before the task existed,
+  green after). `metaLeak` now includes `**/leak/LeakE2E*`, so it never picks up the Fabric test. The detector is unchanged.
+- **First run was red, a finding:** with `gamerule random_tick_speed 3` (the Paper test's shape, adapted) the test **passed** and
+  `metaLeakFabric` said "no test produced LEAK". A diagnosis run read the rule at the start of the test body: already `3`.
+  `PaperHost` runs `GameRules.commands` (rule 0) at boot; `LoaderHost` does not, so a loader cell holds the default and setting 3
+  changed nothing. The detector was right. The test now sets 7. Not fixed here: whether loader cells should set the deterministic-world
+  rules is a harness question (the loader cells' world differs from Paper's: ticks, spawns, weather, daylight).
+- **After:** `metaModFabricTest` 3 of 3 green, each XML read: `LoaderLeakE2E` tests 1 failures 1 skipped 0 errors 0, message `LEAK
+  LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind on fabric@26.3: state left behind by the test: random_tick_speed: Game rule
+  random_tick_speed is currently set to 3 -> random_tick_speed: Game rule random_tick_speed is currently set to 7`; the report says
+  `FAIL` (a leak is a FAIL starting `LEAK`); `BrokenFabricModE2E` still `INVALID` in the same runs; no timeout.
+- **Not shown:** a NeoForge leak test (the NeoForge agent serves the same rules, not run); a leak other than a world rule on a loader
+  cell (plugin or player state).
+
 ## M8 review (T-M8-99)
 
 Date 2026-11-15. Ran on `card/T-M8-99-review` from origin/main `d89cb4e` (PRs #115 to #126 merged; M8 diff `18432ae..d89cb4e`).
@@ -1246,7 +1263,7 @@ player file persisted between tests) and the WARN fires on that login, before th
   `metaModPaperTest` (INVALID, FAIL), `metaTest` and `metaTopologyTest` once each as before. `:conformance:run` `fabric@26.3`
   11 tests 0 skipped, `neoforge@26.3` 11 tests with the two reasoned C-D01/C-D02 skips; no `zombie_villager` WARN. Not run on a
   real server: a control run on a loader cell, and a declared mod the agent does not list (unit-tested only).
-- **No leak bad test on a loader cell** (robustness R6). Card T-M8-18.
+- **No leak bad test on a loader cell** (robustness R6). Card T-M8-18: done, see the T-M8-18 findings below.
 - **Card boxes:** T-M8-01, 08, 09, 10 and 11 acceptance boxes are still unticked in `M8-mods.md` though merged. Left as they are;
   the evidence above is what counts.
 

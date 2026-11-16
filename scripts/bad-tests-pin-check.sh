@@ -22,7 +22,7 @@ trap 'rm -f "$OUT" "$OUT2"' EXIT
 LOADER_BUILD=(-x :platforms:fabric:agent:shadowJar -x :platforms:fabric:agent:exampleCrashModJar
   -x :platforms:neoforge:agent:shadowJar -x :platforms:neoforge:agent:exampleCrashModJar
   -x :examples:bad-tests:copyCrashingModFabric -x :examples:bad-tests:copyCrashingModNeoforge)
-./gradlew :examples:bad-tests:metaModCrash :examples:bad-tests:metaModCrashNeoForge "${LOADER_BUILD[@]}" \
+./gradlew :examples:bad-tests:metaModCrash :examples:bad-tests:metaModCrashNeoForge :examples:bad-tests:metaLeakFabric "${LOADER_BUILD[@]}" \
   -Dproofstone.cells=paper@26.3 --continue --max-workers=1 > "$OUT2" 2>&1 || RC2=$?
 cat "$OUT2" >> "$OUT"
 RC3=0
@@ -56,6 +56,8 @@ check "topology refusal names its cell" "Supported cells: velocity@4.3.1+paper@2
 check "metaModCrash refused" "metaModCrash cannot run on -Dproofstone.cells=paper@26.3"
 check "metaModCrashNeoForge refused" "metaModCrashNeoForge cannot run on -Dproofstone.cells=paper@26.3"
 check "loader refusal names its cell" "Supported cells: fabric@26.3"
+# T-M8-18: the loader leak test is pinned to fabric@26.3 too (the Paper leak test is metaLeak, paper@26.1.2).
+check "metaLeakFabric refused" "metaLeakFabric cannot run on -Dproofstone.cells=paper@26.3"
 check "metaModDataPack refused" "metaModDataPack cannot run on -Dproofstone.cells=paper@26.1.2"
 check "metaModPackHash refused" "metaModPackHash cannot run on -Dproofstone.cells=paper@26.1.2"
 check "pack refusal names its cell" "Supported cells: paper@26.3"

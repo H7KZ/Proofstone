@@ -205,7 +205,7 @@ and both mod agents serve `snapshot` and the world rules. No bad test exercises 
 - Change the leak detector, or count a boot or join timeout as the expected verdict.
 
 **Acceptance.**
-- [ ] The bad test gives `LEAK` with the rule named, three invocations; the clean runs of the task stay green.
+- [x] The bad test gives `LEAK` with the rule named, three invocations; the clean runs of the task stay green.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaModFabricTest --no-parallel --max-workers=1`
