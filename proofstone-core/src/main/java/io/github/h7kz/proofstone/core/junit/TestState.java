@@ -26,6 +26,11 @@ final class TestState implements AutoCloseable {
     SessionClient client;
     /** The cell's conformance result, read before the test; a failed one makes the test INVALID. */
     ConformanceResult conformance;
+    /**
+     * The conformance client's driver transcript, set only when the cell's conformance failed (T-M7-21). The INVALID test's
+     * own client never ran a scenario, so this is the only packet record of the failure; it goes into the bundle.
+     */
+    List<String> conformanceTranscript = List.of();
     /** Set when the cell's conformance failed: the INVALID failure that {@code beforeEach} threw. */
     AssertionError invalid;
     /** The leak detector's baseline, from before the test's client joins; {@code null} when the test never got that far. */

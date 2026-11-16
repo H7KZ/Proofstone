@@ -50,7 +50,8 @@ Local real-server runs, one full `:conformance:run` per row, through this ViaPro
 - **On a pre-1.17 server the cursor is a separate packet after the full resync.** `ContainerSetContent` has no carried stack on 1.8.8,
   so it says "empty cursor" and the real cursor follows 0 to 9 ms later as `SetCursorItem`. `McplSession.click` returns on the content,
   so a cursor read right after a pick-up click can see an empty cursor (C04 "cursor after picking up slot A", C05 "the renamed sword
-  on the cursor", about 3 in 10 full runs). Await the cursor, do not read it at once. _1.8.8 (bridged) · T-M7-20_
+  on the cursor", about 3 in 10 full runs). Await the cursor, do not read it at once: C04 and C05 do
+  (`ConformanceFixture.awaitCursor`, T-M7-21). _1.8.8 (bridged) · T-M7-20, T-M7-21_
 
 ### Bridged login stall (M5 follow-up, 2026-11-08)
 - **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,

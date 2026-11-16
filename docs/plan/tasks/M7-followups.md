@@ -309,9 +309,9 @@ lines in ROADMAP "T-M7-20".
 - Weaken C03 to C05, raise a timeout, add a sleep or a retry, or change the wire protocol.
 
 **Acceptance.**
-- [ ] The unit cases fail before and pass after.
-- [ ] 10 of 10 `:conformance:run` paper@1.8.8 runs show no cursor red (join stalls counted apart), XML `skipped` only the known skips.
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The unit cases fail before and pass after. Evidence: `ConformanceCursorRaceTest` before the fix, C04 "cursor after picking up slot A" and C05 "the renamed sword on the cursor" red, the never-shows case red with the wrong exception (3 of 4 tests failed); after, 4 of 4 pass, `skipped="0"`.
+- [x] 10 of 10 `:conformance:run` paper@1.8.8 runs show no cursor red (join stalls counted apart), XML `skipped` only the known skips. Evidence: each run `tests` 17, `skipped` 10, `failures` 0, `errors` 0; the 10 skips are the same in run 1 and every run (C07 no grindstone on 1.8.8, missing capabilities), no join stall seen. The flake rate was 3 in 10 and 2 in 10 before, so 10 green runs are consistent with the fix, not a proof (a 25% rate gives 10 greens about 6% of the time). ROADMAP "T-M7-21".
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8 --no-parallel --max-workers=1`

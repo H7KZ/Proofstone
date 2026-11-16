@@ -40,6 +40,9 @@ public final class C05AnvilRenameCost {
             Assertions.assertEquals("Blade", result.name(), "name of the result slot");
 
             anvil.click(2, Click.LEFT);
+            // The cursor can trail the click on bridged pre-1.17 rows (T-M7-21), so wait for it, then assert as before.
+            ConformanceFixture.awaitCursor(anvil, "the renamed sword on the cursor",
+                    cursor -> "Blade".equals(cursor.name()));
             Assertions.assertEquals("Blade", anvil.cursor().name(), "the renamed sword on the cursor");
             ConformanceFixture.placeCursorInInventory(anvil);
         }
