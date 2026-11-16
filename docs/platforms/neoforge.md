@@ -163,7 +163,8 @@ Observed in the spike, not yet tokens:
   a zombie village; NeoForge reproduces it with `place template` on peaceful, same logger; **fixed by T-M8-21**: the cell pins
   `SEED=1234567`, and by hand `locate structure #minecraft:village` answers `village_plains` 353 blocks from spawn, as on Fabric) and
   `handleDisconnection() called twice` (a race between `Connection.tick` and `ServerConnectionListener.tick`, seen once on this row
-  in a conformance run, 0 in 10 later runs). The mechanisms are in [fabric.md](fabric.md) and the ROADMAP "M8 findings"; cards
+  in a conformance run, 0 in 10 later runs; not allowlisted, since T-M8-22 the conformance waits out its own client's leave before
+  the first test's log window starts). The mechanisms are in [fabric.md](fabric.md) and the ROADMAP "M8 findings"; cards
   T-M8-21 and T-M8-22.
 - **A mod that throws at construction ends the container, with no `Failed to start FML` line seen** (T-M8-11, `metaModCrashNeoForge`,
   dev run). FML logs `[modloading-worker-0/ERROR] [ne.ne.fm.ja.FMLModContainer/LOADING]: Failed to create mod instance.

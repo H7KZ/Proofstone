@@ -328,3 +328,29 @@ for good. (B) This card as written: no allowlist, the guard window moves. Pick o
 
 **Verify.**
 `./gradlew :proofstone-core:test --tests '*ErrorLogGuardTest*'`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=fabric@26.3 --no-parallel --max-workers=1`
+
+**Result (2026-11-16).** Option B, picked by the maintainer's delegate. `CellConformance.session` (the conformance client's whole
+life, package-private so a fake host can drive it): the log window opens before the join, is checked up to just before the close
+(a hit fails the conformance, `the server logged errors during the conformance`, naming the line), then after `client.close()` it
+awaits `PSConf left the game` in the host log (`LogBuffer.since` from a mark taken before the close) and
+`POST /v1/ticks/await {n: 2}` (the agent route is a POST, not the GET the card text says), each in the 10 s budget used by every
+other client wait; a failure of either is a failed conformance. `CellInvocation.conformance` then sets `TestState.logCursor` to
+the log's end, only in the invocation that ran the conformance (a cached result leaves the cursor where `beforeEach` put it).
+No allowlist, sleep, retry or timeout change; the driver's close is untouched.
+- Unit cases (`ConformanceLeaveTest`, a fake host whose ticks run on their own thread): before the fix cases 1 and 2 and the two
+  fail-loud cases (no leave line, no ticks) are red, cases 3 and 4 are green (they are the controls that the guard still checks
+  every other record and that a Paper-pack cell takes the same path); after, all 6 pass, 4 more reruns green. The card says all
+  four fail before: 3 and 4 cannot, since the guard they test is unchanged, and they are not claimed to.
+- Cost: 155 to 215 ms per conformance (median 166 ms, 26 conformances in the runs below), printed as
+  `PROOFSTONE CONFORMANCE <cell> leave confirmed in N ms`.
+- Real servers: `:proofstone-core:test` (52 suites, 0 skipped, 0 failures), `:proofstone-core:integrationTest` (1 suite) and
+  `topologyTest` (7 suites), `:conformance:smoke` 3 invocations (4 cells each, 8 tests, all green), `:conformance:run`
+  `fabric@26.3` 3 of 3 green; `neoforge@26.3` 4 invocations: 1 green, 1 red (CD02, the container exited during the NeoForge
+  installer's library download: `SocketTimeoutException: Read timed out`, before any test, not this change), 1 red (C08, the known
+  `no matching item among []` DISAGREE family, T-M8-23, counted apart), then one more run green; CD01 and CD02 skip with
+  DATAPACKS_VANILLA expected. `velocity@4.3.1+paper@26.3` and `bungeecord@2111+paper@26.3` green, bridged `paper@1.21.11` green,
+  `metaTest` ("every bad test produced its expected verdict", the leak and conformance-window verdicts unchanged),
+  `metaTopologyTest` (7 of 7 `INVALID`), `FabricLoaderHostIT` green. No WARN-guard red in any of them; a run cannot show that the
+  race is fixed (about 1 in 100 invocations), the unit cases do.
+- By hand (`loader-hand.sh`, `RACE="600 0 help"`, the harness not involved): `handleDisconnection() called twice` appeared 1 time in
+  600 closes on Fabric and 1 in 600 on NeoForge, so the line is still in the server log at the old rate (small sample).

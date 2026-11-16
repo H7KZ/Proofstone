@@ -950,8 +950,10 @@ Paper and topology numbers.
     differs is **not shown** (its jar was not decompiled here).
   - A red needs the `PSConf` close to race: once per cell run, at the harness rate (2 in about 210) about 1 in 100 invocations.
     The T-M8-15 verifier saw it once in 3 invocations; this card saw it 0 times in 21.
-  - Fix: T-M8-22. Decision for the maintainer in the card: an allowlist entry with the reason (it is vanilla noise and the guard
-    cannot tell it from a real double handling) or the window change the card is written for (no allowlist).
+  - Fix: T-M8-22, **closed 2026-11-16 as option B** (no allowlist; the maintainer's delegate picked it): the conformance checks
+    its own window up to just before `PSConf` closes, then waits for `PSConf left the game` in the host log and two server ticks,
+    and `CellInvocation` moves the first test's cursor past that. Details and runs in the card's Result
+    (`docs/plan/tasks/M8-followups.md`).
 
   **Not done by this card:** any harness or guard change, a run on Paper or another row, a test of the red run's own seed, a look at
   Paper's jar, a diagnosis of the `no matching item among []` DISAGREE (2 reds in 21 invocations, counted apart).

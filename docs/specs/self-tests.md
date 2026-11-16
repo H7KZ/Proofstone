@@ -45,6 +45,14 @@ assertions.
 A failed check, or a scenario that fails or cannot join, makes every test on the cell `INVALID`, and the test body does
 not run. The cell's scenario timings are in the log (`PROOFSTONE CONFORMANCE <cell> <scenario> passed in N ms`).
 
+The conformance client's own leave is part of the check (T-M8-22). The server log is checked (`ErrorLogGuard`, the cell's
+pack) from before the client joins to just before it closes, and a hit is the conformance's own failure. After the close the
+host waits, with the `Await` helper and the usual 10 s budget, for the host log line `PSConf left the game`, then for two
+server ticks (`POST /v1/ticks/await`); a leave it cannot confirm is a failed conformance. The first test's log window starts
+after that (`PROOFSTONE CONFORMANCE <cell> leave confirmed in N ms`, about 0.2 s). The two ticks cover vanilla handling a
+disconnect a second time one tick after the first, which logs `handleDisconnection() called twice` on Fabric and NeoForge
+(about 0.4% of closes); that line is not allowlisted.
+
 **Not wired yet, with reasons:**
 - C09 (event probe) needs a fixture plugin with a probe; the Folia event probe (`ConformanceFoliaEventTest`) is a
   per-pack scenario, not a cell-wide one.

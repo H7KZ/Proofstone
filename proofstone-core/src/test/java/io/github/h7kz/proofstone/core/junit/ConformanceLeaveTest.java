@@ -17,6 +17,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
@@ -106,40 +109,36 @@ class ConformanceLeaveTest {
         /** 0 when no close is pending, else the tick on which the first handling happens. */
         private volatile long firstHandling;
         private volatile boolean raceOnClose;
-        private volatile boolean running = true;
         volatile boolean printLeaveLine = true;
         volatile boolean ticksFail;
 
+        private final ScheduledExecutorService ticker = Executors.newSingleThreadScheduledExecutor(task -> {
+            Thread thread = new Thread(task, "fake-ticks");
+            thread.setDaemon(true);
+            return thread;
+        });
+
         FakeHost() {
-            Thread ticker = new Thread(this::tickLoop, "fake-ticks");
-            ticker.setDaemon(true);
-            ticker.start();
+            ticker.scheduleAtFixedRate(this::tick, 20, 20, TimeUnit.MILLISECONDS);
         }
 
         void stop() {
-            running = false;
+            ticker.shutdownNow();
         }
 
-        private void tickLoop() {
-            while (running) {
-                try {
-                    Thread.sleep(20);
-                } catch (InterruptedException e) {
-                    return;
-                }
-                long now = ticks + 1;
-                long first = firstHandling;
-                if (first != 0 && now == first && printLeaveLine) {
-                    console.append("[12:00:00] [Server thread/INFO]: " + CellConformance.CLIENT + " left the game");
-                }
-                if (first != 0 && now == first + 1) {
-                    if (raceOnClose) {
-                        warn("Failed to handle packet or " + TWICE);
-                    }
-                    firstHandling = 0;
-                }
-                ticks = now;
+        private void tick() {
+            long now = ticks + 1;
+            long first = firstHandling;
+            if (first != 0 && now == first && printLeaveLine) {
+                console.append("[12:00:00] [Server thread/INFO]: " + CellConformance.CLIENT + " left the game");
             }
+            if (first != 0 && now == first + 1) {
+                if (raceOnClose) {
+                    warn("Failed to handle packet or " + TWICE);
+                }
+                firstHandling = 0;
+            }
+            ticks = now;
         }
 
         ConformanceResult runConformance(Patterns patterns, boolean race, Consumer<SessionClient> body) {
