@@ -828,7 +828,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             session.close();
             throw e;
         }
-        return new SessionClient(serverName, session);
+        // transferTo is a proxy feature; on a Bedrock session it names the edition, as the other unsupported calls do.
+        return new SessionClient(serverName, session, (player, ignored, target) -> {
+            throw new UnsupportedOperationException("transferTo(\"" + target + "\") is not supported by the Bedrock edition "
+                    + "driver in v1: a Geyser cell has no proxy and no second server (ADR-0018 section 9)");
+        });
     }
 
     /** Waits until the agent lists {@code player} (or no longer lists it); a reply without the list is an error. */

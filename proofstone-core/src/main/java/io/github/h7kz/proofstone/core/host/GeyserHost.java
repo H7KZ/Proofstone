@@ -92,6 +92,8 @@ public final class GeyserHost implements AutoCloseable {
                     Boolean::booleanValue, options.auxTimeout());
             Await.until("agent health lists the " + FLOODGATE_TOKEN + " token", () -> hasToken(running),
                     Boolean::booleanValue, options.auxTimeout());
+            // Readiness read the health before Floodgate reported its token; the capabilities of the cell are read from this one.
+            running.refreshHealth();
 
             driverHost = BedrockDriverHost.start(image, network, dns, options.driverHostJar(), trustStore,
                     options.auxTimeout());

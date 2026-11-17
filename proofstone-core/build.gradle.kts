@@ -119,6 +119,14 @@ dependencies {
     "geyserTestImplementation"(libs.junit.jupiter)
     "geyserTestImplementation"(libs.assertj.core)
     "geyserTestRuntimeOnly"(libs.junit.platform.launcher)
+    // The public-API test (T-M9-07) finds the client driver through ServiceLoader, as the extension does. Runtime only:
+    // core never compiles against a driver (README, Boundaries).
+    "geyserTestRuntimeOnly"(project(":drivers:mcpl"))
+}
+
+// The mcpl driver is Java 21 bytecode, so the runtime classpath resolves for 21 and the tests run on JDK 21.
+configurations.named("geyserTestRuntimeClasspath") {
+    attributes.attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
 }
 
 tasks.register<Test>("geyserTest") {
@@ -139,6 +147,14 @@ tasks.register<Test>("geyserTest") {
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     systemProperty("proofstone.bedrockHostJar",
         rootProject.layout.projectDirectory.file("drivers/bedrock/build/libs/bedrock-host-all.jar").asFile.absolutePath)
+    systemProperty("proofstone.geyserDownloads",
+        rootProject.layout.projectDirectory.dir("build/geyser-downloads").asFile.absolutePath)
+    // The public-API Geyser test (GeyserApiContract) runs through the JUnit extension, found by auto-detection as in a user
+    // project; it leaves the classes without @Proofstone alone. The cell is named by -Dproofstone.cells or PROOFSTONE_CELLS.
+    systemProperty("junit.jupiter.extensions.autodetection.enabled", "true")
+    for (name in listOf("proofstone.cells", "proofstone.scope")) {
+        providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
+    }
 }
 
 // AGENTS.md section 3 applies to these classes too: archTest scans them.
