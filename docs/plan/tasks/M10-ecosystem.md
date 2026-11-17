@@ -287,7 +287,7 @@ Consequences, geyser.md "Still unrun").
 - Re-decide anything. Change code.
 
 **Acceptance.**
-- [ ] The amendment lists each change with its evidence. `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The amendment lists each change with its evidence. `bash scripts/gates.sh --max-workers=1` passes.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`

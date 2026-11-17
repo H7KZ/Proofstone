@@ -1,6 +1,6 @@
 # ADR-0018: Bedrock driver, Geyser cells and an offline login stand-in
 
-- Status: Accepted
+- Status: Accepted (amended 2026-11-17, see Amendments)
 - Date: 2026-11-17
 - Deciders: maintainer delegated the M9 decisions ("decide", 2026-11-17) with two fixed limits: no Bedrock Dedicated Server
   (BDS) in M9, and no new image and no workflow in M9. Decided autonomously by the T-M9-03 agent from the T-M9-01 spike
@@ -269,3 +269,49 @@ Detail in [test-api.md](../specs/test-api.md) section 14. Additions only: `Platf
   and no redistribution, a new image or zip needing explicit approval, and a beta Script API. Deferred to M10.
 - **Promoting a Geyser row on a snapshot-pinned driver.** Rejected: a pruned snapshot would turn a `required` row red for a
   reason unrelated to the plugin under test.
+
+## Amendments
+
+### 2026-11-17: what the M9 build showed (T-M10-08)
+Docs only. No decision is re-decided and no code, schema or `versions.yml` changes. Each item names the section it corrects and
+the file or run that shows it. Sources are the merged code and the ROADMAP ("M9 review (T-M9-99)", "ADR-0018 against the build");
+a claim here is only what those record as run. Runs: `geyser@2.12.1+paper@26.3`, `:conformance:run` 3 of 3 green and
+`metaBedrockTest` once, XML read, all in the M9 review.
+
+- **Section 2, pin: three snapshot groups, not one.** The catalog pins `org.cloudburstmc.protocol` `3.0.0.Beta15-20261116.161745-6`
+  as written, and also `org.cloudburstmc.netty` `1.1.0.CR4-20261103.123906-3` and `org.cloudburstmc.math`
+  `2.0-20220327.162752-1`, because the Beta15 POM names floating snapshots of both. `exclusiveContent` matches only timestamped
+  versions of those three groups. 32 artefacts are checked by sha256 (`drivers/bedrock/cloudburst-artefacts.sha256`), including
+  releases the library pulls (netty 4.1.101, jose4j, expiringmap, aircompressor, fastutil, `com.nukkitx:natives` 1.0.3, slf4j-api),
+  all shaded and relocated into the driver-host jar. No release of CloudburstMC Protocol exists (T-M9-05, checked 2026-11-17), so
+  the "move the pin to a release" branch did not apply and the row cannot be promoted (section 8).
+- **Section 2, transport: the harness reaches the driver host by `docker exec curl`.** `ExecCurlTransport`
+  (`proofstone-core/src/main/java/io/github/h7kz/proofstone/core/driver/bedrock/`) runs `curl` inside the driver-host container with
+  a per-cell bearer token. No HTTP port is published. This is "the way the harness reaches an agent" in spirit: nothing is
+  published.
+- **Section 4, name guard: once per cell.** `NameGuard` (`core/host/`) is checked at the cell's first check, not continuously. The
+  text "fails the cell ... if a name on a deny list was ever asked" holds for the names asked up to that check. The first check
+  passed in every Geyser invocation of the M9 review.
+- **Section 4, label: `offline-stub` is not in the report or the display name.** It is in `cell.json` and in the boot line
+  (`PROOFSTONE GEYSER BOOT ... (offline-stub)`), as the M9 review found. The gap is carded (T-M10-06).
+- **Section 5, Floodgate key mismatch is made on Floodgate's side.** Geyser on one server reads Floodgate's key whatever its own
+  setting says, so the `key-mismatch` fault sets a decoy `key-file-name` for Floodgate. `metaBedrockTest`: `INVALID`, "Floodgate
+  refused the data Geyser sent", hop "Geyser to Floodgate on the server".
+- **Section 5, tokens: `floodgate` comes at the first tick and the health is re-read.** `FloodgateProbe` (Bukkit agent) adds the
+  token at the agent's first global tick, because Floodgate enables after the agent. `GeyserHost` re-reads the health after awaiting
+  it. Without that, a T-M9-07 run skipped both API tests with `missing capability BEDROCK_CLIENT`; after the fix 3 of 3 were green.
+  No protocol bump: the health schema does not enumerate tokens.
+- **Section 6, log guard: the server only, not per container.** `ErrorLogGuard.Patterns.GEYSER` (five allowlisted lines, each with a
+  reason) reads the server log. The stand-in and driver-host logs are not guarded (T-M10-06).
+- **Section 9, conformance: the refused-protocol fault was dropped.** No Geyser setting narrows the accepted Bedrock protocols
+  (T-M9-11). Only `stand-in-absent` and `key-mismatch` exist, each a loud `INVALID`. Geyser's refusal is unverified. A third fault
+  needs a test-only switch in the driver (T-M10-05, a maintainer decision).
+- **Section 9, fault injection: a test-only system property in production code.** `-Dproofstone.injectGeyserFault`
+  (`GeyserFault`, and `--refuse-names` in `StandIn`) makes the two faults. M8 removed its own such switch (`injectModFault`) once a
+  declared input could make the fault; here none could.
+- **Section 9, skips: a new reason `TEST_ABORTED`.** An `Assumptions.abort` (the three Geyser skips: window clicks and `useBlock`,
+  forms, resource packs) was `SKIPPED` in JUnit and `FAIL` in the report. Now it is `SKIPPED` in both (`SkipReason`,
+  `AbortedSkipTest`, own commit). This is a core reporting change consistent with "a skip is reported as a skip".
+- **Held as decided:** the pre-rendered Geyser config is accepted (no first-start fallback); the key is pre-seeded; no UDP is
+  published; the stand-in and driver host run on the pinned `java25` digest (no new image); identity `geyser@2.12.1+paper@26.3`;
+  differential and flake-detector runs are refused.
