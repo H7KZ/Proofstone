@@ -61,10 +61,11 @@ dependencyResolutionManagement {
         // in the catalog are exact timestamped builds, each artefact checked by sha256 in drivers/bedrock (checkCloudburstPins).
         exclusiveContent {
             forRepository { maven("https://repo.opencollab.dev/maven-snapshots/") }
+            // Only timestamped builds: MCProtocolLib's release of org.cloudburstmc.math:immutable:2.0 still comes from Central.
             filter {
-                includeGroup("org.cloudburstmc.protocol")
-                includeGroup("org.cloudburstmc.netty")
-                includeGroup("org.cloudburstmc.math")
+                for (group in listOf("org.cloudburstmc.protocol", "org.cloudburstmc.netty", "org.cloudburstmc.math")) {
+                    includeVersionByRegex(group, ".*", ".*-[0-9]{8}[.][0-9]{6}-[0-9]+")
+                }
             }
         }
         // MCProtocolLib is published only here (ADR-0004).
