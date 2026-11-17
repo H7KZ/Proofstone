@@ -43,6 +43,8 @@ val bungeeAgentJar = rootProject.layout.projectDirectory.file("platforms/bungee/
 // toolchain and a build-time download of the game jar, which a Paper or topology run must not pay for or depend on.
 val fabricAgentJar = rootProject.layout.projectDirectory.file("platforms/fabric/agent/build/libs/agent-all.jar")
 val neoforgeAgentJar = rootProject.layout.projectDirectory.file("platforms/neoforge/agent/build/libs/agent-all.jar")
+fun geyserSelected(): Boolean =
+    providers.systemProperty("proofstone.cells").orNull?.split(",")?.any { it.trim().startsWith("geyser@") } == true
 fun loaderSelected(loader: String): Boolean =
     providers.systemProperty("proofstone.cells").orNull?.split(",")?.any { it.trim().startsWith("$loader@") } == true
 
@@ -83,11 +85,17 @@ fun Test.realServerScenarios(taskDescription: String) {
     useJUnitPlatform()
     // The agent jar is built, never committed (AGENTS.md §3).
     dependsOn(":platforms:bukkit:agent:shadowJar", ":platforms:velocity:agent:shadowJar",
-        ":platforms:bungee:agent:shadowJar", "testClasses", copyBedrockPrefixPlugin, copyFixturePlugin, zipResourcePack)
+        ":platforms:bungee:agent:shadowJar", ":drivers:bedrock:shadowJar", "testClasses", copyBedrockPrefixPlugin, copyFixturePlugin, zipResourcePack)
     systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
     systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
     systemProperty("proofstone.velocity.agentJar", velocityAgentJar.asFile.absolutePath)
     systemProperty("proofstone.bungee.agentJar", bungeeAgentJar.asFile.absolutePath)
+    // The Geyser cell's Bedrock driver host jar and its pinned-jar download cache (T-M9-08, ADR-0018 sections 2 and 8). Read only
+    // when a Geyser cell is selected.
+    systemProperty("proofstone.bedrockHostJar",
+        rootProject.layout.projectDirectory.file("drivers/bedrock/build/libs/bedrock-host-all.jar").asFile.absolutePath)
+    systemProperty("proofstone.geyserDownloads",
+        rootProject.layout.projectDirectory.dir("build/geyser-downloads").asFile.absolutePath)
     systemProperty("proofstone.fabric.agentJar", fabricAgentJar.asFile.absolutePath)
     systemProperty("proofstone.neoforge.agentJar", neoforgeAgentJar.asFile.absolutePath)
     // The loaders' pinned downloads (launcher, installer, Fabric API), reused only when the sha256 matches (ADR-0017 section 3).
@@ -159,8 +167,13 @@ tasks.register<Test>("run") {
     // A loader cell (fabric@26.3, neoforge@26.3) runs C01 to C08 only: the other classes declare no loader @Matrix, so a
     // loader selection plans no cell for them and they would fail by name (T-M8-08).
     val loaderRun = loaderSelected("fabric") || loaderSelected("neoforge")
+    // A Geyser cell (geyser@2.12.1+paper@26.3) runs the Geyser conformance (the cell check, C-G01 to C-G04) only. Its name has a
+    // plus sign too, so it is told apart first (T-M9-08).
+    val geyserRun = geyserSelected()
     filter {
-        if (topologySelected) {
+        if (geyserRun) {
+            includeTestsMatching("*ConformanceGeyserTest")
+        } else if (topologySelected) {
             includeTestsMatching("*ConformanceTopologyTest")
         } else if (loaderRun) {
             includeTestsMatching("*ConformanceSmokeTest")
@@ -174,6 +187,7 @@ tasks.register<Test>("run") {
             excludeTestsMatching("*ConformanceTopologyTest")
             // Loader rows only: a Paper selection plans no cell for it (T-M8-08).
             excludeTestsMatching("*ConformanceLoaderWindowTest")
+            excludeTestsMatching("*ConformanceGeyserTest")
         }
     }
 }

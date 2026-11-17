@@ -510,6 +510,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                         joined[0] = connect(resource, name, ResourcePackDeclaration.forHarness(resource.pack()));
                         return joined[0];
                     });
+            // A Geyser cell's own first check, after the Java client's round trip passed: it needs the Bedrock join (T-M9-08).
+            if (geyser != null && result.passed()) {
+                result = GeyserConformance.run(cellId(), resource.geyser(), name -> joinBedrock(resource, name),
+                        serverName -> awaitListing(resource.host(), serverName, false));
+            }
             // A failed conformance keeps its client's packets for the bundles of every test it makes INVALID (T-M7-21).
             if (!result.passed() && joined[0] != null) {
                 transcripts.put(cellId(), joined[0].transcript());
