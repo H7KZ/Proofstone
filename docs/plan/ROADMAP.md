@@ -1170,7 +1170,7 @@ Paper and topology numbers.
 
 - **Change:** `LoaderHost` runs `GameRules.apply` (one entry point, also used by `PaperHost`) after its readiness checks: the four rules
   `PaperHost` sets. Spawn and seed untouched. Local, one invocation at a time under `scripts/dockerlock.sh`, EULA in the command
-  environment only, evidence copied aside (`C:\pw	827-ev`, not committed).
+  environment only, evidence copied aside (`C:/pw/t827-ev`, not committed).
 - **Test first:** `GameRulesTest` `apply` cases: compile-red before (no `apply`), 6 of 6 green after. Host ITs (`FabricLoaderHostIT`,
   `NeoForgeLoaderHostIT`) read the four rules after start: red before on both rows (1 run each: `random_tick_speed` 3, `advance_time`,
   `advance_weather`, `spawn_mobs` all `true`), green after, 3 of 3 each, every boot reading 0, false, false, false (the snapshot is the
