@@ -1,5 +1,6 @@
 package io.github.h7kz.proofstone.core.cell;
 
+import io.github.h7kz.proofstone.core.versions.GeyserRow;
 import io.github.h7kz.proofstone.core.versions.LoaderPlatform;
 import io.github.h7kz.proofstone.core.versions.LoaderRow;
 import io.github.h7kz.proofstone.core.versions.Platform;
@@ -30,6 +31,8 @@ public final class CellPlanner {
 
     private static final String LATEST = "latest";
     private static final String ALL = "all";
+    /** The only backend platform of a Geyser cell in M9 (ADR-0018 section 8). */
+    private static final String GEYSER_BACKEND = "paper";
 
     private final VersionsCatalog catalog;
 
@@ -153,6 +156,124 @@ public final class CellPlanner {
                 : new LoaderCell.FabricApi(row.fabricApi().version(), row.fabricApi().sha256());
         return new LoaderCell(identity, loader.id(), row.mc(), row.loader(), row.installer(), row.sha256(),
                 row.vanillaSha256(), fabricApi, javaTag, row.status(), loader.host().image(), hostDigest, notes);
+    }
+
+    /**
+     * Plans Geyser cells (ADR-0018 section 8): a Geyser row and one Paper row it is paired with, identity
+     * {@code geyser@<version>+paper@<mc>}. Each version is exact, {@code latest} or {@code all}. {@code latest} on the
+     * left is the highest {@code required} Geyser row and never falls back to an experimental one (a Geyser row is named
+     * until a promotion makes it required); on the right it resolves as for Paper, and the resolved pairing must be
+     * listed. {@code all} on either half takes the pairings whose weakest status (row, pairing, backend row) is in
+     * {@code scope}; an exact cell runs in any scope. A bridged pairing never gets here: the catalog refuses it at load.
+     *
+     * @param backendPlatform {@code paper}, the only backend in M9
+     * @return the cells in request order, rows in file order within {@code all}; duplicates collapse
+     * @throws VersionsException on an unknown version, a backend other than paper, a pairing that is not listed, an
+     *     empty request, a {@code latest} with no required row, a {@code TODO} pin, or no cell in scope
+     */
+    public List<GeyserCell> planGeysers(List<String> geyserVersions, String backendPlatform,
+            List<String> backendVersions, Scope scope) {
+        if (geyserVersions.isEmpty() || backendVersions.isEmpty()) {
+            throw new VersionsException("no versions requested for " + GeyserCell.ID + "+" + backendPlatform);
+        }
+        if (!GEYSER_BACKEND.equals(backendPlatform)) {
+            throw new VersionsException(GeyserCell.ID + " pairs with " + GEYSER_BACKEND + " only in M9, not \""
+                    + backendPlatform + "\" (ADR-0018 section 8)");
+        }
+        Map<String, GeyserCell> cells = new LinkedHashMap<>();
+        for (String requestedGeyser : geyserVersions) {
+            boolean allRows = ALL.equals(requestedGeyser);
+            List<GeyserRow> rows = allRows ? catalog.geyserRows() : List.of(resolveGeyserRow(requestedGeyser));
+            for (GeyserRow row : rows) {
+                for (String requestedBackend : backendVersions) {
+                    for (GeyserRow.Pairing pairing : geyserPairings(row, requestedBackend, allRows)) {
+                        GeyserCell cell = toGeyserCell(row, pairing);
+                        boolean named = !allRows && !ALL.equals(requestedBackend);
+                        if (named || inScope(cell.status(), scope)) {
+                            cells.putIfAbsent(cell.identity(), cell);
+                        }
+                    }
+                }
+            }
+        }
+        if (cells.isEmpty()) {
+            throw new VersionsException(GeyserCell.ID + "+" + backendPlatform + ": no geyser cell in scope " + scope
+                    + " (PR runs required pairings, nightly runs required and experimental ones; the weakest of "
+                    + "Geyser row, pairing and backend row counts)");
+        }
+        return List.copyOf(cells.values());
+    }
+
+    private GeyserRow resolveGeyserRow(String requested) {
+        List<GeyserRow> rows = catalog.geyserRows();
+        if (LATEST.equals(requested)) {
+            return rows.stream().filter(row -> row.status() == Status.REQUIRED)
+                    .max(Comparator.comparing(GeyserRow::version, VersionNumber::compare))
+                    .orElseThrow(() -> new VersionsException("latest: " + GeyserCell.ID + " has no required row; name "
+                            + "the version (rows: " + (rows.isEmpty() ? "none" : rows.stream()
+                            .map(row -> row.version() + " " + row.status().name().toLowerCase(Locale.ROOT))
+                            .collect(Collectors.joining(", "))) + ")"));
+        }
+        return rows.stream().filter(row -> row.version().equals(requested)).findFirst()
+                .orElseThrow(() -> new VersionsException("unknown version \"" + requested + "\" for " + GeyserCell.ID
+                        + "; valid: " + (rows.isEmpty() ? "none (versions.yml has no geyser rows)" : rows.stream()
+                        .map(GeyserRow::version).collect(Collectors.joining(", ")))));
+    }
+
+    /** The pairings of {@code row} that match a backend request; a missing one is an error unless the row half was {@code all}. */
+    private List<GeyserRow.Pairing> geyserPairings(GeyserRow row, String requested, boolean lenient) {
+        if (ALL.equals(requested)) {
+            return row.backends();
+        }
+        String mc = LATEST.equals(requested) ? latest(catalog.platform(GEYSER_BACKEND)).mc() : requested;
+        List<GeyserRow.Pairing> found = row.backends().stream().filter(p -> p.mc().equals(mc)).toList();
+        if (found.isEmpty() && !lenient) {
+            throw new VersionsException(GeyserCell.ID + "@" + row.version() + " is not paired with " + GEYSER_BACKEND
+                    + "@" + mc + (LATEST.equals(requested) ? " (latest of " + GEYSER_BACKEND + ")" : "")
+                    + "; its pairings: " + row.backends().stream().map(p -> p.platform() + "@" + p.mc())
+                    .collect(Collectors.joining(", ")));
+        }
+        return found;
+    }
+
+    private GeyserCell toGeyserCell(GeyserRow row, GeyserRow.Pairing pairing) {
+        String identity = GeyserCell.identity(row.version(), pairing.platform(), pairing.mc());
+        Platform backendPlatform = catalog.platform(pairing.platform());
+        List<String> todo = new ArrayList<>();
+        if (row.build() == null) {
+            todo.add("build");
+        }
+        if (row.sha256() == null) {
+            todo.add("sha256");
+        }
+        if (row.floodgate().build() == null) {
+            todo.add("floodgate build");
+        }
+        if (row.floodgate().sha256() == null) {
+            todo.add("floodgate sha256");
+        }
+        String hostDigest = backendPlatform.host().digest(row.java());
+        if (hostDigest == null) {
+            todo.add("host digest for " + row.java());
+        }
+        if (!todo.isEmpty()) {
+            throw new VersionsException(identity + " has TODO pins: " + String.join(", ", todo)
+                    + ". Pin them in versions.yml before use (AGENTS.md §3).");
+        }
+        Row backendRow = backendPlatform.rows().stream().filter(r -> r.mc().equals(pairing.mc())).findFirst()
+                .orElseThrow(() -> new VersionsException(identity + ": backend row " + pairing.platform() + "@"
+                        + pairing.mc() + " is not in versions.yml"));
+        Cell backend = toCell(backendPlatform, backendRow, List.of());
+        Status status = Stream.of(row.status(), pairing.status(), backend.status())
+                .max(Comparator.naturalOrder()).orElseThrow();
+        List<String> notes = new ArrayList<>(backend.notes());
+        if (status == Status.RETIRED) {
+            notes.add("status: retired");
+        }
+        return new GeyserCell(identity, row.version(), row.build(), row.sha256(),
+                new GeyserCell.Floodgate(row.floodgate().version(), row.floodgate().build(), row.floodgate().sha256()),
+                row.bedrockProtocol(), row.java(), status, pairing.status(), backendPlatform.host().image(), hostDigest,
+                backend, notes);
     }
 
     /** Whether {@code id} names a proxy platform of {@code versions.yml} (schema 3 {@code proxies}). */

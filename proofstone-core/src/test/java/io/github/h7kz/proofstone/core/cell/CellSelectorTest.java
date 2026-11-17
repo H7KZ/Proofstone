@@ -259,4 +259,78 @@ class CellSelectorTest {
         assertThat(selector.loaders()).isEmpty();
         assertThat(selector.selects("quilt")).isTrue();
     }
+
+    // ---- Geyser entries (ADR-0018 section 8, T-M9-04) ----
+
+    @Test
+    void aGeyserEntryIsAnIdentityOfItsOwnKeptApartFromTopologies() {
+        CellSelector selector = CellSelector.parse("geyser@2.12.1+paper@26.3", SOURCE);
+
+        assertThat(selector.isSet()).isTrue();
+        assertThat(selector.geysers()).containsExactly(new CellSelector.GeyserEntry("2.12.1", "paper", "26.3"));
+        assertThat(selector.geysers().get(0).entry()).isEqualTo("geyser@2.12.1+paper@26.3");
+        assertThat(selector.topologies()).as("a Geyser cell is not a topology cell").isEmpty();
+        assertThat(selector.selects("geyser")).isFalse();
+        assertThat(selector.loaders()).isEmpty();
+    }
+
+    @Test
+    void geyserEntriesTakeLatestAndAllAndMixWithOtherEntriesWithoutDuplicates() {
+        CellSelector selector = CellSelector.parse(
+                "paper@latest, geyser@latest+paper@latest,velocity@4.3.1+paper@26.3,geyser@all+paper@all,"
+                        + "geyser@latest+paper@latest,fabric@26.3", SOURCE);
+
+        assertThat(selector.versions("paper")).containsExactly("latest");
+        assertThat(selector.geysers()).extracting(CellSelector.GeyserEntry::entry)
+                .containsExactly("geyser@latest+paper@latest", "geyser@all+paper@all");
+        assertThat(selector.topologies()).extracting(CellSelector.Topology::entry)
+                .containsExactly("velocity@4.3.1+paper@26.3");
+        assertThat(selector.loaders()).extracting(CellSelector.LoaderEntry::entry).containsExactly("fabric@26.3");
+    }
+
+    @Test
+    void geyserEntriesReturnAnImmutableList() {
+        List<CellSelector.GeyserEntry> geysers = CellSelector.parse("geyser@2.12.1+paper@26.3", SOURCE).geysers();
+
+        assertThatThrownBy(() -> geysers.add(geysers.get(0))).isInstanceOf(UnsupportedOperationException.class);
+        assertThat(CellSelector.none().geysers()).isEmpty();
+    }
+
+    @Test
+    void aGeyserIdOnTheRightOfThePlusIsRefusedNamingTheAdr() {
+        for (String bad : List.of("paper@26.3+geyser@2.12.1", "velocity@4.3.1+geyser@2.12.1", "fabric@26.3+geyser@latest",
+                "geyser@2.12.1+geyser@2.12.1")) {
+            assertThatThrownBy(() -> CellSelector.parse(bad, SOURCE))
+                    .as(bad)
+                    .isInstanceOf(VersionsException.class)
+                    .hasMessageContainingAll("\"" + bad + "\"", "geyser", "left of", "ADR-0018");
+        }
+    }
+
+    @Test
+    void aGeyserEntryWithoutAPairingIsRefused() {
+        assertThatThrownBy(() -> CellSelector.parse("geyser@2.12.1", SOURCE))
+                .isInstanceOf(VersionsException.class)
+                .hasMessageContainingAll("\"geyser@2.12.1\"", "geyser@version+paper@version", "ADR-0018");
+    }
+
+    @Test
+    void aLoaderIsNeverTheBackendOfAGeyserEntry() {
+        assertThatThrownBy(() -> CellSelector.parse("geyser@2.12.1+fabric@26.3", SOURCE))
+                .isInstanceOf(VersionsException.class).hasMessageContainingAll("\"geyser@2.12.1+fabric@26.3\"", "loader");
+    }
+
+    @Test
+    void malformedGeyserEntriesFailLoudlyWithTheEntryQuoted() {
+        for (String bad : List.of("geyser@+paper@26.3", "geyser@2.12.1+paper", "geyser@2.12.1+paper@", "geyser@2.12.1+@26.3",
+                "geyser@2.12.x+paper@26.3", "Geyser@2.12.1+paper@26.3", "geyser@2.12.1+paper@26.3+paper@26.3",
+                "geyser@2.12.1+Paper@26.3", "geyser@2.12.1++paper@26.3", "geyser@2.12.1+paper@v26.3",
+                "geyser@LATEST+paper@26.3", "geyser@2.12.1+paper@26.3,", ",geyser@2.12.1+paper@26.3")) {
+            assertThatThrownBy(() -> CellSelector.parse(bad, SOURCE))
+                    .as(bad)
+                    .isInstanceOf(VersionsException.class);
+        }
+        assertThatThrownBy(() -> CellSelector.parse("geyser@2.12.x+paper@26.3", SOURCE))
+                .hasMessageContainingAll("\"geyser@2.12.x+paper@26.3\"", "geyser@version+paper@version");
+    }
 }

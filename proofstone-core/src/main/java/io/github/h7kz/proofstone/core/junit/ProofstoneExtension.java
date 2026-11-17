@@ -235,6 +235,11 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                         + "that plans the loader cell " + entry.entry());
             }
         }
+        // No @Matrix plans a Geyser cell until Platform.GEYSER exists (T-M9-07); say so, never drop the entry silently.
+        for (CellSelector.GeyserEntry entry : selector.geysers()) {
+            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
+                    + "that plans the Geyser cell " + entry.entry());
+        }
         if (cells.isEmpty() && topologies.isEmpty() && loaders.isEmpty()) {
             throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
                     + " names none of its @Matrix platforms. Name one, or run only the classes that match.");

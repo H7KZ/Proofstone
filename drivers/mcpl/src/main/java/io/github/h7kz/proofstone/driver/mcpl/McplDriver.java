@@ -6,6 +6,7 @@ import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
+import io.github.h7kz.proofstone.core.driver.Edition;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,6 +36,11 @@ public final class McplDriver implements ClientDriver {
     @Override
     public String protocolVersion() {
         return PROTOCOL_VERSION;
+    }
+
+    @Override
+    public Edition edition() {
+        return Edition.JAVA;
     }
 
     /** A bridged join acknowledges the join teleport at once; a native one holds it for the first tick (T-M7-19). */

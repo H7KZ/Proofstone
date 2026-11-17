@@ -14,6 +14,7 @@ import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
+import io.github.h7kz.proofstone.core.driver.Edition;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.host.AgentEndpoint;
 import io.github.h7kz.proofstone.core.host.LeakDetector;
@@ -226,7 +227,7 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
         TopologyHost.JoinMarks marks = topology.mark();
         try {
             return driver().connect(new ConnectSpec(topology.proxy().gameHost(), topology.proxy().gamePort(), name,
-                    CONNECT_TIMEOUT));
+                    CONNECT_TIMEOUT), Edition.JAVA);
         } catch (JoinTimeoutException e) {
             JoinTimeoutException described = topology.describe(e, marks, lobby);
             joinStall = described.getMessage();
@@ -239,7 +240,7 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
 
     /** A client that joins a backend's own game port, around the proxy (P02's direct join). */
     private ClientSession joinDirect(String host, int port, String name) {
-        return driver().connect(new ConnectSpec(host, port, name, CONNECT_TIMEOUT));
+        return driver().connect(new ConnectSpec(host, port, name, CONNECT_TIMEOUT), Edition.JAVA);
     }
 
     private ClientDriver driver() {

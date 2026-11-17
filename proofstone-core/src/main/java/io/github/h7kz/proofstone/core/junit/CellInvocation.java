@@ -12,6 +12,7 @@ import io.github.h7kz.proofstone.core.cell.LoaderCell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
+import io.github.h7kz.proofstone.core.driver.Edition;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import io.github.h7kz.proofstone.core.host.LoaderHost;
@@ -722,7 +723,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         int proxyMark = resource.proxy() == null ? 0 : resource.proxy().logs().size();
         ClientSession session;
         try {
-            session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT, packs, bridged));
+            session = driver.connect(new ConnectSpec(address, port, name, CONNECT_TIMEOUT, packs, bridged), Edition.JAVA);
         } catch (JoinTimeoutException e) {
             throw reportStall(resource, e, serverMark, proxyMark);
         }

@@ -4,6 +4,7 @@ import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
+import io.github.h7kz.proofstone.core.driver.Edition;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
@@ -73,6 +74,11 @@ public final class MineflayerRefDriver implements ClientDriver {
     @Override
     public String protocolVersion() {
         return PROTOCOL_VERSION;
+    }
+
+    @Override
+    public Edition edition() {
+        return Edition.JAVA;
     }
 
     @Override

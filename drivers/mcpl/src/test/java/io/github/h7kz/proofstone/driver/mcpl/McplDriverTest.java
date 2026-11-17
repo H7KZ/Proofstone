@@ -19,6 +19,11 @@ class McplDriverTest {
     private final McplDriver driver = new McplDriver();
 
     @Test
+    void reportsTheJavaEdition() {
+        assertThat(driver.edition()).isEqualTo(io.github.h7kz.proofstone.core.driver.Edition.JAVA);
+    }
+
+    @Test
     void flattensTextTranslationsAndChildrenToPlainText() {
         Component component = Component.text("Hello ")
                 .append(Component.translatable("multiplayer.player.joined", Component.text("Bot")))
