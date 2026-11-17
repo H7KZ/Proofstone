@@ -1166,6 +1166,21 @@ Paper and topology numbers.
 - **Not shown:** a NeoForge leak test (the NeoForge agent serves the same rules, not run); a leak other than a world rule on a loader
   cell (plugin or player state).
 
+### T-M8-28: does `metaLeakFabric` join the release mutation check (finding, no code change)
+
+- **Answer: no, not as a list entry.** Read `scripts/release-mutation-check.sh`, `scripts/lib/mutation-gate.sh`,
+  `scripts/release-gate-test.sh`, `examples/bad-tests/README.md`. The set is `EXAMPLES=(gradle-paper-plugin maven-paper-plugin)`:
+  example projects, not bad tests. Each runs once with no bug (must pass), then once per toggle read from its `config.yml` `bugs:`
+  block (`toggles()`), with `-Dproofstone.bug=<toggle>` and one `--cell` for every run (default `paper@26.3`); a mutation counts as
+  KILLED when the suite is red. `metaLeakFabric` has no toggle or baseline, runs the `metaModFabricTest` Gradle task, and is pinned
+  to `fabric@26.3` (refused elsewhere by `bad-tests-pin-check.sh`), so it fits neither the unit nor the single cell. The gate
+  (`mutation_gate_check`) only reads the result file's keys (status, head, dirty, allowed_missing, age); it knows no test names, so
+  `release-gate-test.sh` has nothing to add. Same stance as the M7 topology faults and the T-M8-11 controls: by hand.
+- **Not decided here:** whether the maintainer wants a second mutation mechanism for harness detectors (new code in the check, with
+  per-entry cells and a task name). Cost for one: a Fabric boot, `metaModFabricTest` took 40 to 47 s in T-M8-27 (warm).
+- **Run:** `bash scripts/release-gate-test.sh` only (9 ok, 0 failed, see PR). `release-mutation-check.sh`, `release-maven.sh` and
+  `release-images.sh` were not run; `PROOFSTONE_RELEASE_CONFIRM` not set.
+
 ## M8 review (T-M8-99)
 
 Date 2026-11-15. Ran on `card/T-M8-99-review` from origin/main `d89cb4e` (PRs #115 to #126 merged; M8 diff `18432ae..d89cb4e`).

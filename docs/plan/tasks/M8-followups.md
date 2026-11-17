@@ -609,3 +609,31 @@ download and patch, about 14 s of a 23 s idle bind and 48 s of 57 s loaded), so 
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
+
+### T-M8-28 · Decide whether `metaLeakFabric` joins the release mutation check
+- tier: sonnet
+- depends: T-M8-18
+- modules: scripts, examples/bad-tests, docs
+- adrs: 0003
+- specs: specs/self-tests.md §5
+- test-first: yes
+
+**Goal.** Answer the question T-M8-18 left open ("ask in the PR whether it joins the mutation check") from how the check's set is
+defined, not from taste.
+
+**Do.**
+- Read `scripts/release-mutation-check.sh`, `scripts/lib/mutation-gate.sh`, `scripts/release-gate-test.sh` and
+  `examples/bad-tests/README.md`.
+- If the set is a plain list of bad tests: add `metaLeakFabric`, the gate test updated first (red before, green after). If it is
+  not: change no code and record the finding.
+
+**Don't.**
+- Run `release-maven.sh --publish` or `release-images.sh --push`, set `PROOFSTONE_RELEASE_CONFIRM`, or run the full
+  `release-mutation-check.sh` (it is long). Widen the set to make a bad test fit it.
+
+**Acceptance.**
+- [x] The decision is recorded with the code lines it rests on, in the README and the ROADMAP findings.
+- [x] `bash scripts/release-gate-test.sh` and `bash scripts/gates.sh --max-workers=1` pass; no release script was run beyond that test.
+
+**Verify.**
+`bash scripts/release-gate-test.sh`
