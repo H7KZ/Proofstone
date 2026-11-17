@@ -29,6 +29,9 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
   `ResourcePackPush` (a record) and `Client.resourcePacks()` (default method, throws), `Capability.RESOURCE_PACKS` (last
   constant). Declaring a pack implies the capability. `CapturedEvent` now keeps a getter that returned null (its record
   constructor is experimental; no signature changed).
+- Bedrock (T-M9-07, api-change, additions only, ADR-0018 section 9): `Platform.GEYSER`, `Capability.BEDROCK_CLIENT` (last constants)
+  and `Clients.bedrock(String)`, a default method that throws until the core overrides it. No public `Edition`.
+  `SIMULATED_BEDROCK` keeps its meaning (a Java client under a `.` name) and never claims a real Bedrock client.
 - Injected parameters: `Cell`, `Agent` (`command`, `capabilities`, `player`) and `Client` (`name`, `command`,
   `awaitMessage`, `position`, `awaitPosition`, `openBlock`, `inventory`).
 - Setup and views (T-M2-07): `PlayerHandle` and `PlayerState` (server oracle), `Window`, `Click`, `Item` (build),

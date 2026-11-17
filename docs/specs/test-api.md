@@ -447,9 +447,9 @@ class PackE2E {
 - **Content mods.** On Fabric a mod that adds a synced registry entry gets the client kicked at join: the test fails with the
   kick message. On NeoForge it is `unverified`; a mod-added item reaching the client is an error naming the item id.
 
-## 14. Bedrock clients on a Geyser cell (ADR-0018, design for T-M9-07)
+## 14. Bedrock clients on a Geyser cell (ADR-0018, T-M9-07)
 
-Design from [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Not built yet. T-M9-07 adds it as an `api-change`, **additions only** to
+From [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Built by T-M9-07 as an `api-change`, **additions only** to
 `api-baseline.txt`: `Platform.GEYSER`, `Capability.BEDROCK_CLIENT`, and `Clients.bedrock(String)` as a **default** method (it throws
 `UnsupportedOperationException` unless overridden, as `Client.transferTo` does; core overrides it). No frozen v0 signature changes
 and there is no public `Edition`.
@@ -491,4 +491,17 @@ class BedrockE2E {
   and recorded in `geyser.md`, never weakened (T-M9-08). Disagreement is `DISAGREE`, as everywhere.
 - **Auth label.** The cell is *offline-stub* (`cell.json`: `"bedrockAuth": "offline-stub"`): Xbox login validation is off. A plugin
   that depends on Xbox-verified identity cannot be tested here.
+- **Refusals, as built.** Before anything starts, each names the Geyser cell and is an `IllegalStateException` (never a skip):
+  a differential run, `-Dproofstone.repeat` above 1, a driver other than `mcpl`, a Java driver whose protocol differs from the
+  row (a bridged join: ViaProxy is never put in front of a Geyser cell), and `mods` or `datapacks` on the class (`INVALID test
+  declaration`). A bridged, loader or topology cell never holds `BEDROCK_CLIENT` whatever its agent reports, so
+  `clients.bedrock(..)` there is the `IllegalStateException` above and `@Requires(BEDROCK_CLIENT)` skips.
+- **Not held on a Geyser cell.** `SIMULATED_BEDROCK` (a Java client under a `.` name is not what a Geyser cell tests), `RESOURCE_PACKS`
+  and `DATAPACKS_VANILLA` (no run showed them behind Geyser), `PROXY` and `TOPOLOGY`. A cell is reported and bundled as
+  `geyser@2.12.1+paper@26.3`; a failing test writes `build/proofstone/<identity>/<Class.method>/` through `GeyserBundle`.
+- **Waits.** `clients.bedrock(name)` first waits on the agent until `.name` is no longer listed (the server notices a disconnect about
+  10 s late), joins, then waits until the agent lists it; after the test's close it waits until the agent forgets it, so the leak
+  detector sees the state it started with. Each wait is an `await` of at most 30 s, never a sleep. A join timeout prints
+  `PROOFSTONE BEDROCK JOIN TIMEOUT ... stage=<stage>` with the server, stand-in and driver-host logs: Bedrock join timeouts are
+  counted apart from Paper, topology and loader numbers.
 - **Bad test.** T-M9-11 adds the pinned faults (stand-in absent, and the others the card names).
