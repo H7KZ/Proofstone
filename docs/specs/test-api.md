@@ -133,7 +133,8 @@ Enchantment keys are always namespaced lowercase strings. **Levels are never cla
 
 The results are `PASS`, `FAIL`, `INVALID`, `VACUOUS`, `FLAKY`, `DISAGREE` and `SKIPPED(reason)`. Only
 `PASS` and `SKIPPED` with an allowed reason count as green. The `SKIPPED` reasons are: capability
-missing, Docker unavailable, EULA not accepted, or the cell was not selected.
+missing, Docker unavailable, EULA not accepted, the cell was not selected, or the test aborted itself with a reason
+(`TEST_ABORTED`, T-M9-08: `Assumptions.abort(reason)` in the body; the report says `SKIPPED` with that reason, as JUnit does).
 
 ## 8. The v0 contract (frozen at T-M2-99)
 

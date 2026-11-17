@@ -398,7 +398,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         }
         // Before the restore, so the bundle sees the config the test left behind; the server is still up. A flake run
         // keeps every run's bundle, so a FLAKY report has the transcripts of the runs that passed as well.
-        if (repeats > 1 || failure != null || context.getExecutionException().isPresent()) {
+        // A test that aborted itself with a reason is a skip, not a failure: no bundle (T-M9-08).
+        boolean aborted = failure == null && abortOf(context) != null;
+        if (repeats > 1 || failure != null || (context.getExecutionException().isPresent() && !aborted)) {
             try {
                 Path bundle = captureBundle(context, state);
                 if (disagreement != null) {
@@ -458,6 +460,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 }
                 failure = verdict;
             }
+        } else if (aborted && failure == null) {
+            report(context, abortedResult(reportName(context), cellId(), abortOf(context)));
         } else {
             report(context, settle(VerdictGate.single(reportName(context), context.getRequiredTestMethod(), cellId(),
                     controlRun, outcome, disagreement != null, state.conformance), failure));
@@ -510,6 +514,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                         joined[0] = connect(resource, name, ResourcePackDeclaration.forHarness(resource.pack()));
                         return joined[0];
                     });
+            // A Geyser cell's own first check, after the Java client's round trip passed: it needs the Bedrock join (T-M9-08).
+            if (geyser != null && result.passed()) {
+                result = GeyserConformance.run(cellId(), resource.geyser(), name -> joinBedrock(resource, name),
+                        serverName -> awaitListing(resource.host(), serverName, false));
+            }
             // A failed conformance keeps its client's packets for the bundles of every test it makes INVALID (T-M7-21).
             if (!result.passed() && joined[0] != null) {
                 transcripts.put(cellId(), joined[0].transcript());
@@ -542,6 +551,20 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             first.addSuppressed(next);
         }
         return first;
+    }
+
+    /** The abort the test body ended with ({@code Assumptions.abort}), or {@code null} when it ended another way. */
+    private static TestAbortedException abortOf(ExtensionContext context) {
+        return context.getExecutionException().filter(e -> e instanceof TestAbortedException)
+                .map(e -> (TestAbortedException) e).orElse(null);
+    }
+
+    /**
+     * A test that aborted itself is SKIPPED with its own message as the reason: JUnit reports it as skipped, so the report
+     * must too, never as a failure (T-M9-08). The reason is the author's, so it is never empty.
+     */
+    static CellResult abortedResult(String test, String cell, TestAbortedException abort) {
+        return new CellResult(test, cell, Verdict.SKIPPED, detail(abort), SkipReason.TEST_ABORTED, 1);
     }
 
     /** A failure's message, or its class name when it has none: a FAIL run always needs a detail. */

@@ -119,6 +119,26 @@ declared-pack check alone passes it); a resource pack pushed with a wrong sha1 i
 with `FAILED_DOWNLOAD` and the hash mismatch in the message. A failure before conformance whose message starts with `INVALID` is
 `INVALID` in the report too. Each bad test is pinned to its cell and refused on another; none is a boot or join timeout. Since T-M8-13 the crashing mod is declared through `@Proofstone(mods)` (the agent's `exampleCrashModJar`), not injected by a switch.
 
+## 1d. Geyser row (ADR-0018, T-M9-08)
+
+A Geyser cell (`geyser@2.12.1+paper@26.3`, selected with `-Dproofstone.cells`, one cell per invocation) runs the Paper cell's own
+check first (`list`, C03 with the Java client), then its **first cached check** (`GeyserConformance`): one Bedrock client joins and
+leaves, and afterwards the stand-in must have answered exactly the two expected names (`client.discovery.minecraft-services.net`,
+`authorization.franchise.minecraft-services.net`), the name guard must be clean (no Xbox or Microsoft account host, no other name
+under `minecraft-services.net`) and the server must have logged no error. A red makes every test on the cell `INVALID`.
+
+| ID | Scenario | Needs | Proves |
+|---|---|---|---|
+| C-G01 | A Bedrock client joins; the agent lists and reads the player as `.Name` | `BEDROCK_CLIENT` | the Floodgate name reaches the agent |
+| C-G02 | The Bedrock client types `/plugins`; the header and the plugin list reach it as messages | `BEDROCK_CLIENT` | a command round trip through Geyser |
+| C-G03 | The agent gives `stick x3` and a `diamond_sword`; the client's inventory shows them (`DualAssert`, id and count) | `BEDROCK_CLIENT` | the dual oracle on Bedrock |
+| C-G04 | The example plugin's `.` prefix branch (`examples/bedrock-prefix`, as C-B01) sees the real Bedrock client as Bedrock and the Java client as not | `BEDROCK_CLIENT` | a plugin's Bedrock-only branch with a real Bedrock client |
+
+Skipped with the reason in the XML (`TEST_ABORTED`), never passed: window clicks and `useBlock` (C04 to C08 equivalents), forms,
+resource packs. Each first asserts that the driver refuses the call (`UnsupportedOperationException` naming ADR-0018), so the skip
+is true. `:conformance:run` with a `geyser@` selector runs `ConformanceGeyserTest` only. A Geyser row is promoted only under
+ADR-0015 with this table and three green invocations, and a driver that is a release (ADR-0018 section 8).
+
 ## 2. Control run (nightly)
 
 - Run the user's suite with every `plugins` jar **removed**. The agent and fixtures stay.

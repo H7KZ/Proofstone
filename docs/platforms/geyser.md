@@ -353,3 +353,33 @@ on `geyser@2.12.1+paper@26.3` (`GeyserApiContract`, source set `geyserTest`, run
   `RESOURCE_PACKS` or `DATAPACKS_VANILLA`.
 - The Java client of the injected `Client` parameter joins the Paper port directly; the conformance of the cell (C03 and the leave) ran with
   it and passed. The JUnit extension's Geyser bundle is `GeyserBundle` (a directory per container, `cell.json` with `offline-stub`).
+
+## Conformance on the Geyser row (T-M9-08, 2026-11-17: what ran)
+
+`ConformanceGeyserTest` (module `conformance`) on `geyser@2.12.1+paper@26.3`, run by `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh
+./gradlew :conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3 --no-parallel --max-workers=1`. Three separate invocations after the
+scenarios were final: 3 of 3 green, each `tests=7 skipped=3 failures=0 errors=0` (4 passed, 3 skipped with their reasons). Cell boot 33 to 36 s
+(host finding), the cell's first cached check 3.6 to 4.2 s, Bedrock join timeouts: 0 of 3 (no stage to name). Three red runs came before
+them, all while writing the scenarios (each a wrong expectation of mine, kept as findings below, none replaced by a green): the `§r` prefix,
+`/list` and the `/plugins` message split.
+
+- **Every system message a Bedrock client gets starts with `§r` (a reset code); the Java client gets the plain text.** The plugin's reply
+  `bedrock-check .PsG04 online=true bedrock=true` reached the Bedrock client as `§rbedrock-check .PsG04 online=true bedrock=true`. C-G04
+  asserts the prefix as it is, with the Java client's plain text next to it.
+- **Vanilla `/list` answered the Bedrock client "Unknown or incomplete command. See below for error: list<--[HERE]"**, although the server
+  logged `.PsG02 issued server command: /list`. It was not run for a Java client, so whether this is Geyser's translation or Paper's
+  permission for a non-op is **unverified**. C-G02 uses Paper's `/plugins`, which every player may run, and does not claim `list` works.
+- **Paper's `/plugins` reaches a Bedrock client as separate messages with formatting codes:** `§r§bℹ §r§fServer Plugins (4):`, then the
+  list (`Bukkit Plugins:` and ` - floodgate, Geyser-Spigot, ProofstoneAgent, ProofstoneBedrockPrefix` in the Java client's transcript). The
+  Java client sees the same text without the codes. C-G02 awaits the header and then the plugin name, as two messages.
+- **The join message arrives as a message too:** `§r§e.PsG02 joined the game` (the Floodgate name, yellow code). A test that awaits a pattern
+  must expect messages that came before its command.
+- **The dual oracle on Bedrock compares id and count only, and both held** for `stick x3` and `diamond_sword x1` (C-G03). Names and
+  enchantments are not compared: the v1 driver reads no item data components.
+- **Names the stand-in answered itself:** exactly the two Microsoft names in all three runs; the guard was clean. The cell's own check
+  needs the Bedrock join, because Geyser asks for the two names at its first login of each server start, not at boot.
+- **Skipped, with the reason in the XML (`TEST_ABORTED`):** window clicks and `useBlock` (C04 to C08 equivalents), forms, resource packs.
+  The first and the last first show that the driver throws `UnsupportedOperationException` naming ADR-0018.
+- **A harness finding fixed on the way:** a test that aborts itself (`Assumptions.abort`) was `SKIPPED` in JUnit's XML and `FAIL` in
+  `proofstone-report.json`. It is now `SKIPPED` with the new reason `TEST_ABORTED` in both (own commit, unit test).
+- **Still unrun:** two Bedrock clients at once in one test, a Java 8 image, the JWKS document.

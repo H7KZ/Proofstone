@@ -10,5 +10,7 @@ public enum SkipReason {
     DOCKER_UNAVAILABLE,
     EULA_NOT_ACCEPTED,
     /** The run selector does not name this cell's platform or version (test-api spec section 1). */
-    CELL_NOT_SELECTED
+    CELL_NOT_SELECTED,
+    /** The test aborted itself with a reason ({@code Assumptions.abort}), for example a driver that cannot do what it needs. */
+    TEST_ABORTED
 }

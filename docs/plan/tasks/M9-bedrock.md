@@ -323,8 +323,8 @@ capability named.
 - Weaken an assertion to match Geyser's translation. Skip silently.
 
 **Acceptance.**
-- [ ] `:conformance:run -Dproofstone.cells=<geyser row>` green three invocations, skips reasoned and listed.
-- [ ] The ADR-0015 table for the row is in the PR (promotion is a separate decision).
+- [x] `:conformance:run -Dproofstone.cells=<geyser row>` green three invocations, skips reasoned and listed.
+- [x] The ADR-0015 table for the row is in the PR (promotion is a separate decision).
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=<geyser row> --no-parallel --max-workers=1`
