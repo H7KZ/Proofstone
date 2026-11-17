@@ -135,7 +135,7 @@ class GeyserHostUnitTest {
         host.configure(List.of(), null);
         GenericContainer<?> container = host.container();
         GeyserHost.prepareServer(container, new GeyserHost.ServerInputs(geyser, floodgate,
-                GeyserConfig.render("2.12.1", 1303), FloodgateKey.generate(), new byte[] {4}, "172.18.0.2"));
+                GeyserConfig.render("2.12.1", 1303), FloodgateKey.generate(), null, null, new byte[] {4}, "172.18.0.2"));
 
         List<String> copied = new ArrayList<>(container.getCopyToFileContainerPathMap().values());
         var method = GenericContainer.class.getDeclaredMethod("getCopyToTransferableContainerPathMap");
@@ -150,6 +150,57 @@ class GeyserHostUnitTest {
         assertThat(PaperHost.configCopies(java.util.Map.of()).get("/data/bukkit.yml").getBytes())
                 .asString().contains("connection-throttle: -1");
         assertThat(container.getExposedPorts()).containsExactly(PaperHost.GAME_PORT);
+    }
+
+    @Test
+    void theKeyMismatchFaultCopiesADecoyKeyAndAFloodgateConfigThatReadsItAndChangesNothingElse() throws Exception {
+        Path agent = Files.write(dir.resolve("agent.jar"), new byte[] {1});
+        Path jar = floodgateJarWithConfig();
+        PaperHost host = new PaperHost(cell().backend(), PaperHostOptions.of(agent, true));
+        host.configure(List.of(), null);
+        GenericContainer<?> container = host.container();
+        FloodgateKey key = FloodgateKey.generate();
+        FloodgateKey decoy = FloodgateKey.generate();
+        String config = FloodgateConfig.withKeyFile(jar, GeyserHost.DECOY_KEY_FILE);
+        GeyserHost.prepareServer(container, new GeyserHost.ServerInputs(jar, jar, GeyserConfig.render("2.12.1", 1303), key, decoy,
+                config, new byte[] {4}, "172.18.0.2"));
+
+        var method = GenericContainer.class.getDeclaredMethod("getCopyToTransferableContainerPathMap");
+        method.setAccessible(true);
+        assertThat(((java.util.Map<?, String>) method.invoke(container)).values())
+                .contains("/plugins/floodgate/key.pem", "/plugins/floodgate/decoy-key.pem", "/plugins/floodgate/config.yml");
+        assertThat(key.bytes()).isNotEqualTo(decoy.bytes());
+        assertThat(config).contains("key-file-name: decoy-key.pem").doesNotContain("key-file-name: key.pem")
+                .doesNotContain("${metrics.uuid}").contains("invalid-key: Please connect through the official Geyser");
+    }
+
+    @Test
+    void theFloodgateConfigOfTheFaultNeedsTheJarsOwnTemplate() throws IOException {
+        Path empty = dir.resolve("empty.jar");
+        try (java.util.zip.ZipOutputStream out = new java.util.zip.ZipOutputStream(Files.newOutputStream(empty))) {
+            out.putNextEntry(new java.util.zip.ZipEntry("plugin.yml"));
+            out.write(1);
+            out.closeEntry();
+        }
+        assertThatThrownBy(() -> FloodgateConfig.withKeyFile(empty, "x.pem")).isInstanceOf(PaperHostException.class)
+                .hasMessageContaining("config.yml");
+    }
+
+    private Path floodgateJarWithConfig() throws IOException {
+        Path jar = dir.resolve("floodgate.jar");
+        try (java.util.zip.ZipOutputStream out = new java.util.zip.ZipOutputStream(Files.newOutputStream(jar))) {
+            out.putNextEntry(new java.util.zip.ZipEntry("config.yml"));
+            out.write(("key-file-name: key.pem\ndisconnect:\n  invalid-key: Please connect through the official Geyser\nmetrics:\n"
+                    + "  enabled: true\n  uuid: ${metrics.uuid}\nconfig-version: 3\n").getBytes());
+            out.closeEntry();
+        }
+        return jar;
+    }
+
+    @Test
+    void theStandInAbsentFaultOnlyAddsTheRefuseArgumentToTheStandInsCommand() {
+        assertThat(StandInHost.command(false)).hasSize(4).doesNotContain(StandIn.REFUSE_NAMES);
+        assertThat(StandInHost.command(true)).hasSize(5).endsWith(StandIn.REFUSE_NAMES);
     }
 
     @Test

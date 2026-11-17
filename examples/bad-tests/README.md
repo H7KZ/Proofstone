@@ -30,6 +30,9 @@ expected to produce one verdict, and `metaTest` asserts it:
 - `mod/BrokenFabricModE2E` and `mod/BrokenNeoForgeModE2E`, `datapack/BrokenFunctionE2E` and `resourcepack/WrongHashPackE2E` (T-M8-11) are the M8 negative controls
   (`metaModTest`, below): a mod that crashes at load, a data pack whose function does not parse, and a resource pack pushed with
   a wrong sha1. Each is red by design with its own reason.
+- `bedrock/BedrockFaultE2E` (T-M9-11) has a body that fails if it runs, on a Geyser cell that is broken on purpose
+  (`proofstone.injectGeyserFault`): the cell's first check must be red and every test on it `INVALID` with the fault's reason and hop.
+  Two runs (`metaBedrockTest`, below).
 
 ## Boundaries
 
@@ -94,6 +97,7 @@ other cell is refused in that task's `doFirst`, before any server starts. The re
 | `metaModCrashNeoForge` | `mod/BrokenNeoForgeModE2E` | `26.3` (NeoForge) | `neoforge@26.3` only |
 | `metaModDataPack` | `datapack/BrokenFunctionE2E` | `26.3` | `paper@26.3` only |
 | `metaModPackHash` | `resourcepack/WrongHashPackE2E` | `26.3` | `paper@26.3` only |
+| `metaBedrockStandInAbsent`, `metaBedrockKeyMismatch` | `bedrock/BedrockFaultE2E` | `26.3` (Geyser) | `geyser@2.12.1+paper@26.3` only |
 
 `-Dproofstone.cells=paper@26.3` on `metaTest` is therefore refused at `metaInvalidWindow`, `metaDisagree` and `metaLeak`; on `metaLeakFabric`
 any cell but `fabric@26.3` is refused. Run
@@ -131,6 +135,30 @@ PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-t
 One fault alone, for example `:examples:bad-tests:metaTopoVelocityWrongSecret`. The faults are not in
 `scripts/release-mutation-check.sh` (maintainer decision, M7): they are run by hand and recorded in the ROADMAP M7 findings.
 `wrong-secret` on BungeeCord is refused (it has no secret), never run as a silent no-op.
+
+### Bedrock faults (T-M9-11)
+
+`metaBedrockTest` is separate from `metaTest` because each run boots a Geyser cell (Paper, Geyser, Floodgate, the stand-in and the
+driver host) after a pinned download. Each task injects one fault with `-Dproofstone.injectGeyserFault=<fault>` and expects `INVALID`
+from the cell's first check with the fault's reason and hop, and never `timed out joining`: the Bedrock client's own
+`disconnect.timeout` is not a reason, the stand-in's answers and the server's log line are.
+
+| Fault | What is broken | Reason the message must carry |
+|---|---|---|
+| `stand-in-absent` | the stand-in refuses (NXDOMAIN) the two Microsoft discovery names | `the discovery stand-in answered none of the two expected names`, `hop: server and driver host to the stand-in`, the server's `Unable to fetch discovery data from https://client.discovery.minecraft-services.net` |
+| `key-mismatch` | Floodgate reads another key file than the key Geyser takes | `Floodgate refused the data Geyser sent`, `hop: Geyser to Floodgate on the server`, Floodgate's kick `Please connect through the official Geyser` |
+
+A third fault, a Bedrock protocol the Geyser build refuses, is dropped: the driver pins one codec, so the harness cannot send another
+without a switch in `drivers/bedrock` (a production path, outside the card), and Geyser has no setting that narrows its range. The
+reason is in docs/platforms/geyser.md, "Negative controls".
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaBedrockTest --no-parallel --max-workers=1
+```
+
+One fault alone, for example `:examples:bad-tests:metaBedrockKeyMismatch`. Both are refused on any other cell
+(`scripts/bad-tests-pin-check.sh`). The faults live in the harness (`GeyserFault`, `-Dproofstone.injectGeyserFault`, forwarded by the
+build and written into `rerun.txt`); a user suite never sets the property.
 
 ### M8 negative controls (T-M8-11)
 

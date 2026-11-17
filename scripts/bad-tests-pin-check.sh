@@ -31,6 +31,14 @@ trap 'rm -f "$OUT" "$OUT2" "$OUT3"' EXIT
 ./gradlew :examples:bad-tests:metaModDataPack :examples:bad-tests:metaModPackHash "${LOADER_BUILD[@]}" \
   -Dproofstone.cells=paper@26.1.2 --continue --max-workers=1 > "$OUT3" 2>&1 || RC3=$?
 cat "$OUT3" >> "$OUT"
+# T-M9-11: the Bedrock faults are pinned to the Geyser row. Refused on a Paper row before any Docker run; the driver host jar is
+# not built for this check (-x), the refusal is in the task's own doFirst.
+RC4=0
+OUT4=$(mktemp)
+trap 'rm -f "$OUT" "$OUT2" "$OUT3" "$OUT4"' EXIT
+./gradlew :examples:bad-tests:metaBedrockStandInAbsent :examples:bad-tests:metaBedrockKeyMismatch -x :drivers:bedrock:shadowJar \
+  -Dproofstone.cells=paper@26.3 --continue --max-workers=1 > "$OUT4" 2>&1 || RC4=$?
+cat "$OUT4" >> "$OUT"
 
 FAILS=0
 check() { # label, expected text
@@ -61,6 +69,11 @@ check "metaLeakFabric refused" "metaLeakFabric cannot run on -Dproofstone.cells=
 check "metaModDataPack refused" "metaModDataPack cannot run on -Dproofstone.cells=paper@26.1.2"
 check "metaModPackHash refused" "metaModPackHash cannot run on -Dproofstone.cells=paper@26.1.2"
 check "pack refusal names its cell" "Supported cells: paper@26.3"
+# T-M9-11: the Bedrock faults are pinned to the Geyser row.
+[[ "$RC4" -ne 0 ]] || { echo "FAIL a mismatched selector on a Bedrock fault exited 0"; FAILS=$((FAILS + 1)); }
+check "metaBedrockStandInAbsent refused" "metaBedrockStandInAbsent cannot run on -Dproofstone.cells=paper@26.3"
+check "metaBedrockKeyMismatch refused" "metaBedrockKeyMismatch cannot run on -Dproofstone.cells=paper@26.3"
+check "bedrock refusal names its cell" "Supported cells: geyser@2.12.1+paper@26.3"
 
 # No test ran: a server would have produced a test report or a container log before the refusal text is final.
 if grep -qE "PROOFSTONE|Testcontainers|itzg/minecraft-server" "$OUT"; then

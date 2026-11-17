@@ -395,9 +395,17 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 **Don't.**
 - Treat a join timeout caused by the fault as the expected verdict: assert the specific reason.
 
+**Result (T-M9-11).** Two faults are in `metaBedrockTest`: `stand-in-absent` (`INVALID`, `the discovery stand-in answered none of the two
+expected names`, `hop: server and driver host to the stand-in`, the server's `Unable to fetch discovery data` line) and `key-mismatch`
+(`INVALID`, `Floodgate refused the data Geyser sent`, `hop: Geyser to Floodgate on the server`, `Please connect through the official Geyser`).
+**Dropped: a Bedrock protocol the Geyser build refuses.** The driver pins one codec and Geyser has no setting to narrow its range, so the fault
+needs a switch in `drivers/bedrock` (a production path, outside this card's modules); nothing was faked, and Geyser's refusal text stays
+unverified (geyser.md, "Negative controls"). The key mismatch was not reachable through Geyser's key setting (on one server Geyser takes
+Floodgate's key); it is made on Floodgate's side.
+
 **Acceptance.**
-- [ ] Each fault gives its verdict with the expected message; the clean runs are green, three invocations.
-- [ ] `metaTest`, `metaTopologyTest` and `metaModTest` still give every expected verdict (one run each, XML read).
+- [x] Each fault gives its verdict with the expected message; the clean runs are green, three invocations.
+- [x] `metaTest`, `metaTopologyTest` and `metaModTest` still give every expected verdict (one run each, XML read).
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaBedrockTest --no-parallel --max-workers=1`

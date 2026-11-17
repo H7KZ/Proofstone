@@ -60,6 +60,17 @@ class StandInTest {
     }
 
     @Test
+    void theRefuseFaultReplyIsANameErrorWithNoAnswerAndTheQuerysId() {
+        byte[] query = query(StandIn.DISCOVERY_NAME, 1);
+        byte[] reply = StandIn.nxdomain(query);
+        assertThat(reply[0]).isEqualTo(query[0]);
+        assertThat(reply[2] & 0x80).as("a response").isNotZero();
+        assertThat(reply[3] & 0x0f).as("NXDOMAIN").isEqualTo(3);
+        assertThat(reply[7]).as("no answer").isZero();
+        assertThat(StandIn.queryName(reply)).isEqualTo(StandIn.DISCOVERY_NAME);
+    }
+
+    @Test
     void anAaaaQueryForAMicrosoftNameGetsAnEmptySuccessAndIsNeverForwarded() {
         byte[] query = query(StandIn.DISCOVERY_NAME, 28);
         byte[] reply = StandIn.answer(query, StandIn.queryName(query), 28, OWN);
