@@ -56,6 +56,9 @@ session turns it into `T-Mx-NN` cards in the standard format, in a file `Mx-<nam
   - Script API beta churn.
 
 ## M10: Ecosystem
+
+**Refined into cards on 2026-11-17 by T-M9-99: see [M10-ecosystem.md](M10-ecosystem.md) (awaiting maintainer approval).** It adds
+the Bedrock work M9 left (BDS, a release driver pin, the refused-protocol fault, review findings). The text below is the original epic.
 - A community pack template repository, plus a "write a platform pack" guide with a conformance checklist.
 - More platforms: Paper forks, Sponge, PocketMine-MP, Nukkit, Endstone and Gate.
 - An optional TypeScript test front end for Bedrock add-on developers, over the same wire protocol.

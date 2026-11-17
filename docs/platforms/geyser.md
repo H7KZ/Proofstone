@@ -275,11 +275,14 @@ Testcontainers check is `bash scripts/dockerlock.sh bash scripts/spike/geyser/tc
 ## Unverified
 
 - Anything older than Bedrock protocol 2225, and Geyser's refusal text for a protocol it does not support (T-M9-11 could not make the fault without a driver switch, see "Negative controls").
-- Geyser and Floodgate on different servers, a Geyser cell with a proxy, Geyser through a Testcontainers cell.
+- Geyser and Floodgate on different servers, a Geyser cell with a proxy. (Geyser through a Testcontainers cell ran since: T-M9-06,
+  below.)
 - Whether the stub's TLS trust store change affects Paper or Geyser outside the two stub names (all other TLS worked in the cold
   start, which ran with the trust store).
-- Two Node clients at once (their Floodgate UUID is the same), inventory and window packets through a Bedrock driver, chat
-  and command round trips: no scenario was run.
+- Two Node clients at once (their Floodgate UUID is the same); two Cloudburst clients at once (T-M10-07); window packets through
+  a Bedrock driver. (Chat, command and inventory-read round trips ran since: T-M9-08, C-G02 to C-G04, below.)
+- The *offline-stub* label is in `cell.json` and the boot line only; the JUnit display name and `proofstone-report.json` do not
+  carry it (T-M9-99 review finding, T-M10-06).
 - A start with the stub in place and the image's `papermc.io` name also blocked (needs the Paper jar copied in as `CUSTOM`).
 
 ## Geyser cell host (T-M9-06, 2026-11-17: what ran)

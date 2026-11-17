@@ -4,6 +4,11 @@ Written 2026-11-15 from the M8 review (T-M8-99, ROADMAP "M8 review"). Gaps the r
 ADR-0017 and the merged code, plus two findings from runs. **Not approved; none started.** They do not block the M9 spikes
 (T-M9-01, T-M9-02), but T-M8-13 is needed before the M8 exit item "a mod under test through the public API" can be ticked.
 
+**Status (T-M9-99, 2026-11-17).** Every card in this file is merged except T-M8-26 (declined, below): T-M8-13 #133, 14 #132, 15 #134
+and #147, 16 #136, 17 #140, 18 #141, 19 #142, 20 #135, 21 #137, 22 #138, 23 #139, 24 #144, 25 #146, 27 #148, 28 #149 (decision), 29
+#150 (decisions). The sentence above ("none started") is historical. The acceptance boxes of 14, 15, 20, 21 and 22 were not ticked by
+their PRs; their evidence is in the PRs and ROADMAP "M8 findings". No open item in this file blocks M10.
+
 IDs continue [M8-mods.md](M8-mods.md) (T-M8-01 to T-M8-12, T-M8-99), so the next free ID was T-M8-13.
 
 **Flake rule.** The **Flake rule** in [M8-mods.md](M8-mods.md) applies unchanged: one cell per invocation under
