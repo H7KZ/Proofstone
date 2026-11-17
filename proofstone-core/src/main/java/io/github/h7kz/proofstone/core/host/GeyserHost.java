@@ -116,7 +116,7 @@ public final class GeyserHost implements AutoCloseable {
             running.refreshHealth();
 
             driverHost = BedrockDriverHost.start(image, network, dns, options.driverHostJar(), trustStore,
-                    options.auxTimeout());
+                    options.auxTimeout(), fault);
             BedrockDriverHost runningDriver = driverHost;
             started.add(new NamedTail("driver host", runningDriver::logTail));
         } catch (RuntimeException e) {

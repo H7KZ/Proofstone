@@ -30,12 +30,12 @@ final class BedrockDriverHost implements AutoCloseable {
     private final LogBuffer logs = new LogBuffer();
     private final String token = AgentClient.randomToken();
 
-    private BedrockDriverHost(String image, Network network, String dns, Path jar, byte[] trustStore) {
+    private BedrockDriverHost(String image, Network network, String dns, Path jar, byte[] trustStore, GeyserFault fault) {
         this.container = new GenericContainer<>(DockerImageName.parse(image))
                 .waitingFor(new NoPortWait())
                 .withNetwork(network)
                 .withNetworkAliases(ALIAS)
-                .withEnv("JAVA_TOOL_OPTIONS", CellTrust.javaToolOptions(GeyserHost.TRUST_PATH))
+                .withEnv("JAVA_TOOL_OPTIONS", CellTrust.javaToolOptions(GeyserHost.TRUST_PATH) + fault.driverHostOptions())
                 .withCreateContainerCmdModifier(cmd -> {
                     cmd.withEntrypoint("java");
                     cmd.getHostConfig().withDns(dns);
@@ -48,8 +48,8 @@ final class BedrockDriverHost implements AutoCloseable {
 
     /** Starts it and waits for its ready line and a health answer; on a failure it stops and throws. */
     static BedrockDriverHost start(String image, Network network, String dns, Path jar, byte[] trustStore,
-            Duration timeout) {
-        BedrockDriverHost host = new BedrockDriverHost(image, network, dns, jar, trustStore);
+            Duration timeout, GeyserFault fault) {
+        BedrockDriverHost host = new BedrockDriverHost(image, network, dns, jar, trustStore, fault);
         try {
             host.container.start();
             Await.until("the driver host's ready line", () -> {

@@ -67,6 +67,8 @@ final class GeyserConformance {
 
     /** Floodgate's default text for data it cannot decrypt (its {@code disconnect.invalid-key}); the client gets it as the kick. */
     static final String FLOODGATE_INVALID_KEY = "Please connect through the official Geyser";
+    /** Geyser's own disconnect texts for a Bedrock protocol outside its range (geyser.md, "Negative controls", T-M10-05). */
+    private static final String[] PROTOCOL_REFUSALS = {"Outdated Geyser proxy!", "Outdated Bedrock client!"};
     private static final String DISCOVERY_FAILURE = "Unable to fetch discovery data";
 
     /**
@@ -93,6 +95,12 @@ final class GeyserConformance {
             serverLog.lines().filter(line -> line.contains(DISCOVERY_FAILURE)).findFirst()
                     .ifPresent(line -> reason.append("; the server logged: ").append(line.strip()));
             return reason.append("; the join said: ").append(joinMessage).toString();
+        }
+        for (String refusal : PROTOCOL_REFUSALS) {
+            if (joinMessage.contains(refusal)) {
+                return "Geyser refused the Bedrock protocol the driver sent: its range does not include it; "
+                        + "hop: driver host to Geyser on the server (protocol number); the join said: " + joinMessage;
+            }
         }
         if (joinMessage.contains(FLOODGATE_INVALID_KEY)) {
             return "Floodgate refused the data Geyser sent: the key Geyser encrypts with does not match the key Floodgate holds; "

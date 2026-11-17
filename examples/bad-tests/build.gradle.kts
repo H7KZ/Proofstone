@@ -269,8 +269,8 @@ val modRuns = listOf(
     ),
 )
 // T-M9-11: the Bedrock negative controls on the Geyser row, each with the reason it must give. Not part of metaTest: a Geyser cell is
-// four containers and a pinned download. `metaBedrockTest`. A refused Bedrock protocol is not here: it could not be made without a
-// switch in the driver (docs/platforms/geyser.md, "Negative controls").
+// four containers and a pinned download. `metaBedrockTest`. The refused protocol (T-M10-05) needs the driver host's default-off
+// -Dproofstone.bedrock.protocolOverride, which only that fault sets (docs/platforms/geyser.md, "Negative controls").
 val geyserCell = "geyser@2.12.1${plus}paper@26.3"
 fun bedrockFault(task: String, fault: String, vararg reason: String) = BadRun(
     task, "**/bedrock/**", "INVALID", mapOf("proofstone.injectGeyserFault" to fault), pin = geyserCell,
@@ -287,6 +287,12 @@ val bedrockRuns = listOf(
         "metaBedrockKeyMismatch", "key-mismatch",
         "cell conformance failed", "Floodgate refused the data Geyser sent", "hop: Geyser to Floodgate on the server",
         "Please connect through the official Geyser",
+    ),
+    bedrockFault(
+        "metaBedrockRefusedProtocol", "refused-protocol",
+        "cell conformance failed", "Geyser refused the Bedrock protocol the driver sent",
+        "hop: driver host to Geyser on the server (protocol number)",
+        "Outdated Geyser proxy! This server supports the following Bedrock versions", "at join stage NETWORK_SETTINGS",
     ),
 )
 val allRuns = badRuns + topologyRuns + modRuns + bedrockRuns
@@ -530,10 +536,10 @@ registerMeta(
 registerMeta("metaModFabricTest", "metaModTest for the Fabric cell only.", modRuns.filter { it.pin == fabricCell }, "proofstone-mod-fabric")
 registerMeta("metaModNeoForgeTest", "metaModTest for the NeoForge cell only.", modRuns.filter { it.pin == "neoforge@26.3" }, "proofstone-mod-neoforge")
 registerMeta("metaModPaperTest", "metaModTest for the Paper cell only (data pack and resource pack).", modRuns.filter { it.pin == paperCell }, "proofstone-mod-paper")
-// T-M9-11: the Bedrock faults (stand-in absent, Floodgate key mismatch), each INVALID with its own reason and hop. A fault that passes is red here.
+// T-M9-11: the Bedrock faults (stand-in absent, Floodgate key mismatch, refused protocol), each INVALID with its own reason and hop. A fault that passes is red here.
 registerMeta(
     "metaBedrockTest",
-    "Asserts that a Geyser cell with its discovery stand-in absent, and one whose Floodgate key does not match, are each INVALID " +
+    "Asserts that a Geyser cell with its discovery stand-in absent, one whose Floodgate key does not match, and a driver that sends a protocol Geyser refuses are each INVALID " +
         "with their own reason and hop, never a join timeout. Boots a Geyser cell per run; needs Docker and the EULA.",
     bedrockRuns, "proofstone-bedrock",
 )
