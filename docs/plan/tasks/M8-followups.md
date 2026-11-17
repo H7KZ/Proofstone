@@ -547,7 +547,7 @@ not the remap is not diagnosed (Docker Desktop and WSL2 scheduling of the networ
 - specs: specs/self-tests.md
 - test-first: yes
 
-**Not approved; not started.** Proposal from T-M8-24 for the maintainer.
+**Approved as option A only** (the maintainer's decision, T-M8-24 follow-up). Option B is not approved; it is proposed as T-M8-26 below, not started.
 
 **Goal.** A slow but healthy Paper boot is judged by the harness's one documented budget (`bootTimeout` 3 minutes for `Done (`, then
 the agent's 30 s), and a boot that really stalls fails with that message and the log tail, not as `Container startup failed` at
@@ -572,10 +572,40 @@ a pinned artefact and an image or `versions.yml` change (ADR-0008, 0013). Bigger
 - Change the `bootTimeout` or `agentTimeout` values.
 
 **Acceptance.**
-- [ ] The unit case is red before and green after.
-- [ ] The loaded arm: 10 invocations, XML read, 0 `Container startup failed`; any other red is a finding.
-- [ ] Idle `:conformance:smoke` and `:conformance:run -Dproofstone.cells=paper@1.21.11`, three invocations each, green.
-- [ ] The `integrationTest` and `topologyTest` of every module touched; `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The unit case is red before and green after. (`BootClockTest`, 3 cases: 3 of 3 failed before, 3 of 3 pass after.)
+- [x] The loaded arm: 10 invocations, XML read, 0 `Container startup failed`; any other red is a finding. (10 of 10 green, 0 reds,
+  ROADMAP "M8 findings" T-M8-25.)
+- [x] Idle `:conformance:smoke` and `:conformance:run -Dproofstone.cells=paper@1.21.11`, three invocations each, green.
+- [x] The `integrationTest` and `topologyTest` of every module touched (`proofstone-core`); `bash scripts/gates.sh --max-workers=1`
+  passes.
 
 **Verify.**
 `./gradlew :proofstone-core:test`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :proofstone-core:topologyTest --tests '*TopologyFaultIT*' --no-parallel --max-workers=1`
+
+### T-M8-26 · Cut the per-boot Paper jar fetch and patch work (proposed, not approved)
+- tier: opus
+- depends: T-M8-25
+- modules: proofstone-core, docs/platforms
+- adrs: 0005, 0008, 0013
+- specs: specs/versions-yml.md
+- test-first: yes
+
+**Not approved; not started.** Option B of T-M8-25, recorded as a proposal only. For the maintainer to decide.
+
+**Goal.** Cut the per-boot work that fetches and patches the server (T-M8-24: the Paper jar download and Paperclip's Mojang jar
+download and patch, about 14 s of a 23 s idle bind and 48 s of 57 s loaded), so a boot is shorter and less sensitive to host load.
+
+**Do.**
+- Decide first whether a pre-patched jar is acceptable: it needs a pinned artefact and an image or `versions.yml` change, and it
+  changes what a cell runs.
+- If yes, copy the pinned pre-patched jar in (no bind mount) and verify its sha256 as `PaperHost` does today.
+
+**Don't.**
+- Start before the maintainer approves; change a digest or a pin without the ADR-0008 and ADR-0013 steps.
+
+**Acceptance.**
+- [ ] The maintainer's decision recorded.
+- [ ] If approved: boot time before and after on the same host, idle and loaded, from logs.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`

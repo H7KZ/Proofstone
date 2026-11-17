@@ -1118,6 +1118,26 @@ Paper and topology numbers.
     2 skipped: CD01, CD02 `DATAPACKS_VANILLA`, by design). A run cannot prove the fix (the race did not show in 32 runs before it);
     the unit cases do.
 
+- **T-M8-25 one boot clock (2026-11-17).** `PaperHost`, `ProxyHost` and `ViaProxyHost` no longer use Testcontainers' default 60 s
+  port wait; they share `LoaderHost`'s no-op wait (now one package-private class, `NoPortWait`). `awaitDone`, `awaitAgent`,
+  `awaitListening` and the proxy's ready-line await are unchanged, with their own budgets. Option B (cut the per-boot jar fetch)
+  was not approved and is proposed as T-M8-26 only. Local, one invocation at a time under `scripts/dockerlock.sh`, EULA in the
+  command environment only, evidence copied aside (`C:\pw\t825-ev`, not committed).
+  - **Test first:** `BootClockTest` (3 cases, no Docker, reads the configured wait strategy of each container): 3 of 3 failed
+    before the change, 3 of 3 pass after; `:proofstone-core:test` green.
+  - **Loaded arm** (20 busy `while :; do :; done` loops on the host, `paper@1.21.11` bridged, `:conformance:run`, 10 invocations):
+    **10 of 10 green**, 0 `Container startup failed` (checked in the 10 logs and the XML), 170 tests, 0 failures, 0 errors, 70
+    skipped (7 per run, each with a reason: missing capability `SIMULATED_BEDROCK`, `FOLIA_REGIONS`, `RESOURCE_PACKS` on a bridged
+    Paper cell). T-M8-24's same arm was 7 green, 3 red. Runs took 16.4 to 25.7 minutes (T-M8-24: 16.5 to 17.4).
+  - **Idle:** `:conformance:smoke` 3 of 3 green (8 tests each, 0 skipped); `:conformance:run -Dproofstone.cells=paper@1.21.11` 3 of 3
+    green (17 tests each, 7 skipped by capability as above); `:proofstone-core:integrationTest` green (4 tests);
+    `topologyTest --tests '*TopologyFaultIT*'` green (2 tests); the whole `topologyTest` green (14 tests, 7 suites). Every suite
+    `failures="0" errors="0"`. `bash scripts/gates.sh --max-workers=1` passed.
+  - **Not shown:** that a boot over 60 s was green live. The server logs were not kept, so the loaded boot times of this arm were not
+    measured (the unit case shows the strategy, the 0 of 10 reds shows the outcome); and the "a boot over 180 s fails as `timed out
+    waiting for server log shows "Done ("`" case was not forced on a real server. The load here was not compared against the
+    before-fix code in the same session.
+
 - **T-M8-24 intermittent `Container startup failed` (2026-11-16).** Diagnosis only, no code change; mechanism named, fix proposed as
   T-M8-25 (not approved). Local, one invocation at a time under `scripts/dockerlock.sh`, EULA in the command environment only,
   evidence copied aside (`C:\pw\t824-ev`, not committed).

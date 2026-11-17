@@ -28,12 +28,14 @@ public final class ViaProxyHost implements AutoCloseable {
     private final GenericContainer<?> container;
     private final LogBuffer logs = new LogBuffer();
 
-    private ViaProxyHost(Cell cell, ImagePin image, Network network) {
+    ViaProxyHost(Cell cell, ImagePin image, Network network) {
         this.cell = cell;
         this.container = new GenericContainer<>(DockerImageName.parse(image.reference()))
                 .withNetwork(network)
                 .withNetworkAliases("viaproxy")
                 .withExposedPorts(PROXY_PORT)
+                // Readiness is awaitListening: the default 60 s port wait would be a second clock (T-M8-25).
+                .waitingFor(new NoPortWait())
                 // The image's entrypoint reads a config file; the cli mode takes flags instead, so nothing is copied.
                 .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint("java", "-jar", "/app/ViaProxy.jar"))
                 .withCommand("cli",
@@ -42,6 +44,11 @@ public final class ViaProxyHost implements AutoCloseable {
                         "--target-version", cell.mc(),
                         "--auth-method", "NONE")
                 .withLogConsumer(frame -> logs.append(frame.getUtf8String()));
+    }
+
+    /** The container, for a test that reads how it is configured (T-M8-25). */
+    GenericContainer<?> container() {
+        return container;
     }
 
     /**
