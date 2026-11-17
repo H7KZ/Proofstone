@@ -30,5 +30,13 @@ public enum Platform {
     FABRIC,
 
     /** NeoForge, a mod loader (docs/platforms/neoforge.md). Plans loader cells like FABRIC (ADR-0017). */
-    NEOFORGE
+    NEOFORGE,
+
+    /**
+     * Geyser and Floodgate on Paper (docs/platforms/geyser.md, ADR-0018). A {@link Matrix} naming it plans Geyser cells
+     * from the {@code geyser} rows of {@code versions.yml}, for example {@code geyser@2.12.1+paper@26.3}. Geyser rows are
+     * experimental, so such a cell runs only when {@code -Dproofstone.cells} names it. The cell has Xbox authentication
+     * disabled (offline-stub): a plugin that needs a verified Bedrock identity cannot be tested on it.
+     */
+    GEYSER
 }
