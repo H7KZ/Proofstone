@@ -55,6 +55,19 @@ dependencyResolutionManagement {
             }
             filter { includeGroup("com.mojang.piston-data") }
         }
+        // CloudburstMC Protocol for the Bedrock driver (T-M9-05, ADR-0018 section 2). No release of the protocol groups exists on
+        // Maven Central or the OpenCollab releases repository (checked 2026-11-17), only timestamped snapshot builds, so exactly these
+        // groups come from the snapshots repository; every other Cloudburst group (fastutil, nbt) is a Central release. The versions
+        // in the catalog are exact timestamped builds, each artefact checked by sha256 in drivers/bedrock (checkCloudburstPins).
+        exclusiveContent {
+            forRepository { maven("https://repo.opencollab.dev/maven-snapshots/") }
+            // Only timestamped builds: MCProtocolLib's release of org.cloudburstmc.math:immutable:2.0 still comes from Central.
+            filter {
+                for (group in listOf("org.cloudburstmc.protocol", "org.cloudburstmc.netty", "org.cloudburstmc.math")) {
+                    includeVersionByRegex(group, ".*", ".*-[0-9]{8}[.][0-9]{6}-[0-9]{1,4}")
+                }
+            }
+        }
         // MCProtocolLib is published only here (ADR-0004).
         maven("https://repo.opencollab.dev/main/")
         // Spigot API 1.8.8 is published only as a snapshot here (T-M1-03). The version is a frozen timestamped build.
@@ -69,6 +82,7 @@ include(
     "proofstone-core",
     "proofstone-protocol",
     "conformance",
+    "drivers:bedrock",
     "drivers:mcpl",
     "drivers:mineflayer-ref",
     "platforms:agent-core",

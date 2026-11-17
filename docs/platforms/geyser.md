@@ -216,6 +216,10 @@ agent cannot tell a Floodgate player from a Java player except by the name prefi
 - **The Cloudburst client without item definitions logs two decode errors** (`ItemComponentPacket`: `Tried to read 2088 bytes
   but maximum is 1536`; `CreativeContentPacket`: `itemDefinitions is null`). The join still reached the spawn status, but a driver
   that reads inventory needs an item definition registry and a raised limit; not run.
+  T-M9-05 read the library: the "bytes" in that text is a list size. The client initialiser starts with the default encoding settings
+  (`maxListSize` 1536), below the 2088 item definitions the server sends; the library's `EncodingSettings.CLIENT` allows 10240, and the driver host sets it
+  per session and installs the start game packet's item definitions on the codec helper. Proven on the codec in a unit test (2088 entries fail with
+  the default, decode with the client settings); not yet against a real Geyser (T-M9-06).
 - **The client's `disconnect()` is not noticed at once:** the server logs `Bedrock client timed out` about 10 s after the client
   exits, so a script waits for the agent to list nobody before the next join.
 - **Paper throttles reconnects** (`connection-throttle: 4000`): a second Java join within 4 s was `Connection throttled! Please

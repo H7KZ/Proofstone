@@ -9,6 +9,14 @@ assertj = "3.27.7"
 archunit = "1.5.1"
 mcprotocollib = "26.3-2"
 shadow = "9.6.1"
+# Bedrock driver (T-M9-05, ADR-0018 section 2). No release of CloudburstMC Protocol carries codec Bedrock_v2225 or exists at all
+# (Maven Central and repo.opencollab.dev/maven-releases have no org.cloudburstmc.protocol, checked 2026-11-17), so these are exact
+# timestamped snapshot builds, frozen like the Spigot API above. They live in the OpenCollab snapshots repository (settings.gradle.kts).
+# The three Beta15 modules are one build; the netty and math modules are what that build's POM names, pinned to the builds the
+# repository served on 2026-11-17 instead of the floating snapshot the POM says. drivers/bedrock checks every resolved jar's sha256.
+cloudburst-protocol = "3.0.0.Beta15-20261116.161745-6"
+cloudburst-netty = "1.1.0.CR4-20261103.123906-3"
+cloudburst-math = "2.0-20220327.162752-1"
 json-schema-validator = "1.5.9"
 # Proofstone's own version, published to mavenLocal only (T-M6-04). Examples depend on it; nothing is published remotely.
 proofstone = "0.1.0-local"
@@ -90,6 +98,12 @@ assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 mcprotocollib-protocol = { module = "org.geysermc.mcprotocollib:protocol", version.ref = "mcprotocollib" }
+cloudburst-bedrock-connection = { module = "org.cloudburstmc.protocol:bedrock-connection", version.ref = "cloudburst-protocol" }
+cloudburst-bedrock-codec = { module = "org.cloudburstmc.protocol:bedrock-codec", version.ref = "cloudburst-protocol" }
+cloudburst-protocol-common = { module = "org.cloudburstmc.protocol:common", version.ref = "cloudburst-protocol" }
+cloudburst-netty-raknet = { module = "org.cloudburstmc.netty:netty-transport-raknet", version.ref = "cloudburst-netty" }
+cloudburst-netty-common = { module = "org.cloudburstmc.netty:netty-transport-common", version.ref = "cloudburst-netty" }
+cloudburst-math-immutable = { module = "org.cloudburstmc.math:immutable", version.ref = "cloudburst-math" }
 spigot-api = { module = "org.spigotmc:spigot-api", version.ref = "spigot" }
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
 adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
