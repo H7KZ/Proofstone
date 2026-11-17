@@ -165,5 +165,9 @@ One fault alone, for example `:examples:bad-tests:metaModDataPack`. Notes:
 - `LoaderLeakE2E` sets 7: since T-M8-27 `LoaderHost` sets the deterministic-world rules as `PaperHost` does, so a Fabric cell holds
   `random_tick_speed` 0 before the test and any non-zero value is a leak. Before it the cell held the vanilla default 3, and setting 3
   changed nothing (the first run of T-M8-18 passed the test for that reason); 7 stays, it is a leak on both baselines.
-- Not in `scripts/release-mutation-check.sh` (T-M8-11 asks the maintainer; the PR holds the measured runtime). The pin refusals
-  are checked by `scripts/bad-tests-pin-check.sh`.
+- Not in `scripts/release-mutation-check.sh`, and not addable as a list entry (T-M8-28): that script's set is `EXAMPLES=(...)`, a
+  list of example projects, and each is judged by one baseline run plus one run per `bugs:` toggle in its own
+  `config.yml`, all on one `--cell` (default `paper@26.3`). A bad test is a different mechanism (it checks a harness detector, it
+  has no toggle and no baseline, and `metaLeakFabric` is pinned to `fabric@26.3` and refused on any other cell), so joining it
+  would mean new code in the check, not a list entry. Left to the maintainer; by hand, as the topology faults and M8-11 controls.
+  The pin refusals are checked by `scripts/bad-tests-pin-check.sh`.
