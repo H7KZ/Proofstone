@@ -259,4 +259,42 @@ class CapabilityModelTest {
                 CapabilityModel.cellCapabilities("paper", List.of("command", "mods")), "paper@26.3"))
                 .hasValue("missing capability MODS on cell paper@26.3");
     }
+
+    @Test
+    void aGeyserCellHoldsBedrockClientOnlyWhenTheAgentReportsFloodgate() {
+        List<String> reported = List.of("command", "events", "bedrock-prefix", "floodgate");
+        assertThat(CapabilityModel.geyserCapabilities(reported)).contains(Capability.BEDROCK_CLIENT, Capability.CONSOLE,
+                Capability.BUKKIT_EVENTS);
+        // Floodgate failed to load, so the agent does not report it: the pack declaring it is not enough.
+        assertThat(CapabilityModel.geyserCapabilities(List.of("command", "events"))).doesNotContain(
+                Capability.BEDROCK_CLIENT);
+    }
+
+    @Test
+    void aGeyserCellIsOneServerAndNeverClaimsTheSimulationOrAProxy() {
+        List<String> reported = List.of("command", "events", "bedrock-prefix", "floodgate", "proxy", "datapacks",
+                "resource-pack-status");
+        assertThat(CapabilityModel.geyserCapabilities(reported)).doesNotContain(Capability.SIMULATED_BEDROCK,
+                Capability.PROXY, Capability.TOPOLOGY, Capability.RESOURCE_PACKS, Capability.DATAPACKS_VANILLA);
+    }
+
+    @Test
+    void noOtherCellHoldsBedrockClientWhateverTheAgentReports() {
+        List<String> reported = List.of("command", "events", "floodgate", "proxy", "mods", "datapacks");
+        for (String platform : List.of("paper", "folia", "purpur", "spigot", "fabric", "neoforge", "velocity", "bungeecord")) {
+            assertThat(CapabilityModel.cellCapabilities(platform, reported)).as(platform)
+                    .doesNotContain(Capability.BEDROCK_CLIENT);
+            assertThat(CapabilityModel.cellCapabilities(platform, reported, true)).as(platform + " bridged")
+                    .doesNotContain(Capability.BEDROCK_CLIENT);
+        }
+        assertThat(CapabilityModel.topologyCapabilities("paper", reported, "velocity", reported))
+                .doesNotContain(Capability.BEDROCK_CLIENT);
+    }
+
+    @Test
+    void aPaperCellSkipsABedrockTestNamingTheCapabilityAndTheCell() {
+        assertThat(CapabilityModel.missingReason(Set.of(Capability.BEDROCK_CLIENT),
+                CapabilityModel.cellCapabilities("paper", List.of("command", "events", "floodgate")), "paper@26.3"))
+                .hasValue("missing capability BEDROCK_CLIENT on cell paper@26.3");
+    }
 }

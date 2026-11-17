@@ -41,7 +41,9 @@ final class CapabilityModel {
             // check and C03 use. Not BUKKIT_EVENTS: its token "events" is a Bukkit listener, and a loader's probe is not.
             // MODS: GET /v1/mods lists what /mods loaded; a declared mod ran on both rows (T-M8-13, docs/platforms).
             "fabric", Set.of(Capability.CONSOLE, Capability.DATAPACKS_VANILLA, Capability.MODS),
-            "neoforge", Set.of(Capability.CONSOLE, Capability.MODS));
+            "neoforge", Set.of(Capability.CONSOLE, Capability.MODS),
+            // The Geyser pack declares only the Bedrock client (ADR-0018 section 5); it adds to the backend Paper pack's.
+            "geyser", Set.of(Capability.BEDROCK_CLIENT));
 
     /**
      * The agent's report token that confirms a declared capability (docs/platforms/paper.md and folia.md, Gotchas). A
@@ -60,7 +62,9 @@ final class CapabilityModel {
             // The Bukkit agent's event probe can read PlayerResourcePackStatusEvent (ADR-0017 section 8).
             Capability.RESOURCE_PACKS, "resource-pack-status",
             // GET /v1/mods (protocol 1.3): only the Fabric and NeoForge agents serve it (ADR-0017 section 8).
-            Capability.MODS, "mods");
+            Capability.MODS, "mods",
+            // The Bukkit agent reports it when the floodgate plugin is enabled (ADR-0018 section 5).
+            Capability.BEDROCK_CLIENT, "floodgate");
 
     private CapabilityModel() {
     }
@@ -133,6 +137,27 @@ final class CapabilityModel {
         held.addAll(cellCapabilities(backendPlatform, backendReported, false));
         held.removeAll(NOT_HELD_TOPOLOGY);
         held.addAll(cellCapabilities(proxy, proxyReported, false));
+        return Collections.unmodifiableSet(held);
+    }
+
+    /**
+     * Not held on a Geyser cell until a Geyser run shows them working: a prefixed Java login is the simulation of the
+     * Bedrock tier, which a real Bedrock cell must never claim (ADR-0018 section 9), and a pack push or a data pack has not
+     * been run behind Geyser (fail closed, like {@link #NOT_HELD_BRIDGED}).
+     */
+    private static final Set<Capability> NOT_HELD_GEYSER = Set.of(Capability.SIMULATED_BEDROCK,
+            Capability.RESOURCE_PACKS, Capability.DATAPACKS_VANILLA);
+
+    /**
+     * The capabilities a Geyser cell holds (ADR-0018 section 5): the Paper pack's that its agent reports, less those not
+     * verified behind Geyser, plus {@link Capability#BEDROCK_CLIENT} when the Geyser pack declares it and the agent reports
+     * {@code floodgate}. Never {@code PROXY} or {@code TOPOLOGY}: a Geyser cell is one server.
+     */
+    static Set<Capability> geyserCapabilities(List<String> agentReported) {
+        EnumSet<Capability> held = EnumSet.noneOf(Capability.class);
+        held.addAll(cellCapabilities("paper", agentReported, false));
+        held.removeAll(NOT_HELD_GEYSER);
+        held.addAll(cellCapabilities("geyser", agentReported, false));
         return Collections.unmodifiableSet(held);
     }
 

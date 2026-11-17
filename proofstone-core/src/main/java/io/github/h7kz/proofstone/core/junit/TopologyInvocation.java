@@ -175,7 +175,7 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
         state.capabilities = CapabilityModel.topologyCapabilities(cell.backend().platform(),
                 topology.backend(state.defaultBackend()).health().capabilities(), cell.proxy().id(),
                 topology.proxy().health().capabilities());
-        state.clients = new TestClients(name -> connect(topology, name));
+        state.clients = new TestClients(name -> connect(topology, name), cell.identity(), state.capabilities, null);
         Optional<String> missing = CapabilityModel.missingReason(CapabilityModel.required(
                 context.getRequiredTestClass(), context.getRequiredTestMethod()), state.capabilities, cell.identity());
         if (missing.isPresent()) {

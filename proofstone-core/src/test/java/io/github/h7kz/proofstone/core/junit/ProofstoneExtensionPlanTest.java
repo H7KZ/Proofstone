@@ -5,12 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.h7kz.proofstone.api.Matrix;
 import io.github.h7kz.proofstone.api.Platform;
+import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.CellPlanner;
 import io.github.h7kz.proofstone.core.cell.CellSelector;
+import io.github.h7kz.proofstone.core.cell.GeyserCell;
 import io.github.h7kz.proofstone.core.cell.LoaderCell;
 import io.github.h7kz.proofstone.core.cell.Scope;
 import io.github.h7kz.proofstone.core.cell.VersionFamilies;
+import io.github.h7kz.proofstone.core.versions.VersionsCatalog;
 import io.github.h7kz.proofstone.core.versions.VersionsFixture;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -256,5 +259,90 @@ class ProofstoneExtensionPlanTest {
     void aPaperClassIsNotRunOnALoaderSelectionAndFailsByName() {
         assertThatThrownBy(() -> planLoader(Declared.class, "fabric@26.3"))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining(Declared.class.getName());
+    }
+
+    @Matrix(platform = Platform.GEYSER, versions = {"latest"})
+    static class OnGeyser {
+    }
+
+    @Matrix(platform = Platform.GEYSER, versions = {"latest"})
+    @Matrix(platform = Platform.PAPER, versions = {"26.3"})
+    static class OnGeyserAndPaper {
+    }
+
+    @Matrix(platform = Platform.GEYSER, versions = {"latest"})
+    @Proofstone(mods = "build/libs/m.jar")
+    static class GeyserWithMods {
+    }
+
+    @Matrix(platform = Platform.GEYSER, versions = {"latest"})
+    @Proofstone(datapacks = "build/libs/d.zip")
+    static class GeyserWithDatapacks {
+    }
+
+    /** The repository's own versions.yml: its geyser row is the one the real-server runs use (ADR-0018 section 8). */
+    private ProofstoneExtension.Plan planGeyser(Class<?> type, String selector) {
+        Path root = Path.of(System.getProperty("proofstone.repoRoot"));
+        VersionsCatalog catalog = VersionsCatalog.load(root.resolve("versions.yml"),
+                root.resolve("proofstone-protocol/schemas/versions.schema.json"));
+        return ProofstoneExtension.plan(type, matrices(type), CellSelector.parse(selector, "-Dtest"),
+                new CellPlanner(catalog), Scope.PR, VersionFamilies.none());
+    }
+
+    @Test
+    void aGeyserMatrixPlansTheNamedGeyserCellAndNothingElse() {
+        ProofstoneExtension.Plan plan = planGeyser(OnGeyser.class, "geyser@2.12.1+paper@26.3");
+
+        assertThat(plan.geysers()).extracting(GeyserCell::identity).containsExactly("geyser@2.12.1+paper@26.3");
+        assertThat(plan.cells()).isEmpty();
+        assertThat(plan.topologies()).isEmpty();
+        assertThat(plan.loaders()).isEmpty();
+        // The lifecycle runs the Paper backend, whose own platform stays paper.
+        assertThat(plan.geysers().get(0).backend().platform()).isEqualTo("paper");
+    }
+
+    @Test
+    void aGeyserRowIsExperimentalSoWithoutASelectorTheClassFailsByNameInsteadOfRunningIt() {
+        // The row is experimental (ADR-0018 section 9): a default run never boots it, and says so on stderr.
+        assertThatThrownBy(() -> planGeyser(OnGeyser.class, null)).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(OnGeyser.class.getName()).hasMessageContaining("has no cell to run");
+    }
+
+    @Test
+    void aPlainPaperSelectionOfAClassThatAlsoDeclaresGeyserPlansOnlyThePaperCell() {
+        ProofstoneExtension.Plan plan = planGeyser(OnGeyserAndPaper.class, "paper@26.3");
+
+        assertThat(plan.cells()).extracting(Cell::platform).containsExactly("paper");
+        assertThat(plan.geysers()).isEmpty();
+    }
+
+    @Test
+    void aGeyserEntryNoMatrixPlansIsNotPlannedByAPaperOnlyClass() {
+        assertThatThrownBy(() -> planGeyser(Declared.class, "geyser@2.12.1+paper@26.3"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining(Declared.class.getName());
+    }
+
+    @Test
+    void modsAndDatapacksOnAGeyserClassAreAnInvalidDeclarationNamingTheClass() {
+        assertThatThrownBy(() -> planGeyser(GeyserWithMods.class, "geyser@2.12.1+paper@26.3"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("INVALID test declaration")
+                .hasMessageContaining(GeyserWithMods.class.getName()).hasMessageContaining("mods");
+        assertThatThrownBy(() -> planGeyser(GeyserWithDatapacks.class, "geyser@2.12.1+paper@26.3"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("INVALID test declaration")
+                .hasMessageContaining("datapacks");
+    }
+
+    @Test
+    void aDifferentialRunTheFlakeDetectorAnotherDriverAndABridgedJoinAreRefusedNamingTheCell() {
+        String cell = "geyser@2.12.1+paper@26.3";
+        assertThat(GeyserRun.refusal(cell, false, 1, "mcpl", "mcpl", false)).isEmpty();
+        assertThat(GeyserRun.refusal(cell, true, 1, "mcpl", "mcpl", false)).hasValueSatisfying(
+                reason -> assertThat(reason).contains(cell).contains("differential").contains("ADR-0018"));
+        assertThat(GeyserRun.refusal(cell, false, 3, "mcpl", "mcpl", false)).hasValueSatisfying(
+                reason -> assertThat(reason).contains(cell).contains("flake detector"));
+        assertThat(GeyserRun.refusal(cell, false, 1, "mineflayer-ref", "mcpl", false)).hasValueSatisfying(
+                reason -> assertThat(reason).contains(cell).contains("mineflayer-ref"));
+        assertThat(GeyserRun.refusal(cell, false, 1, "mcpl", "mcpl", true)).hasValueSatisfying(
+                reason -> assertThat(reason).contains(cell).contains("ViaProxy").contains("ADR-0018 section 3"));
     }
 }
