@@ -19,7 +19,7 @@ conformance, golden files and the verdict engine exist.
 | **M7** | Proxies (exit met locally, reviewed in T-M7-99) | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | 15 ([M7-proxies.md](tasks/M7-proxies.md)) | 1 / 9 / 5 | 3 (was 2; honest range 1.5 to 3). Actual: about 4 days of agent wall clock for PRs #98 to #112 (see the M7 review) |
 | **M8** | Mods and data (exit partly met, reviewed in T-M8-99; follow-ups T-M8-13 to 18 open) | Fabric and NeoForge agents (newest native row only; Stonecutter out, ADR-0017), plus data pack and resource-pack tests. | 13 ([M8-mods.md](tasks/M8-mods.md)) + 6 follow-ups ([M8-followups.md](tasks/M8-followups.md)) | 1 / 6 / 6 | 4 (range 2 to 5). Actual: about 17 h of agent wall clock for PRs #115 to #126 (see the M8 review) |
 | **M9** | Bedrock (exit met for the Geyser scope, reviewed in T-M9-99; BDS deferred to M10 by the maintainer) | Spikes (offline Bedrock through Geyser; a BDS script agent). Then a Bedrock driver, the Geyser topology and, if feasible, the BDS Script-API agent. | 13 (refined 2026-11-15, [M9-bedrock.md](tasks/M9-bedrock.md), approved 2026-11-17 without BDS; 3 moved to M10) | 0 / 6 / 7 | 4 after the spikes (range 2 to 6). Actual: about 8 h of agent wall clock for PRs #151 to #159 (see the M9 review) |
-| **M10** | Ecosystem (refined in T-M9-99, not approved) | Bedrock leftovers (BDS, a release driver pin, the refused-protocol fault, review findings), then community pack template, a TS front end (optional), more forks, a docs site, Sponge, PocketMine and others. | 19 ([M10-ecosystem.md](tasks/M10-ecosystem.md)) | 1 / 12 / 6 | Part A about 1 week (3 days to 3 weeks); Part B ongoing |
+| **M10** | Ecosystem (refined in T-M9-99, approved 2026-11-17; reviewed in T-M10-99: Part A partly met, Part B not started) | Bedrock leftovers (BDS, a release driver pin, the refused-protocol fault, review findings), then community pack template, a TS front end (optional), more forks, a docs site, Sponge, PocketMine and others. | 19 ([M10-ecosystem.md](tasks/M10-ecosystem.md)) | 1 / 12 / 6 | Part A about 1 week (3 days to 3 weeks); Part B ongoing. Actual so far: about 1 h of agent wall clock for 5 Part A cards, PRs #161 to #165 (see the M10 review) |
 
 **Cards M0–M6:** 66 in total. 40 are Haiku cards (61%), 24 Sonnet and 2 Opus (T-M3-02 moved from Haiku to Sonnet at T-M2-99).
 
@@ -1566,6 +1566,130 @@ review). **Not approved; nothing started.**
 - `M9-bedrock.md`: header now states the merged cards and the move of 02, 09, 10 to M10. Boxes of 04, 05, 06 unticked by their PRs,
   left as they are; this review is their evidence.
 - No `M9-followups.md` is written: every M9 leftover is an M10 Part A card.
+
+## M10 review (T-M10-99)
+
+Date 2026-11-17/18. Ran on `card/T-M10-99-m10-review` from origin/main `a2f9cb3` (M10 merges #161 to #165; M10 diff `d5ebd52..a2f9cb3`,
+29 files, +764 / -46). Local runs only, Windows 11, Docker Desktop 29.9.3, JDK 21 for Gradle, JDK 26 for Maven. One Docker run at a time
+under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the command environment only, one cell per invocation. Every
+run's XML (and the report, bundles and `build/release`, where written) copied aside before the next run (local only, not committed).
+Every XML read; no red seen, none retried. Judged from code and XML, not from PR text. The mutation check ran first, on the clean tree
+(`dirty=false`); this review's doc edits started after the last Docker run.
+
+**Maintainer decisions this session (2026-11-17), stated as given:**
+- The M10 plan (`M10-ecosystem.md`) is **approved**.
+- **BDS spike (T-M10-01) deferred.** Desk research behind it, unverified by any run: BDS has no supported offline (unsigned) remote
+  join; NetherNet is BDS's default transport from 26.50 while our driver speaks RakNet only; the Mojang EULA was not read for this use;
+  Mojang publishes no sha256 for the BDS zip. Recommendation recorded: only if the maintainer approves a source, use the `itzg` BDS image
+  with `DIRECT_DOWNLOAD_URL` and our own sha256, `transport=raknet`, BDS 26.50 or older. Endstone is a follow-up question after that.
+- **The refused-protocol switch is approved** (T-M10-05, merged #163).
+- **T-M10-04 stays blocked:** no release of `org.cloudburstmc.protocol` on Maven Central or `repo.opencollab.dev/maven-releases` on
+  2026-11-17. Re-checked by this review on 2026-11-18: `bedrock-connection/maven-metadata.xml` is 404 on both. T-M10-09 waits on 04.
+- **Part B (cards 11 to 18) needs maintainer decisions and is not started.** (On the card list, 14 and 18 carry no "Needs maintainer
+  decision" mark; the maintainer held them with the rest.)
+
+**Verdict: M10 exit criterion NOT MET.** Part A is **partly met**: the Geyser row's M9 findings 05, 06, 07, 08 and 10 are closed with
+runs, the row stays `experimental` with its blocking reason named, but BDS has no verdict (deferred, nothing ran) and 04 and 09 are open
+(blocked upstream). Part B is **not met**: no spike ran, no template or docs-site decision. M10 stays open ("ongoing" in this file).
+Nothing was published or tagged.
+
+### Evidence from this run
+
+| Run | Result |
+|---|---|
+| `bash scripts/release-mutation-check.sh` (no flag), clean worktree at `a2f9cb3` | **PASS**: head `a2f9cb38b6d5`, `dirty=false`, cell paper@26.3, killed 4 of 4 (Gradle and Maven: `double-output`, `accept-any-right`), both baselines PASS, no allowed-missing. 242 s. Local only; publishes nothing |
+| `bash scripts/gates.sh --max-workers=1` at `a2f9cb3` | `gates: OK` (check, docsCheck, release-gate test, `bad-tests-pin-check: 0 failed`, renovate unchanged); 134 s. Re-run on this branch after the doc edits: see the PR |
+| `:conformance:smoke`, no selector: paper, folia, purpur, spigot @26.3 | Green: tests 8, skipped 0, failures 0, errors 0; 264 s; 0 `moved too quickly!` |
+| `:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3`, 3 separate invocations | 3 of 3 green, each `ConformanceGeyserTest` tests 8, skipped 3, failures 0, errors 0 (cell check, C-G01 to C-G05; skipped with reasons in the XML: window clicks and `useBlock`, forms, resource packs, each `TestAbortedException` naming ADR-0018 section 2); suites 50.8 to 52.2 s; invocations 55 to 60 s; cell boot 34.0, 32.3, 33.1 s. Every test case's display name is `geyser@2.12.1+paper@26.3 (offline-stub)`; `proofstone-report.json` has `"bedrockAuth": "offline-stub"` on all 8 rows |
+| `:conformance:run -Dproofstone.cells=fabric@26.3` (newest native loader row), 3 separate invocations | 3 of 3 green, each tests 11, skipped 0, failures 0, errors 0 (C01 to C08, CD01, CD02, loader window test); 188 to 197 s |
+| `:conformance:run -Dproofstone.cells=velocity@4.3.1+paper@26.3` (newest topology row), 3 separate invocations | 3 of 3 green, each tests 2, skipped 0, failures 0, errors 0 (T00, P01 to P05); 70 to 76 s |
+| `:examples:bad-tests:metaTest` | BUILD SUCCESSFUL, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED)"; failures and 2 skips by design, errors 0; 4 m 33 s |
+| `:examples:bad-tests:metaTopologyTest` | BUILD SUCCESSFUL, 7 of 7 `INVALID`, each `tests=1 failures=1` by design, errors 0, 0 `timed out joining`; 6 m 57 s |
+| `:examples:bad-tests:metaModTest` | BUILD SUCCESSFUL, "(INVALID, LEAK, INVALID, INVALID, FAIL)"; 5 suites `tests=1 failures=1` by design, errors 0; 1 m 56 s |
+| `:examples:bad-tests:metaBedrockTest` | BUILD SUCCESSFUL, "every bad test produced its expected verdict (INVALID, INVALID, INVALID)"; 3 suites `tests=1 skipped=0 failures=1 errors=0` by design. `key-mismatch`: `Floodgate refused the data Geyser sent`, hop Geyser to Floodgate. `refused-protocol`: `Geyser refused the Bedrock protocol the driver sent`, hop driver host to Geyser (protocol number). `stand-in-absent`: `the discovery stand-in answered none of the two expected names`. None a join timeout. Cell boot 32.5, 31.5, 32.0 s; 2 m 14 s |
+| `:proofstone-core:geyserTest -Dproofstone.cells=geyser@2.12.1+paper@26.3` (host ITs, workflow.md verifier rule; T-M10-07 added `GeyserTwoClientsIT`) | Green: `GeyserApiContract` 2, `GeyserCellIT` 1, `GeyserTwoClientsIT` 1, skipped 0, failures 0, errors 0; 120 s |
+| Upstream check for T-M10-04 (2026-11-18) | `org/cloudburstmc/protocol/bedrock-connection/maven-metadata.xml`: 404 on `repo1.maven.org` and on `repo.opencollab.dev/maven-releases` |
+| Containers of ours left running after the runs | none (checked after every run; only the Testcontainers `ryuk` reaper, which exits by itself) |
+
+Not re-run: the example `examples/geyser-bedrock` (no M10 change touches it) and T-M10-10's four `/list` transcripts (a temporary
+scenario, not kept; geyser.md is the only record).
+
+### Bedrock flake numbers (counted apart from Paper, topology and loader, M10 Flake rule)
+
+Bedrock joins per invocation: `:conformance:run` on the Geyser row 9 (the cell check, `PsG01` to `PsG04`, `PsG05A` and `PsG05B`, and
+`PsG05`, `PsG06` in the skip tests, which join, show the refusal and abort); `metaBedrockTest` 3 (one per fault, each faulted by design).
+
+| Source | Invocations | Bedrock joins | Join timeouts (stage) | Log-guard reds | Other reds |
+|---|---|---|---|---|---|
+| T-M10-05 `metaBedrockTest` (secondary, geyser.md) | 3 counted + 2 probes | 9 counted (faulted by design) | 0 | 0 | 0 unexpected; the 2 probes were `INVALID` as expected |
+| T-M10-06 conformance (secondary, geyser.md) | 3 | not recorded | 0 | 0 | 0 |
+| T-M10-07 conformance and IT (secondary, geyser.md) | 3 conformance + IT | not recorded | 0 | 0 | 1 dev red (`/say` needs op; C-G05 moved to `/me`), kept as a gotcha |
+| **T-M10-99 (this run)** | **3 conformance + 1 meta + 1 `geyserTest`** | 30 + the host ITs' joins (27 clean, 3 faulted by design) | **0** | **0** | **0** |
+
+- **Bedrock join timeouts: 0** (`timed out joining` and `JoinTimeoutException` appear in no run output of this review).
+- **Bedrock log-guard reds: 0.** Since T-M10-06 the guard covers the server (`ErrorLogGuard.Patterns.GEYSER`) and, per test and at
+  cell close, the stand-in and the driver host (`AuxLogGuard`, both allowlists empty). Limit: no real run has shown the new guard fire
+  on a real line; its red path is proven by unit tests (`AuxLogGuardTest`, `CellGuardsTest`) and by the stand-in-absent fault only for
+  the expected `STUB refused` exemption.
+- **Paper, topology and loader numbers (apart):** smoke 8 of 8, `fabric@26.3` 3 of 3, `velocity@4.3.1+paper@26.3` 3 of 3, the three
+  Java meta tasks once each with every expected verdict; 0 single-server or topology join timeouts, 0 container-start failures, 0
+  `moved too quickly!`. No bridged `paper@1.8.8` and no NeoForge conformance run (not in this review's set).
+
+### Exit criterion, re-scored
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| A1 | Either a BDS cell passes the conformance subset its protocol subset allows (T-M10-03), or the BDS spike says "not feasible" with evidence and the BDS row in `platforms.md` says so | **NOT MET (deferred by the maintainer)** | Nothing about BDS ran: no image, zip, code or spike output in the repository. The research above is desk work, not a spike verdict, so "not feasible" is not claimed. `platforms.md` BDS row now says "deferred, nothing ran" with the research marked unverified (this PR). T-M10-02 and 03 wait on 01 |
+| A2 | The Geyser row has the M9 review's open items closed or re-carded (T-M10-04 to T-M10-09) | **PARTLY MET: 05, 06, 07, 08, 10 closed; 04 and 09 open** | **05** (#163): `metaBedrockTest` here gives `INVALID` for all three faults, the refused one quoting Geyser's refusal and the hop; `ProtocolOverride` reads the switch only with `injectGeyserFault=refused-protocol` beside it (code read, `ProtocolOverrideTest`); T-M10-05 recorded 3 of 3. **06** (#162): display name and `bedrockAuth` seen in this run's XML and report; `CellInvocation` calls `requireGuardsClean` after every test and `GeyserHost.close` once more (code read); 0 guard reds here. **07** (#164): C-G05 green 3 of 3 here, `GeyserTwoClientsIT` green once. **08** (#161): ADR-0018 "Amendments, 2026-11-17" lists the M9 deviations (doc read; gates green). **10** (#165): geyser.md states the cause (Paper's op-only `minecraft.command.list`) with the four transcripts; one run, not re-run here. **04**: blocked, no upstream release (re-checked 2026-11-18). **09**: waits on 04. Both are carded and open, not closed |
+| A3 | The Geyser row is promoted or stays `experimental` with the blocking reason named | **MET (stays experimental)** | `versions.yml` row `status: experimental`. `platforms.md` names the reason: the driver is on a pinned snapshot (ADR-0018 section 8), no release exists (T-M10-04). Promotion is the maintainer's call (ADR-0015) and is not prepared (T-M10-09 waits) |
+| B1 | Each platform spike has a verdict; a platform that gets cards gets its own milestone file | **NOT MET (not started)** | T-M10-11 to 14 have not run; no `sponge.md`, `gate.md`, `nukkit.md`; no new milestone file |
+| B2 | The pack template and the docs site are built or declined by the maintainer | **NOT MET (no decision)** | T-M10-15 and 16 wait on the maintainer (template location, hosting). T-M10-17 (TS front end, Fabric gametest) and 18 (Paper forks) not started either |
+| F | Every real-server acceptance has the Flake-rule evidence | **MET for the merged cards 05, 06, 07; 10 is a one-run diagnosis** | 05: `metaBedrockTest` 3 of 3 (card) and once here. 06 and 07: Geyser conformance 3 of 3 in each card and 3 of 3 here; `metaBedrockTest` once here; the IT once here. 10's acceptance is a written cause from one run (no green to repeat). No red was replaced by a green |
+
+### Code review (diff `d5ebd52..a2f9cb3`, 29 files, +764 / -46)
+
+- **Weakened tests: none.** Changed test files gain lines only, except `GeyserFaultTest`, whose removed assertion ("`refused-protocol`
+  is not a fault") became false by design in T-M10-05 and is replaced by tests for the new fault. `ConformanceGeyserTest` gained C-G05;
+  C-G01 to C-G04 and the skip tests are untouched.
+- **The test-only switch** (`-Dproofstone.bedrock.protocolOverride`) is read once in `HostSession.join`, refused without the fault
+  property beside it, refused when equal to the codec's own number, and set only by `GeyserFault.driverHostOptions()` through the
+  driver host's `JAVA_TOOL_OPTIONS`. As approved; it is production code that exists for a test (ADR-0018 amendment records the kind).
+- **Report change:** `bedrockAuth` is added only when the cell id starts with `geyser@`; other rows are unchanged (`ReportWriterTest`).
+  The cell id used by the selector is unchanged.
+- **No new runtime dependency, no catalog or `versions.yml` change, no API change** (`api-baseline.txt` untouched), **no workflow**
+  (`.github/` holds only templates), **no secret** (no PEM block, no 32-hex-digit string in the added lines), **no sleep** in harness or
+  test code.
+- **Diff size** (non-test, non-doc lines): #162 167, #163 104, #164 2; all under the 400-line guide.
+- **Stale docs fixed here:** `robustness.md` R5 and R13 still said two clients and the refused protocol were unrun; `M10-ecosystem.md`
+  still said "Not approved; no card is started".
+
+### What is NOT verified
+
+- BDS in any form, including the desk research's four claims (offline join, NetherNet default, EULA, sha256).
+- That the stand-in and driver-host log guard fires on a real unexpected line (unit tests only; allowlists empty).
+- Any Bedrock protocol other than 2225 joining; the refused-protocol control uses 9999 (a 2224 probe was also refused, geyser.md).
+- Window clicks, `useBlock`, forms, resource packs for a Bedrock client (driver v1); Geyser on other servers, rows or behind a proxy.
+- That no packet reaches Microsoft: only names looked up are checked (egress open by design, ADR-0018 section 4).
+- Every Part B platform.
+
+### Decisions needed from the maintainer
+
+1. **Accept this review's scoring:** M10 open; Part A partly met (05 to 08 and 10 done; BDS deferred; 04 and 09 blocked upstream).
+2. **BDS (T-M10-01):** approve a source (recommendation above) or keep BDS out. If kept out for good, say so, and T-M10-01 to 03 can be
+   closed with the BDS row saying "not pursued" (not "not feasible": nothing ran).
+3. **Part B:** which of 11 to 18 to start, and the decisions they name (images, server jars, Gate binary, template location, hosting).
+4. **T-M10-04:** keep waiting, or ask upstream for a release. Do not promote the Geyser row before it (ADR-0018 section 8).
+5. Unchanged from M7 to M9: Central namespace verification, Disenchantment CI, publish, tag, 0.1.0 go/no-go (maintainer only).
+
+### Re-estimate
+
+Part A so far: first M10 commit 2026-11-17 22:24, last merge (#165) 23:16 (+01:00), **about 1 hour of agent wall clock** for 5 cards
+(the small Geyser cards the M9 review predicted), plus this review (about 45 minutes of Docker runs).
+
+| M | Estimate | Reason |
+|---|---|---|
+| M10 Part A (rest) | **about 3 days if BDS is approved (range 2 days to 3 weeks); otherwise 0 plus waiting on upstream** | BDS spike 2 days, host and conformance only if feasible (the range). 04 and 09 are about half a day once a release exists, and cannot be scheduled |
+| M10 Part B | **ongoing** | Unchanged: spikes of 2 days each after their decisions; template and guide about 1 week; docs site after a hosting decision |
 
 ## M7 follow-up findings (T-M7-15)
 
