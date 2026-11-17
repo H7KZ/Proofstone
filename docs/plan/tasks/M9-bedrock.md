@@ -2,7 +2,10 @@
 
 Refined from the M9 epic in [M7-M10-epics.md](M7-M10-epics.md) by the M8 review (T-M8-99, 2026-11-15). **Approved 2026-11-17 by the maintainer's delegate (the maintainer said "decide"), with two limits:** (1) no BDS: T-M9-02 and the BDS cards 09 and 10 are deferred to M10, because a BDS image or zip is a Mojang binary with its own EULA and no redistribution, and a new image needs an explicit maintainer yes; (2) no new image or workflow in M9 at all. Geyser and Floodgate are plugin jars pinned by sha256 on the existing Paper image path. If a card turns out to need an image, it stops and says so.
 **ADR-0018 (Accepted 2026-11-17, T-M9-03) decides the design:** the cards below follow it. In short: the driver is CloudburstMC Protocol in Java, run as a *driver host* container on the cell network (pinned image, no UDP port published); the Microsoft discovery names are answered by a harness-owned *discovery stand-in* container of the same pinned image; the route is Floodgate with `validate-bedrock-login: false` and `transport: both` (a labelled *offline-stub* cell, not production auth); the identity is `geyser@2.12.1+paper@26.3` (`versions.yml` schema 5, key `geyser`); the API adds `Platform.GEYSER`, `Capability.BEDROCK_CLIENT` and a default `Clients.bedrock(name)`.
-No card here is started. The maintainer approves the plan, or changes it, before any card is picked up. The two spikes decide
+**Status (T-M9-99, 2026-11-17).** Cards 01, 03 to 08, 11 and 12 are merged (PRs #151 to #159); 02, 09 and 10 moved to M10 as
+T-M10-01 to T-M10-03 ([M10-ecosystem.md](M10-ecosystem.md)). The acceptance boxes of 04, 05 and 06 were left unticked by their PRs;
+the review's runs and ROADMAP "M9 review" are the evidence, the boxes are left as they are. The exit criterion is re-scored there.
+(Original text, kept:) No card here is started. The maintainer approves the plan, or changes it, before any card is picked up. The two spikes decide
 the rest: if a spike says "not feasible", the cards that depend on it are dropped and the plan is re-made, never built on a
 guess.
 

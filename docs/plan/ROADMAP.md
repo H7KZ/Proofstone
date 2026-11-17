@@ -18,12 +18,12 @@ conformance, golden files and the verdict engine exist.
 | **M6** | Dogfood and 0.1 release | Disenchantment's full suite runs on Proofstone in its CI. Maven and Gradle example projects work. Published to Maven Central and GHCR. GitHub Action published. Licence decided. Mutation check passes. | 9 | 6 / 2 / 1 | 2 |
 | **M7** | Proxies (exit met locally, reviewed in T-M7-99) | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | 15 ([M7-proxies.md](tasks/M7-proxies.md)) | 1 / 9 / 5 | 3 (was 2; honest range 1.5 to 3). Actual: about 4 days of agent wall clock for PRs #98 to #112 (see the M7 review) |
 | **M8** | Mods and data (exit partly met, reviewed in T-M8-99; follow-ups T-M8-13 to 18 open) | Fabric and NeoForge agents (newest native row only; Stonecutter out, ADR-0017), plus data pack and resource-pack tests. | 13 ([M8-mods.md](tasks/M8-mods.md)) + 6 follow-ups ([M8-followups.md](tasks/M8-followups.md)) | 1 / 6 / 6 | 4 (range 2 to 5). Actual: about 17 h of agent wall clock for PRs #115 to #126 (see the M8 review) |
-| **M9** | Bedrock | Spikes (offline Bedrock through Geyser; a BDS script agent). Then a Bedrock driver, the Geyser topology and, if feasible, the BDS Script-API agent. | 13 (refined 2026-11-15, [M9-bedrock.md](tasks/M9-bedrock.md), approved 2026-11-17 without BDS) | 0 / 6 / 7 | 4 after the spikes (range 2 to 6) |
-| **M10** | Ecosystem | Community pack template, a TS front end (optional), more forks, a docs site, Sponge, PocketMine and others. | epic | refine | ongoing |
+| **M9** | Bedrock (exit met for the Geyser scope, reviewed in T-M9-99; BDS deferred to M10 by the maintainer) | Spikes (offline Bedrock through Geyser; a BDS script agent). Then a Bedrock driver, the Geyser topology and, if feasible, the BDS Script-API agent. | 13 (refined 2026-11-15, [M9-bedrock.md](tasks/M9-bedrock.md), approved 2026-11-17 without BDS; 3 moved to M10) | 0 / 6 / 7 | 4 after the spikes (range 2 to 6). Actual: about 8 h of agent wall clock for PRs #151 to #159 (see the M9 review) |
+| **M10** | Ecosystem (refined in T-M9-99, not approved) | Bedrock leftovers (BDS, a release driver pin, the refused-protocol fault, review findings), then community pack template, a TS front end (optional), more forks, a docs site, Sponge, PocketMine and others. | 19 ([M10-ecosystem.md](tasks/M10-ecosystem.md)) | 1 / 12 / 6 | Part A about 1 week (3 days to 3 weeks); Part B ongoing |
 
 **Cards M0–M6:** 66 in total. 40 are Haiku cards (61%), 24 Sonnet and 2 Opus (T-M3-02 moved from Haiku to Sonnet at T-M2-99).
 
-**Total to v0.1 (M0–M6): about 16 focused weeks** (sum of the estimates, M5 run after M4; was 15.5 before the M5 review, see the M5 review). Full ecosystem (M7–M10): about 10+ more weeks (M7 done; M8 to M10 about 8+ weeks, see the M7 review; after M8, about 4 to 6 weeks plus ongoing M10, see the M8 review).
+**Total to v0.1 (M0–M6): about 16 focused weeks** (sum of the estimates, M5 run after M4; was 15.5 before the M5 review, see the M5 review). Full ecosystem (M7–M10): about 10+ more weeks (M7 done; M8 to M10 about 8+ weeks, see the M7 review; after M8, about 4 to 6 weeks plus ongoing M10, see the M8 review; after M9, about 1 week of Bedrock leftovers plus ongoing M10, see the M9 review).
 These are estimates, and they will be re-estimated at the end of each milestone (card `T-Mx-99`).
 
 ## Milestone rules
@@ -1395,6 +1395,177 @@ rule, 13 cards (T-M9-01 Geyser spike and T-M9-02 BDS spike first, ADR-0018, sche
 host and conformance only if the BDS spike says feasible, negative controls, docs, review). **Not approved; nothing started.**
 
 **Progress note (T-M9-12, 2026-11-17).** The Bedrock user guide ([bedrock.md](../user/bedrock.md)), the `examples/geyser-bedrock` example (3 of 3 green on `geyser@2.12.1+paper@26.3`) and the `docs/platforms.md` status (experimental, driver on a snapshot) are done. Cards 01, 03 to 08, 11 and 12 have their work in; BDS cards 02, 09 and 10 are M10. T-M9-99 (the review) is next and decides the exit criterion; this note scores nothing.
+
+## M9 review (T-M9-99)
+
+Date 2026-11-17. Ran on `card/T-M9-99-m9-review` from origin/main `be123b2` (PRs #151 to #159 merged; M9 diff `3effa9d..be123b2`,
+136 files, +10934 / -152). Local runs only, Windows 11, Docker Desktop 29.9.3, JDK 21 for Gradle, JDK 26 for Maven. One Docker run at a
+time under `scripts/dockerlock.sh`, `--no-parallel --max-workers=1`, EULA in the command environment only. Every run's XML (and the
+report and bundles, where written) copied aside before the next run (local only, not committed). Every XML read; no red retried.
+Judged from code and XML, not from PR text. The mutation check ran first, on the clean tree (`dirty=false`); this review's doc edits
+started after it ended.
+
+**Verdict: M9 exit criterion MET for the Geyser scope**, with BDS out by the maintainer's limit (deferred to M10, not scored) and with
+gaps stated below, none rounded up. Met from runs: a real Bedrock client joins `geyser@2.12.1+paper@26.3` offline through Geyser and
+Floodgate (stand-in answered exactly the two discovery names, name guard clean), the agent sees `.Name`, the public API declares it
+additively, C-G01 to C-G04 pass with the three skips reasoned, and the two reachable faults are loud `INVALID`s. **Not met and not
+claimed:** the third fault of the original list (a Bedrock protocol the Geyser build refuses) was dropped by T-M9-11, so Geyser's
+refusal is unverified; the *offline-stub* label is in `cell.json` and the boot line but not in the report or the JUnit display name
+that ADR-0018 section 4 names; the driver is on a pinned **snapshot**, so the row cannot be promoted. The row stays `experimental`.
+Nothing was published or tagged.
+
+### Evidence from this run
+
+| Run | Result |
+|---|---|
+| `bash scripts/release-mutation-check.sh` (no flag), clean worktree at `be123b2` | **PASS**: head `be123b2`, `dirty=false`, cell paper@26.3, killed 4 of 4 (Gradle and Maven: `double-output`, `accept-any-right`), no allowed-missing; both baselines PASS. 240 s. Script header read first: local only, writes `build/release/mutation-check.env`, publishes nothing (only `release-maven.sh --publish` reads the file, not run) |
+| `:conformance:smoke`, no selector: paper, folia, purpur, spigot @26.3 | Green: tests 8, skipped 0, failures 0, errors 0 (C01, C02 on four cells); 253 s. The `PSConf moved too quickly!` family the M8 review saw (3 of 8 red) did not appear |
+| `:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3`, 3 separate invocations | 3 of 3 green, each `ConformanceGeyserTest` tests 7, skipped 3, failures 0, errors 0 (C-G01 to C-G04 passed; skipped with reasons in the XML: window clicks and `useBlock`, forms, resource packs, each `TestAbortedException` naming ADR-0018 section 2); 47 to 51 s per suite; cell boot 34.7, 31.0, 31.5 s (`PROOFSTONE GEYSER BOOT ... (offline-stub)`) |
+| `:conformance:run -Dproofstone.cells=fabric@26.3` (newest native loader row), 3 separate invocations | 3 of 3 green, each tests 11, skipped 0, failures 0, errors 0 (C01 to C08, C-D01, C-D02, loader window test); 180 to 195 s |
+| `:conformance:run -Dproofstone.cells=velocity@4.3.1+paper@26.3` (newest topology row), 3 separate invocations | 3 of 3 green, each tests 2, skipped 0, failures 0, errors 0 (T00, P01 to P05); 69 to 73 s |
+| `:examples:bad-tests:metaTest` | BUILD SUCCESSFUL, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED)"; tests 17, failures 9 and skipped 2 by design, errors 0; 4 m 24 s |
+| `:examples:bad-tests:metaTopologyTest` (7 faults, one cell each) | BUILD SUCCESSFUL, 7 of 7 `INVALID`, each `tests=1 failures=1` by design, errors 0, 0 `timed out joining`; 6 m 51 s |
+| `:examples:bad-tests:metaModTest` | BUILD SUCCESSFUL, "every bad test produced its expected verdict (INVALID, LEAK, INVALID, INVALID, FAIL)"; 5 suites, each `tests=1 failures=1` by design, skipped 0, errors 0 (NeoForge and Fabric crash mods, Fabric leak, broken data pack, wrong-hash pack); 1 m 56 s |
+| `:examples:bad-tests:metaBedrockTest` | BUILD SUCCESSFUL, "every bad test produced its expected verdict (INVALID, INVALID)"; 2 suites `tests=1 skipped=0 failures=1 errors=0` by design. `key-mismatch`: `cell conformance failed: Floodgate refused the data Geyser sent`, `hop: Geyser to Floodgate on the server`, quoting `Please connect through the official Geyser`. `stand-in-absent`: `the discovery stand-in answered none of the two expected names`, `hop: server and driver host to the stand-in`, quoting `Unable to fetch discovery data`. Neither a join timeout. Cell boot 30.6, 30.9 s; 1 m 31 s. The bundle (`server/`, `stand-in/`, `driver-host/`, `cell.json` with `offline-stub`) has no `plugins/floodgate` path and no 32-hex-digit or padded 22-char base64 string |
+| `:examples:geyser-bedrock:geyserExample -Dproofstone.cells=geyser@2.12.1+paper@26.3` | Green: `BedrockBranchE2E` tests 2, skipped 0, failures 0, errors 0; cell boot 31.2 s; 47 s |
+| `:proofstone-core:geyserTest -Dproofstone.cells=geyser@2.12.1+paper@26.3` (the T-M9-06/07 host ITs, workflow.md verifier rule) | Green: `GeyserCellIT` 1 and `GeyserApiContract` 2, skipped 0, failures 0, errors 0; cell boot 30.8 s; 81 s |
+| Containers of ours left running after the runs | none (checked after every run) |
+
+### Bedrock flake numbers (counted apart from Paper, topology and loader, M9 Flake rule)
+
+Bedrock joins per invocation: `:conformance:run` on the Geyser row 7 (the cell check plus `PsG01` to `PsG06`; `PsG05` and `PsG06` join,
+show the refusal and abort), the example 3, `metaBedrockTest` 2 (each faulted by design), `geyserTest` 4 (`GeyserCellIT` 1, the API contract's cell check and its 2 tests).
+
+| Source | Invocations | Bedrock joins | Join timeouts (stage) | Log-guard reds | Other reds |
+|---|---|---|---|---|---|
+| T-M9-01 spike, by hand (secondary, geyser.md "Run log") | 26 runs + 1 hand run | 59, 48 spawned | 7: `raknet-connect` 4 (Node `jsp-raknet`), `login-sent` 2 and `login` 1 (the Xbox refusal as the client saw it, with validation on) | n/a | 4 server disconnects with a message, each a removed condition. **42 of 42 green with all conditions in place** |
+| T-M9-06 `geyserTest` (secondary, recorded) | 3 counted + 2 diagnosis | 3 counted | 0 | 0 | 2 diagnosis reds before the counted runs: join failed at `SPAWN_STATUS` with driver decode errors (fixed in the driver) |
+| T-M9-07 API contract (secondary) | 3 + 3 | not recorded | 0 | 0 | 1 run of the first 3 **skipped** both tests (`missing capability BEDROCK_CLIENT`: health read before the `floodgate` token; fixed, then 3 of 3 green) |
+| T-M9-08 conformance (secondary) | 3 counted + 3 dev | 21 counted | 0 | 0 | 3 dev reds, wrong expectations (`§r` prefix, `/list`, `/plugins` split), kept as findings |
+| T-M9-11 `metaBedrockTest` (secondary) | 3 | 6 (faulted by design) | 0 (the stand-in-absent fault is a server `disconnect.timeout` at `LOGIN_SENT`, not a driver timeout) | 0 | 0 unexpected |
+| T-M9-12 example (secondary) | 3 | 9 | 0 | 0 | 0 |
+| **T-M9-99 (this run)** | **3 conformance + 1 meta + 1 example + 1 `geyserTest`** | 30 (28 clean, 2 faulted by design) | **0** | **0** | **0** |
+
+- **Bedrock join timeouts: 0** in every counted harness invocation of M9 (agent cards and this review). The only Bedrock join
+  timeouts ever seen are the spike's 7, each explained (a RakNet library that cannot join Geyser, or the Xbox refusal with validation on).
+- **Bedrock log-guard reds: 0** in every counted invocation (`ErrorLogGuard.Patterns.GEYSER`, five allowlisted lines with reasons). The
+  guard reads the **server only**; the stand-in and driver-host logs are not guarded (finding, T-M10-06).
+- **Stand-in names:** the cell's first check passed in every Geyser invocation of this run, which requires the stand-in to have
+  answered exactly the two discovery names and the name guard to be clean; a red there is `INVALID` for every test on the cell.
+- **Paper, topology and loader numbers (apart):** smoke 8 of 8 green on four cells, `fabric@26.3` 3 of 3, `velocity@4.3.1+paper@26.3`
+  3 of 3; 0 single-server or topology join timeouts, 0 container-start failures, 0 NeoForge installer read timeouts (one NeoForge
+  boot, in `metaModTest`), no NeoForge conformance run (so the declared CD01/CD02 skips did not occur), 0 bridged `paper@1.8.8` runs
+  (not in this review's set, so the C03 to C05 bridged family was not sampled).
+
+### Exit criterion, re-scored
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 1 | A Bedrock client driver joins a Java server through Geyser and Floodgate offline (no Xbox account, no Microsoft service call: the two discovery names go to the stand-in and the name guard is clean), on the newest native `paper` row, and the Bukkit agent sees the player as Floodgate names it (`.Name`). The cell is labelled *offline-stub* | **MET, with two stated limits** | This run: 3 of 3 Geyser invocations, C-G01 green each time (`agent.player` of the Bedrock client is `.PsG01`), after the cell's first check (exactly the two names answered by the stand-in, guard clean) passed. `paper@26.3` is the newest `paper` row (protocol 777, native to `mcpl`). No account, no token in the code or config (`validate-bedrock-login: false`, Floodgate key from `SecureRandom`). **Limit 1:** "no Microsoft service call" is checked as *names looked up*, once per cell (at the first check), and egress is open by design (ADR-0018 section 4); a later lookup in the same cell is not guarded (T-M10-06). **Limit 2:** the *offline-stub* label is in `cell.json` (bundles) and the `PROOFSTONE GEYSER BOOT ... (offline-stub)` line; the JUnit display name and `proofstone-report.json` show only `geyser@2.12.1+paper@26.3` (this run's XML and report), although ADR-0018 section 4 and `GeyserCell` Javadoc say they carry it (T-M10-06) |
+| 2 | A test declares a Bedrock client through the public API, additively to API v0 (label `api-change`, no existing signature changed), and the Geyser topology through `versions.yml` | **MET** | `api-baseline.txt` `3effa9d..be123b2`: 3 lines added (`Capability.BEDROCK_CLIENT`, `Clients.bedrock(String)` default, `Platform.GEYSER`), 0 removed; the default throws `UnsupportedOperationException` naming the capability. PR #156 carries `api-change`. `versions.yml` schema 5 key `geyser` (row `2.12.1`, build 1303, Floodgate 2.2.5 build 141, both sha256-pinned, `bedrock-protocol: 2225`, `experimental`), `drivers.bedrock`. `@Matrix(platform = Platform.GEYSER)` with `-Dproofstone.cells=geyser@2.12.1+paper@26.3` planned the cell in every run here |
+| 3 | Conformance scenarios on the Geyser topology (join, command reply, inventory read with the dual oracle, a Bedrock-only plugin branch) pass, every skip reasoned in the XML | **MET** | This run: C-G01 (join, Floodgate name), C-G02 (`/plugins` reply, two messages), C-G03 (`stick x3` and `diamond_sword x1`, `DualAssert` id and count on both oracles), C-G04 (the plugin's Bedrock branch for the Bedrock client, not for the Java one) green 3 of 3; 3 skips per run, each with its reason in the XML. Earlier T-M9-08 3 of 3. The dual oracle compares id and count only (no item data components in driver v1): narrower than on Java rows, stated in geyser.md |
+| 4 | A misconfigured Geyser cell (stand-in absent, and the faults T-M9-11 proves reachable: a Floodgate key mismatch or a Bedrock protocol the Geyser build refuses) is a loud red, never a pass or a join timeout | **MET as worded (2 faults); the refused-protocol fault is not built** | This run, `metaBedrockTest` once, XML read: `stand-in-absent` and `key-mismatch` each `INVALID` with the specific reason and hop (Evidence table), no timeout. Earlier T-M9-11 3 of 3. The key mismatch is made on Floodgate's side (a decoy `key-file-name`), because Geyser on one server ignores its own key setting. **The refused protocol was dropped** (needs a switch in `drivers/bedrock`, outside T-M9-11's modules); the item's own wording admits only reachable faults, so it is not a failure of the item, but Geyser's refusal text is unverified (T-M10-05). The stand-in-absent fault reaches the client as a server `disconnect.timeout` at `LOGIN_SENT`; the verdict is `INVALID` with the hop named from the server log, not a join timeout |
+| 5 | BDS | **Not scored: deferred to M10** by the maintainer's limit (ADR-0018 section 1) | T-M9-02, 09 and 10 are T-M10-01 to T-M10-03. No BDS code, image or zip exists in the repository |
+| 6 | Flake-rule evidence for every acceptance above | **MET for items 1 to 4** | Three separate green invocations of the Geyser conformance here and in T-M9-08; `metaBedrockTest` 3 of 3 in T-M9-11 and once here; the example 3 of 3 in T-M9-12 and once here; `geyserTest` 3 of 3 in T-M9-06 and once here. No red was replaced by a green; the agent-card reds are listed above with causes |
+
+### ADR-0018 against the build (deviations, for an amendment: T-M10-08)
+
+- **Three snapshot groups, not one.** The catalog pins `org.cloudburstmc.protocol` `3.0.0.Beta15-20261116.161745-6` as the ADR says,
+  and also `org.cloudburstmc.netty` `1.1.0.CR4-20261103.123906-3` and `org.cloudburstmc.math` `2.0-20220327.162752-1` (the Beta15 POM
+  names floating snapshots of both). `exclusiveContent` matches only timestamped versions of those three groups; 32 artefacts are
+  checked by sha256 (`drivers/bedrock/cloudburst-artefacts.sha256`), including releases the library pulls (netty 4.1.101, jose4j,
+  expiringmap, aircompressor, fastutil, `com.nukkitx:natives` 1.0.3, slf4j-api), all shaded and relocated into the driver-host jar and
+  never on a user's or the harness's classpath. No release of CloudburstMC Protocol exists (T-M9-05, checked 2026-11-17).
+- **Refused-protocol fault dropped** (T-M9-11): no Geyser setting narrows the accepted protocols; making it needs a test-only switch in the
+  driver (T-M10-05, a maintainer decision).
+- **Key mismatch on Floodgate's side**, not Geyser's (Geyser on one server reads Floodgate's key whatever its own setting says).
+- **Fault injection is a test-only system property in production code** (`-Dproofstone.injectGeyserFault`, `GeyserFault`, and the
+  stand-in's `--refuse-names`); M8 removed its own such switch (`injectModFault`) once a declared input could make the fault.
+- **Transport to the driver host** is `docker exec curl` inside the driver-host container (`ExecCurlTransport`), with a per-cell bearer
+  token, not a published HTTP port: "the way the harness reaches an agent" in spirit, nothing published.
+- **The `floodgate` token** is added by `FloodgateProbe` at the agent's first global tick (Floodgate enables after the agent), and
+  `GeyserHost` re-reads the health after awaiting it (the T-M9-07 skip). No protocol bump (the health schema does not enumerate tokens).
+- **Log guard on the server only**, not "per container" (section 6); **name guard once per cell** at the first check (section 4 says the
+  host fails the cell "if a name on a deny list was ever asked").
+- **`offline-stub` not in the report or display name** (section 4), see item 1.
+- **A new skip reason `TEST_ABORTED`** (an `Assumptions.abort` was `SKIPPED` in JUnit and `FAIL` in the report before; now `SKIPPED`
+  in both, own commit, unit test). A behaviour change in core reporting, consistent with "a skip is reported as a skip".
+- Held as decided: pre-rendered Geyser config accepted (no first-start fallback), pre-seeded key, no UDP published, stand-in and driver
+  host on the pinned `java25` digest (no new image), identity `geyser@2.12.1+paper@26.3`, differential and flake-detector runs refused.
+
+### Code review (diff `3effa9d..be123b2`, 136 files, +10934 / -152)
+
+- **Weakened tests: none found.** Modified existing test files: only `TopologyApiTest` (the "added after the existing ones" check
+  extended to `GEYSER` and `BEDROCK_CLIENT`). Every other test file is new (29 files, +3038). Main-code changes to existing classes:
+  `ErrorLogGuard` made public with a new `GEYSER` list (5 allowlisted lines, each with a reason; Paper's list is not inherited, so the
+  Geyser server guard is stricter, not weaker); `SkipReason.TEST_ABORTED` (above); `McplDriver` and `MineflayerRefDriver` report
+  `Edition.JAVA`.
+- **New runtime dependencies:** the CloudburstMC Protocol snapshot named by ADR-0018, with its transitive closure (above), **only inside
+  the shaded driver-host jar**, which runs in a container. `proofstone-core`, `proofstone-api` and the agents gained no dependency; the
+  Bukkit agent's `FloodgateProbe` looks Floodgate up by plugin name, no Floodgate class.
+- **Workflows: none.** `.github/` holds only the issue and PR templates.
+- **Secrets: none committed.** No PEM block, key, keystore or certificate in the repository (`git grep` for `BEGIN ... PRIVATE KEY` and
+  `BEGIN CERTIFICATE`, `git ls-files` for `.pem`, `.key`, `.p12`, `.jks`, `.crt`: none). The added lines hold no 32-hex-digit or 22-char
+  base64 string (a 16-byte key in hex or base64 form). The Floodgate key (and the fault's decoy key) is 16 `SecureRandom` bytes per cell,
+  copied from memory, redacted in hex (both cases), base64 (standard and URL, padded or not) and raw form, `plugins/floodgate` dropped
+  from every bundle, files read back (`GeyserBundleTest`). The stand-in's keystore and certificate are generated per run in a temp
+  directory. Weak spot: the raw form is matched as ISO-8859-1 text; a raw key in a UTF-8-decoded log would not match (low risk: the
+  key file is never logged, and the directory is never bundled).
+- **Mojang binaries: none.** No jar besides the Gradle wrapper; Geyser and Floodgate are downloaded by sha256 at run time.
+- **Sleeps and retries: none in harness or test code.** The driver host waits on a `Condition` with a deadline (ADR-0007); `sleep 0.5`
+  polling exists only in `scripts/spike/geyser/*.sh` (spike helpers, not harness code).
+- **API v0 additive only:** yes (item 2).
+- **Diff size over the 400-line guide** (non-test, non-doc lines): #151 932 (spike scripts, not said), #153 687, #154 2058 (includes the
+  31-line pin file), #155 1988 (includes the 350-line Geyser config template), #156 484. #153 to #156 said so in the PR with a reason.
+- **R13 and the other safeguards:** `docs/robustness.md` section 5 "Bedrock review (T-M9-99)".
+
+### What is NOT verified
+
+- BDS in any form; whether BDS accepts an unsigned login (T-M10-01).
+- Geyser's refusal of an unsupported Bedrock protocol (T-M10-05); any Bedrock protocol other than 2225.
+- Two Bedrock clients at once (T-M10-07); window clicks, `useBlock`, forms and resource packs for a Bedrock client (driver v1).
+- Vanilla `/list` for a Bedrock client vs a Java client (T-M10-10).
+- Geyser on Folia, Purpur or Spigot, on any `paper` row but 26.3, behind a proxy, or with Geyser and Floodgate on different servers.
+- The JWKS document of the stand-in (never fetched with validation off); a Java 8 image for the trust store.
+- That no packet reaches Microsoft: only names looked up are checked (egress open by design).
+
+### Decisions needed from the maintainer
+
+1. **Accept M9 as done for the Geyser scope** with the gaps above (refused-protocol fault unverified, label gap, snapshot driver), or ask
+   for T-M10-05 and T-M10-06 first. Recommendation: accept; neither gap turns a red into a green, and both are carded.
+2. **BDS (T-M10-01):** approve a BDS source (image by digest or zip by sha256, its EULA, its size) for the spike, or keep BDS out.
+3. **The refused-protocol fault (T-M10-05):** allow a default-off test-only protocol switch in `drivers/bedrock`, or accept the fault as
+   unverified.
+4. **Approve `docs/plan/tasks/M10-ecosystem.md`** (19 cards; 11 marked "Needs maintainer decision": images, servers to download, a
+   template repository, hosting, promotion).
+5. **Do not promote the Geyser row** until the driver is on a release (ADR-0018 section 8; T-M10-04 is blocked upstream).
+6. Unchanged from M7 and M8: Central namespace verification, Disenchantment CI, publish, tag, 0.1.0 go/no-go (maintainer only).
+
+### Re-estimate
+
+M9 was estimated at 4 focused weeks after the spikes (range 2 to 6). Actual: first M9 commit 2026-11-17 12:31, last merge (#159) 20:15
+(+01:00), **about 8 hours of agent wall clock** for 9 cards (01, 03 to 08, 11, 12) and 21 non-merge commits, plus this review (about
+41 minutes of Docker runs). The spike's working offline route removed the "no route" branch, and BDS left the milestone.
+
+| M | Estimate | Reason |
+|---|---|---|
+| M10 Part A (Bedrock leftovers) | **about 1 week, range 3 days to 3 weeks** | BDS spike 2 days; if feasible, a host, a script agent and a conformance subset (the range); the Geyser cards 05 to 10 are small. T-M10-04 waits on an upstream release |
+| M10 Part B (ecosystem) | **ongoing** | Spikes of 2 days each; the template and guide about 1 week; the docs site after a hosting decision |
+
+### M10 refined
+
+`docs/plan/tasks/M10-ecosystem.md`: exit criterion per part, context, Flake rule, 19 cards (Part A: BDS spike, host and conformance
+moved from M9; release pin; refused-protocol fault; guard and label gaps; two clients; ADR-0018 amendment; promotion; `/list`. Part B:
+Sponge, Gate, Nukkit-family and PocketMine/Endstone spikes, pack template and guide, docs site, the two optional items, Paper forks;
+review). **Not approved; nothing started.**
+
+### Leftover items (M8 and M9 follow-up files)
+
+- `M8-followups.md`: every card merged except T-M8-26 (declined); its header now says so. Boxes of 14, 15, 20, 21, 22 unticked by their
+  PRs, left as they are.
+- `M9-bedrock.md`: header now states the merged cards and the move of 02, 09, 10 to M10. Boxes of 04, 05, 06 unticked by their PRs,
+  left as they are; this review is their evidence.
+- No `M9-followups.md` is written: every M9 leftover is an M10 Part A card.
 
 ## M7 follow-up findings (T-M7-15)
 
