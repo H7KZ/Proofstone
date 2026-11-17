@@ -39,6 +39,6 @@ class TopologyApiTest {
         assertThat(Capability.values()).startsWith(Capability.BUKKIT_EVENTS, Capability.CONSOLE,
                 Capability.FOLIA_REGIONS, Capability.SIMULATED_BEDROCK)
                 .endsWith(Capability.PROXY, Capability.TOPOLOGY, Capability.DATAPACKS_VANILLA, Capability.RESOURCE_PACKS,
-                        Capability.MODS);
+                        Capability.MODS, Capability.BEDROCK_CLIENT);
     }
 }
