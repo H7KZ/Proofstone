@@ -64,7 +64,7 @@ dependencyResolutionManagement {
             // Only timestamped builds: MCProtocolLib's release of org.cloudburstmc.math:immutable:2.0 still comes from Central.
             filter {
                 for (group in listOf("org.cloudburstmc.protocol", "org.cloudburstmc.netty", "org.cloudburstmc.math")) {
-                    includeVersionByRegex(group, ".*", ".*-[0-9]{8}[.][0-9]{6}-[0-9]+")
+                    includeVersionByRegex(group, ".*", ".*-[0-9]{8}[.][0-9]{6}-[0-9]{1,4}")
                 }
             }
         }
