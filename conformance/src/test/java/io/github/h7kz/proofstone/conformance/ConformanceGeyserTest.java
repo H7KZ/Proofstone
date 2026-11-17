@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 /**
  * The Geyser row's conformance (specs/self-tests.md section 1d, ADR-0018 section 9, T-M9-08). Before the first test the cell's
  * own cached check runs (the stand-in was asked exactly the two expected Microsoft names, the name guard is clean, one Bedrock
- * client joined and left); a red makes every test here INVALID. C-G01 to C-G04 are the Bedrock round trips a client can do in
+ * client joined and left); a red makes every test here INVALID. C-G01 to C-G05 are the Bedrock round trips a client can do in
  * driver v1. What it cannot do is listed as skipped tests with the reason, never passed (the last four methods).
  *
  * <p>Run one Geyser cell per invocation: {@code -Dproofstone.cells=geyser@2.12.1+paper@26.3}. {@code :conformance:run} runs
@@ -92,6 +92,41 @@ class ConformanceGeyserTest {
         bedrock.command("bedrock-check " + java.name());
         bedrock.awaitMessage(Pattern.compile("^" + RESET + "bedrock-check " + Pattern.quote(java.name())
                 + " online=true bedrock=false$"));
+    }
+
+    /**
+     * C-G05: two Bedrock clients at once, through one driver host. Each is its own Floodgate player (its own XUID, so its own
+     * UUID), a line one client sends reaches the other, and both leave (the harness waits for the agent to forget each).
+     * The public {@code Client} has no chat call, so the line is {@code /me}, which the server broadcasts to everyone
+     * ({@code /say} is op-only: a non-op client gets no broadcast). The real chat packet is asserted below the API in
+     * {@code GeyserTwoClientsIT} (T-M10-07).
+     */
+    @CellTest
+    void cG05TwoBedrockClientsAreTwoFloodgatePlayersAndHearEachOther(Agent agent, Clients clients) {
+        Client alice = clients.bedrock("PsG05A");
+        Client bob = clients.bedrock("PsG05B");
+
+        assertThat(alice.name()).isEqualTo(".PsG05A");
+        assertThat(bob.name()).isEqualTo(".PsG05B");
+        assertThat(agent.player(alice).name()).isEqualTo(".PsG05A");
+        assertThat(agent.player(bob).name()).isEqualTo(".PsG05B");
+        // The console's /list names every player the server holds: both, not one.
+        assertThat(agent.command("list")).contains(".PsG05A").contains(".PsG05B");
+        // Floodgate puts the XUID in the UUID's low bits; two XUIDs give two UUIDs (the Node driver's one nil UUID is why
+        // this driver sets one per join, geyser.md).
+        String aUuid = agent.command("data get entity .PsG05A UUID");
+        String bUuid = agent.command("data get entity .PsG05B UUID");
+        assertThat(aUuid).contains("[I;");
+        assertThat(bUuid).contains("[I;");
+        assertThat(aUuid.substring(aUuid.indexOf("[I;"))).isNotEqualTo(bUuid.substring(bUuid.indexOf("[I;")));
+
+        alice.command("me hello from PsG05A");
+        assertThat(bob.awaitMessage(Pattern.compile("hello from PsG05A"))).contains("hello from PsG05A");
+        bob.command("me hello from PsG05B");
+        assertThat(alice.awaitMessage(Pattern.compile("hello from PsG05B"))).contains("hello from PsG05B");
+        // Both are still in: the leave is the teardown's, awaited on the agent for each.
+        assertThat(alice.position()).isNotNull();
+        assertThat(bob.position()).isNotNull();
     }
 
     // Skipped, with the reason in the XML (never passed): the Bedrock driver of v1 has no window, form or resource-pack support

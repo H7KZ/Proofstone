@@ -335,8 +335,7 @@ diagnosis runs failed at join stage SPAWN_STATUS with decode errors in the drive
   snapshot, the client transcript and `cell.json` (`"bedrockAuth": "offline-stub"`); every token and the Floodgate key in raw, hex (both cases)
   and base64 (standard and URL, padded or not) are redacted and each file is read back; `plugins/floodgate` is never part of it. The real cell's
   bundle held no form of the key in any run. It does not yet write `host.json` or `rerun.txt`; the JUnit extension's Geyser bundle is T-M9-07/08.
-- **Still unrun:** two Bedrock clients at once; any chat, command or window round trip through the driver (the run read position and inventory
-  only); a Java 8 image (the trust store is PKCS12 made by a newer JDK; only `java25` ran); the JWKS document (never fetched with login
+- **Still unrun:** any window round trip through the driver (chat and command ran in T-M9-08 and T-M10-07); a Java 8 image (the trust store is PKCS12 made by a newer JDK; only `java25` ran); the JWKS document (never fetched with login
   validation off), so its shape is unchecked.
 
 ## Test API on a Geyser cell (T-M9-07, 2026-11-17: what ran)
@@ -383,7 +382,7 @@ them, all while writing the scenarios (each a wrong expectation of mine, kept as
   The first and the last first show that the driver throws `UnsupportedOperationException` naming ADR-0018.
 - **A harness finding fixed on the way:** a test that aborts itself (`Assumptions.abort`) was `SKIPPED` in JUnit's XML and `FAIL` in
   `proofstone-report.json`. It is now `SKIPPED` with the new reason `TEST_ABORTED` in both (own commit, unit test).
-- **Still unrun:** two Bedrock clients at once in one test, a Java 8 image, the JWKS document.
+- **Still unrun:** a Java 8 image, the JWKS document. (Two clients at once ran in T-M10-07, below.)
 
 ## Negative controls (T-M9-11, 2026-11-17: what ran)
 
@@ -454,3 +453,16 @@ failure is the expected `INVALID`) in all three, no `the body ran` or `timed out
   invocations on the Geyser row were green with no such line in either container, so nothing was added (empty-then-grow, ADR-0016).
 - The label: the JUnit display name is `geyser@2.12.1+paper@26.3 (offline-stub)` and each Geyser row of `proofstone-report.json` has
   `"bedrockAuth": "offline-stub"` (no other row has the field). The cell id the selector, `cell.json` and the bundle directory use is unchanged.
+
+## Two Bedrock clients at once (T-M10-07, 2026-11-17: what ran)
+
+- **One driver host, two sessions, one cell.** `GeyserTwoClientsIT` (`:proofstone-core:geyserTest`) joined `PsTwoA` and `PsTwoB`: the agent
+  listed `.PsTwoA` and `.PsTwoB`, with UUIDs `00000000-0000-0000-0009-01eed0767182` and `...183` (the driver's per-join XUID counter in the low
+  bits; distinct, never nil). A chat line from each reached the other as `§r<.PsTwoA> hello from PsTwoA`; both left and the agent forgot both.
+  No driver bug showed.
+- **C-G05** (`ConformanceGeyserTest`) is the same through the public API: both names, `/list` from the console names both, `data get
+  entity <name> UUID` differs, and a line from each reaches the other. Three `:conformance:run` invocations on the Geyser row green, 8 tests,
+  3 skipped (the documented ones), 50.1 to 50.5 s per suite.
+- **Gotcha: a non-op Bedrock client cannot `/say`.** The first C-G05 run used `/say` and the other client never got it (vanilla `/say` needs op;
+  the same shape as the `/list` answer in T-M9-08). C-G05 uses `/me`, which every player may run. The public `Client` has no chat call, so
+  real chat is asserted only in the IT. _paper@26.3, Geyser 2.12.1 b1303_
