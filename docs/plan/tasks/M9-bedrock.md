@@ -92,10 +92,17 @@ said feasible. `99` review. Cards that touch the same files run one at a time.
 - Claim a route works because the docs say so. Only a run counts.
 
 **Acceptance.**
-- [ ] `geyser.md` states, per driver and per auth route, the join verdict with the command output summary and the join count.
-- [ ] Every outbound host seen at start and at join is listed; a Microsoft or Xbox host at join is a "not offline" verdict.
-- [ ] A plain verdict: offline Bedrock through Geyser feasible (with the driver and route), or not, with the narrower scope
+- [x] `geyser.md` states, per driver and per auth route, the join verdict with the command output summary and the join count.
+- [x] Every outbound host seen at start and at join is listed; a Microsoft or Xbox host at join is a "not offline" verdict.
+- [x] A plain verdict: offline Bedrock through Geyser feasible (with the driver and route), or not, with the narrower scope
   proposed (simulated tier only). The gap is not hidden.
+
+**Result (2026-11-17, [geyser.md](../../platforms/geyser.md)).** Feasible on `paper@26.3` with Geyser 2.12.1 build 1303 and
+Floodgate 2.2.5 build 141, with CloudburstMC Protocol (Java) and `bedrock-protocol` (Node, `raknet-native`), on both routes
+(`offline` without Floodgate, `floodgate`), only with three conditions: `validate-bedrock-login: false`, `bedrock.transport:
+both`, and a stand-in for two Microsoft discovery names that Cloudburst's login code fetches at the first login (without it
+the join fails offline, or contacts Microsoft online, which is "not offline"). 59 Bedrock joins, 48 spawned; the 42 with all
+conditions in place were all green. No new image was needed; the Node driver on the cell network was not run (it would need one).
 
 **Verify.**
 Reviewer re-runs the documented commands for one driver and one route under `scripts/dockerlock.sh` and compares.

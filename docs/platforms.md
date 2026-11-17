@@ -64,6 +64,7 @@ Proxy facts (T-M7-01 spike, then the M7 cards; both rows `required` since 2026-1
 Mod loader facts (T-M8-01 spike, then the M8 cards; design in [ADR-0017](adr/0017-mod-platform-packs.md); both rows `experimental`): [fabric](platforms/fabric.md), [neoforge](platforms/neoforge.md). How to test mods, data packs and resource packs: [user guide](user/mods-and-packs.md).
 A loader cell's first start fetches the vanilla server jar from Mojang and libraries from the loader's maven: a listed,
 content-pinned exception to "no Mojang dependency in runs" (ADR-0017 §6). Logins never reach Mojang (offline mode).
+Bedrock facts (T-M9-01 spike, a Bedrock client through Geyser and Floodgate on `paper@26.3`; nothing in `versions.yml` yet): [geyser](platforms/geyser.md).
 
 ## Status evidence (M5, 2026-11-08; M5 follow-up, same day)
 M5 itself promoted nothing: each row had one full local run. The M5 follow-up (`fix/m5-evidence-promotion`) applies

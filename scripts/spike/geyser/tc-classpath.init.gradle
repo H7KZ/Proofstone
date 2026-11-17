@@ -1,0 +1,13 @@
+// SPIKE (T-M9-01). Prints proofstone-core's runtime classpath (it carries Testcontainers) so TcUdpProbe.java runs without a
+// build change. Used by tc-udp-probe.sh only.
+allprojects { p ->
+    if (p.path == ':proofstone-core') {
+        p.afterEvaluate {
+            p.tasks.register('spikeClasspath') {
+                def cp = p.sourceSets.main.runtimeClasspath
+                dependsOn cp
+                doLast { println 'SPIKE_CP=' + cp.files.join(File.pathSeparator) }
+            }
+        }
+    }
+}
