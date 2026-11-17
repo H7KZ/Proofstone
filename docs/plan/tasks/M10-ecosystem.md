@@ -335,7 +335,7 @@ permission for a non-op (unverified, geyser.md T-M9-08).
 - Change C-G02 (it uses `/plugins` on purpose).
 
 **Acceptance.**
-- [ ] `geyser.md` states the cause with the four transcripts.
+- [x] `geyser.md` states the cause with the four transcripts.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3 --no-parallel --max-workers=1`
