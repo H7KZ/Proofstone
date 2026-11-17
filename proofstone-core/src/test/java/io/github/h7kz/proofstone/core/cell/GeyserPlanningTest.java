@@ -372,4 +372,12 @@ class GeyserPlanningTest {
         assertThat(CiMatrix.matrix(plan.cells(), plan.topologies(), plan.loaders(), plan.geysers()))
                 .isEqualTo(CiMatrix.matrix(plan.cells(), plan.topologies(), plan.loaders()));
     }
+
+    @Test
+    void theDisplayNameAndTheReportLabelCarryOfflineStubWhileTheIdentityStaysUnchanged() {
+        assertThat(GeyserCell.displayName("geyser@2.12.1+paper@26.3")).isEqualTo("geyser@2.12.1+paper@26.3 (offline-stub)");
+        assertThat(GeyserCell.isIdentity("geyser@2.12.1+paper@26.3")).isTrue();
+        assertThat(GeyserCell.isIdentity("paper@26.3")).isFalse();
+        assertThat(GeyserCell.isIdentity("velocity@3.4+paper@26.3")).isFalse();
+    }
 }

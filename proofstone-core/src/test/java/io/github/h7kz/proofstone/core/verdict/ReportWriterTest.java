@@ -56,6 +56,19 @@ class ReportWriterTest {
     }
 
     @Test
+    void aGeyserRowSaysOfflineStubAndNoOtherRowHasTheField() throws IOException {
+        String text = ReportWriter.render(List.of(
+                new CellResult("t", "geyser@2.12.1+paper@26.3", Verdict.PASS, null, null, 1),
+                new CellResult("t", "paper@26.3", Verdict.PASS, null, null, 1)));
+        com.fasterxml.jackson.databind.JsonNode results = new com.fasterxml.jackson.databind.ObjectMapper().readTree(text)
+                .path("results");
+
+        assertThat(results.get(0).path("cell").asText()).isEqualTo("geyser@2.12.1+paper@26.3");
+        assertThat(results.get(0).path("bedrockAuth").asText()).isEqualTo("offline-stub");
+        assertThat(results.get(1).has("bedrockAuth")).isFalse();
+    }
+
+    @Test
     void writesTheReportFileAndCreatesTheDirectory() throws IOException {
         Path out = dir.resolve("build").resolve("proofstone");
 

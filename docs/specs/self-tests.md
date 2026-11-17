@@ -125,7 +125,9 @@ A Geyser cell (`geyser@2.12.1+paper@26.3`, selected with `-Dproofstone.cells`, o
 check first (`list`, C03 with the Java client), then its **first cached check** (`GeyserConformance`): one Bedrock client joins and
 leaves, and afterwards the stand-in must have answered exactly the two expected names (`client.discovery.minecraft-services.net`,
 `authorization.franchise.minecraft-services.net`), the name guard must be clean (no Xbox or Microsoft account host, no other name
-under `minecraft-services.net`) and the server must have logged no error. A red makes every test on the cell `INVALID`.
+under `minecraft-services.net`) and the server must have logged no error. A red makes every test on the cell `INVALID`. Afterwards, every test and the cell's close re-run the name guard and judge the stand-in and
+driver-host logs (an `ERROR`, an uncaught exception or `STUB refused` fails the test that was running). The JUnit display name carries
+` (offline-stub)` and each Geyser row of `proofstone-report.json` has `"bedrockAuth": "offline-stub"` (T-M10-06).
 
 | ID | Scenario | Needs | Proves |
 |---|---|---|---|

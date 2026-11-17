@@ -178,7 +178,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     @Override
     public String getDisplayName(int invocationIndex) {
-        return cellId() + (bridged ? " (bridged)" : "") + (differential ? " [" + driverId + "]" : "")
+        return (geyser != null ? GeyserCell.displayName(cellId()) : cellId()) + (bridged ? " (bridged)" : "") + (differential ? " [" + driverId + "]" : "")
                 + (repeats > 1 ? " repeat " + repetition + "/" + repeats : "");
     }
 
@@ -367,6 +367,14 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                     ErrorLogGuard.Patterns.of(geyser != null ? GeyserCell.ID : cell.platform()));
         } catch (RuntimeException | AssertionError e) {
             failure = combine(failure, e);
+        }
+        // A Geyser cell's name guard and its stand-in and driver host log guards, every test, not only the first check (T-M10-06).
+        if (state.geyser != null) {
+            try {
+                state.geyser.requireGuardsClean();
+            } catch (RuntimeException e) {
+                failure = combine(failure, e);
+            }
         }
         // The per-cell expectations (test-api spec section 9, robustness R7) judge a test that is otherwise green. They
         // read the server after the test's actions, so they run before the leak detector, and never change anything.

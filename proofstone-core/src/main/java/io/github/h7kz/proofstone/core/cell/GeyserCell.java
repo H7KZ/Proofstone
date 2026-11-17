@@ -61,6 +61,16 @@ public record GeyserCell(
     public record Floodgate(String version, int build, String sha256) {
     }
 
+    /** The display name: the identity plus the label, so no JUnit report row reads as production auth (ADR-0018 section 4). */
+    public static String displayName(String identity) {
+        return identity + " (" + BEDROCK_AUTH + ")";
+    }
+
+    /** Whether a cell id is a Geyser cell's: {@code geyser} left of the {@code +} (ADR-0018 section 8). */
+    public static boolean isIdentity(String cell) {
+        return cell.startsWith(ID + "@");
+    }
+
     /** {@code "offline-stub"}: written into {@code cell.json}, the report and the display name, so no reader mistakes the cell for production auth. */
     @com.fasterxml.jackson.annotation.JsonProperty("bedrockAuth")
     public String bedrockAuth() {
