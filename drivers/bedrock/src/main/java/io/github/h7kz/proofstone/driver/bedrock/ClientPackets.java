@@ -17,6 +17,7 @@ import org.cloudburstmc.protocol.bedrock.packet.ClientToServerHandshakePacket;
 import org.cloudburstmc.protocol.bedrock.packet.DisconnectPacket;
 import org.cloudburstmc.protocol.bedrock.packet.InventoryContentPacket;
 import org.cloudburstmc.protocol.bedrock.packet.InventorySlotPacket;
+import org.cloudburstmc.protocol.bedrock.packet.ItemComponentPacket;
 import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
 import org.cloudburstmc.protocol.bedrock.packet.MovePlayerPacket;
 import org.cloudburstmc.protocol.bedrock.packet.NetworkSettingsPacket;
@@ -148,6 +149,17 @@ final class ClientPackets implements BedrockPacketHandler {
         radius.setRadius(CHUNK_RADIUS);
         radius.setMaxRadius(CHUNK_RADIUS);
         wire.send(radius);
+        return PacketSignal.HANDLED;
+    }
+
+    /**
+     * From protocol 2225 the server's item definitions come in this packet, after start game (whose list is empty), and the
+     * creative content that follows cannot be read without them. Found by the first real join (T-M9-06): the library's
+     * own decode of CreativeContentPacket failed.
+     */
+    @Override
+    public PacketSignal handle(ItemComponentPacket packet) {
+        wire.useItemDefinitions(packet.getItems());
         return PacketSignal.HANDLED;
     }
 

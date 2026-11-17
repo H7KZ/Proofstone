@@ -207,6 +207,20 @@ class ClientPacketsTest {
         assertThat(state.failure().message()).isEqualTo("Please log into Xbox to join this server.");
     }
 
+    /** Found by the first real join (T-M9-06): from protocol 2225 the item definitions arrive in the item component packet, after start game. */
+    @Test
+    void theItemDefinitionsComeFromTheItemComponentPacketAndReplaceTheEmptyStartGameList() {
+        joinThrough(JoinStage.SPAWN_STATUS);
+        org.cloudburstmc.protocol.bedrock.packet.ItemComponentPacket registry =
+                new org.cloudburstmc.protocol.bedrock.packet.ItemComponentPacket();
+        registry.getItems().add(new org.cloudburstmc.protocol.bedrock.data.definitions.SimpleItemDefinition(
+                "minecraft:stone", 1, org.cloudburstmc.protocol.bedrock.data.inventory.ItemVersion.LEGACY, false,
+                org.cloudburstmc.nbt.NbtMap.EMPTY));
+        receive(registry);
+        assertThat(wire.definitions).extracting(ItemDefinition::getIdentifier).containsExactly("minecraft:stone");
+        assertThat(state.failure()).isNull();
+    }
+
     @Test
     void theSpawnStatusBeforeStartGameIsAnError() {
         joinThrough(JoinStage.RESOURCE_PACKS);
