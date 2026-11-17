@@ -37,6 +37,10 @@ public final class GeyserHost implements AutoCloseable {
     static final String TRUST_PATH = "/stub/cacerts";
     /** The agent token that says the Floodgate plugin is enabled (ADR-0018 section 5). */
     public static final String FLOODGATE_TOKEN = "floodgate";
+    /** The key file Floodgate reads in the key-mismatch fault; the real key stays in {@link FloodgateKey#PATH}, where Geyser takes it. */
+    static final String DECOY_KEY_FILE = "decoy-key.pem";
+    static final String DECOY_PATH = "/plugins/floodgate/" + DECOY_KEY_FILE;
+    static final String FLOODGATE_CONFIG_PATH = "/plugins/floodgate/config.yml";
     static final String GEYSER_READY = "Started Geyser on UDP port " + BEDROCK_PORT;
 
     private final Network network;
@@ -44,9 +48,12 @@ public final class GeyserHost implements AutoCloseable {
     private final PaperHost server;
     private final BedrockDriverHost driverHost;
     private final FloodgateKey key;
+    /** The key of the key-mismatch fault, or {@code null}; a secret of the cell like {@link #key}. */
+    private final FloodgateKey decoy;
 
     private GeyserHost(Network network, StandInHost standIn, PaperHost server, BedrockDriverHost driverHost,
-            FloodgateKey key) {
+            FloodgateKey key, FloodgateKey decoy) {
+        this.decoy = decoy;
         this.network = network;
         this.standIn = standIn;
         this.server = server;
@@ -60,6 +67,12 @@ public final class GeyserHost implements AutoCloseable {
      * @param serverOptions the Paper server's options (agent jar, plugins under test, EULA); network and files are set here
      */
     public static GeyserHost start(GeyserCell cell, PaperHostOptions serverOptions, GeyserHostOptions options) {
+        return start(cell, serverOptions, options, GeyserFault.fromSystemProperty());
+    }
+
+    /** {@link #start(GeyserCell, PaperHostOptions, GeyserHostOptions)} with a fault injected on purpose (T-M9-11). */
+    public static GeyserHost start(GeyserCell cell, PaperHostOptions serverOptions, GeyserHostOptions options,
+            GeyserFault fault) {
         if (!java.nio.file.Files.isRegularFile(options.driverHostJar())) {
             throw new PaperHostException("driver host jar not found: " + options.driverHostJar()
                     + " (build it with :drivers:bedrock:shadowJar)");
@@ -67,8 +80,12 @@ public final class GeyserHost implements AutoCloseable {
         // Everything that can fail without a container fails first: the jars are downloaded and checked, the config rendered.
         Path geyserJar = GeyserJars.geyser(cell, options.downloads(), options.fetcher());
         Path floodgateJar = GeyserJars.floodgate(cell, options.downloads(), options.fetcher());
-        String config = GeyserConfig.render(cell.version(), cell.build());
         FloodgateKey key = FloodgateKey.generate();
+        String config = GeyserConfig.render(cell.version(), cell.build());
+        // Key mismatch: Geyser on the same server takes the key Floodgate holds in key.pem, whatever its own setting says (geyser.md),
+        // so Floodgate is told to read another file. Geyser then encrypts with the key, and Floodgate decrypts with the decoy.
+        FloodgateKey decoy = fault == GeyserFault.KEY_MISMATCH ? FloodgateKey.generate() : null;
+        String floodgateConfig = decoy == null ? null : FloodgateConfig.withKeyFile(floodgateJar, DECOY_KEY_FILE);
         CellTrust trust = CellTrust.generate();
         String image = cell.hostImage() + "@" + cell.hostDigest();
 
@@ -78,12 +95,12 @@ public final class GeyserHost implements AutoCloseable {
         PaperHost server = null;
         BedrockDriverHost driverHost = null;
         try {
-            standIn = StandInHost.start(image, network, trust, options.auxTimeout());
+            standIn = StandInHost.start(image, network, trust, options.auxTimeout(), fault == GeyserFault.STAND_IN_ABSENT);
             started.add(new NamedTail("stand-in", standIn::logTail));
             String dns = standIn.address();
             byte[] trustStore = trust.trustStore(standIn.cacerts());
 
-            ServerInputs inputs = new ServerInputs(geyserJar, floodgateJar, config, key, trustStore, dns);
+            ServerInputs inputs = new ServerInputs(geyserJar, floodgateJar, config, key, decoy, floodgateConfig, trustStore, dns);
             server = PaperHost.start(cell.backend(), serverOptions.withNetwork(network, SERVER_ALIAS),
                     container -> prepareServer(container, inputs));
             PaperHost running = server;
@@ -105,15 +122,16 @@ public final class GeyserHost implements AutoCloseable {
             for (NamedTail tail : started) {
                 message.append("\n--- ").append(tail.name()).append(" log tail ---\n").append(tail.tail().get());
             }
-            PaperHostException failure = new PaperHostException(redact(message.toString(), key, server, driverHost), e);
+            PaperHostException failure = new PaperHostException(redact(message.toString(), List.of(key, decoy), server, driverHost), e);
             closeAll(failure, driverHost, server, standIn, network);
             throw failure;
         }
-        return new GeyserHost(network, standIn, server, driverHost, key);
+        return new GeyserHost(network, standIn, server, driverHost, key, decoy);
     }
 
     /** Everything copied into or set on the server beyond a plain Paper cell. */
-    record ServerInputs(Path geyserJar, Path floodgateJar, String config, FloodgateKey key, byte[] trustStore, String dns) {
+    record ServerInputs(Path geyserJar, Path floodgateJar, String config, FloodgateKey key, FloodgateKey decoy,
+            String floodgateConfig, byte[] trustStore, String dns) {
     }
 
     /**
@@ -122,6 +140,10 @@ public final class GeyserHost implements AutoCloseable {
      * stand-in, and the stand-in as its DNS. The default route is left alone.
      */
     static void prepareServer(org.testcontainers.containers.GenericContainer<?> container, ServerInputs in) {
+        if (in.decoy() != null) {
+            container.withCopyToContainer(ServerFile.ofBytes(in.decoy().bytes()), DECOY_PATH)
+                    .withCopyToContainer(ServerFile.of(in.floodgateConfig()), FLOODGATE_CONFIG_PATH);
+        }
         container.withEnv("JAVA_TOOL_OPTIONS", CellTrust.javaToolOptions(TRUST_PATH))
                 .withCreateContainerCmdModifier(cmd -> cmd.getHostConfig().withDns(in.dns()))
                 .withCopyFileToContainer(MountableFile.forHostPath(in.geyserJar()), "/plugins/" + in.geyserJar().getFileName())
@@ -144,8 +166,13 @@ public final class GeyserHost implements AutoCloseable {
         return false;
     }
 
-    private static String redact(String text, FloodgateKey key, PaperHost server, BedrockDriverHost driverHost) {
-        String redacted = key.redact(text);
+    private static String redact(String text, List<FloodgateKey> keys, PaperHost server, BedrockDriverHost driverHost) {
+        String redacted = text;
+        for (FloodgateKey key : keys) {
+            if (key != null) {
+                redacted = key.redact(redacted);
+            }
+        }
         if (server != null) {
             redacted = redacted.replace(server.agentToken(), "<redacted: agent token>");
         }
@@ -224,6 +251,9 @@ public final class GeyserHost implements AutoCloseable {
      */
     public List<String> secrets() {
         List<String> secrets = new ArrayList<>(key.forms());
+        if (decoy != null) {
+            secrets.addAll(decoy.forms());
+        }
         secrets.add(server.agentToken());
         secrets.add(driverHost.token());
         return secrets;
@@ -231,7 +261,11 @@ public final class GeyserHost implements AutoCloseable {
 
     /** The forms of the Floodgate key, for the bundle writer's redaction. */
     public List<String> floodgateKeyForms() {
-        return key.forms();
+        List<String> forms = new ArrayList<>(key.forms());
+        if (decoy != null) {
+            forms.addAll(decoy.forms());
+        }
+        return forms;
     }
 
     /** The driver host's RPC token, for redaction only. */

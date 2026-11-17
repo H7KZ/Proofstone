@@ -60,6 +60,12 @@ public final class StandIn {
     /** The password of the keystore the harness copies in and of the trust store it builds; a public test value. */
     public static final String STORE_PASSWORD = "changeit";
 
+    /**
+     * The second argument of the fault run (T-M9-11): the stand-in answers the two names with NXDOMAIN, as if no stand-in served
+     * them, and logs {@code STUB refused}. It is never set outside {@code -Dproofstone.injectGeyserFault=stand-in-absent}.
+     */
+    public static final String REFUSE_NAMES = "--refuse-names";
+
     private static final int DNS_PORT = 53;
     private static final int TLS_PORT = 443;
     private static final int UPSTREAM_TIMEOUT_MILLIS = 5000;
@@ -69,6 +75,7 @@ public final class StandIn {
     private final byte[] ownAddress;
     private final InetSocketAddress upstream;
     private final Consumer<String> log;
+    private boolean refuseNames;
     private DatagramSocket dns;
     private HttpsServer https;
 
@@ -87,14 +94,16 @@ public final class StandIn {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 1) {
-            System.err.println("usage: StandIn <keystore.p12>");
+        boolean refuse = args.length == 2 && REFUSE_NAMES.equals(args[1]);
+        if (args.length != 1 && !refuse) {
+            System.err.println("usage: StandIn <keystore.p12> [" + REFUSE_NAMES + "]");
             System.exit(2);
         }
         StandIn standIn = new StandIn(ownAddress(), new InetSocketAddress(DOCKER_RESOLVER, DNS_PORT), line -> {
             System.out.println(line);
             System.out.flush();
         });
+        standIn.refuseNames = refuse;
         standIn.start(new DatagramSocket(DNS_PORT), new InetSocketAddress(TLS_PORT), Path.of(args[0]));
         Thread.currentThread().join();
     }
@@ -160,8 +169,10 @@ public final class StandIn {
             String name = queryName(query);
             int type = queryType(query);
             log.accept("DNS " + typeName(type) + " " + name);
-            byte[] reply = answer(query, name, type, ownAddress);
-            if (reply != null) {
+            byte[] reply = refuseNames && NAMES.contains(name) ? nxdomain(query) : answer(query, name, type, ownAddress);
+            if (refuseNames && NAMES.contains(name)) {
+                log.accept("STUB refused " + name);
+            } else if (reply != null) {
                 log.accept((type == TYPE_A ? "STUB answered " : "STUB empty " + typeName(type) + " ") + name);
             } else {
                 reply = forward(query);
@@ -217,6 +228,19 @@ public final class StandIn {
             // TTL 0 (bytes o+6 to o+9): nothing caches the stand-in's answer.
             reply[o + 11] = 4;
             System.arraycopy(ownAddress, 0, reply, o + 12, 4);
+        }
+        return reply;
+    }
+
+    /** A name-error reply to {@code query}, for the stand-in-absent fault: the question echoed with rcode 3 and no answer. */
+    public static byte[] nxdomain(byte[] query) {
+        byte[] reply = Arrays.copyOf(query, questionEnd(query));
+        reply[2] = (byte) 0x81; // QR, RD
+        reply[3] = (byte) 0x83; // RA, NXDOMAIN
+        reply[4] = 0;
+        reply[5] = 1;
+        for (int i = 6; i < 12; i++) {
+            reply[i] = 0;
         }
         return reply;
     }

@@ -26,21 +26,28 @@ final class StandInHost implements AutoCloseable {
     private final GenericContainer<?> container;
     private final LogBuffer logs = new LogBuffer();
 
-    private StandInHost(String image, Network network, CellTrust trust) {
+    private StandInHost(String image, Network network, CellTrust trust, boolean refuseNames) {
         this.container = new GenericContainer<>(DockerImageName.parse(image))
                 .waitingFor(new NoPortWait())
                 .withNetwork(network)
                 .withNetworkAliases(ALIAS)
                 .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint("java"))
-                .withCommand("-cp", DIR, StandIn.class.getName(), DIR + "/stand-in.p12")
+                .withCommand(command(refuseNames))
                 .withCopyToContainer(Transferable.of(classBytes()), DIR + "/" + CLASS_RESOURCE)
                 .withCopyToContainer(Transferable.of(trust.stubKeystore()), DIR + "/stand-in.p12")
                 .withLogConsumer(frame -> logs.append(frame.getUtf8String()));
     }
 
+    /** The JVM arguments; {@code refuseNames} is the stand-in-absent fault (T-M9-11) and is false in every other run. */
+    static String[] command(boolean refuseNames) {
+        return refuseNames
+                ? new String[] {"-cp", DIR, StandIn.class.getName(), DIR + "/stand-in.p12", StandIn.REFUSE_NAMES}
+                : new String[] {"-cp", DIR, StandIn.class.getName(), DIR + "/stand-in.p12"};
+    }
+
     /** Starts it and waits for the line that says DNS and TLS are both up; on a failure it stops and throws. */
-    static StandInHost start(String image, Network network, CellTrust trust, Duration timeout) {
-        StandInHost host = new StandInHost(image, network, trust);
+    static StandInHost start(String image, Network network, CellTrust trust, Duration timeout, boolean refuseNames) {
+        StandInHost host = new StandInHost(image, network, trust, refuseNames);
         try {
             host.container.start();
             Await.until("the stand-in's ready line", () -> {

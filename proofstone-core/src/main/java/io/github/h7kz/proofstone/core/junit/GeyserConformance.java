@@ -37,7 +37,8 @@ final class GeyserConformance {
             client = join.apply(CLIENT);
         } catch (RuntimeException | AssertionError e) {
             String message = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
-            return new ConformanceResult(cell, false, "the Bedrock conformance client could not join: " + message);
+            return new ConformanceResult(cell, false,
+                    joinFailure(message, host.namesAsked(), host.namesAnswered(), host.server().logs().all()));
         }
         String logged = null;
         try {
@@ -62,6 +63,42 @@ final class GeyserConformance {
             guard = e.getMessage();
         }
         return judgeNames(cell, host.namesAnswered(), guard);
+    }
+
+    /** Floodgate's default text for data it cannot decrypt (its {@code disconnect.invalid-key}); the client gets it as the kick. */
+    static final String FLOODGATE_INVALID_KEY = "Please connect through the official Geyser";
+    private static final String DISCOVERY_FAILURE = "Unable to fetch discovery data";
+
+    /**
+     * Why the Bedrock conformance client could not join, naming the hop when the evidence says which it is (T-M9-11). A client that
+     * only sees {@code disconnect.timeout} is not a reason: the stand-in's answers and the server's own log line are.
+     *
+     * @param joinMessage what the driver reported
+     * @param asked every name the stand-in was asked
+     * @param answered the names the stand-in answered itself
+     * @param serverLog the server's log, for the line that shows the failed fetch
+     */
+    static String joinFailure(String joinMessage, Set<String> asked, Set<String> answered, String serverLog) {
+        Set<String> missing = new TreeSet<>(StandIn.NAMES);
+        missing.removeAll(answered);
+        boolean fetchFailed = serverLog.lines().anyMatch(line -> line.contains(DISCOVERY_FAILURE));
+        // Blame the stand-in only on evidence: a name it was asked and did not answer, or Geyser's own failed fetch. A join that
+        // died before any login (nothing asked) says nothing about the stand-in.
+        if (!missing.isEmpty() && (fetchFailed || missing.stream().anyMatch(asked::contains))) {
+            String answeredText = answered.isEmpty() ? "none of the two expected names"
+                    : "only " + new TreeSet<>(answered) + " of them";
+            StringBuilder reason = new StringBuilder("the discovery stand-in answered ").append(answeredText).append(" (missing ")
+                    .append(missing).append("), so Geyser's login fetch could not complete; hop: server and "
+                            + "driver host to the stand-in");
+            serverLog.lines().filter(line -> line.contains(DISCOVERY_FAILURE)).findFirst()
+                    .ifPresent(line -> reason.append("; the server logged: ").append(line.strip()));
+            return reason.append("; the join said: ").append(joinMessage).toString();
+        }
+        if (joinMessage.contains(FLOODGATE_INVALID_KEY)) {
+            return "Floodgate refused the data Geyser sent: the key Geyser encrypts with does not match the key Floodgate holds; "
+                    + "hop: Geyser to Floodgate on the server; the join said: " + joinMessage;
+        }
+        return "the Bedrock conformance client could not join: " + joinMessage;
     }
 
     /**

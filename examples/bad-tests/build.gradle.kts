@@ -114,7 +114,7 @@ tasks.test {
     forwardCommandLineProperties(
         listOf(
             "proofstone.controlRun", "proofstone.repeat", "proofstone.differential", "proofstone.injectConformanceFault",
-            "proofstone.injectTopologyFault",
+            "proofstone.injectTopologyFault", "proofstone.injectGeyserFault",
         ),
     )
     // The differential bad test (T-M4-06) only means something in a differential run, where its reference driver is
@@ -137,6 +137,8 @@ tasks.test {
         exclude("**/invalid/**", "**/leak/**", "**/expect/**", "**/requires/**", "**/topology/**")
         // T-M8-11: the mod, data-pack and resource-pack faults are red by design too; metaModTest only.
         exclude("**/mod/**", "**/datapack/**", "**/resourcepack/**")
+        // T-M9-11: the Geyser faults are INVALID by design and boot a four-container cell: metaBedrockTest only.
+        exclude("**/bedrock/**")
     }
 }
 
@@ -164,6 +166,8 @@ data class BadRun(
     val plainFailure: Boolean = false,
     /** The verdict the run's proofstone-report.json must hold for the test, so the report agrees with the XML (T-M8-11). */
     val reportVerdict: String? = null,
+    /** A Geyser run needs the Bedrock driver host jar and its pinned-jar cache in the test JVM (T-M9-11). */
+    val bedrock: Boolean = false,
 )
 
 val badRuns = listOf(
@@ -264,7 +268,28 @@ val modRuns = listOf(
         mustNotContain = listOf("timed out", "CONFIGURATION_STALLED", "kicked"), plainFailure = true, reportVerdict = "FAIL",
     ),
 )
-val allRuns = badRuns + topologyRuns + modRuns
+// T-M9-11: the Bedrock negative controls on the Geyser row, each with the reason it must give. Not part of metaTest: a Geyser cell is
+// four containers and a pinned download. `metaBedrockTest`. A refused Bedrock protocol is not here: it could not be made without a
+// switch in the driver (docs/platforms/geyser.md, "Negative controls").
+val geyserCell = "geyser@2.12.1${plus}paper@26.3"
+fun bedrockFault(task: String, fault: String, vararg reason: String) = BadRun(
+    task, "**/bedrock/**", "INVALID", mapOf("proofstone.injectGeyserFault" to fault), pin = geyserCell,
+    mustContain = listOf("INVALID ") + reason, mustNotContain = listOf("the body ran", "timed out joining", "BOOT TIMEOUT"), bedrock = true, reportVerdict = "INVALID",
+)
+val bedrockRuns = listOf(
+    bedrockFault(
+        "metaBedrockStandInAbsent", "stand-in-absent",
+        "cell conformance failed", "the discovery stand-in answered none of the two expected names",
+        "client.discovery.minecraft-services.net", "hop: server and driver host to the stand-in",
+        "Unable to fetch discovery data from https://client.discovery.minecraft-services.net",
+    ),
+    bedrockFault(
+        "metaBedrockKeyMismatch", "key-mismatch",
+        "cell conformance failed", "Floodgate refused the data Geyser sent", "hop: Geyser to Floodgate on the server",
+        "Please connect through the official Geyser",
+    ),
+)
+val allRuns = badRuns + topologyRuns + modRuns + bedrockRuns
 
 // The task's own JUnit XML directory, and the expectation, as plain values: the metaTest action must not capture the
 // script's objects, because the configuration cache cannot store them.
@@ -300,6 +325,15 @@ allRuns.forEach { run ->
             }
             systemProperty("proofstone.${run.loader}.agentJar", agent.file("build/libs/agent-all.jar").asFile.absolutePath)
             systemProperty("proofstone.loaderCache", layout.buildDirectory.dir("loader-cache").get().asFile.absolutePath)
+        }
+        if (run.bedrock) {
+            // The Bedrock driver host jar is built, never committed (AGENTS.md section 3); the pinned Geyser and Floodgate jars are
+            // downloaded and checked by sha256 into the cache (ADR-0018 section 8).
+            dependsOn(":drivers:bedrock:shadowJar")
+            systemProperty("proofstone.bedrockHostJar",
+                rootProject.layout.projectDirectory.file("drivers/bedrock/build/libs/bedrock-host-all.jar").asFile.absolutePath)
+            systemProperty("proofstone.geyserDownloads",
+                rootProject.layout.projectDirectory.dir("build/geyser-downloads").asFile.absolutePath)
         }
         if (run.topology) {
             // The proxy agents are built, never committed (AGENTS.md section 3); the host finds them by these properties.
@@ -496,3 +530,10 @@ registerMeta(
 registerMeta("metaModFabricTest", "metaModTest for the Fabric cell only.", modRuns.filter { it.pin == fabricCell }, "proofstone-mod-fabric")
 registerMeta("metaModNeoForgeTest", "metaModTest for the NeoForge cell only.", modRuns.filter { it.pin == "neoforge@26.3" }, "proofstone-mod-neoforge")
 registerMeta("metaModPaperTest", "metaModTest for the Paper cell only (data pack and resource pack).", modRuns.filter { it.pin == paperCell }, "proofstone-mod-paper")
+// T-M9-11: the Bedrock faults (stand-in absent, Floodgate key mismatch), each INVALID with its own reason and hop. A fault that passes is red here.
+registerMeta(
+    "metaBedrockTest",
+    "Asserts that a Geyser cell with its discovery stand-in absent, and one whose Floodgate key does not match, are each INVALID " +
+        "with their own reason and hop, never a join timeout. Boots a Geyser cell per run; needs Docker and the EULA.",
+    bedrockRuns, "proofstone-bedrock",
+)

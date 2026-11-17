@@ -45,4 +45,57 @@ class GeyserConformanceTest {
         assertThat(result.passed()).isFalse();
         assertThat(result.detail()).contains("name guard").contains("login.live.com");
     }
+
+    // ---- a join that fails names its hop (T-M9-11) ----
+
+    private static final String SERVER_LOG = "[18:03:37 WARN]: [Geyser-Spigot] Exception caught in session of unknown (pre-login)\n"
+            + "java.lang.AssertionError: Unable to fetch discovery data from https://client.discovery.minecraft-services.net/api\n"
+            + "Caused by: java.net.UnknownHostException: client.discovery.minecraft-services.net\n";
+    private static final String JOIN = "Bedrock join of PSConfB failed: DISCONNECTED: the connection closed: disconnect.timeout "
+            + "(at join stage LOGIN_SENT)";
+
+    @Test
+    void aJoinThatFailedWhileTheStandInAnsweredNoNameBlamesTheStandInAndQuotesTheServersOwnLine() {
+        String reason = GeyserConformance.joinFailure(JOIN, StandIn.NAMES, Set.of(), SERVER_LOG);
+
+        assertThat(reason).contains("the discovery stand-in answered none of the two expected names")
+                .contains(StandIn.DISCOVERY_NAME).contains(StandIn.AUTH_NAME)
+                .contains("hop: server and driver host to the stand-in")
+                .contains("Unable to fetch discovery data from https://client.discovery.minecraft-services.net/api")
+                .contains(JOIN);
+    }
+
+    @Test
+    void aJoinThatFailedWithOneNameMissingNamesOnlyTheMissingOne() {
+        String reason = GeyserConformance.joinFailure(JOIN, StandIn.NAMES, Set.of(StandIn.DISCOVERY_NAME), "");
+
+        assertThat(reason).contains("answered only [" + StandIn.DISCOVERY_NAME + "]").contains("missing [" + StandIn.AUTH_NAME + "]")
+                .contains("hop: server and driver host to the stand-in").doesNotContain("Unable to fetch");
+    }
+
+    @Test
+    void floodgatesOwnRefusalWithBothNamesAnsweredBlamesTheKeyBetweenGeyserAndFloodgate() {
+        String message = "Bedrock join of PSConfB failed: DISCONNECTED: Please connect through the official Geyser (at join stage "
+                + "START_GAME)";
+
+        String reason = GeyserConformance.joinFailure(message, StandIn.NAMES, StandIn.NAMES, "");
+
+        assertThat(reason).contains("Floodgate refused the data Geyser sent").contains("does not match")
+                .contains("hop: Geyser to Floodgate on the server").contains("Please connect through the official Geyser")
+                .contains("START_GAME");
+    }
+
+    @Test
+    void anyOtherJoinFailureKeepsItsMessageAndGuessesNoHop() {
+        String reason = GeyserConformance.joinFailure("Bedrock join of PSConfB failed: DISCONNECTED: nope", StandIn.NAMES, StandIn.NAMES, SERVER_LOG);
+
+        assertThat(reason).isEqualTo("the Bedrock conformance client could not join: Bedrock join of PSConfB failed: DISCONNECTED: nope");
+    }
+
+    @Test
+    void aJoinThatDiedBeforeAnyLoginSaysNothingAboutTheStandIn() {
+        String reason = GeyserConformance.joinFailure("RakNet connect failed", Set.of(), Set.of(), "");
+
+        assertThat(reason).isEqualTo("the Bedrock conformance client could not join: RakNet connect failed");
+    }
 }
