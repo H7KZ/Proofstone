@@ -1,21 +1,22 @@
 # M9: Bedrock (Geyser and Floodgate on a Java server, then Bedrock Dedicated Server add-ons)
 
 Refined from the M9 epic in [M7-M10-epics.md](M7-M10-epics.md) by the M8 review (T-M8-99, 2026-11-15). **Approved 2026-11-17 by the maintainer's delegate (the maintainer said "decide"), with two limits:** (1) no BDS: T-M9-02 and the BDS cards 09 and 10 are deferred to M10, because a BDS image or zip is a Mojang binary with its own EULA and no redistribution, and a new image needs an explicit maintainer yes; (2) no new image or workflow in M9 at all. Geyser and Floodgate are plugin jars pinned by sha256 on the existing Paper image path. If a card turns out to need an image, it stops and says so.
+**ADR-0018 (Accepted 2026-11-17, T-M9-03) decides the design:** the cards below follow it. In short: the driver is CloudburstMC Protocol in Java, run as a *driver host* container on the cell network (pinned image, no UDP port published); the Microsoft discovery names are answered by a harness-owned *discovery stand-in* container of the same pinned image; the route is Floodgate with `validate-bedrock-login: false` and `transport: both` (a labelled *offline-stub* cell, not production auth); the identity is `geyser@2.12.1+paper@26.3` (`versions.yml` schema 5, key `geyser`); the API adds `Platform.GEYSER`, `Capability.BEDROCK_CLIENT` and a default `Clients.bedrock(name)`.
 No card here is started. The maintainer approves the plan, or changes it, before any card is picked up. The two spikes decide
 the rest: if a spike says "not feasible", the cards that depend on it are dropped and the plan is re-made, never built on a
 guess.
 
 **Exit criterion.** All of the following must be true, each shown by a real-server run with the XML read:
 - A Bedrock client driver joins a Java server through Geyser and Floodgate offline (no Xbox account, no Microsoft service
-  call), on the newest native `paper` row, and the Bukkit agent sees the player as Floodgate names it.
+  call: the two discovery names go to the stand-in and the name guard is clean), on the newest native `paper` row, and the Bukkit agent
+  sees the player as Floodgate names it (`.Name`). The cell is labelled *offline-stub*.
 - A test declares a Bedrock client through the public API, additively to API v0 (label `api-change`, no existing signature
   changed), and the Geyser topology through `versions.yml`, as ADR-0016 did for proxies.
 - Conformance scenarios on the Geyser topology (join, command reply, inventory read with the dual oracle, a Bedrock-only
   plugin branch) pass, every skip reasoned in the XML.
-- A misconfigured Geyser topology (Floodgate key mismatch, Bedrock protocol the Geyser build refuses) is a loud red, never a
-  pass or a join timeout.
-- **Only if the T-M9-02 spike says feasible:** a BDS cell boots with the script agent and passes the wire-protocol subset the
-  ADR names. If the spike says not feasible, this item is replaced by the spike's evidence and moved to M10.
+- A misconfigured Geyser cell (stand-in absent, and the faults T-M9-11 proves reachable: a Floodgate key mismatch or a Bedrock protocol the
+  Geyser build refuses) is a loud red, never a pass or a join timeout.
+- **BDS: deferred to M10** (maintainer decision, ADR-0018). Not part of this exit criterion; the item moves to the M10 cards.
 - Every acceptance above has the flake evidence the **Flake rule** below requires.
 
 ## Context the cards rely on
@@ -29,12 +30,12 @@ guess.
 - **External services.** Every Proofstone run is offline. Bedrock login normally signs a chain with Xbox Live; Geyser's
   `auth-type: offline` and Floodgate's own key are the two documented offline routes, **unverified here**. A driver that needs
   a Microsoft account is out (AGENTS.md: no secrets; ADR-0006: nothing unpinned at run time).
-- **Driver candidates** (epic): CloudburstMC Protocol (Java, in-process like `mcpl`) or PrismarineJS `bedrock-protocol` (Node,
-  a sidecar like `mineflayer-ref`). Bedrock is UDP (RakNet): Testcontainers UDP port exposure and the ViaProxy-style loopback
-  binding are untested here.
-- **BDS.** Bedrock Dedicated Server is a Mojang binary with its own EULA and no redistribution; Script API
-  `@minecraft/server-net` is beta and BDS-only. Whether a behaviour pack can open an HTTP client to the harness (the agent's
-  shape inverted: the pack calls out, it cannot listen) is the second spike's question.
+- **Driver (decided, ADR-0018).** CloudburstMC Protocol (Java), shaded into `drivers/bedrock` and run in a driver-host container on the cell
+  network, so no UDP port is published (the Testcontainers UDP gap, spike: `getMappedPort` throws, does not matter). The Node sidecar is
+  rejected (needs a new image). The snapshot is pinned by its timestamped version and a sha256 per artefact.
+- **BDS.** Out of M9 (maintainer, 2026-11-17; ADR-0018 section 1). Bedrock Dedicated Server is a Mojang binary with its own EULA and no
+  redistribution; Script API `@minecraft/server-net` is beta and BDS-only. T-M9-02, T-M9-09 and T-M9-10 are deferred to M10 and nothing
+  here depends on them.
 - **Pins.** Geyser and Floodgate are plugin jars (pinned by sha256 like any download, ADR-0006); a BDS image or zip is new and
   needs maintainer approval before the first pull.
 
@@ -53,13 +54,12 @@ last 2026-11-15 06:58, +01:00), because its biggest unknown (does the vanilla cl
 by its spike. M9's unknowns are larger: offline Bedrock auth, a second protocol family, UDP, and a beta scripting API. If the
 Geyser spike shows no offline route, M9 shrinks to the simulated tier plus docs (about 1 week) and a driver needs its own ADR.
 
-**Cards: 13** (12 plus the review; 5 conditional on a spike). Tiers: 0 Haiku, 6 Sonnet, 7 Opus (hints only, ADR-0014).
+**Cards: 13** (12 plus the review; 3 deferred to M10: 02, 09, 10). Tiers: 0 Haiku, 6 Sonnet, 7 Opus (hints only, ADR-0014).
 
 ## Order
 
-`01` (Geyser spike) and `02` (BDS spike) in either order, then `03` (ADR). Then `04` (schema and SPI), `05` (driver), `06`
-(Geyser topology host), `07` (API), `08` (conformance), `11` (negative controls), `12` (docs). `09` and `10` (BDS) only if `02`
-said feasible. `99` review. Cards that touch the same files run one at a time.
+`01` (Geyser spike, done), then `03` (ADR-0018, done by this PR). `02` (BDS spike) is deferred to M10. Then `04` (schema and SPI), `05` (driver), `06`
+(Geyser topology host), `07` (API), `08` (conformance), `11` (negative controls), `12` (docs). `09` and `10` (BDS) are deferred to M10 with `02`. `99` review. Cards that touch the same files run one at a time.
 
 ---
 
@@ -107,7 +107,7 @@ conditions in place were all green. No new image was needed; the Node driver on 
 **Verify.**
 Reviewer re-runs the documented commands for one driver and one route under `scripts/dockerlock.sh` and compares.
 
-### T-M9-02 · Spike: a BDS behaviour pack as an agent (Script API, `@minecraft/server-net`)
+### T-M9-02 · Spike: a BDS behaviour pack as an agent (Script API, `@minecraft/server-net`) (deferred to M10, not started)
 - tier: opus
 - depends: T-M8-99
 - modules: docs/platforms, scripts
@@ -140,7 +140,7 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 
 ### T-M9-03 · ADR-0018: Bedrock driver, Geyser topology and BDS agent (design, docs only)
 - tier: opus
-- depends: T-M9-01, T-M9-02
+- depends: T-M9-01
 - modules: docs/adr, docs/specs, docs/architecture.md, docs/glossary.md, docs/plan
 - adrs: 0002, 0004, 0006, 0008, 0015, 0016
 - specs: client-driver.md, test-api.md, agent-protocol.md, versions-yml.md
@@ -152,17 +152,16 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 - Write ADR-0018: the driver library (in-process or sidecar) and its pin; `Edition` in the driver SPI; the Geyser topology
   identity (for example `geyser@<build>+paper@26.3`) and its `versions.yml` key (an additive schema bump); the auth route;
   the UDP binding; the capabilities and agent tokens; required rows only through ADR-0015.
-- If T-M9-02 said feasible: the BDS host, the inverted transport and the protocol subset (and whether that is a protocol
-  version bump). If not: say so and keep BDS out of M9.
+- BDS stays out of M9 (maintainer decision); the ADR records why. T-M9-02 is deferred, so the BDS host and transport are not decided.
 - Rejected alternatives with reasons (for example "an Xbox test account").
 
 **Don't.**
 - Change code, `versions.yml` data or a schema file. Re-decide an accepted ADR.
 
 **Acceptance.**
-- [ ] ADR-0018 Accepted, listed in `docs/adr/README.md`, with rejected alternatives.
-- [ ] Glossary, `client-driver.md` and `versions-yml.md` carry the new terms; `./gradlew docsCheck` passes.
-- [ ] A decision list for the maintainer is in the PR (driver, auth route, new images or packages, BDS in or out).
+- [x] ADR-0018 Accepted, listed in `docs/adr/README.md`, with rejected alternatives.
+- [x] Glossary, `client-driver.md`, `versions-yml.md` and `test-api.md` carry the new terms; `./gradlew docsCheck` passes (via `gates.sh`).
+- [x] A decision list for the maintainer is in the PR (driver, auth route, new images or packages, BDS in or out).
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
@@ -170,7 +169,7 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 ### T-M9-04 · Schema, planner and driver SPI `Edition` for Geyser cells
 - tier: sonnet
 - depends: T-M9-03
-- modules: proofstone-core, proofstone-protocol, versions.yml, docs/specs/versions-yml.md
+- modules: proofstone-core, proofstone-protocol, versions.yml, gradle/libs.versions.toml, docs/specs/versions-yml.md
 - adrs: 0008, 0016, 0018
 - specs: versions-yml.md, client-driver.md
 - test-first: yes
@@ -178,9 +177,15 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 **Goal.** `versions.yml` names the Geyser rows and the planner, selector and `printMatrix` handle the new identity.
 
 **Do.**
-- The additive schema bump and the rows from T-M9-01, all `experimental`. `Edition` (`JAVA`, `BEDROCK`) in the driver SPI,
-  with `mcpl` and `mineflayer-ref` reporting `JAVA`.
-- `CellPlanner`, `CellSelector`, `printMatrix --scope` for the new identity; a malformed one fails loudly.
+- **Schema 5** exactly as [versions-yml.md](../../specs/versions-yml.md) says: the top-level key `geyser` (row `geyser@2.12.1`, build 1303,
+  sha256 `218f6e1a...`, Floodgate 2.2.5 build 141, `bedrock-protocol: 2225`, `java: java25`, paired with `paper@26.3`, all `experimental`),
+  `drivers.bedrock` (timestamped version, protocol 2225), `versions.schema.json` and `VersionsCatalog` rules. The identity is
+  `geyser@2.12.1+paper@26.3`; `geyser` is a reserved id left of the `+`.
+- `Edition` (`JAVA`, `BEDROCK`) in the driver SPI (`proofstone-core`, internal), with `mcpl` and `mineflayer-ref` reporting `JAVA`. Core
+  refuses a driver on an endpoint of the other edition with an error naming both.
+- `CellPlanner`, `CellSelector`, `printMatrix --scope` (`kind: "geyser"`) for the new identity; a malformed one, a bridged pairing and a
+  `geyser` id on the right of the `+` fail loudly.
+- The catalog pin of the Cloudburst snapshot (exact timestamped version) is added by T-M9-05, not here.
 
 **Don't.**
 - Change how Paper, topology or loader cells select or run. Hand-edit a pin without a run behind it.
@@ -193,54 +198,77 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 **Verify.**
 `./gradlew :proofstone-core:test :proofstone-protocol:test printMatrix --scope=pr`, then `bash scripts/gates.sh --max-workers=1`
 
-### T-M9-05 · Bedrock client driver
+### T-M9-05 · Bedrock client driver (driver host and `BedrockDriver`)
 - tier: opus
 - depends: T-M9-04
-- modules: drivers
-- adrs: 0004, 0006, 0007, 0018
-- specs: client-driver.md
+- modules: drivers, gradle/libs.versions.toml, proofstone-core
+- adrs: 0004, 0005, 0006, 0007, 0018
+- specs: client-driver.md section 6
 - test-first: yes
 
-**Goal.** A driver that joins offline as ADR-0018 says and exposes the client view the conformance needs.
+**Goal.** A driver that joins offline as ADR-0018 says, runs as a driver host on the cell network, and exposes the client view the conformance needs.
 
 **Do.**
-- The driver module (library pinned in the catalog, or the sidecar image by digest), join, chat and command, inventory read,
-  form and window events as far as ADR-0018 lists them; every unknown packet field an error, never a default.
-- Join timeouts name the stalled stage (as T-M6-14 does for Java).
-- Unit tests with scripted packets; a real join through Geyser on `paper@26.3`, three invocations.
+- First: check whether a release (not a snapshot) of CloudburstMC Protocol carries codec `Bedrock_v2225`; if it does, pin it and skip the
+  snapshot rules. Otherwise pin `3.0.0.Beta15-20261116.161745-6` in the catalog with an `exclusiveContent` repository entry for
+  `org.cloudburstmc.*`, a build check of every resolved artefact's sha256 and a check that the resolved graph holds no `-SNAPSHOT` or
+  dynamic version. Shade and relocate everything into one jar.
+- `drivers/bedrock`: the driver host program (driver RPC v1, client-driver.md section 6) and `BedrockDriver implements ClientDriver`
+  (`Edition.BEDROCK`) in `proofstone-core`. Join, chat and command, `awaitMessage`, inventory and position read, disconnect; an item
+  definition registry and a raised read limit for the spike's two decode errors; a numeric XUID unique per join; every unknown packet
+  field an error, never a default. Window clicks, `useBlock`, forms and resource packs are out of v1.
+- Join timeouts name the stalled stage (`RAKNET_CONNECT` ... `SPAWN_STATUS`, ADR-0018 section 7).
+- Unit tests with scripted packets and the RPC contract; the real join waits for T-M9-06 (the host) and is run there and in T-M9-08.
 
 **Don't.**
-- Use any online auth, add a retry, or a sleep. Add a runtime dependency the ADR did not name.
+- Use any online auth, add a retry, or a sleep. Add a runtime dependency the ADR did not name (Cloudburst, shaded, is the one it names).
+- Run the driver in the harness JVM, or publish a UDP port.
 
 **Acceptance.**
-- [ ] `./gradlew :drivers:<bedrock>:test` passes.
-- [ ] The real join passes three invocations (Flake rule), join count and timeouts reported apart.
+- [ ] `./gradlew :drivers:bedrock:test :proofstone-core:test` passes, including the build checks on the pin.
+- [ ] The shaded jar holds no `-SNAPSHOT` dependency and no unrelocated Cloudburst class.
 
 **Verify.**
-`./gradlew :drivers:<bedrock>:test`, then the card's real-server task under `scripts/dockerlock.sh`.
+`./gradlew :drivers:bedrock:test :proofstone-core:test`, then `bash scripts/gates.sh --max-workers=1`.
 
 ### T-M9-06 · Geyser topology host (Paper, Geyser, Floodgate, Bukkit agent)
 - tier: sonnet
 - depends: T-M9-04
-- modules: proofstone-core
+- modules: proofstone-core, platforms/bukkit, proofstone-protocol
 - adrs: 0005, 0013, 0016, 0018
-- specs: architecture.md §3
+- specs: architecture.md §3, agent-protocol.md
 - test-first: yes
 
-**Goal.** The extension boots a Geyser cell from `versions.yml` with Geyser and Floodgate pinned and the Bukkit agent.
+**Goal.** The extension boots a Geyser cell from `versions.yml`: Paper with Geyser and Floodgate pinned and the Bukkit agent, the discovery stand-in and the driver host, on one network, with no new image.
 
 **Do.**
-- A host (or a topology kind of `TopologyHost`, as ADR-0018 says) that copies the pinned Geyser and Floodgate jars and their
-  config, generates the Floodgate key per cell from memory and redacts it from every bundle (as the forwarding secret is).
-- Readiness by Geyser's start line and agent `health`; a failed start reports the log tail and stops every container.
-- Log-guard list for Geyser, empty at first, each line added with a reason.
+- `GeyserHost` (ADR-0018 section 8; not a `TopologyHost`) owning a `PaperHost`, the **discovery stand-in** and the driver host. The
+  stand-in is a Java 17 program in `proofstone-core` (DNS for the two Microsoft names, forwards the rest and logs every name asked; TLS on
+  443 with a per-run certificate from the JDK's `keytool`; invented discovery, OpenID and JWKS documents; the name deny-list guard),
+  copied into a container of the pinned image. The trust store is the image's `cacerts` plus the stand-in certificate, built with the
+  `KeyStore` API and copied into the server and the driver host; both get `JAVA_TOOL_OPTIONS` and `--dns`. First step: verify by a run that
+  this works through Testcontainers (the spike proved it with `docker create`).
+- Download the pinned Geyser and Floodgate jars in the harness JVM, check their sha256, copy them in. Render Geyser's `config.yml` from
+  a template of the pinned build's default (keys in ADR-0018 section 5); if Geyser rejects a pre-rendered file, fall back to the spike's
+  first-start-then-edit-then-restart and record the cost. Paper `connection-throttle: -1`.
+- The Floodgate key per cell from memory (`SecureRandom`, 16 bytes) copied to `plugins/floodgate/key.pem`; redacted from every bundle
+  and log in raw, hex and base64 form, `plugins/floodgate` dropped from bundles, a unit test greps every bundle file.
+- The Bukkit agent reports the token `floodgate` when the plugin `floodgate` is enabled (read-only, by name, no Floodgate dependency);
+  the card checks whether the health schema enumerates tokens (then a minor protocol bump and golden files, else none).
+- `cell.json` carries `"bedrockAuth": "offline-stub"`.
+- Readiness in the order of ADR-0018 section 6; a failed start reports every container's log tail and stops every container.
+- Log-guard list for Geyser: the three `XBOX AUTHENTICATION IS DISABLED` lines and the optional-fetch WARNs with reasons, taken from a
+  run; every later line added with a reason.
 
 **Don't.**
-- Mount anything, commit a key, or let Geyser download an unpinned artefact at start.
+- Mount anything, commit a key or certificate, publish a UDP port, close the server's default route, or let Geyser download an unpinned
+  jar at start (its optional Mojang and update fetches are allowlisted, not blocked).
 
 **Acceptance.**
-- [ ] Unit tests for the rendered config, pins, key redaction and copy list.
-- [ ] A real-server test boots the row and reads `health`, three invocations. No container of ours runs after.
+- [ ] Unit tests for the rendered config, pins, key redaction, copy list, the stand-in's DNS answers and name guard.
+- [ ] A real-server test boots the row, reads `health` (token `floodgate` present) and joins one Bedrock client through the driver host
+  (spawn status, the agent lists `.Name`), three invocations; the stand-in log shows exactly the two expected names; no container of ours
+  runs after. Bedrock join timeouts are counted apart with the stage named.
 
 **Verify.**
 `./gradlew :proofstone-core:test`, then the card's real-server task under `scripts/dockerlock.sh`.
@@ -257,16 +285,18 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 capability named.
 
 **Do.**
-- The additive API ADR-0018 names (for example `Clients.bedrock(name)` and a capability), the planner hook, and the dual oracle
-  for a Bedrock client's inventory.
+- The additive API of [test-api.md](../../specs/test-api.md) section 14: `Platform.GEYSER`, `Capability.BEDROCK_CLIENT` and a **default**
+  `Clients.bedrock(String)` (core overrides it); the planner hook for `@Matrix(platform = Platform.GEYSER)`; the capability held when the
+  agent reports `floodgate`; the dual oracle for a Bedrock client's inventory (id and count).
 - Label the PR `api-change`; api-baseline additions only.
 
 **Don't.**
-- Change an existing signature, or let the simulated tier (`SIMULATED_BEDROCK`) claim real Bedrock support.
+- Change an existing signature, add a public `Edition`, or let the simulated tier (`SIMULATED_BEDROCK`) claim real Bedrock support.
 
 **Acceptance.**
 - [ ] `api-baseline.txt` diff shows additions only.
-- [ ] Unit tests for the declaration, the skip and the refusal on a bridged or loader cell.
+- [ ] Unit tests for the declaration, the skip (`missing capability BEDROCK_CLIENT on cell paper@26.3`), the `IllegalStateException` without
+  the declaration, and the refusal on a bridged, loader or topology cell and in a differential run.
 
 **Verify.**
 `./gradlew :proofstone-api:test :proofstone-core:test`
@@ -282,9 +312,11 @@ capability named.
 **Goal.** The Geyser row proves the round trips the Java rows prove, as far as a Bedrock client can.
 
 **Do.**
+- A first cached check of the cell: the stand-in was asked for exactly the two expected names and the name guard is clean (a red makes
+  every test on the cell `INVALID`).
 - Scenarios C-G01 (join, the agent sees the Floodgate name), C-G02 (command reply), C-G03 (inventory read, dual oracle),
   C-G04 (a plugin's Bedrock-only branch with a real Bedrock client, the counterpart of C-B01). A scenario a Bedrock client
-  cannot do is skipped with the reason, never passed.
+  cannot do in v1 is skipped with the reason, never passed.
 - Record each quirk in `geyser.md` and assert it as it is.
 
 **Don't.**
@@ -297,7 +329,7 @@ capability named.
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=<geyser row> --no-parallel --max-workers=1`
 
-### T-M9-09 · BDS host and script agent (only if T-M9-02 said feasible)
+### T-M9-09 · BDS host and script agent (deferred to M10 with T-M9-02, not started)
 - tier: opus
 - depends: T-M9-03
 - modules: platforms, proofstone-core
@@ -321,7 +353,7 @@ capability named.
 **Verify.**
 The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 
-### T-M9-10 · BDS conformance subset (only if T-M9-02 said feasible)
+### T-M9-10 · BDS conformance subset (deferred to M10 with T-M9-02, not started)
 - tier: sonnet
 - depends: T-M9-05, T-M9-09
 - modules: conformance
@@ -343,7 +375,7 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=<bds row> --no-parallel --max-workers=1`
 
-### T-M9-11 · Negative controls: Floodgate key mismatch, refused Bedrock protocol, broken pack
+### T-M9-11 · Negative controls: stand-in absent, Floodgate key mismatch, refused Bedrock protocol
 - tier: sonnet
 - depends: T-M9-08
 - modules: examples/bad-tests, proofstone-core, scripts
@@ -351,11 +383,13 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 - specs: specs/self-tests.md §3
 - test-first: yes
 
-**Goal.** Prove the Bedrock paths can fail, as T-M7-13 and T-M8-11 did.
+**Goal.** Prove the Bedrock paths can fail, as T-M7-13 and T-M8-11 did. (BDS faults are M10.)
 
 **Do.**
-- Bad tests, each pinned to its cell and refused on another: a Floodgate key mismatch (INVALID naming the hop), a Bedrock
-  protocol the Geyser build refuses (INVALID with Geyser's message), and, if BDS is in, a behaviour pack that fails to load.
+- Bad tests, each pinned to its cell and refused on another: the discovery stand-in absent (the spike's `An internal error occurred!`,
+  INVALID naming the hop), a Floodgate key mismatch, and a Bedrock protocol the Geyser build refuses (INVALID with Geyser's message). The
+  last two are **unverified**: on one server Geyser takes Floodgate's key and Geyser's refusal text was not run, so each fault is first
+  shown to be reachable (a run, recorded in `geyser.md`); one that cannot be made is dropped with the reason, never faked.
 - A `metaBedrockTest` expecting each verdict; a fault that passes fails the meta test.
 
 **Don't.**
@@ -379,8 +413,9 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 **Goal.** A plugin author can test a Bedrock path through Geyser from the docs alone.
 
 **Do.**
-- A user guide page, troubleshooting for the M9 findings, a small example on the Geyser row, `docs/platforms.md` status at the
-  level the evidence supports (`experimental` until ADR-0015 is met).
+- A user guide page (including the *offline-stub* warning: Xbox login validation is off, so a plugin that needs verified identities
+  cannot be tested), troubleshooting for the M9 findings, a small example on the Geyser row, `docs/platforms.md` status at the
+  level the evidence supports (`experimental` until ADR-0015 is met and the driver is not on a snapshot).
 
 **Don't.**
 - Claim a status, version or flake rate that was not run.
@@ -394,7 +429,7 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 
 ### T-M9-99 · M9 milestone review
 - tier: opus
-- depends: T-M9-01, T-M9-02, T-M9-03, T-M9-04, T-M9-05, T-M9-06, T-M9-07, T-M9-08, T-M9-11, T-M9-12
+- depends: T-M9-01, T-M9-03, T-M9-04, T-M9-05, T-M9-06, T-M9-07, T-M9-08, T-M9-11, T-M9-12
 - modules: docs/plan, docs/robustness.md, docs/platforms.md
 - adrs: 0010, 0014, 0015, 0018
 - specs: vision.md
@@ -403,8 +438,7 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 **Goal.** Decide whether the M9 exit criterion is met, from runs, not from PR descriptions, and refine M10 into cards.
 
 **Do.**
-- Read the code and the XML. Re-run gates, `:conformance:smoke`, `:conformance:run` on each Geyser row (and the BDS row if
-  built) and on one loader and one topology row (three invocations each), the meta tasks, and
+- Read the code and the XML. Re-run gates, `:conformance:smoke`, `:conformance:run` on each Geyser row and on one loader and one topology row (three invocations each), the meta tasks, and
   `bash scripts/release-mutation-check.sh` at HEAD. One Docker run at a time under `dockerlock`.
 - Report Bedrock join-timeout and log-guard rates apart from the Paper, topology and loader numbers.
 - Review `docs/robustness.md` R13 against the code. Check diffs for a weakened test, a new runtime dependency, a workflow, a

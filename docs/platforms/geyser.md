@@ -38,7 +38,7 @@ Conditions:
    names, a TLS endpoint with invented documents, and a server JVM trust store copy that also trusts the stub certificate) made
    it offline: with the server's default route removed, every join in the table passed and no packet reached Microsoft. The
    documents are made up (they carry no Microsoft key), which is fine only because login validation is off. Whether Proofstone
-   owns such a stub is an ADR-0018 decision, not a spike finding.
+   owns such a stub was an ADR-0018 decision: it does, as a container of the pinned image ([ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md) section 4).
 
 **If the stub is not acceptable, the narrower scope is the simulated tier only** (`SIMULATED_BEDROCK`, a Java client under a
 `.` name, test-api section 11). A Java client (the `mcpl` driver) joined the Geyser and Floodgate server on the Java port
