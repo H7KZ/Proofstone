@@ -40,6 +40,8 @@ public final class CiMatrix {
     private static final String NO_TOPOLOGY = "no topology cell in scope";
     /** The planner's message when a loader has no row in the scope; that only skips the loader. */
     private static final String NO_LOADER_ROW = "has no row in scope";
+    /** The planner's message when Geyser has no cell in the scope; that only skips Geyser. */
+    private static final String NO_GEYSER_CELL = "no geyser cell in scope";
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -51,13 +53,20 @@ public final class CiMatrix {
      * @param topologies the topology cells in scope, in proxy file order
      * @param skipped platform, proxy or loader id to the reason it has no cells, in file order
      * @param loaders the loader cells in scope (ADR-0017), in loader file order
+     * @param geysers the Geyser cells in scope (ADR-0018), in Geyser row file order
      */
     public record Plan(List<Cell> cells, List<TopologyCell> topologies, Map<String, String> skipped,
-            List<LoaderCell> loaders) {
+            List<LoaderCell> loaders, List<GeyserCell> geysers) {
 
-        /** A plan with no loader cell, as every schema 2 and 3 file plans. */
+        /** A plan with no Geyser cell, as every schema 2 to 4 file plans. */
+        public Plan(List<Cell> cells, List<TopologyCell> topologies, Map<String, String> skipped,
+                List<LoaderCell> loaders) {
+            this(cells, topologies, skipped, loaders, List.of());
+        }
+
+        /** A plan with no loader and no Geyser cell, as every schema 2 and 3 file plans. */
         public Plan(List<Cell> cells, List<TopologyCell> topologies, Map<String, String> skipped) {
-            this(cells, topologies, skipped, List.of());
+            this(cells, topologies, skipped, List.of(), List.of());
         }
     }
 
@@ -92,7 +101,25 @@ public final class CiMatrix {
         for (String id : catalog.loaderIds()) {
             planLoader(planner, catalog.loader(id), scope, loaders, skipped);
         }
-        return new Plan(List.copyOf(cells), List.copyOf(topologies), Map.copyOf(skipped), List.copyOf(loaders));
+        List<GeyserCell> geysers = new ArrayList<>();
+        if (!catalog.geyserRows().isEmpty()) {
+            planGeysers(planner, scope, geysers, skipped);
+        }
+        return new Plan(List.copyOf(cells), List.copyOf(topologies), Map.copyOf(skipped), List.copyOf(loaders),
+                List.copyOf(geysers));
+    }
+
+    private static void planGeysers(CellPlanner planner, Scope scope, List<GeyserCell> out, Map<String, String> skipped) {
+        try {
+            out.addAll(planner.planGeysers(List.of("all"), "paper", List.of("all"), scope));
+        } catch (VersionsException e) {
+            if (e.getMessage() == null
+                    || !(e.getMessage().contains(TODO_PINS) || e.getMessage().contains(NO_GEYSER_CELL))) {
+                throw e;
+            }
+            skipped.put(GeyserCell.ID, scope == Scope.PR && e.getMessage().contains(NO_GEYSER_CELL)
+                    ? "no required geyser cell; PR runs required rows only" : e.getMessage());
+        }
     }
 
     private static void planLoader(CellPlanner planner, LoaderPlatform loader, Scope scope, List<LoaderCell> out,
@@ -166,6 +193,18 @@ public final class CiMatrix {
      *     writes exactly what {@link #matrix(List, List)} wrote before schema 4.
      */
     public static ObjectNode matrix(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders) {
+        return matrix(cells, topologies, loaders, List.of());
+    }
+
+    /**
+     * @return {@code {"include": [...]}}: the cells of {@link #matrix(List, List, List)}, then one object per Geyser cell.
+     *     A Geyser entry's {@code cell} is its identity ({@code geyser@2.12.1+paper@26.3}), {@code platform} is
+     *     {@code geyser}, {@code kind} is {@code geyser}, {@code version} and {@code build} are Geyser's, {@code mc} is the
+     *     backend's, and its slug is {@code geyser-2.12.1-paper-26.3}. A list with no Geyser cell writes exactly what
+     *     {@link #matrix(List, List, List)} wrote before schema 5.
+     */
+    public static ObjectNode matrix(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders,
+            List<GeyserCell> geysers) {
         ObjectNode root = JSON.createObjectNode();
         ArrayNode include = root.putArray("include");
         for (Cell cell : cells) {
@@ -204,6 +243,19 @@ public final class CiMatrix {
             entry.put("status", cell.status().name().toLowerCase(Locale.ROOT));
             entry.put("slug", cell.loader() + "-" + cell.mc());
         }
+        for (GeyserCell cell : geysers) {
+            ObjectNode entry = include.addObject();
+            entry.put("cell", cell.identity());
+            entry.put("platform", GeyserCell.ID);
+            entry.put("kind", "geyser");
+            entry.put("version", cell.version());
+            entry.put("build", cell.build());
+            entry.put("mc", cell.backend().mc());
+            entry.put("java", cell.java());
+            entry.put("status", cell.status().name().toLowerCase(Locale.ROOT));
+            entry.put("slug", GeyserCell.ID + "-" + cell.version() + "-" + cell.backend().platform() + "-"
+                    + cell.backend().mc());
+        }
         return root;
     }
 
@@ -221,10 +273,10 @@ public final class CiMatrix {
         plan.skipped().forEach((id, reason) -> err.println(
                 "printMatrix: skipped " + id + " (" + scope.name().toLowerCase(Locale.ROOT) + "): " + reason));
         if (scope == Scope.NIGHTLY && plan.cells().isEmpty() && plan.topologies().isEmpty()
-                && plan.loaders().isEmpty()) {
+                && plan.loaders().isEmpty() && plan.geysers().isEmpty()) {
             throw new VersionsException("printMatrix: nightly plans no cell; check versions.yml statuses and pins");
         }
-        String json = JSON.writerWithDefaultPrettyPrinter().writeValueAsString(matrix(plan.cells(), plan.topologies(), plan.loaders()));
+        String json = JSON.writerWithDefaultPrettyPrinter().writeValueAsString(matrix(plan.cells(), plan.topologies(), plan.loaders(), plan.geysers()));
         Path out = Path.of(require(options, "out"));
         if (out.getParent() != null) {
             Files.createDirectories(out.getParent());

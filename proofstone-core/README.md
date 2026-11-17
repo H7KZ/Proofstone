@@ -25,6 +25,12 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
   highest `required` row and never an experimental one), `CellSelector.loaders()` (`fabric@`/`neoforge@` entries, never half of a
   `+` topology), and `CiMatrix` loader entries (`kind: "loader"`, after the topology cells). `VersionsCatalog` reads the schema 4
   `loaders` key and refuses a bridged or malformed row at load. Paper and topology cells select and plan exactly as before.
+- Geyser cells (T-M9-04, ADR-0018), package `cell`: `GeyserCell` (identity `geyser@2.12.1+paper@26.3`, Geyser and Floodgate pins, the
+  backend `Cell`; not a `TopologyCell`), `CellPlanner.planGeysers(geyserVersions, "paper", backendVersions, scope)` (`latest` on the
+  left is the highest `required` row, never an experimental one), `CellSelector.geysers()` (`geyser` is reserved: left of the `+`
+  only, never a topology entry), and `CiMatrix` Geyser entries (`kind: "geyser"`, last). `VersionsCatalog` reads the schema 5
+  `geyser` key and `drivers.bedrock` (`geyserRows()`, `bedrockDriver()`), and refuses a bridged, non-paper or malformed pairing at
+  load. Paper, topology and loader cells select and plan exactly as before; nothing runs a Geyser cell yet (T-M9-06).
 - `io.github.h7kz.proofstone.core.host.LoaderHost` (T-M8-07, ADR-0017): `start(LoaderCell, LoaderHostOptions)` boots one Fabric or
   NeoForge cell on the pinned itzg image, next to `PaperHost` and sharing its agent client, log buffer, copy ownership and
   permission check. The harness downloads the loader jar (Fabric launcher, NeoForge installer) and the Fabric API, checks each
@@ -84,7 +90,7 @@ invocation (M7 flake rule). Not part of `check`.
   `proofstone-report/1`) and `JunitXml` (`proofstone-junit.xml`, non-green verdicts as failures). `RunReport` collects one verdict per test, cell and driver and writes both files when the JVM's run ends (T-M4-09; the directory is `-Dproofstone.reportDir`, default `build/proofstone`). Precedence: INVALID,
   DISAGREE, FLAKY, VACUOUS, then the run's own result. The engine is pure: it takes run results as input and never runs
   a test. The verdict types stay in core, not `proofstone-api`, so the frozen v0 baseline does not change.
-- `io.github.h7kz.proofstone.core.driver`: the client driver SPI (`ClientDriver`, `ClientSession`, `ConnectSpec`, `ChatMessage`, `ClientDriverException`). Implemented by `drivers/mcpl`.
+- `io.github.h7kz.proofstone.core.driver`: the client driver SPI (`ClientDriver`, `ClientSession`, `ConnectSpec`, `ChatMessage`, `ClientDriverException`, `Edition`). Implemented by `drivers/mcpl` and `drivers/mineflayer-ref`; `Edition` (`JAVA`, `BEDROCK`, ADR-0018) is internal, and `ClientDriver.connect(spec, endpoint)` refuses a driver on an endpoint of the other edition, naming both.
 - `io.github.h7kz.proofstone.core.junit.ProofstoneExtension`: the JUnit 5 extension behind `@Proofstone`, `@Matrix` and `@CellTest` (T-M1-10). One invocation per cell, displayed `paper@26.3`; one server per class and cell; a fresh `mcpl` client per test named `T<hash>`. It skips with a printed reason when the EULA is not accepted or Docker is missing. It reads the system properties `proofstone.repoRoot` and `proofstone.agentJar` and finds the driver through `ServiceLoader`.
 - `io.github.h7kz.proofstone.core.junit.VerdictGate` (T-M4-03): applies `VerdictEngine` to each passing test. With `-Dproofstone.controlRun=true` no plugin jar is installed (the agent and fixture world stay), so a pass is `VACUOUS` and fails the test, unless the test declares `@ControlRun(EXPECTED_PASS, reason)`. Any other value of the property is an error.
 

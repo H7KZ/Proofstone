@@ -19,7 +19,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * The parsed, validated {@code versions.yml} (ADR-0008). Load it with {@link #load}; the file is never
@@ -39,17 +41,31 @@ public final class VersionsCatalog {
     /** The loaders Proofstone can run (ADR-0017); an id not here is not a loader row family. */
     private static final List<String> LOADERS = List.of("fabric", "neoforge");
 
+    /** The one id that is a top-level key, not a platform, proxy or loader (ADR-0018 section 8). */
+    private static final String GEYSER = "geyser";
+
+    /** The only backend platform a Geyser row pairs with in M9 (ADR-0018 section 8). */
+    private static final String GEYSER_BACKEND = "paper";
+
+    /** A snapshot version: the word, or a Maven timestamp such as 20261116.161745. A required pairing refuses one. */
+    private static final Pattern SNAPSHOT = Pattern.compile("SNAPSHOT|\\d{8}\\.\\d{6}");
+
     private final Map<String, Platform> platforms;
     private final Map<String, ProxyPlatform> proxies;
     private final Map<String, LoaderPlatform> loaders;
+    private final List<GeyserRow> geyserRows;
+    private final BedrockDriver bedrockDriver;
     private final List<JavaRule> javaRules;
     private final Map<String, ImagePin> driverImages;
 
     private VersionsCatalog(Map<String, Platform> platforms, Map<String, ProxyPlatform> proxies,
-            Map<String, LoaderPlatform> loaders, List<JavaRule> javaRules, Map<String, ImagePin> driverImages) {
+            Map<String, LoaderPlatform> loaders, List<GeyserRow> geyserRows, BedrockDriver bedrockDriver,
+            List<JavaRule> javaRules, Map<String, ImagePin> driverImages) {
         this.platforms = platforms;
         this.proxies = proxies;
         this.loaders = loaders;
+        this.geyserRows = geyserRows;
+        this.bedrockDriver = bedrockDriver;
         this.javaRules = javaRules;
         this.driverImages = driverImages;
     }
@@ -146,6 +162,16 @@ public final class VersionsCatalog {
         return loader;
     }
 
+    /** @return the Geyser rows in file order; empty for a file below schema 5 (ADR-0018 section 8) */
+    public List<GeyserRow> geyserRows() {
+        return geyserRows;
+    }
+
+    /** @return the {@code drivers.bedrock} pin, or empty when the file has none (below schema 5) */
+    public Optional<BedrockDriver> bedrockDriver() {
+        return Optional.ofNullable(bedrockDriver);
+    }
+
     /**
      * @throws VersionsException when the platform is not in the matrix
      */
@@ -229,6 +255,7 @@ public final class VersionsCatalog {
         }
         errors.addAll(proxyErrors(document));
         errors.addAll(loaderErrors(document));
+        errors.addAll(geyserErrors(document));
         return errors;
     }
 
@@ -239,8 +266,8 @@ public final class VersionsCatalog {
         if (loaders.isMissingNode()) {
             return errors;
         }
-        if (document.path("schema").asInt() != 4) {
-            errors.add("loaders: needs \"schema: 4\" (ADR-0017); this file says schema "
+        if (document.path("schema").asInt() < 4) {
+            errors.add("loaders: needs \"schema: 4\" or later (ADR-0017); this file says schema "
                     + document.path("schema").asText());
         }
         String driverMc = document.path("drivers").path("mcpl").path("protocol").asText("");
@@ -292,6 +319,111 @@ public final class VersionsCatalog {
                     errors.add(id + "@" + mc + ": a bridged loader row is not planned (the driver speaks " + driverMc
                             + " natively and the row's protocol differs); native rows only, ADR-0017 section 1");
                 }
+            }
+        }
+        return errors;
+    }
+
+    /**
+     * The schema 5 rules of docs/specs/versions-yml.md (ADR-0018 section 8); a file without {@code geyser} and
+     * {@code drivers.bedrock} has none to break. {@code geyser} is reserved, so a section that holds that id breaks it.
+     */
+    private static List<String> geyserErrors(JsonNode document) {
+        List<String> errors = new ArrayList<>();
+        for (String section : List.of("platforms", "proxies", "loaders")) {
+            if (document.path(section).has(GEYSER)) {
+                errors.add(section + "." + GEYSER + ": geyser is a reserved id (the top-level key geyser, ADR-0018 "
+                        + "section 8); it is never a platform, proxy or loader");
+            }
+        }
+        String schema = document.path("schema").asText();
+        boolean below5 = document.path("schema").asInt() < 5;
+        JsonNode bedrock = document.path("drivers").path("bedrock");
+        JsonNode geyser = document.path(GEYSER);
+        if (!bedrock.isMissingNode() && below5) {
+            errors.add("drivers.bedrock: needs \"schema: 5\" (ADR-0018); this file says schema " + schema);
+        }
+        if (geyser.isMissingNode()) {
+            return errors;
+        }
+        if (below5) {
+            errors.add("geyser: needs \"schema: 5\" (ADR-0018); this file says schema " + schema);
+        }
+        if (bedrock.isMissingNode()) {
+            errors.add("geyser: drivers.bedrock is missing, so rows cannot be checked against the Bedrock protocol");
+            return errors;
+        }
+        String driverMc = document.path("drivers").path("mcpl").path("protocol").asText("");
+        if (driverMc.isEmpty()) {
+            errors.add("geyser: drivers.mcpl.protocol is missing, so pairings cannot be checked for being native");
+        }
+        String driverVersion = bedrock.path("version").asText("");
+        Set<String> seenVersions = new HashSet<>();
+        JsonNode rows = geyser.path("rows");
+        for (int i = 0; i < rows.size(); i++) {
+            JsonNode row = rows.get(i);
+            String version = row.path("version").asText();
+            String where = "geyser.rows[" + i + "] (version " + version + ")";
+            if (!seenVersions.add(version)) {
+                errors.add("geyser: version \"" + version + "\" appears twice");
+            }
+            if (row.path("bedrock-protocol").asInt() != bedrock.path("protocol").asInt()) {
+                errors.add(where + ": bedrock-protocol " + row.path("bedrock-protocol").asText()
+                        + " is not drivers.bedrock.protocol " + bedrock.path("protocol").asText()
+                        + "; native pairings only (ADR-0018 section 8)");
+            }
+            if (!document.path("platforms").path(GEYSER_BACKEND).path("host").path("digests")
+                    .has(row.path("java").asText())) {
+                errors.add(where + ": platforms." + GEYSER_BACKEND + " host.digests has no entry for Java tag "
+                        + row.path("java").asText());
+            }
+            if ("required".equals(row.path("status").asText()) && containsTodo(row)) {
+                errors.add(where + ": required row must not contain TODO");
+            }
+            errors.addAll(geyserPairingErrors(document, row, where, driverMc, driverVersion));
+        }
+        return errors;
+    }
+
+    private static List<String> geyserPairingErrors(JsonNode document, JsonNode row, String where, String driverMc,
+            String driverVersion) {
+        List<String> errors = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (JsonNode pairing : row.path("backends")) {
+            String platform = pairing.path("platform").asText();
+            String mc = pairing.path("mc").asText();
+            String cell = GEYSER + "@" + row.path("version").asText() + "+" + platform + "@" + mc;
+            if (!GEYSER_BACKEND.equals(platform)) {
+                errors.add(where + ": backend " + platform + "@" + mc + ": only " + GEYSER_BACKEND
+                        + " is accepted as a Geyser backend in M9 (ADR-0018 section 8)");
+                continue;
+            }
+            if (!seen.add(platform + "@" + mc)) {
+                errors.add(where + ": pairing " + platform + "@" + mc + " is listed twice");
+                continue;
+            }
+            JsonNode backend = backendRow(document, platform, mc);
+            if (backend == null) {
+                errors.add(where + ": backend " + platform + "@" + mc + " is not a row of platforms." + platform);
+                continue;
+            }
+            if ("required".equals(pairing.path("status").asText())) {
+                if (!"required".equals(row.path("status").asText())) {
+                    errors.add(cell + ": a required pairing needs a required Geyser row (the row is "
+                            + row.path("status").asText() + ")");
+                }
+                if (!"required".equals(backend.path("status").asText())) {
+                    errors.add(cell + ": a required pairing needs a required backend row (the backend row is "
+                            + backend.path("status").asText() + ")");
+                }
+                if (SNAPSHOT.matcher(driverVersion).find()) {
+                    errors.add(cell + ": a required pairing needs a release Bedrock driver, not the snapshot "
+                            + driverVersion + " (ADR-0018 section 8)");
+                }
+            }
+            if (!driverMc.isEmpty() && !nativeFor(document, backend, driverMc)) {
+                errors.add(cell + ": a bridged pairing is not planned (the Java driver speaks " + driverMc
+                        + " natively and the backend row's protocol differs); native pairings only, ADR-0018 section 3");
             }
         }
         return errors;
@@ -464,8 +596,37 @@ public final class VersionsCatalog {
                 driverImages.put(driver.getKey(), new ImagePin(driver.getValue().path("image").asText(), digest));
             }
         }
-        return new VersionsCatalog(platforms, proxies(document), loaders(document), List.copyOf(rules),
-                Map.copyOf(driverImages));
+        return new VersionsCatalog(platforms, proxies(document), loaders(document), geyserRows(document),
+                bedrockDriver(document), List.copyOf(rules), Map.copyOf(driverImages));
+    }
+
+    private static BedrockDriver bedrockDriver(JsonNode document) {
+        JsonNode node = document.path("drivers").path("bedrock");
+        if (node.isMissingNode()) {
+            return null;
+        }
+        return new BedrockDriver(node.path("library").asText(), node.path("version").asText(),
+                node.path("protocol").asInt(), node.path("game-version").asText());
+    }
+
+    private static List<GeyserRow> geyserRows(JsonNode document) {
+        List<GeyserRow> rows = new ArrayList<>();
+        for (JsonNode row : document.path(GEYSER).path("rows")) {
+            JsonNode floodgate = row.path("floodgate");
+            List<GeyserRow.Pairing> pairings = new ArrayList<>();
+            for (JsonNode pairing : row.path("backends")) {
+                pairings.add(new GeyserRow.Pairing(pairing.path("platform").asText(), pairing.path("mc").asText(),
+                        status(pairing.path("status"))));
+            }
+            rows.add(new GeyserRow(row.path("version").asText(),
+                    row.path("build").isInt() ? row.path("build").asInt() : null, pin(row.path("sha256")),
+                    new GeyserRow.Floodgate(floodgate.path("version").asText(),
+                            floodgate.path("build").isInt() ? floodgate.path("build").asInt() : null,
+                            pin(floodgate.path("sha256"))),
+                    row.path("bedrock-protocol").asInt(), row.path("java").asText(), status(row.path("status")),
+                    List.copyOf(pairings), row.path("observed").asText(""), row.path("notes").asText("")));
+        }
+        return List.copyOf(rows);
     }
 
     private static Map<String, LoaderPlatform> loaders(JsonNode document) {

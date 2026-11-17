@@ -1,7 +1,7 @@
 # Source of truth for the Proofstone version matrix. Spec: docs/specs/versions-yml.md
 # SEED DATA: rows below are the cells exercised by the 2026-11-03 prototype. Pins marked "TODO" are filled by
 # the version-watch workflow (card T-M3-01). Do not hand-edit pins once automation exists.
-schema: 4
+schema: 5
 
 java-rules:            # first match wins; observed in T-M3-02, see docs/versioning.md section 3
   - { range: "<=1.16.5",          image: java8 }
@@ -14,6 +14,10 @@ drivers:
   mcpl:            { library: "org.geysermc.mcprotocollib:protocol", version: "26.3-2", protocol: "26.3" }
   mineflayer-ref:  { library: "mineflayer", version: "4.39.0", max-native: "26.1.2" }
   viaproxy:        { image: "ghcr.io/viaversion/viaproxy", digest: "sha256:46eef05d0d3c165a2a731a94b3be1771510e3db3c6db2f12b93c91c73b6672c4" }  # ViaProxy 3.4.15, index digest of 2026-11-07 (T-M3-03)
+  # Schema 5 (ADR-0018 section 2): the Bedrock client library, pinned to the exact timestamped snapshot the T-M9-01 spike resolved
+  # (3.0.0.Beta15-SNAPSHOT -> 20261116.161745-6), never -SNAPSHOT. Protocol 2225 / game 1.26.60 are what the spike's joins sent
+  # (docs/platforms/geyser.md "Bedrock protocol and game version"). The sha256 list of the artefacts and the release check are T-M9-05.
+  bedrock:         { library: "org.cloudburstmc.protocol:bedrock-connection", version: "3.0.0.Beta15-20261116.161745-6", protocol: 2225, game-version: "1.26.60" }
 
 platforms:
   paper:
@@ -177,3 +181,22 @@ loaders:
         native-drivers: [mcpl]
         observed: "T-M8-01 2026-11-14: 13 of 13 mcpl driver joins (no mod, a server-only mod, a mod adding one item). What the client sees of the added item was not run: content is unverified (ADR-0017 section 1)"
         notes: "sha256 is the installer, published by maven.neoforged.net and matched against the download."
+
+# Schema 5 (ADR-0018): Geyser rows. A Geyser cell is one Paper server with Geyser and Floodgate, identity geyser@<version>+paper@<mc>
+# (geyser@2.12.1+paper@26.3). Hand-pinned from the T-M9-01 spike (docs/platforms/geyser.md "The server side", pins table); `updateVersions`
+# does not touch this key. Experimental: promotion is a separate decision through ADR-0015 and needs a release driver library (ADR-0018 section 8).
+# Both sha256 values are the ones the spike checked against download.geysermc.org/v2 (Geyser-Spigot-2.12.1-b1303.jar, floodgate-spigot-2.2.5-b141.jar).
+# `java` is the Java tag of the stand-in and the driver host; its digest is the paper host's (no new image, ADR-0018 section 4).
+geyser:
+  rows:
+    - version: "2.12.1"
+      build: 1303
+      sha256: "218f6e1a09a2fe458cfd531e7295a0f19d17b00db38ceec16222e8982a4d7f21"
+      floodgate: { version: "2.2.5", build: 141, sha256: "21570aff9ce17d6983928e8552777760e1ede5050026b04c686b0ae112e6fd7e" }
+      bedrock-protocol: 2225
+      java: java25
+      status: experimental
+      backends:
+        - { platform: paper, mc: "26.3", status: experimental }
+      observed: "T-M9-01 spike (docs/platforms/geyser.md): offline Bedrock joins on paper@26.3, bedrock protocol 2225, route floodgate with the Cloudburst driver 14 of 14 (verdict table). Geyser through a Testcontainers cell was not run"
+      notes: "Geyser needs bedrock.transport: both, validate-bedrock-login: false and the stand-in for the two Microsoft names (ADR-0018 section 4). Floodgate key per cell from memory. The Cloudburst catalog pin is T-M9-05."

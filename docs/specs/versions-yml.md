@@ -151,7 +151,7 @@ loaders:
   `build`. No loader row is `required`, so `--scope=pr` plans none and prints a skip line to stderr per loader; `nightly`
   plans every `experimental` row. A file with no `loaders` prints what it printed before schema 4.
 
-Validation rules for `loaders` (T-M8-04, in `VersionsCatalog.load`). A `loaders` key in a `schema: 2` or `3` file is an error,
+Validation rules for `loaders` (T-M8-04, in `VersionsCatalog.load`). A `loaders` key in a `schema: 2` or `3` file is an error (schema 4 or later is valid),
 and so is a loader id other than `fabric` or `neoforge`. A `proxies` key is valid in a schema 3 or 4 file:
 - A loader id is not also a `platforms` or `proxies` id. `mc` values are unique within a loader.
 - `loader`, `sha256` and `vanilla-sha256` are present on every row; `installer` and `fabric-api` on every `fabric` row. A
@@ -164,8 +164,9 @@ and so is a loader id other than `fabric` or `neoforge`. A `proxies` key is vali
 Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Schema 5 adds one optional top-level key, `geyser`, next to
 `platforms`, `proxies` and `loaders`, and one entry under `drivers`. A schema 4 file is a valid schema 5 file, every other key is
 read exactly as before, and every existing cell's `printMatrix` line stays identical. The values below are the T-M9-01 spike pins
-([geyser.md](../platforms/geyser.md)); the rows enter `versions.yml` in T-M9-04 as `experimental`. This page is the design;
-`versions.schema.json` and `VersionsCatalog` accept `schema: 5` only when T-M9-04 lands.
+([geyser.md](../platforms/geyser.md)); T-M9-04 added the row to `versions.yml` as `experimental`, with `versions.schema.json`
+and `VersionsCatalog` accepting `schema: 5`. The `drivers.bedrock` pin is the timestamped snapshot the spike resolved
+(ADR-0018 section 2); its artefact sha256 list and the release check are T-M9-05.
 
 ```yaml
 schema: 5
@@ -195,7 +196,13 @@ geyser:
   the left of a Geyser pairing, an unknown version or an empty request is an error, never a skip.
 - **`printMatrix`:** Geyser cells follow loader cells, one object each with `kind: "geyser"`, `platform` (`geyser`), `version`,
   `build`, `mc`, `java`, `status` and `slug` (`geyser-2.12.1-paper-26.3`). A file with no `geyser` key prints what it printed
-  before schema 5.
+  before schema 5. The row is `experimental`, so `--scope=pr` plans none and prints a skip line to stderr (stdout is unchanged);
+  `nightly` plans it.
+- **Planner (T-M9-04).** `CellPlanner.planGeysers(geyserVersions, "paper", backendVersions, scope)` takes an exact version, `latest`
+  or `all` on each half. `all` follows the scope rule; an exact cell runs in any scope. A backend other than `paper`, an unknown
+  version, an unlisted pairing, an empty request, a `TODO` in the Geyser or Floodgate jar pin and a scope with no cell are errors.
+  `CellSelector` reads `geyser@2.12.1+paper@26.3` into `geysers()`, never `topologies()`; a bare `geyser@2.12.1`, a malformed
+  entry and `geyser` on the right of the `+` are errors naming ADR-0018.
 
 Validation rules for `geyser`, enforced by `VersionsCatalog.load` (T-M9-04). A `geyser` key or `drivers.bedrock` in a file below schema 5 is an error:
 - A `geyser` id is not a `platforms`, `proxies` or `loaders` id. `version` values are unique.

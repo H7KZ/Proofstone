@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schema", "java-rules", "drivers", "platforms"],
   "properties": {
-    "schema": { "enum": [2, 3, 4] },
+    "schema": { "enum": [2, 3, 4, 5] },
     "java-rules": {
       "type": "array",
       "items": {
@@ -22,6 +22,9 @@
     },
     "drivers": {
       "type": "object",
+      "properties": {
+        "bedrock": { "$ref": "#/$defs/bedrockDriver" }
+      },
       "additionalProperties": { "type": "object", "minProperties": 1 }
     },
     "platforms": {
@@ -37,6 +40,15 @@
       "description": "Schema 4 (ADR-0017): Fabric and NeoForge rows. Semantic rules live in VersionsCatalog.",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/loader" }
+    },
+    "geyser": {
+      "description": "Schema 5 (ADR-0018): Geyser rows and the Paper rows they are paired with. Semantic rules live in VersionsCatalog.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows"],
+      "properties": {
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/geyserRow" } }
+      }
     }
   },
   "$defs": {
@@ -171,6 +183,58 @@
         "protocol": { "type": "integer" },
         "status": { "$ref": "#/$defs/status" },
         "native-drivers": { "type": "array", "items": { "type": "string" } },
+        "observed": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "bedrockDriver": {
+      "description": "Schema 5 (ADR-0018): the Bedrock client library pin. The version is exact, a timestamped snapshot until a release carries the codec.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["library", "version", "protocol", "game-version"],
+      "properties": {
+        "library": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "protocol": { "type": "integer", "minimum": 1 },
+        "game-version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "geyserRow": {
+      "description": "A Geyser row (ADR-0018 section 8). java is required: the aux containers use that tag's pinned digest of the paper host.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "build", "sha256", "floodgate", "bedrock-protocol", "java", "status", "backends"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "build": { "anyOf": [{ "type": "integer", "minimum": 1 }, { "const": "TODO" }] },
+        "sha256": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{64}$" }, { "const": "TODO" }] },
+        "floodgate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "build", "sha256"],
+          "properties": {
+            "version": { "type": "string", "minLength": 1 },
+            "build": { "anyOf": [{ "type": "integer", "minimum": 1 }, { "const": "TODO" }] },
+            "sha256": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{64}$" }, { "const": "TODO" }] }
+          }
+        },
+        "bedrock-protocol": { "type": "integer", "minimum": 1 },
+        "java": { "$ref": "#/$defs/javaImage" },
+        "status": { "$ref": "#/$defs/status" },
+        "backends": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["platform", "mc", "status"],
+            "properties": {
+              "platform": { "type": "string", "minLength": 1 },
+              "mc": { "type": "string", "minLength": 1 },
+              "status": { "$ref": "#/$defs/status" }
+            }
+          }
+        },
         "observed": { "type": "string" },
         "notes": { "type": "string" }
       }

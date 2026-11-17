@@ -11,6 +11,7 @@ public interface ClientDriver {
     ProtocolInfo protocol();             // the version this driver speaks natively
     Set<Capability> capabilities();
     ClientSession connect(ConnectSpec spec);   // host, port, username, timeouts; offline auth
+    default ClientSession connect(ConnectSpec spec, Edition endpoint);   // core's call: refuses a driver of the other edition
 }
 
 public interface ClientSession extends AutoCloseable {
@@ -161,11 +162,13 @@ that never sends the first `SetHealth` still fails as `JOIN_TELEPORT_HELD_NO_HEA
 
 ## 6. Bedrock driver (`bedrock`, ADR-0018, built by T-M9-05)
 
-Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Facts: [geyser.md](../platforms/geyser.md). Status: design; nothing is built.
+Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Facts: [geyser.md](../platforms/geyser.md). Status: the `Edition` part is built (T-M9-04); the driver and its host are not (T-M9-05, T-M9-06).
 
 - **`Edition`.** `JAVA` (`mcpl`, `mineflayer-ref`) or `BEDROCK` (`bedrock`). `ProtocolInfo` of a Bedrock driver is the Bedrock protocol
   number and the game version (2225, `1.26.60`), never compared with a Java protocol. Core refuses a driver on an endpoint of the
-  other edition with an error naming both.
+  other edition with an error naming both: it joins through `connect(ConnectSpec, Edition endpoint)`, which throws a
+  `ClientDriverException` naming the driver, both editions and the address before anything connects (T-M9-04; every Java
+  endpoint today passes `Edition.JAVA`).
 - **Library and pin.** CloudburstMC Protocol (`bedrock-connection`, `bedrock-codec`, codec `Bedrock_v2225`), in `drivers/bedrock`,
   pinned in the version catalog by its exact timestamped snapshot version with each artefact's sha256 checked by the build, shaded
   and relocated into one jar. A `-SNAPSHOT` or dynamic version in the resolved graph fails the build.
