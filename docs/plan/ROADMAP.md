@@ -1122,7 +1122,7 @@ Paper and topology numbers.
   port wait; they share `LoaderHost`'s no-op wait (now one package-private class, `NoPortWait`). `awaitDone`, `awaitAgent`,
   `awaitListening` and the proxy's ready-line await are unchanged, with their own budgets. Option B (cut the per-boot jar fetch)
   was not approved and is proposed as T-M8-26 only. Local, one invocation at a time under `scripts/dockerlock.sh`, EULA in the
-  command environment only, evidence copied aside (`C:\pw	825-ev`, not committed).
+  command environment only, evidence copied aside (`C:\pw\t825-ev`, not committed).
   - **Test first:** `BootClockTest` (3 cases, no Docker, reads the configured wait strategy of each container): 3 of 3 failed
     before the change, 3 of 3 pass after; `:proofstone-core:test` green.
   - **Loaded arm** (20 busy `while :; do :; done` loops on the host, `paper@1.21.11` bridged, `:conformance:run`, 10 invocations):
