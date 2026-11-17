@@ -99,5 +99,6 @@ include(
     "examples:disenchantment-anvil",
     "examples:bad-tests",
     "examples:bedrock-prefix",
+    "examples:geyser-bedrock",
     "examples:gradle-paper-plugin",
 )

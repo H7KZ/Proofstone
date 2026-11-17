@@ -239,6 +239,8 @@ When you report a red run, paste the Gradle command and the bundle path, and say
 
 - **Bedrock-prefixed logins on bridged cells** stall at ViaProxy. The image bundles ViaBedrock but has no prefix option.
   Not reproduced, no fix. Use native cells for those tests ([docs/platforms/viaproxy.md](../platforms/viaproxy.md)).
+- **Bedrock through Geyser** is a separate path with its own findings (stand-in absent, Floodgate key mismatch, join stages) and an
+  offline-stub warning: [bedrock.md](bedrock.md).
 - **Plugins that log `moved too quickly!` or other WARN lines** fail the test. The allowlist has no `moved too quickly!` entry for harness clients any more (T-M7-19).
 - **Boot ERROR lines on Purpur are not checked.** The log guard covers only the test window, as on Paper and Folia.
 - **Maven example:** does not exist yet ([quickstart-maven.md](quickstart-maven.md)).

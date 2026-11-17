@@ -429,8 +429,14 @@ Floodgate's key); it is made on Floodgate's side.
 - Claim a status, version or flake rate that was not run.
 
 **Acceptance.**
-- [ ] `bash scripts/gates.sh --max-workers=1` passes.
-- [ ] The example runs green on the Geyser row, three invocations, XML read.
+- [x] `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The example runs green on the Geyser row, three invocations, XML read.
+
+**Result (T-M9-12).** [docs/user/bedrock.md](../../user/bedrock.md) (declaration, selector, what the client does and skips, the Floodgate name, the
+`§r` prefix, the offline-stub warning, troubleshooting for the two M9 faults, join stages, Docker and UDP, first boot, the snapshot pin), the example
+`examples/geyser-bedrock` (`BedrockBranchE2E`, task `:examples:geyser-bedrock:geyserExample`, plugin `examples/bedrock-prefix`), `docs/platforms.md` at
+`experimental`. Example: three separate invocations, each `tests=2 skipped=0 failures=0 errors=0` (44 to 51 s), 0 Bedrock join timeouts. Written
+only from runs already recorded in `geyser.md`; no flake rate is claimed. `-Dproofstone.cells` was the form run; `PROOFSTONE_CELLS` shares the selector and was not run for this example.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
