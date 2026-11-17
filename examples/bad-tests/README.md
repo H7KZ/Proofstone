@@ -142,7 +142,7 @@ boot or join timeout. The run's `proofstone-report.json` must say the same verdi
 |---|---|---|---|
 | `metaModCrash` | the test declares the crashing example mod through `@Proofstone(mods)`; it throws at init, Fabric | `INVALID` | `mod proofstone_example (proofstone-crashing-mod.jar) crashed the server at load`, the loader's line, `example mod was asked to fail` |
 | `metaModCrashNeoForge` | the same on NeoForge | `INVALID` | the same, from `FMLModContainer` (`Failed to create mod instance`) |
-| `metaLeakFabric` | the test sets `random_tick_speed` 7 on a Fabric cell and leaves it | `LEAK` (a plain failure starting `LEAK`; the report says `FAIL`) | `LEAK LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind on fabric@26.3`, `random_tick_speed: ... currently set to 3 -> ... currently set to 7`; never a boot or join timeout |
+| `metaLeakFabric` | the test sets `random_tick_speed` 7 on a Fabric cell and leaves it | `LEAK` (a plain failure starting `LEAK`; the report says `FAIL`) | `LEAK LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind on fabric@26.3`, `random_tick_speed: ... currently set to 0 -> ... currently set to 7` (the baseline is 0 since T-M8-27, 3 before); never a boot or join timeout |
 | `metaModDataPack` | a data pack whose function does not parse | `INVALID` | `data pack file/broken-function.zip logged an error`, `Failed to load function proofstone_broken:hello`, the parse error |
 | `metaModPackHash` | `@ServerResourcePack(sha1 = <not the pack's>)`, the test expects the pack to load | `FAIL` | the pack's record: `FAILED_DOWNLOAD` and `hash mismatch: expected 000..., got <sha1>` |
 
@@ -162,8 +162,9 @@ One fault alone, for example `:examples:bad-tests:metaModDataPack`. Notes:
   name a namespace of the pack.
 - On Paper a wrong hash does not kick: the client reaches play and reports `FAILED_DOWNLOAD` (T-M8-10). The bad test's
   assertion is the test author's own (the pack must load), so a wrong hash is a plain `FAIL` there.
-- `LoaderLeakE2E` sets 7, not 3: `LoaderHost` does not set the deterministic-world rules (`PaperHost` does), so a Fabric cell holds the
-  rule's default 3 before the test, and setting 3 changes nothing (the first run of T-M8-18 passed the test for that reason).
+- `LoaderLeakE2E` sets 7: since T-M8-27 `LoaderHost` sets the deterministic-world rules as `PaperHost` does, so a Fabric cell holds
+  `random_tick_speed` 0 before the test and any non-zero value is a leak. Before it the cell held the vanilla default 3, and setting 3
+  changed nothing (the first run of T-M8-18 passed the test for that reason); 7 stays, it is a leak on both baselines.
 - Not in `scripts/release-mutation-check.sh`, and not addable as a list entry (T-M8-28): that script's set is `EXAMPLES=(...)`, a
   list of example projects, and each is judged by one baseline run plus one run per `bugs:` toggle in its own
   `config.yml`, all on one `--cell` (default `paper@26.3`). A bad test is a different mechanism (it checks a harness detector, it
