@@ -135,6 +135,7 @@ driver-host logs (an `ERROR`, an uncaught exception or `STUB refused` fails the 
 | C-G02 | The Bedrock client types `/plugins`; the header and the plugin list reach it as messages | `BEDROCK_CLIENT` | a command round trip through Geyser |
 | C-G03 | The agent gives `stick x3` and a `diamond_sword`; the client's inventory shows them (`DualAssert`, id and count) | `BEDROCK_CLIENT` | the dual oracle on Bedrock |
 | C-G04 | The example plugin's `.` prefix branch (`examples/bedrock-prefix`, as C-B01) sees the real Bedrock client as Bedrock and the Java client as not | `BEDROCK_CLIENT` | a plugin's Bedrock-only branch with a real Bedrock client |
+| C-G05 | Two Bedrock clients join through one driver host: both are `.Name` players, their UUIDs differ, and a `/me` line from each reaches the other | `BEDROCK_CLIENT` | two Floodgate players at once |
 
 Skipped with the reason in the XML (`TEST_ABORTED`), never passed: window clicks and `useBlock` (C04 to C08 equivalents), forms,
 resource packs. Each first asserts that the driver refuses the call (`UnsupportedOperationException` naming ADR-0018), so the skip

@@ -262,7 +262,7 @@ Consequences, geyser.md "Still unrun").
 - Start a second driver host to dodge a driver bug: report the bug.
 
 **Acceptance.**
-- [ ] `:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3` green three invocations with C-G05.
+- [x] `:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3` green three invocations with C-G05.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3 --no-parallel --max-workers=1`

@@ -167,7 +167,7 @@ tasks.register<Test>("run") {
     // A loader cell (fabric@26.3, neoforge@26.3) runs C01 to C08 only: the other classes declare no loader @Matrix, so a
     // loader selection plans no cell for them and they would fail by name (T-M8-08).
     val loaderRun = loaderSelected("fabric") || loaderSelected("neoforge")
-    // A Geyser cell (geyser@2.12.1+paper@26.3) runs the Geyser conformance (the cell check, C-G01 to C-G04) only. Its name has a
+    // A Geyser cell (geyser@2.12.1+paper@26.3) runs the Geyser conformance (the cell check, C-G01 to C-G05) only. Its name has a
     // plus sign too, so it is told apart first (T-M9-08).
     val geyserRun = geyserSelected()
     filter {
