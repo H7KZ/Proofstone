@@ -281,8 +281,6 @@ Testcontainers check is `bash scripts/dockerlock.sh bash scripts/spike/geyser/tc
   start, which ran with the trust store).
 - Two Node clients at once (their Floodgate UUID is the same); two Cloudburst clients at once (T-M10-07); window packets through
   a Bedrock driver. (Chat, command and inventory-read round trips ran since: T-M9-08, C-G02 to C-G04, below.)
-- The *offline-stub* label is in `cell.json` and the boot line only; the JUnit display name and `proofstone-report.json` do not
-  carry it (T-M9-99 review finding, T-M10-06).
 - A start with the stub in place and the image's `papermc.io` name also blocked (needs the Paper jar copied in as `CUSTOM`).
 
 ## Geyser cell host (T-M9-06, 2026-11-17: what ran)
@@ -431,3 +429,13 @@ run. The clean cell (`:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26
 without the selector was red (`GeyserApiContract has no cell to run`, `initializationError`, 2 failures): the contract class needs the selector, as
 its doc says; not a regression. `metaTest` (`VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED`), `metaTopologyTest` (7 of 7
 `INVALID`) and `metaModTest` (`INVALID, LEAK, INVALID, INVALID, FAIL`) each gave every expected verdict in one run, XML read.
+
+## Guards over the cell's whole life (T-M10-06, 2026-11-17: what ran)
+
+- The name guard (`GeyserHost.requireNameGuardClean`) ran only in the first check. `GeyserHost.requireGuardsClean` now runs after every test
+  and once more at `close()`, over what was logged since the previous call, so the test that asked a denied name is the one that fails.
+- It also guards the stand-in and driver-host logs (`AuxLogGuard`): an `ERROR` level word, the head of an uncaught exception or
+  `STUB refused` (expected only under `stand-in-absent`) fails the test. Both allowlists are **empty**: three `:conformance:run`
+  invocations on the Geyser row were green with no such line in either container, so nothing was added (empty-then-grow, ADR-0016).
+- The label: the JUnit display name is `geyser@2.12.1+paper@26.3 (offline-stub)` and each Geyser row of `proofstone-report.json` has
+  `"bedrockAuth": "offline-stub"` (no other row has the field). The cell id the selector, `cell.json` and the bundle directory use is unchanged.

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.h7kz.proofstone.core.cell.GeyserCell;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -77,6 +78,10 @@ public final class ReportWriter {
                 item.putNull("skipReason");
             } else {
                 item.put("skipReason", result.skipReason().name());
+            }
+            // Only on a Geyser row, so every other row is unchanged (ADR-0018 section 4); the cell id stays the selector's.
+            if (GeyserCell.isIdentity(result.cell())) {
+                item.put("bedrockAuth", GeyserCell.BEDROCK_AUTH);
             }
         }
         return JSON.writer(PRETTY).writeValueAsString(root) + "\n";

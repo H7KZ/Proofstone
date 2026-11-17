@@ -50,9 +50,12 @@ public final class GeyserHost implements AutoCloseable {
     private final FloodgateKey key;
     /** The key of the key-mismatch fault, or {@code null}; a secret of the cell like {@link #key}. */
     private final FloodgateKey decoy;
+    /** The name guard and the stand-in and driver host log guards over the cell's whole life (T-M10-06). */
+    private final CellGuards guards;
 
     private GeyserHost(Network network, StandInHost standIn, PaperHost server, BedrockDriverHost driverHost,
-            FloodgateKey key, FloodgateKey decoy) {
+            FloodgateKey key, FloodgateKey decoy, GeyserFault fault) {
+        this.guards = new CellGuards(standIn.logs(), driverHost.logs(), fault == GeyserFault.STAND_IN_ABSENT);
         this.decoy = decoy;
         this.network = network;
         this.standIn = standIn;
@@ -126,7 +129,7 @@ public final class GeyserHost implements AutoCloseable {
             closeAll(failure, driverHost, server, standIn, network);
             throw failure;
         }
-        return new GeyserHost(network, standIn, server, driverHost, key, decoy);
+        return new GeyserHost(network, standIn, server, driverHost, key, decoy, fault);
     }
 
     /** Everything copied into or set on the server beyond a plain Paper cell. */
@@ -246,6 +249,17 @@ public final class GeyserHost implements AutoCloseable {
     }
 
     /**
+     * The guards of the stand-in and the driver host over what was logged since the previous call: a denied name asked, an
+     * {@code ERROR}, an uncaught exception or a {@code STUB refused} outside the {@code stand-in-absent} fault. The test runner
+     * calls it after every test and {@link #close()} once more, so the test that caused a line is the one that fails.
+     *
+     * @throws PaperHostException naming each problem with the log tails
+     */
+    public void requireGuardsClean() {
+        guards.requireClean();
+    }
+
+    /**
      * Everything a bundle must not hold: the agent token, the driver host token and every form of the Floodgate key. For
      * redaction only (the bundle writer); never log or write it.
      */
@@ -277,6 +291,12 @@ public final class GeyserHost implements AutoCloseable {
     @Override
     public void close() {
         RuntimeException failure = new IllegalStateException("cannot stop the Geyser cell");
+        // Last, before the containers go: what was logged after the final test's check (T-M10-06).
+        try {
+            guards.requireClean();
+        } catch (RuntimeException e) {
+            failure.addSuppressed(e);
+        }
         closeAll(failure, driverHost, server, standIn, network);
         if (failure.getSuppressed().length > 0) {
             throw failure;
