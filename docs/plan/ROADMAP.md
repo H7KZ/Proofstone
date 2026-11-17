@@ -1371,7 +1371,7 @@ player file persisted between tests) and the WARN fires on that login, before th
 3. **Approve `docs/plan/tasks/M8-followups.md`** (T-M8-13 to T-M8-18) and the T-M7-15 lead above.
 4. **Do not promote the loader rows yet.** ADR-0015's C01 to C08 three-green evidence is met for both rows, but the `zombie_villager`
    family is open and the row cannot take a user mod. Promotion after T-M8-13 and T-M8-16.
-5. **(Done 2026-11-17, without BDS) Approve `docs/plan/tasks/M9-bedrock.md`** (13 cards, two spikes first). Nothing in M9 is started.
+5. **(Done 2026-11-17, without BDS) Approve `docs/plan/tasks/M9-bedrock.md`** (13 cards, two spikes first). T-M9-01 (Geyser spike) is done (PR pending), result: feasible with a stand-in for two Microsoft discovery names, `validate-bedrock-login: false` and `transport: both` ([geyser.md](../platforms/geyser.md)); T-M9-02 (BDS) is deferred to M10.
 6. Unchanged from M7: Central namespace verification, Disenchantment CI, publish, tag, 0.1.0 go/no-go.
 
 ### Re-estimate
