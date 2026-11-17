@@ -294,8 +294,8 @@ capability named.
 - Change an existing signature, add a public `Edition`, or let the simulated tier (`SIMULATED_BEDROCK`) claim real Bedrock support.
 
 **Acceptance.**
-- [ ] `api-baseline.txt` diff shows additions only.
-- [ ] Unit tests for the declaration, the skip (`missing capability BEDROCK_CLIENT on cell paper@26.3`), the `IllegalStateException` without
+- [x] `api-baseline.txt` diff shows additions only.
+- [x] Unit tests for the declaration, the skip (`missing capability BEDROCK_CLIENT on cell paper@26.3`), the `IllegalStateException` without
   the declaration, and the refusal on a bridged, loader or topology cell and in a differential run.
 
 **Verify.**

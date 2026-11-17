@@ -14,6 +14,7 @@ public final io.github.h7kz.proofstone.api.BlockPos extends java.lang.Record
   method public int io.github.h7kz.proofstone.api.BlockPos.y()
   method public int io.github.h7kz.proofstone.api.BlockPos.z()
 public final io.github.h7kz.proofstone.api.Capability extends java.lang.Enum<io.github.h7kz.proofstone.api.Capability>
+  field public static final io.github.h7kz.proofstone.api.Capability BEDROCK_CLIENT
   field public static final io.github.h7kz.proofstone.api.Capability BUKKIT_EVENTS
   field public static final io.github.h7kz.proofstone.api.Capability CONSOLE
   field public static final io.github.h7kz.proofstone.api.Capability DATAPACKS_VANILLA
@@ -79,6 +80,7 @@ public abstract interface io.github.h7kz.proofstone.api.Client
   method public default void io.github.h7kz.proofstone.api.Client.transferTo(java.lang.String)
 public abstract interface io.github.h7kz.proofstone.api.Clients
   method public abstract io.github.h7kz.proofstone.api.Client io.github.h7kz.proofstone.api.Clients.create(java.lang.String)
+  method public default io.github.h7kz.proofstone.api.Client io.github.h7kz.proofstone.api.Clients.bedrock(java.lang.String)
 public abstract interface io.github.h7kz.proofstone.api.ControlRun implements java.lang.annotation.Annotation
   method public abstract io.github.h7kz.proofstone.api.ControlRun$Expectation io.github.h7kz.proofstone.api.ControlRun.value()
   method public abstract java.lang.String io.github.h7kz.proofstone.api.ControlRun.reason()
@@ -168,6 +170,7 @@ public final io.github.h7kz.proofstone.api.Platform extends java.lang.Enum<io.gi
   field public static final io.github.h7kz.proofstone.api.Platform BUNGEECORD
   field public static final io.github.h7kz.proofstone.api.Platform FABRIC
   field public static final io.github.h7kz.proofstone.api.Platform FOLIA
+  field public static final io.github.h7kz.proofstone.api.Platform GEYSER
   field public static final io.github.h7kz.proofstone.api.Platform NEOFORGE
   field public static final io.github.h7kz.proofstone.api.Platform PAPER
   field public static final io.github.h7kz.proofstone.api.Platform PURPUR

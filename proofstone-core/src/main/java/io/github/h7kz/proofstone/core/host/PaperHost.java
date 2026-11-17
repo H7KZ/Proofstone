@@ -403,6 +403,14 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         return cell.mc();
     }
 
+    /**
+     * Re-reads the agent's health. A plugin that enables after the server's {@code Done (} line (Floodgate, T-M9-07) reports
+     * its token later than readiness read it, so a Geyser cell refreshes once the token is there.
+     */
+    void refreshHealth() {
+        health = agent.health();
+    }
+
     /** The agent's {@code /v1/health} reply from readiness: version, platform and capabilities. */
     public Health health() {
         return health;

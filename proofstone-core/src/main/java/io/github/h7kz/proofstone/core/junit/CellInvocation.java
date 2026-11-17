@@ -7,7 +7,10 @@ import io.github.h7kz.proofstone.api.Isolation;
 import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.api.ServerResourcePack;
 import io.github.h7kz.proofstone.api.Topology;
+import com.fasterxml.jackson.databind.JsonNode;
+import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.cell.Cell;
+import io.github.h7kz.proofstone.core.cell.GeyserCell;
 import io.github.h7kz.proofstone.core.cell.LoaderCell;
 import io.github.h7kz.proofstone.core.driver.ClientDriver;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
@@ -15,6 +18,8 @@ import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.Edition;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
+import io.github.h7kz.proofstone.core.host.GeyserHost;
+import io.github.h7kz.proofstone.core.host.GeyserHostOptions;
 import io.github.h7kz.proofstone.core.host.LoaderHost;
 import io.github.h7kz.proofstone.core.host.LoaderHostOptions;
 import io.github.h7kz.proofstone.core.host.PaperHost;
@@ -75,6 +80,12 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private static final String AGENT_JAR = "proofstone.agentJar";
     /** Where the loader pins' downloads are kept between runs (each reused only when its sha256 matches). */
     private static final String LOADER_CACHE = "proofstone.loaderCache";
+    /** The shaded Bedrock driver host jar a Geyser cell copies into its driver host container (ADR-0018 section 2). */
+    private static final String BEDROCK_HOST_JAR = "proofstone.bedrockHostJar";
+    /** Where a Geyser cell keeps its pinned jar downloads between runs (each reused only when its sha256 matches). */
+    private static final String GEYSER_DOWNLOADS = "proofstone.geyserDownloads";
+    /** How long the agent may take to list a Bedrock client after the spawn, or to forget it (the server notices ~10 s late). */
+    private static final Duration BEDROCK_AGENT_WAIT = Duration.ofSeconds(30);
     /** The driver the cells run is chosen by id; mcpl is the primary (ADR-0004). */
     private static final String DRIVER_PROPERTY = "proofstone.driver";
     private static final String PRIMARY_DRIVER = DifferentialRun.PRIMARY;
@@ -108,6 +119,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     private final int repeats;
     /** The server's view of this run's join timeout, for the bundle; {@code null} when no join stalled (T-M6-14). */
     private volatile String joinStall;
+    /** The Geyser cell this invocation boots through {@link GeyserHost}; {@code null} on any other cell (ADR-0018). */
+    private final GeyserCell geyser;
 
     CellInvocation(Cell cell, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog, String driverId,
             int repetition, int repeats) {
@@ -116,8 +129,22 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
 
     CellInvocation(Cell cell, LoaderCell loader, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog,
             String driverId, int repetition, int repeats) {
+        this(cell, loader, null, config, isolation, catalog, driverId, repetition, repeats);
+    }
+
+    /**
+     * A Geyser cell (ADR-0018): the Paper backend is the {@link Cell} the lifecycle runs, and the Java client joins it with
+     * the native driver. The planner refused a bridged or differential run before this is built.
+     */
+    CellInvocation(GeyserCell geyser, Proofstone config, Isolation.Mode isolation, VersionsCatalog catalog) {
+        this(geyser.backend(), null, geyser, config, isolation, catalog, configuredDriver(), 1, 1);
+    }
+
+    private CellInvocation(Cell cell, LoaderCell loader, GeyserCell geyser, Proofstone config, Isolation.Mode isolation,
+            VersionsCatalog catalog, String driverId, int repetition, int repeats) {
         this.cell = cell;
         this.loader = loader;
+        this.geyser = geyser;
         this.config = config;
         this.isolation = isolation;
         this.catalog = catalog;
@@ -129,6 +156,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // The driver speaks one protocol; any other server needs ViaProxy in between (ADR-0004). With no driver on
         // the classpath the cell is not bridged, and the join fails loudly later.
         this.bridged = findDriver(driverId).map(driver -> !driver.protocolVersion().equals(cell.mc())).orElse(false);
+    }
+
+    /** The id of the native Java driver, the primary one (ADR-0004). */
+    static String primaryDriver() {
+        return PRIMARY_DRIVER;
     }
 
     /** The driver the run uses when it is not differential: {@code -Dproofstone.driver}, default mcpl. */
@@ -150,9 +182,13 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 + (repeats > 1 ? " repeat " + repetition + "/" + repeats : "");
     }
 
-    /** The cell's display id without the bridged marker, for example {@code paper@1.8.8}. */
+    /**
+     * The cell's display id without the bridged marker, for example {@code paper@1.8.8}; a Geyser cell is named by its whole
+     * identity, {@code geyser@2.12.1+paper@26.3} (ADR-0018 section 8), so its report rows, conformance and skips never read
+     * as the plain Paper cell.
+     */
     private String cellId() {
-        return cell.platform() + "@" + cell.mc();
+        return geyser != null ? geyser.identity() : cell.platform() + "@" + cell.mc();
     }
 
     @Override
@@ -213,12 +249,25 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // Before the join, so anything the join or the reset logs counts for this test.
         TestState state = new TestState(host, ErrorLogGuard.cursor(host));
         state.proxy = resource.proxy();
-        state.capabilities = CapabilityModel.cellCapabilities(cell.platform(), host.health().capabilities(), bridged);
+        state.geyser = resource.geyser();
+        state.capabilities = geyser != null ? CapabilityModel.geyserCapabilities(host.health().capabilities())
+                : CapabilityModel.cellCapabilities(cell.platform(), host.health().capabilities(), bridged);
         // Extra clients join through the same driver and address as the test's own client (section 11), and answer a
         // resource-pack push as the test declared, or end the join loudly when it declared nothing (ADR-0017 section 7).
         ResourcePackPolicy packs = ResourcePackDeclaration.forTest(ResourcePackDeclaration.answer(
                 context.getRequiredTestClass(), context.getRequiredTestMethod()), resource.pack());
-        state.clients = new TestClients(name -> connect(resource, name, packs));
+        state.clients = new TestClients(name -> connect(resource, name, packs), cellId(), state.capabilities,
+                resource.geyser() == null ? null : new TestClients.Bedrock() {
+                    @Override
+                    public SessionClient join(String name) {
+                        return joinBedrock(resource, name);
+                    }
+
+                    @Override
+                    public void awaitGone(String serverName) {
+                        awaitListing(resource.host(), serverName, false);
+                    }
+                });
         context.getStore(NAMESPACE).put(STATE, state);
         // Capabilities come before conformance: a cell that lacks one is SKIPPED with its reason, and nothing else runs (T-M5-01).
         Optional<String> missing = CapabilityModel.missingReason(required, state.capabilities, cellId());
@@ -314,7 +363,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // already failed in beforeEach, so that failure is the first one.
         Throwable failure = state.invalid;
         try {
-            ErrorLogGuard.check(state.host, state.logCursor, ErrorLogGuard.Patterns.of(cell.platform()));
+            ErrorLogGuard.check(state.host, state.logCursor,
+                    ErrorLogGuard.Patterns.of(geyser != null ? GeyserCell.ID : cell.platform()));
         } catch (RuntimeException | AssertionError e) {
             failure = combine(failure, e);
         }
@@ -350,8 +400,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // keeps every run's bundle, so a FLAKY report has the transcripts of the runs that passed as well.
         if (repeats > 1 || failure != null || context.getExecutionException().isPresent()) {
             try {
-                Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0, driverId,
-                        differential, catalog, joinStall);
+                Path bundle = captureBundle(context, state);
                 if (disagreement != null) {
                     DifferentialRun.writeEvidence(bundle, disagreement, state.host.agentToken());
                 }
@@ -388,8 +437,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                 failure = leak;
                 outcome = Attempt.fail(detail(leak));
                 try {
-                    Path bundle = BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0, driverId,
-                            differential, catalog, joinStall);
+                    Path bundle = captureBundle(context, state);
                     System.err.println("PROOFSTONE BUNDLE: " + bundle);
                 } catch (RuntimeException e) {
                     failure = combine(failure, new IllegalStateException("cannot write the repro bundle", e));
@@ -424,6 +472,21 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         if (failure instanceof RuntimeException exception) {
             throw exception;
         }
+    }
+
+    /**
+     * The repro bundle of this run. A Geyser cell writes its own: a directory per container, the Bedrock client's
+     * transcript and a {@code cell.json} that says {@code offline-stub}, with the Floodgate key redacted (ADR-0018 section 5).
+     */
+    private Path captureBundle(ExtensionContext context, TestState state) {
+        if (geyser == null) {
+            return BundleWriter.capture(context, cell, state, repeats > 1 ? repetition : 0, driverId, differential, catalog,
+                    joinStall);
+        }
+        String test = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
+        List<String> transcript = new ArrayList<>(state.client == null ? List.of() : state.client.transcript());
+        transcript.addAll(state.conformanceTranscript);
+        return GeyserBundle.write(BundleWriter.directory(geyser).resolve(test), geyser, state.geyser, transcript);
     }
 
     /**
@@ -551,7 +614,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             }
         }
         HostResource resource = owner.getStore(NAMESPACE).getOrComputeIfAbsent(
-                hostKey(cell), key -> boot(context.getRequiredTestClass()), HostResource.class);
+                geyser != null ? hostKey(geyser) : hostKey(cell), key -> boot(context.getRequiredTestClass()),
+                HostResource.class);
         // A shared host that is another platform's server is a harness defect, never a result (T-M7-17).
         requirePlatform(cell, resource.host().health());
         return resource;
@@ -563,6 +627,11 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      */
     static String hostKey(Cell cell) {
         return "host:" + cell.platform() + "@" + cell.mc() + "#" + cell.build() + "/" + cell.java() + "/" + cell.sha256();
+    }
+
+    /** The store key of a Geyser cell's host: its whole identity, so it never shares the plain Paper cell's server. */
+    static String hostKey(GeyserCell geyser) {
+        return "host:" + geyser.identity() + "#" + geyser.build() + "/" + geyser.floodgate().build() + "/" + geyser.sha256();
     }
 
     /** The server the cell resolved to must be the server that answers: the agent's own platform id is the oracle. */
@@ -578,6 +647,9 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * boots it for both drivers, so the shared server is bound to every driver the run uses.
      */
     private HostResource boot(Class<?> testClass) {
+        if (geyser != null) {
+            return bootGeyser();
+        }
         if (loader != null) {
             // A loader cell does not hold RESOURCE_PACKS, so a declared pack skips there with the capability named.
             return bootLoader();
@@ -652,6 +724,33 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
     }
 
     /**
+     * Starts a Geyser cell through {@link GeyserHost} (ADR-0018 section 8): Paper with the agent and the plugins under test,
+     * Geyser and Floodgate, the discovery stand-in and the driver host, on one network. A control run installs no plugin.
+     * The Java client joins the server directly with the native driver; a Bedrock client joins through the driver host.
+     */
+    private HostResource bootGeyser() {
+        String bedrockHostJar = System.getProperty(BEDROCK_HOST_JAR);
+        if (bedrockHostJar == null) {
+            throw new ParameterResolutionException("system property " + BEDROCK_HOST_JAR + " is not set: it points at the "
+                    + "shaded Bedrock driver host jar (:drivers:bedrock:shadowJar)");
+        }
+        List<String> plugins = List.of(config.plugins());
+        if (controlRun) {
+            System.err.println("PROOFSTONE CONTROL RUN: plugin jars are not installed; a passing test is VACUOUS");
+            plugins = List.of();
+        }
+        PaperHostOptions server = PaperHostOptions.of(Path.of(agentJar(null)), true)
+                .withArtefacts(Path.of("").toAbsolutePath(), plugins);
+        GeyserHostOptions options = GeyserHostOptions.of(Path.of(bedrockHostJar)).withDownloads(
+                Path.of(System.getProperty(GEYSER_DOWNLOADS, "build/geyser-downloads")).toAbsolutePath());
+        long started = System.nanoTime();
+        GeyserHost host = GeyserHost.start(geyser, server, options);
+        System.err.println("PROOFSTONE GEYSER BOOT " + geyser.identity() + " (offline-stub): "
+                + Duration.ofNanos(System.nanoTime() - started).toMillis() + " ms (host finding, not a join timeout)");
+        return new HostResource(host.server(), null, null, Map.of(), null, host);
+    }
+
+    /**
      * Starts a loader cell through {@link LoaderHost} (ADR-0017 section 2): the loader's own agent jar, no plugin, and the
      * native mcpl driver only (a sidecar driver or ViaProxy has no loader row, the planner refuses a bridged one). The boot
      * time is printed as a host finding, never part of a join timeout (M8 flake rule 4).
@@ -696,6 +795,63 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
                     + (loaderId == null ? "agent" : loaderId + " agent") + " jar");
         }
         return jar;
+    }
+
+    /**
+     * Joins a Bedrock client through the driver host and returns it under the name the server sees, {@code .name}, once the
+     * agent lists it (ADR-0018 sections 7 and 9). The server notices a client's disconnect only after about 10 s, so a join
+     * under a name the agent still lists waits for the agent first: an await, never a sleep. A timeout names its stage and
+     * is printed apart from Paper, topology and loader join timeouts.
+     */
+    private SessionClient joinBedrock(HostResource resource, String name) {
+        GeyserHost host = resource.geyser();
+        String serverName = "." + name;
+        awaitListing(resource.host(), serverName, false);
+        int serverMark = resource.host().logs().size();
+        ClientSession session;
+        try {
+            session = host.driver().connect(new ConnectSpec(host.bedrockHost(), host.bedrockPort(), name,
+                    CONNECT_TIMEOUT), Edition.BEDROCK);
+        } catch (JoinTimeoutException e) {
+            List<String> during = new ArrayList<>(resource.host().logs().since(serverMark));
+            during.addAll(host.standInLogs().all().lines().toList());
+            JoinStall stall = JoinStall.of(e, "server and stand-in logs", during, resource.host().logTail());
+            System.err.println("PROOFSTONE BEDROCK JOIN TIMEOUT (counted apart from Paper, topology and loader joins) stage="
+                    + e.stage() + " on " + cellId() + ":\n" + stall.report() + "--- stand-in log ---\n"
+                    + host.standInLogs().all() + "\n--- driver host log tail ---\n" + host.driverHostLogs().tail(60));
+            joinStall = stall.report();
+            throw e.withSuffix(stall.suffix());
+        }
+        try {
+            awaitListing(resource.host(), serverName, true);
+        } catch (RuntimeException e) {
+            session.close();
+            throw e;
+        }
+        // transferTo is a proxy feature; on a Bedrock session it names the edition, as the other unsupported calls do.
+        return new SessionClient(serverName, session, (player, ignored, target) -> {
+            throw new UnsupportedOperationException("transferTo(\"" + target + "\") is not supported by the Bedrock edition "
+                    + "driver in v1: a Geyser cell has no proxy and no second server (ADR-0018 section 9)");
+        });
+    }
+
+    /** Waits until the agent lists {@code player} (or no longer lists it); a reply without the list is an error. */
+    private static void awaitListing(ServerHost host, String player, boolean listed) {
+        Await.until("the agent " + (listed ? "lists " : "no longer lists ") + player, () -> lists(host, player),
+                value -> value == listed, BEDROCK_AGENT_WAIT);
+    }
+
+    private static boolean lists(ServerHost host, String player) {
+        JsonNode players = host.request("GET", "/v1/players", null).get("players");
+        if (players == null || !players.isArray()) {
+            throw new IllegalStateException("the agent's /v1/players reply has no players list: " + players);
+        }
+        for (JsonNode listed : players) {
+            if (player.equals(listed.asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Logs one client in under {@code name} through the cell's driver, at the address that driver reaches. */
@@ -771,7 +927,13 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
      * only the sidecar drivers that {@link ClientDriver#onNetwork} started.
      */
     private record HostResource(ServerHost host, ViaProxyHost proxy, Network network, Map<String, ClientDriver> drivers,
-            ResourcePackSource pack) implements AutoCloseable {
+            ResourcePackSource pack, GeyserHost geyser) implements AutoCloseable {
+
+        HostResource(ServerHost host, ViaProxyHost proxy, Network network, Map<String, ClientDriver> drivers,
+                ResourcePackSource pack) {
+            this(host, proxy, network, drivers, pack, null);
+        }
+
         @Override
         public void close() {
             RuntimeException failure = null;
@@ -790,7 +952,8 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             RuntimeException failure = cause;
             List<AutoCloseable> parts = new ArrayList<>(drivers.values());
             parts.add(proxy);
-            parts.add(host);
+            // A Geyser cell's host owns its server, the stand-in, the driver host and the network.
+            parts.add(geyser != null ? geyser : host);
             parts.add(network);
             parts.add(pack);
             for (AutoCloseable part : parts) {

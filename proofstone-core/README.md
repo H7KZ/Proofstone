@@ -30,7 +30,13 @@ Today it loads `versions.yml` (ADR-0008) and plans cells from it (T-M1-06).
   left is the highest `required` row, never an experimental one), `CellSelector.geysers()` (`geyser` is reserved: left of the `+`
   only, never a topology entry), and `CiMatrix` Geyser entries (`kind: "geyser"`, last). `VersionsCatalog` reads the schema 5
   `geyser` key and `drivers.bedrock` (`geyserRows()`, `bedrockDriver()`), and refuses a bridged, non-paper or malformed pairing at
-  load. Paper, topology and loader cells select and plan exactly as before; nothing runs a Geyser cell yet (T-M9-06).
+  load. Paper, topology and loader cells select and plan exactly as before.
+- Geyser cells in the JUnit extension (T-M9-07, ADR-0018 section 9), package `junit`: `@Matrix(platform = Platform.GEYSER)` plans the cells the
+  selector names (`geyser@2.12.1+paper@26.3`; an experimental row never runs in a default run), `CellInvocation` boots a `GeyserHost`
+  and runs the Paper backend as the cell, `CapabilityModel.geyserCapabilities` holds `BEDROCK_CLIENT` when the agent reports `floodgate`
+  (never `SIMULATED_BEDROCK`, `PROXY` or `TOPOLOGY`), and `TestClients.bedrock` overrides the default `Clients.bedrock`: it validates the
+  name, joins through the driver host, and awaits the agent (listed, then gone after the close). `GeyserRun` holds the refusals
+  (differential, flake detector, another driver, bridged, `mods`/`datapacks`). Real-server check: `GeyserApiContract` in `geyserTest`.
 - `io.github.h7kz.proofstone.core.host.LoaderHost` (T-M8-07, ADR-0017): `start(LoaderCell, LoaderHostOptions)` boots one Fabric or
   NeoForge cell on the pinned itzg image, next to `PaperHost` and sharing its agent client, log buffer, copy ownership and
   permission check. The harness downloads the loader jar (Fabric launcher, NeoForge installer) and the Fabric API, checks each

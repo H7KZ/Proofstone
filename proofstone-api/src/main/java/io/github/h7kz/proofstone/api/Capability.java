@@ -56,5 +56,12 @@ public enum Capability {
      * The cell loads mods from {@code /mods} and its agent lists the loaded ones ({@code GET /v1/mods}, token {@code mods}),
      * so {@link Proofstone#mods()} can put a mod under test. Declared by the Fabric and NeoForge packs (ADR-0017 section 8).
      */
-    MODS
+    MODS,
+
+    /**
+     * A real Bedrock client joins through Geyser, so {@link Clients#bedrock(String)} works. Declared by the Geyser pack and
+     * held only when the Bukkit agent reports {@code floodgate} (ADR-0018 section 5); a Geyser cell is native, never bridged,
+     * and not a topology or loader cell. It is not {@link #SIMULATED_BEDROCK}: that is a Java client under a prefixed name.
+     */
+    BEDROCK_CLIENT
 }

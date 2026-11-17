@@ -3,11 +3,13 @@ package io.github.h7kz.proofstone.core.junit;
 import io.github.h7kz.proofstone.api.CellTest;
 import io.github.h7kz.proofstone.api.Isolation;
 import io.github.h7kz.proofstone.api.Matrix;
+import io.github.h7kz.proofstone.api.Platform;
 import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.api.Topology;
 import io.github.h7kz.proofstone.core.cell.Cell;
 import io.github.h7kz.proofstone.core.cell.CellPlanner;
 import io.github.h7kz.proofstone.core.cell.CellSelector;
+import io.github.h7kz.proofstone.core.cell.GeyserCell;
 import io.github.h7kz.proofstone.core.cell.LoaderCell;
 import io.github.h7kz.proofstone.core.cell.Scope;
 import io.github.h7kz.proofstone.core.cell.TopologyCell;
@@ -156,6 +158,18 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             invocations.add(new CellInvocation(asCell(loader), loader, config, isolation, catalog,
                     CellInvocation.configuredDriver(), 1, 1));
         }
+        for (GeyserCell geyser : plan.geysers()) {
+            // Refused before anything starts, naming the cell (ADR-0018 sections 3 and 9); never a skip, never a pass.
+            String driver = CellInvocation.configuredDriver();
+            boolean bridged = CellInvocation.findDriver(driver).map(d -> !d.protocolVersion().equals(geyser.backend().mc()))
+                    .orElse(false);
+            GeyserRun.refusal(geyser.identity(), differential, repeats, driver, CellInvocation.primaryDriver(), bridged)
+                    .ifPresent(reason -> {
+                        throw new IllegalStateException(type.getName() + ": " + reason);
+                    });
+            runnable = true;
+            invocations.add(new CellInvocation(geyser, config, isolation, catalog));
+        }
         if (!runnable) {
             throw new IllegalStateException(type.getName() + " has no cell for a differential run: the reference driver "
                     + DifferentialRun.REFERENCE + " must be native on a selected cell. Select its row, for example "
@@ -177,8 +191,15 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
      * A selector replaces the {@link Matrix} versions of the platforms it names; other platforms are not run.
      * Zero cells is an error, not a pass: JUnit would otherwise fail with an opaque precondition error.
      */
-    /** The cells of one test class: single-server cells, topology cells (ADR-0016) and loader cells (ADR-0017). */
-    record Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders) {
+    /**
+     * The cells of one test class: single-server cells, topology cells (ADR-0016), loader cells (ADR-0017) and Geyser cells
+     * (ADR-0018).
+     */
+    record Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders, List<GeyserCell> geysers) {
+
+        Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders) {
+            this(cells, topologies, loaders, List.of());
+        }
     }
 
     /**
@@ -198,12 +219,23 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         List<Cell> cells = new ArrayList<>();
         List<TopologyCell> topologies = new ArrayList<>();
         List<LoaderCell> loaders = new ArrayList<>();
+        List<GeyserCell> geysers = new ArrayList<>();
+        boolean declaresGeyser = false;
         List<String> declaredLoaders = new ArrayList<>();
         List<String> backends = AnnotationSupport.findAnnotation(type, Topology.Backends.class)
                 .map(annotation -> List.of(annotation.value())).orElse(TopologyCell.DEFAULT_BACKENDS);
         List<String> proxies = new ArrayList<>();
         for (Matrix matrix : matrices) {
             String platform = matrix.platform().name().toLowerCase(Locale.ROOT);
+            if (matrix.platform() == Platform.GEYSER) {
+                declaresGeyser = true;
+                GeyserRun.declarationRefusal(type.getName(), AnnotationSupport.findAnnotation(type, Proofstone.class)
+                        .orElse(null)).ifPresent(reason -> {
+                            throw new IllegalStateException(reason);
+                        });
+                geysers.addAll(planGeysers(type, selector, planner, scope));
+                continue;
+            }
             if (planner.isProxy(platform)) {
                 proxies.add(platform);
                 topologies.addAll(planTopologies(type, platform, matrix, selector, planner, scope, backends));
@@ -235,16 +267,37 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                         + "that plans the loader cell " + entry.entry());
             }
         }
-        // No @Matrix plans a Geyser cell until Platform.GEYSER exists (T-M9-07); say so, never drop the entry silently.
+        // A Geyser entry no @Matrix plans is said out loud, never dropped silently.
         for (CellSelector.GeyserEntry entry : selector.geysers()) {
-            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
-                    + "that plans the Geyser cell " + entry.entry());
+            if (!declaresGeyser) {
+                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
+                        + "that plans the Geyser cell " + entry.entry());
+            }
         }
-        if (cells.isEmpty() && topologies.isEmpty() && loaders.isEmpty()) {
+        if (cells.isEmpty() && topologies.isEmpty() && loaders.isEmpty() && geysers.isEmpty()) {
             throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
                     + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
         }
-        return new Plan(List.copyOf(cells), List.copyOf(topologies), List.copyOf(loaders));
+        return new Plan(List.copyOf(cells), List.copyOf(topologies), List.copyOf(loaders), List.copyOf(geysers));
+    }
+
+    /**
+     * The Geyser cells a {@code Platform.GEYSER} {@link Matrix} plans (ADR-0018 section 9). A Geyser row is experimental, so
+     * it runs only when the selector names it, for example {@code geyser@2.12.1+paper@26.3}: without one the matrix plans
+     * nothing and says so, so an experimental cell never boots in a default run and is never skipped silently.
+     */
+    private static List<GeyserCell> planGeysers(Class<?> type, CellSelector selector, CellPlanner planner, Scope scope) {
+        List<GeyserCell> planned = new ArrayList<>();
+        for (CellSelector.GeyserEntry entry : selector.geysers()) {
+            planned.addAll(planner.planGeysers(List.of(entry.version()), entry.backend(), List.of(entry.backendVersion()),
+                    scope));
+        }
+        if (planned.isEmpty()) {
+            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares geyser, an "
+                    + "experimental row that runs only when " + CELLS_SOURCE + " names it, for example "
+                    + "geyser@<version>+paper@<mc>");
+        }
+        return planned;
     }
 
     /**

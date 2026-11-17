@@ -39,6 +39,8 @@ final class TestState implements AutoCloseable {
     Set<io.github.h7kz.proofstone.api.Capability> capabilities = Set.of();
     /** Set when the cell lacks a capability the test requires: the skip reason. The body never runs then. */
     String skipped;
+    /** The Geyser cell's host, for its bundle; {@code null} on any other cell. */
+    io.github.h7kz.proofstone.core.host.GeyserHost geyser;
     /** The {@link io.github.h7kz.proofstone.api.Clients} the test may use; it closes the clients they created. */
     TestClients clients;
 

@@ -337,3 +337,19 @@ diagnosis runs failed at join stage SPAWN_STATUS with decode errors in the drive
 - **Still unrun:** two Bedrock clients at once; any chat, command or window round trip through the driver (the run read position and inventory
   only); a Java 8 image (the trust store is PKCS12 made by a newer JDK; only `java25` ran); the JWKS document (never fetched with login
   validation off), so its shape is unchecked.
+
+## Test API on a Geyser cell (T-M9-07, 2026-11-17: what ran)
+
+`@Matrix(platform = Platform.GEYSER)` with `@Requires(Capability.BEDROCK_CLIENT)` and `clients.bedrock("PsBed1")` ran through the public API
+on `geyser@2.12.1+paper@26.3` (`GeyserApiContract`, source set `geyserTest`, run with `--tests '*GeyserApiContract'
+-Dproofstone.cells=geyser@2.12.1+paper@26.3`). The Bedrock client reports `.PsBed1`, `agent.player(client).give(stick x3)` and
+`DualAssert.item(...).inInventory(stick).amount(3)` agree on both oracles (id and count; Bedrock sends no data components).
+
+- **Gotcha: the agent's health at readiness is too early for Floodgate.** `PaperHost` reads the health once at `Done (`, and Floodgate
+  reports its `floodgate` token a little later. The first set of runs read the cell's capabilities from that health: run 2 of 3 skipped
+  both tests with `missing capability BEDROCK_CLIENT on cell geyser@2.12.1+paper@26.3` (a skip, not a pass, and a real finding of
+  T-M9-07). `GeyserHost` now re-reads the health after its own wait for the token. The three runs after the fix were all green.
+- A Geyser cell holds `CONSOLE`, `BUKKIT_EVENTS` and `BEDROCK_CLIENT`; it does not hold `SIMULATED_BEDROCK`, `PROXY`, `TOPOLOGY`,
+  `RESOURCE_PACKS` or `DATAPACKS_VANILLA`.
+- The Java client of the injected `Client` parameter joins the Paper port directly; the conformance of the cell (C03 and the leave) ran with
+  it and passed. The JUnit extension's Geyser bundle is `GeyserBundle` (a directory per container, `cell.json` with `offline-stub`).

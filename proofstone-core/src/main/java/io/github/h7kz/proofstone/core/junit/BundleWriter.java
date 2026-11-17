@@ -106,6 +106,11 @@ final class BundleWriter {
         return ROOT.resolve(cell.platform() + "@" + cell.mc());
     }
 
+    /** {@code build/proofstone/<identity>}: the Geyser identity unchanged (ADR-0018 section 8). */
+    static Path directory(io.github.h7kz.proofstone.core.cell.GeyserCell cell) {
+        return ROOT.resolve(cell.identity());
+    }
+
     /** {@code build/proofstone/<identity>}: the topology identity unchanged (ADR-0016 section 1). */
     static Path directory(TopologyCell cell) {
         return ROOT.resolve(cell.identity());
