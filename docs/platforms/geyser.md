@@ -367,8 +367,7 @@ them, all while writing the scenarios (each a wrong expectation of mine, kept as
   `bedrock-check .PsG04 online=true bedrock=true` reached the Bedrock client as `§rbedrock-check .PsG04 online=true bedrock=true`. C-G04
   asserts the prefix as it is, with the Java client's plain text next to it.
 - **Vanilla `/list` answered the Bedrock client "Unknown or incomplete command. See below for error: list<--[HERE]"**, although the server
-  logged `.PsG02 issued server command: /list`. It was not run for a Java client, so whether this is Geyser's translation or Paper's
-  permission for a non-op is **unverified**. C-G02 uses Paper's `/plugins`, which every player may run, and does not claim `list` works.
+  logged `.PsG02 issued server command: /list`. It was not run for a Java client then; T-M10-10 ran it (section below): the cause is Paper's permission, not Geyser. C-G02 uses Paper's `/plugins`, which every player may run, and does not claim `list` works.
 - **Paper's `/plugins` reaches a Bedrock client as separate messages with formatting codes:** `§r§bℹ §r§fServer Plugins (4):`, then the
   list (`Bukkit Plugins:` and ` - floodgate, Geyser-Spigot, ProofstoneAgent, ProofstoneBedrockPrefix` in the Java client's transcript). The
   Java client sees the same text without the codes. C-G02 awaits the header and then the plugin name, as two messages.
@@ -466,3 +465,22 @@ failure is the expected `INVALID`) in all three, no `the body ran` or `timed out
 - **Gotcha: a non-op Bedrock client cannot `/say`.** The first C-G05 run used `/say` and the other client never got it (vanilla `/say` needs op;
   the same shape as the `/list` answer in T-M9-08). C-G05 uses `/me`, which every player may run. The public `Client` has no chat call, so
   real chat is asserted only in the IT. _paper@26.3, Geyser 2.12.1 b1303_
+
+## `/list` for a Bedrock client and a Java client (T-M10-10, 2026-11-17: what ran)
+
+Question from T-M9-08: is vanilla `/list` answering a Bedrock client "Unknown or incomplete command" Geyser's translation, or Paper's
+permission for a non-op? A temporary scenario (not kept) ran `list` from the Java client and a Bedrock client (`.PsL1`) on one
+`geyser@2.12.1+paper@26.3` cell, both non-op, then both op (`op <name>` from the console), one run. Raw answers as the clients received them:
+
+| Client | Non-op | Op |
+|---|---|---|
+| Java (`T6b6eff27`) | `command.unknown.command` (a translation key, the driver does not render it) | `commands.list.players 2 20 T6b6eff27, .PsL1` |
+| Bedrock (`.PsL1`) | `§r§cUnknown or incomplete command. See below for error` | `§rThere are 2 of a max of 20 players online: T6b6eff27§7, §r.PsL1` |
+
+- **Cause: Paper's permission, not Geyser.** The Java client is refused the same way as a non-op (`command.unknown.command` is the same
+  message, unrendered), and both clients get the player list once op. Paper gives vanilla `list` (`minecraft.command.list`) to ops only by
+  default, so a non-op has no such command. Geyser only translates the text (adds `§r`, renders the key) and the Bedrock list names the Floodgate
+  player `.PsL1` next to the Java one.
+- **Gotcha: a non-op client (Java or Bedrock) gets "Unknown or incomplete command" for vanilla `/list`, `/say` and the like.** Use
+  `/plugins` or `/me`, or `op` the player first. No C-G scenario was added: Geyser does not differ from Java, so there is nothing
+  Bedrock-specific to assert, and C-G02 stays on `/plugins`. _paper@26.3, Geyser 2.12.1 b1303_
