@@ -95,7 +95,8 @@ invocation (M7 flake rule). Not part of `check`.
 and joins one Bedrock client. It builds the agent and the driver host jars first. One cell per invocation; Bedrock join timeouts are counted apart.
 Not part of `check`. `GeyserHost` (`core.host`) is the host, `host.standin.StandIn` the one-class discovery stand-in copied into a container, `GeyserBundle`
 (`core.junit`) the cell's repro bundle (the Floodgate key redacted in every form, `plugins/floodgate` never included); the rendered Geyser config is
-`GeyserConfig` over the pinned build's default file in the resources. Docs: docs/platforms/geyser.md.
+`GeyserConfig` over the pinned build's default file in the resources. `GeyserFault` (`-Dproofstone.injectGeyserFault=stand-in-absent|key-mismatch`, T-M9-11) breaks
+the cell on purpose for `examples/bad-tests` `metaBedrockTest`; `GeyserConformance.joinFailure` names the hop of a failed first join. Docs: docs/platforms/geyser.md.
 - `io.github.h7kz.proofstone.core.verdict` (T-M4-01): the verdict engine. `VerdictEngine.resolve(CellRun, ConformanceResult)` gives
   one `CellResult` per test and cell; `Verdict` (`PASS`, `FAIL`, `INVALID`, `VACUOUS`, `FLAKY`, `DISAGREE`, `SKIPPED`,
   green = `PASS` or `SKIPPED` only); `Attempt` (one run: PASS, FAIL or SKIPPED); `SkipReason` (the allowed skip reasons);

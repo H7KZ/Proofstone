@@ -274,7 +274,7 @@ Testcontainers check is `bash scripts/dockerlock.sh bash scripts/spike/geyser/tc
 
 ## Unverified
 
-- Anything older than Bedrock protocol 2225, and Geyser's refusal text for a protocol it does not support.
+- Anything older than Bedrock protocol 2225, and Geyser's refusal text for a protocol it does not support (T-M9-11 could not make the fault without a driver switch, see "Negative controls").
 - Geyser and Floodgate on different servers, a Geyser cell with a proxy, Geyser through a Testcontainers cell.
 - Whether the stub's TLS trust store change affects Paper or Geyser outside the two stub names (all other TLS worked in the cold
   start, which ran with the trust store).
@@ -383,3 +383,48 @@ them, all while writing the scenarios (each a wrong expectation of mine, kept as
 - **A harness finding fixed on the way:** a test that aborts itself (`Assumptions.abort`) was `SKIPPED` in JUnit's XML and `FAIL` in
   `proofstone-report.json`. It is now `SKIPPED` with the new reason `TEST_ABORTED` in both (own commit, unit test).
 - **Still unrun:** two Bedrock clients at once in one test, a Java 8 image, the JWKS document.
+
+## Negative controls (T-M9-11, 2026-11-17: what ran)
+
+`examples/bad-tests` `metaBedrockTest` (`bedrock/BedrockFaultE2E`, pinned to `geyser@2.12.1+paper@26.3`, refused on any other cell by
+`scripts/bad-tests-pin-check.sh`) injects one fault per run with `-Dproofstone.injectGeyserFault`. The three faults the card named were each
+first tried with a real run, before any assertion was written. Two are reachable and in the test; one is dropped.
+
+- **Stand-in absent: reachable.** `-Dproofstone.injectGeyserFault=stand-in-absent` starts the stand-in with `--refuse-names`: it answers the two
+  Microsoft names with NXDOMAIN and logs `STUB refused <name>`, so nothing serves them (the spike's no-route case without touching the network).
+  Probe command: `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaBedrockStandInAbsent --no-parallel
+  --max-workers=1`. Result: the first Bedrock join failed at stage `LOGIN_SENT` after about 11 s with `DISCONNECTED: the connection closed:
+  disconnect.timeout`, the Bedrock client's whole view, as with a refused chain. The server's log has the reason: `[Geyser-Spigot] Exception caught in
+  session of unknown (pre-login)`, `AssertionError: Unable to fetch discovery data from https://client.discovery.minecraft-services.net/api/...`,
+  `Caused by: UnknownHostException: client.discovery.minecraft-services.net`, then `has disconnected for reason An internal error occurred!`. The
+  stand-in's log has `DNS A client.discovery.minecraft-services.net` and `STUB refused ...`. The stand-in log shows one `A` and one `AAAA` query for the discovery name and none for the authorization name (the log does not say which JVM asked).
+- **Floodgate key mismatch: reachable, but not the way the card guessed.** Giving Geyser another key file (`advanced.floodgate-key-file:
+  decoy-key.pem`, the decoy copied into Geyser's folder) changes nothing: the join was green (one probe run, the cell's check passed, body ran).
+  On one server Geyser takes the key from the Floodgate plugin's folder whatever its own setting says (the config's comment says so). The mismatch
+  is made on Floodgate's side: its own `config.yml` (the pinned jar's default file, `key-file-name` changed to `decoy-key.pem`, the decoy a second
+  random 16-byte key) makes Floodgate decrypt with a key Geyser never used. Probe command:
+  `... :examples:bad-tests:metaBedrockKeyMismatch ...`. Result: the Bedrock join failed at stage `START_GAME` with `DISCONNECTED: Please connect
+  through the official Geyser`, Floodgate's own `disconnect.invalid-key` text, within the join (no timeout). Both keys are secrets: every form of
+  both is redacted from the bundle and the messages.
+- **Refused Bedrock protocol: dropped, not faked.** The driver sends the one codec it is built on (`Bedrock_v2225`, ADR-0018) in
+  `RequestNetworkSettings`, and Geyser 2.12.1 b1303 has no setting that narrows the protocols it accepts (the pinned default config has no such
+  key). A refusal therefore needs the driver to send another protocol number, which is a switch in `drivers/bedrock` (a production path, and a
+  module outside T-M9-11). Not run, so Geyser's refusal text stays unverified (the Unverified list above is unchanged). To make it: a
+  default-off `-D` read by the driver host's `HostSession` for the protocol number, set through the container's `JAVA_TOOL_OPTIONS`; a card for
+  that is the maintainer's call.
+- **The messages.** A failed first Bedrock join now names its hop (`GeyserConformance.joinFailure`, core, unit tested): the stand-in is blamed
+  only when it was asked a name and did not answer, or Geyser's own `Unable to fetch discovery data` line is in the server log; Floodgate's
+  `Please connect through the official Geyser` is read as a key mismatch only when both names were answered. Anything else keeps the driver's
+  message with no hop guessed.
+
+Evidence (T-M9-11). `metaBedrockTest`, three separate invocations after the code was final, each `BUILD SUCCESSFUL` in 1m 28s to 1m 31s with
+`every bad test produced its expected verdict (INVALID, INVALID)`; both fault suites `tests=1 skipped=0 failures=1 errors=0` (the failure is the
+expected `INVALID`) in all three, and the report holds `INVALID` for both. Bedrock join timeouts (`JoinTimeoutException`, stage named): 0 of 3; the
+stand-in-absent run's `disconnect.timeout` is the server's disconnect (`DISCONNECTED` at `LOGIN_SENT`), not a driver timeout. Cell boot 31 to 32 s
+(host finding). Before them, an earlier run of the same task (message wording changed afterwards: "and the client's" dropped, as it was not
+shown) and three probes were green or showed the key probe through Geyser's own setting passing (the finding above), none replaced by a later
+run. The clean cell (`:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3`) stays `tests=7 skipped=3 failures=0 errors=0`;
+`:proofstone-core:geyserTest -Dproofstone.cells=geyser@2.12.1+paper@26.3` is green (`GeyserCellIT` 1, `GeyserApiContract` 2). A first `geyserTest` run
+without the selector was red (`GeyserApiContract has no cell to run`, `initializationError`, 2 failures): the contract class needs the selector, as
+its doc says; not a regression. `metaTest` (`VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED`), `metaTopologyTest` (7 of 7
+`INVALID`) and `metaModTest` (`INVALID, LEAK, INVALID, INVALID, FAIL`) each gave every expected verdict in one run, XML read.

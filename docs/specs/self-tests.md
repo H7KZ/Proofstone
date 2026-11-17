@@ -139,6 +139,15 @@ resource packs. Each first asserts that the driver refuses the call (`Unsupporte
 is true. `:conformance:run` with a `geyser@` selector runs `ConformanceGeyserTest` only. A Geyser row is promoted only under
 ADR-0015 with this table and three green invocations, and a driver that is a release (ADR-0018 section 8).
 
+**Negative controls (T-M9-11).** The Geyser row's first check can fail loudly, shown by `examples/bad-tests` `metaBedrockTest` (switch
+`-Dproofstone.injectGeyserFault`, each bad test pinned to the Geyser row and refused on any other cell). A failed first join is `INVALID`
+and names its hop; the Bedrock client's `disconnect.timeout` is quoted but is never the reason. `stand-in-absent` (the stand-in refuses the two
+Microsoft names): `the discovery stand-in answered none of the two expected names`, `hop: server and driver host to the stand-in` and the
+server's `Unable to fetch discovery data` line. `key-mismatch` (Floodgate reads another key file than the one Geyser takes): `Floodgate
+refused the data Geyser sent`, `hop: Geyser to Floodgate on the server` and Floodgate's `Please connect through the official Geyser`. A refused
+Bedrock protocol is dropped, not faked (docs/platforms/geyser.md, "Negative controls"). The stand-in is blamed only on evidence (a name it was
+asked and did not answer, or Geyser's own failed-fetch line); a join that died before any login stays a plain failed join.
+
 ## 2. Control run (nightly)
 
 - Run the user's suite with every `plugins` jar **removed**. The agent and fixtures stay.
