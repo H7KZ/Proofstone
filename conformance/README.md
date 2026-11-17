@@ -59,6 +59,10 @@ With a loader cell in `-Dproofstone.cells` (`fabric@26.3`, `neoforge@26.3`), `:c
 (a Java 25 toolchain and a build-time game jar download, so a Paper run never pays for it) and runs C01 to C08 plus
 `ConformanceLoaderWindowTest` on it. One cell per invocation.
 
+With a Geyser cell in `-Dproofstone.cells` (`geyser@2.12.1+paper@26.3`), `:conformance:run` runs `ConformanceGeyserTest` only: the
+cell's first cached check, C-G01 to C-G04 and the reasoned skips (docs/specs/self-tests.md section 1d). It builds the Bedrock driver
+host jar. One Geyser cell per invocation (M9 flake rule).
+
 Both need a Java 21+ toolchain (set in `build.gradle.kts`), because the mcpl driver needs it.
 
 ## How to test
