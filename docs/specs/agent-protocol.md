@@ -95,6 +95,9 @@ A successful `give`, `reset` or `PATCH` with nothing to return replies `{"ok": t
   goldens as pending with the reason. The resource-pack status is read with the existing event probe, so `players` and
   `player-state.json` do not change. Mod agents (Fabric, NeoForge) serve the game endpoints as the Bukkit agent does,
   on the server thread.
+  **T-M9-06:** the Bukkit agent reports the token `floodgate` when the plugin `floodgate` is enabled (a read-only lookup by name, on the
+  first global tick, because the agent enables before Floodgate). `health.json` does not enumerate capability tokens, so there is no minor
+  bump and no golden change.
   **T-M8-09:** the Bukkit agent (where the server API lists data packs: Paper's `Server#getDatapackManager`, read by reflection
   because the agent is built against 1.8.8) and the Fabric agent (the pack repository's selected and available ids) report
   `datapacks` and serve `GET /v1/datapacks`. The `datapacks/list` golden is pinned on a real `paper@26.3` server (enabled

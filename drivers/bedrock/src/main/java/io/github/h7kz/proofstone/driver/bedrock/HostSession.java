@@ -98,6 +98,7 @@ final class HostSession implements Wire, RpcServer.Connection {
                             host.session = created;
                             created.setCodec(CODEC);
                             created.getPeer().getCodecHelper().setEncodingSettings(LIMITS);
+                            created.getPeer().getCodecHelper().setBlockDefinitions(new RuntimeIdBlocks());
                             created.setPacketHandler(packets);
                         }
 
@@ -108,7 +109,7 @@ final class HostSession implements Wire, RpcServer.Connection {
                             channel.pipeline().addLast(new ChannelInboundHandlerAdapter() {
                                 @Override
                                 public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-                                    host.state.fail(BedrockRpc.PROTOCOL_ERROR, "a packet could not be decoded: " + cause);
+                                    host.state.fail(BedrockRpc.PROTOCOL_ERROR, "a packet could not be decoded: " + cause + rootCause(cause));
                                 }
                             });
                         }
@@ -197,6 +198,15 @@ final class HostSession implements Wire, RpcServer.Connection {
     @Override
     public void enableEncryption(SecretKey key) {
         session.enableEncryption(key);
+    }
+
+    /** The innermost cause, which the library's wrapper exceptions hide (the first real join showed only "Error whilst deserializing"). */
+    static String rootCause(Throwable error) {
+        Throwable root = error;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root == error ? "" : " [root cause: " + root + "]";
     }
 
     @Override

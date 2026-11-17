@@ -103,3 +103,52 @@ tasks.named("archTest") {
         }
     }
 }
+
+// Real-server Geyser cell tests (T-M9-06): Paper with Geyser and Floodgate, the discovery stand-in and the Bedrock driver host on
+// one network. Not part of `check`; one cell per invocation under scripts/dockerlock.sh (M9 flake rule: Bedrock join numbers are
+// counted apart from Paper and topology numbers). Its own source set, so `integrationTest` and `topologyTest` stay as they were.
+val geyserTest = sourceSets.create("geyserTest") {
+    compileClasspath += sourceSets["main"].output
+    runtimeClasspath += sourceSets["main"].output
+}
+configurations["geyserTestImplementation"].extendsFrom(configurations["implementation"])
+configurations["geyserTestRuntimeOnly"].extendsFrom(configurations["runtimeOnly"])
+
+dependencies {
+    "geyserTestImplementation"(platform(libs.junit.bom))
+    "geyserTestImplementation"(libs.junit.jupiter)
+    "geyserTestImplementation"(libs.assertj.core)
+    "geyserTestRuntimeOnly"(libs.junit.platform.launcher)
+}
+
+tasks.register<Test>("geyserTest") {
+    group = "verification"
+    description = "Real-server Geyser cell tests: Paper, Geyser, Floodgate, the stand-in and the driver host. Needs Docker. Not part of check."
+    testClassesDirs = geyserTest.output.classesDirs
+    classpath = geyserTest.runtimeClasspath
+    useJUnitPlatform()
+    javaLauncher.set(topologyToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+    // Path-based, so this project does not need the agent and driver projects configured first.
+    dependsOn(":platforms:bukkit:agent:shadowJar", ":drivers:bedrock:shadowJar")
+    systemProperty("proofstone.repoRoot", rootProject.projectDir.absolutePath)
+    systemProperty("proofstone.agentJar", agentJar.asFile.absolutePath)
+    systemProperty("proofstone.bedrockHostJar",
+        rootProject.layout.projectDirectory.file("drivers/bedrock/build/libs/bedrock-host-all.jar").asFile.absolutePath)
+}
+
+// AGENTS.md section 3 applies to these classes too: archTest scans them.
+tasks.named("archTest") {
+    dependsOn("geyserTestClasses")
+    val geyserDirs = geyserTest.output.classesDirs
+    doLast {
+        val violations = io.github.h7kz.proofstone.build.arch.HardRules.check(geyserDirs.files.map { it.toPath() })
+        if (violations.isNotEmpty()) {
+            throw GradleException("archTest failed (geyserTest classes):\n" + violations.joinToString("\n"))
+        }
+    }
+}

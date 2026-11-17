@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -37,13 +38,16 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
             // Folia has no main thread, so the Bukkit scheduler refuses every task. It gets the region scheduler.
             scheduler = "folia".equals(platform) ? new FoliaScheduler(this) : new MainThreadScheduler(this);
             TickCounter ticks = TickCounter.start(scheduler);
+            // A live list: Floodgate may enable after this plugin, so the token is added at the first tick (FloodgateProbe).
+            List<String> tokens = new CopyOnWriteArrayList<>(capabilities(platform, Bukkit.getOnlineMode(),
+                    DataPackList.supported(), classPresent(RESOURCE_PACK_STATUS_EVENT)));
+            scheduler.repeatGlobally(new FloodgateProbe(tokens, name -> Bukkit.getPluginManager().isPluginEnabled(name)));
             Health health = new Health(
                     getDescription().getVersion(),
                     PROTOCOL,
                     platform,
                     MinecraftVersion.parse(Bukkit.getBukkitVersion()),
-                    capabilities(platform, Bukkit.getOnlineMode(), DataPackList.supported(),
-                            classPresent(RESOURCE_PACK_STATUS_EVENT)));
+                    tokens);
             EventProbes probes = new EventProbes(this, ticks);
             server = new AgentServer(config, health,
                     new BukkitGame(scheduler, probes, logs, ticks, "folia".equals(platform)));

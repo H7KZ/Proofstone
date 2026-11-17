@@ -41,6 +41,9 @@ public record GeyserCell(
         Cell backend,
         List<String> notes) {
 
+    /** What {@code cell.json} says about Xbox authentication: it is off on every Geyser cell (ADR-0018 section 4). */
+    public static final String BEDROCK_AUTH = "offline-stub";
+
     /** The reserved id left of the {@code +} (ADR-0018 section 8). */
     public static final String ID = "geyser";
 
@@ -56,6 +59,12 @@ public record GeyserCell(
      * @param sha256 the jar checksum
      */
     public record Floodgate(String version, int build, String sha256) {
+    }
+
+    /** {@code "offline-stub"}: written into {@code cell.json}, the report and the display name, so no reader mistakes the cell for production auth. */
+    @com.fasterxml.jackson.annotation.JsonProperty("bedrockAuth")
+    public String bedrockAuth() {
+        return BEDROCK_AUTH;
     }
 
     /** {@code geyser@<version>+<backend>@<mc>}. */

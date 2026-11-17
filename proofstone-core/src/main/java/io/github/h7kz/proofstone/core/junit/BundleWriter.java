@@ -335,7 +335,7 @@ final class BundleWriter {
     }
 
     /** The agent's full-state dump (agent-protocol §2). A failure is recorded in the file, not left out. */
-    private static String snapshot(AgentEndpoint host) {
+    static String snapshot(AgentEndpoint host) {
         ObjectNode node = JSON.createObjectNode();
         try {
             node.set("snapshot", host.request("GET", "/v1/snapshot", null));

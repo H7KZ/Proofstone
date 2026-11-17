@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * is not allowed: it matches an error pattern of its platform pack, or it matches nothing on that pack's allowlist. The
  * allowlist holds known vanilla noise only; an unknown record is never skipped, because "no errors" must mean no errors.
  */
-final class ErrorLogGuard {
+public final class ErrorLogGuard {
 
     /**
      * The log patterns one platform pack supplies (robustness R8, R9). Each pack owns its list: a platform without one
@@ -24,7 +24,7 @@ final class ErrorLogGuard {
      * @param allowlist    known noise, each pattern with the reason it is allowed
      * @param errorPatterns records that fail the test even when the allowlist matches, such as a thread-check violation
      */
-    record Patterns(String platform, Map<Pattern, String> allowlist, List<Pattern> errorPatterns) {
+    public record Patterns(String platform, Map<Pattern, String> allowlist, List<Pattern> errorPatterns) {
 
         /**
          * Paper (docs/platforms/paper.md, Gotchas): vanilla noise only, and no error patterns yet.
@@ -96,8 +96,25 @@ final class ErrorLogGuard {
                         + "(NoClassDefFoundError io.netty.channel.kqueue.Native), harmless and logged on every boot"),
                 List.of());
 
+        /**
+         * The Geyser cell's server (docs/platforms/geyser.md, Gotchas), reviewed on its own, not copied from PAPER. Every
+         * entry carries the reason and comes from a real run (T-M9-06); an unknown line is a failure.
+         */
+        public static final Patterns GEYSER = new Patterns("geyser", Map.of(
+                Pattern.compile("XBOX AUTHENTICATION IS DISABLED ON THIS GEYSER INSTANCE!"),
+                "the harness's own doing: validate-bedrock-login is false on every Geyser cell (ADR-0018 section 4); run T-M9-06, 3 lines at the Geyser start",
+                Pattern.compile("While this allows using Bedrock edition proxies, it also opens up the ability for hackers"),
+                "second of the three XBOX AUTHENTICATION lines, same reason",
+                Pattern.compile("set \"disable-xbox-auth\" to \"false\" in Geyser"),
+                "third of the three lines; its text names an option Geyser does not have, the real key is validate-bedrock-login",
+                Pattern.compile("Failed to load locale asset cache"),
+                "optional fetch, no Mojang route needed: Geyser starts without its locale cache (spike T-M9-01, names blocked)",
+                Pattern.compile("Unable to resolve Geyser api"),
+                "optional fetch: the update check needs api.geysermc.org and only warns (spike T-M9-01)"),
+                List.of());
+
         /** The patterns of a platform id. @throws IllegalStateException for a platform with no list */
-        static Patterns of(String platform) {
+        public static Patterns of(String platform) {
             return switch (platform) {
                 case "paper" -> PAPER;
                 case "folia" -> FOLIA;
@@ -107,6 +124,7 @@ final class ErrorLogGuard {
                 case "bungeecord" -> BUNGEECORD;
                 case "fabric" -> FABRIC;
                 case "neoforge" -> NEOFORGE;
+                case "geyser" -> GEYSER;
                 default -> throw new IllegalStateException("no log patterns for platform " + platform
                         + ": its platform pack must supply its own list (robustness R9)");
             };
@@ -121,12 +139,12 @@ final class ErrorLogGuard {
     }
 
     /** The cursor of the end of the server log now: records logged later have a greater sequence number. */
-    static long cursor(AgentEndpoint host) {
+    public static long cursor(AgentEndpoint host) {
         return read(host, END, "FATAL").next();
     }
 
     /** @throws AssertionError naming every unexpected record logged since the cursor */
-    static void check(AgentEndpoint host, long cursor, Patterns patterns) {
+    public static void check(AgentEndpoint host, long cursor, Patterns patterns) {
         String problem = describe(read(host, cursor, "WARN").records(), patterns);
         if (problem != null) {
             throw new AssertionError(problem);
@@ -134,7 +152,7 @@ final class ErrorLogGuard {
     }
 
     /** The failure text for the records that are not allowed, or {@code null} when there are none. */
-    static String describe(List<LogRecord> records, Patterns patterns) {
+    public static String describe(List<LogRecord> records, Patterns patterns) {
         List<LogRecord> unexpected = records.stream().filter(record -> !allowed(record, patterns)).toList();
         if (unexpected.isEmpty()) {
             return null;

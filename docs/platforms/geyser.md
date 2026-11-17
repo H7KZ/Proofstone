@@ -179,8 +179,7 @@ Names the server looked up (cold start, default config, network open). "Asked by
 
 `SIMULATED_BEDROCK` keeps meaning a Java client under a `.` name. A real Bedrock client would be a different capability
 (not defined, ADR-0018). Held by a Bukkit agent on this cell, as observed: `command`, `players`, `config`, `reload`, `world`,
-`events`, `log`, `ticks`, `bedrock-prefix`, `datapacks`, `resource-pack-status`. No Geyser or Floodgate token exists; the
-agent cannot tell a Floodgate player from a Java player except by the name prefix and the UUID's shape.
+`events`, `log`, `ticks`, `bedrock-prefix`, `datapacks`, `resource-pack-status`. Since T-M9-06 the agent also reports the `floodgate` token when the plugin is enabled (see "Geyser cell host" below). It cannot tell a Floodgate player from a Java player except by the name prefix and the UUID's shape.
 
 ## Agent notes
 
@@ -282,3 +281,59 @@ Testcontainers check is `bash scripts/dockerlock.sh bash scripts/spike/geyser/tc
 - Two Node clients at once (their Floodgate UUID is the same), inventory and window packets through a Bedrock driver, chat
   and command round trips: no scenario was run.
 - A start with the stub in place and the image's `papermc.io` name also blocked (needs the Paper jar copied in as `CUSTOM`).
+
+## Geyser cell host (T-M9-06, 2026-11-17: what ran)
+
+`GeyserHost` (`proofstone-core`, `core.host`) boots `geyser@2.12.1+paper@26.3` from `versions.yml` on a Testcontainers network: the
+discovery stand-in, the Paper server (Geyser 2.12.1 b1303, Floodgate 2.2.5 b141, the Bukkit agent) and the Bedrock driver host. Run by
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :proofstone-core:geyserTest --no-parallel --max-workers=1` (source set
+`geyserTest`, class `GeyserCellIT`). Three separate invocations, one cell each: 3 of 3 green, `skipped=0 failures=0 errors=0`; each joined
+one Bedrock client through the driver host (spawn status 2.4 to 2.5 s after connect) and the agent listed `.PsBed1`. Cell ready (container
+start to the Geyser, health and driver-host lines): 35 to 37 s. Bedrock join timeouts: 0 of 3 (no stage to name). Before those three, two
+diagnosis runs failed at join stage SPAWN_STATUS with decode errors in the driver, found and fixed in T-M9-05's code (below).
+
+- **The stand-in works through Testcontainers on the pinned image, no new image.** A `GenericContainer` with
+  `withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint("java"))` runs the one compiled `StandIn` class copied in (`withCopyToContainer`),
+  with a per-run PKCS12 keystore; the server and the driver host take it as DNS through `getHostConfig().withDns(<its address from
+  getContainerInfo>)`. Docker's embedded resolver on the cell network still answers the container names (`server`, `driver`) and sends
+  every other name to the stand-in. `StandIn` is Java 17 bytecode and JDK classes only; it ran on `java25`. The image's `cacerts` is read from
+  `$JAVA_HOME/lib/security/cacerts` of the stand-in container; the trust store (cacerts plus the stand-in certificate, PKCS12) is built with the
+  `KeyStore` API and copied to `/stub/cacerts` of the server and the driver host; `JAVA_TOOL_OPTIONS` points both JVMs at it. The certificate
+  comes from the harness JDK's `keytool` (EC secp256r1, SAN the two names, valid from yesterday for three days).
+- **Geyser accepted the pre-rendered `config.yml`.** The harness copies `/plugins/Geyser-Spigot/config.yml` (the pinned build's default,
+  `geyser-2.12.1-b1303-config.yml` in the core resources, five values replaced: `bedrock.transport: both`, `bedrock.webrtc-port: 19133`,
+  `bedrock.signaling.stun-discovery: false`, `java.auth-type: floodgate`, `advanced.bedrock.validate-bedrock-login: false`). Geyser logged
+  `Started Geyser on UDP port 19132` and joins worked, so the spike's first-start-then-edit-restart fallback (about 15 s more) is not needed.
+  A pin bump needs a new template: start the new build once, copy its default file, keep the five keys.
+- **The pre-seeded Floodgate key worked** (`/plugins/floodgate/key.pem`, 16 `SecureRandom` bytes per cell, from memory): 3 of 3 joins. Paper's
+  `connection-throttle: -1` is the host's `bukkit.yml` in every cell.
+- **The `floodgate` token is added at the first tick, not at the agent's enable.** The agent enables at `STARTUP`, before Floodgate, so a plugin
+  lookup at enable would say "not enabled". `FloodgateProbe` runs once on the first global tick (read-only, by plugin name, no Floodgate class
+  touched) and adds the token to the live list `health` answers from. The health schema does not enumerate tokens (items are free strings), so
+  there is no protocol bump and no golden change; the harness awaits the token after readiness. Health on the cell:
+  `command, players, config, reload, world, events, log, ticks, bedrock-prefix, datapacks, resource-pack-status, floodgate`.
+- **Names the stand-in was asked** (cell start and one join, every run): `fill.papermc.io`, `fill-data.papermc.io`, `piston-data.mojang.com`,
+  `discovery.minecraftservices.com`, `api.minecraftservices.com` (the image and Paper), `api.geysermc.org`, `launchermeta.mojang.com`,
+  `piston-meta.mojang.com` (Floodgate and Geyser's optional fetches), and the two Microsoft names, each looked up by both the server JVM and the
+  driver host JVM (`A` and `AAAA`; the stand-in answers `AAAA` for them with an empty success, so no real resolver is asked a Microsoft name).
+  The stand-in answered itself exactly `client.discovery.minecraft-services.net` and `authorization.franchise.minecraft-services.net` in all
+  three runs and served the discovery and OpenID documents to each JVM (the JWKS was not requested with login validation off). The name guard
+  (live.com, xboxlive.com, xboxlive.cn, xbox.com, microsoftonline.com, msauth.net, and any other name under minecraft-services.net) was clean.
+  Geyser's other optional fetches resolved to the real hosts (egress is open, ADR-0018 section 4) and logged no WARN.
+- **Log guard list (`ErrorLogGuard.Patterns.GEYSER`)**, from the runs: the three `XBOX AUTHENTICATION IS DISABLED ON THIS GEYSER INSTANCE!` lines
+  (the second starts "While this allows using Bedrock edition proxies", the third names `disable-xbox-auth`), logged by Geyser at its start; and,
+  from the spike's blocked-names run and not seen in these three, `Failed to load locale asset cache` and `Unable to resolve Geyser api`. Paper's
+  four offline-mode WARNs (`DedicatedServer`) are in every cell's boot (`ONLINE_MODE=FALSE`), before a test window. No ERROR record from Geyser or
+  Floodgate; `No key layers in MapLike[{}]` is the known flat-world line.
+- **Two driver bugs the first real join found, fixed in T-M9-05's code** (own commit, plus a unit test each): (1) from protocol 2225 the start game
+  packet's item definitions are empty and the 2088 definitions come in `ItemComponentPacket`, so the creative content decode failed; (2) the
+  creative content packet also names blocks by runtime id and the library dereferenced a null block registry; the driver now installs a registry
+  that carries the id the server sent (`RuntimeIdBlocks`). A decode error now names its innermost cause. After both, the join reached the spawn
+  status in 2.2 to 2.7 s and `GET /v1/players` listed `.PsBed1` (UUID `00000000-0000-0000-0009-01ee...`, survival, health 20, at the world spawn).
+- **Bundle.** `GeyserBundle.write` (core, `junit` package) writes `server/`, `stand-in/` and `driver-host/` logs, the agent transcript and
+  snapshot, the client transcript and `cell.json` (`"bedrockAuth": "offline-stub"`); every token and the Floodgate key in raw, hex (both cases)
+  and base64 (standard and URL, padded or not) are redacted and each file is read back; `plugins/floodgate` is never part of it. The real cell's
+  bundle held no form of the key in any run. It does not yet write `host.json` or `rerun.txt`; the JUnit extension's Geyser bundle is T-M9-07/08.
+- **Still unrun:** two Bedrock clients at once; any chat, command or window round trip through the driver (the run read position and inventory
+  only); a Java 8 image (the trust store is PKCS12 made by a newer JDK; only `java25` ran); the JWKS document (never fetched with login
+  validation off), so its shape is unchecked.

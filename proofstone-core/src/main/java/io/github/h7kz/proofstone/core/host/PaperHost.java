@@ -61,6 +61,7 @@ public final class PaperHost implements ServerHost, AutoCloseable {
     /** The jar bytes the container must hold: the pin, or for a built jar the sha256 of the file copied in. */
     private String expectedJarSha256;
     private final PaperHostOptions options;
+    private java.util.function.Consumer<GenericContainer<?>> prepare = container -> { };
     private final String token;
     private final LogBuffer logs = new LogBuffer();
     private final GenericContainer<?> container;
@@ -81,6 +82,14 @@ public final class PaperHost implements ServerHost, AutoCloseable {
 
     /** Starts the cell's server and returns it ready, or throws {@link PaperHostException} with the log tail. */
     public static PaperHost start(Cell cell, PaperHostOptions options) {
+        return start(cell, options, container -> { });
+    }
+
+    /**
+     * As {@link #start(Cell, PaperHostOptions)}, with {@code prepare} applied to the container after the host configured it
+     * and before it starts: how a Geyser cell adds its plugins, key, trust store, DNS and JVM options (ADR-0018 section 5).
+     */
+    static PaperHost start(Cell cell, PaperHostOptions options, java.util.function.Consumer<GenericContainer<?>> prepare) {
         Objects.requireNonNull(cell, "cell");
         if (!options.eulaAccepted()) {
             throw new PaperHostException("The Minecraft EULA is not accepted. Set " + Eula.VARIABLE
@@ -96,6 +105,7 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         // Spigot is built, not downloaded: the jar is resolved before any container exists (T-M5-05).
         Path serverJar = SpigotServerJar.PLATFORM.equals(cell.platform()) ? SpigotServerJar.resolve(cell) : null;
         PaperHost host = new PaperHost(cell, options);
+        host.prepare = prepare;
         host.dataPacks = dataPacks;
         host.boot(artefacts, serverJar);
         return host;
@@ -193,6 +203,7 @@ public final class PaperHost implements ServerHost, AutoCloseable {
         if (options.debugPorts()) {
             container.addExposedPort(AGENT_PORT);
         }
+        prepare.accept(container);
     }
 
     /**

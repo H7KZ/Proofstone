@@ -50,5 +50,7 @@ container on the cell network, never in the harness JVM. `BedrockDriver implemen
 `test` runs `checkCloudburstPins` first: every resolved runtime artefact must match its line in `cloudburst-artefacts.sha256`, no resolved version may be a
 snapshot or dynamic, and a stale line fails. To change a version, re-derive the lines from a fresh download of each jar, never from the Gradle cache.
 
-There is no real-server test in this module yet: the real join needs the Geyser host (T-M9-06) and runs there and in T-M9-08. Until then the join against a real Geyser,
-the exec-curl transport in a container and the encryption handshake (the one step that loads the library class that contacts Microsoft's names) are **unverified**.
+There is no real-server test in this module: the real join runs in `:proofstone-core:geyserTest` (T-M9-06, `GeyserCellIT`), where it passed 3 of 3 on
+`geyser@2.12.1+paper@26.3`: the exec-curl transport in a container, the encryption handshake against the stand-in and the spawn status. That run found
+two decode bugs (the item definitions come in `ItemComponentPacket`; the creative content needs a block registry, `RuntimeIdBlocks`), fixed here. Still
+**unverified**: chat, command and window round trips, two clients at once.

@@ -83,6 +83,13 @@ The loader host's real-server tests live next to the agents: `:platforms:fabric:
 `./gradlew :proofstone-core:topologyTest --tests '*VelocityTopologyIT'` (or `*BungeeCordTopologyIT`, `*TopologyFaultIT`)
 boots a proxy and `paper@26.3` backends. Docker, the EULA variable and `scripts/dockerlock.sh` as above; one proxy per
 invocation (M7 flake rule). Not part of `check`.
+
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :proofstone-core:geyserTest --no-parallel --max-workers=1` (T-M9-06,
+`GeyserCellIT`) boots `geyser@2.12.1+paper@26.3` (Paper, Geyser, Floodgate, the Bukkit agent, the discovery stand-in and the Bedrock driver host)
+and joins one Bedrock client. It builds the agent and the driver host jars first. One cell per invocation; Bedrock join timeouts are counted apart.
+Not part of `check`. `GeyserHost` (`core.host`) is the host, `host.standin.StandIn` the one-class discovery stand-in copied into a container, `GeyserBundle`
+(`core.junit`) the cell's repro bundle (the Floodgate key redacted in every form, `plugins/floodgate` never included); the rendered Geyser config is
+`GeyserConfig` over the pinned build's default file in the resources. Docs: docs/platforms/geyser.md.
 - `io.github.h7kz.proofstone.core.verdict` (T-M4-01): the verdict engine. `VerdictEngine.resolve(CellRun, ConformanceResult)` gives
   one `CellResult` per test and cell; `Verdict` (`PASS`, `FAIL`, `INVALID`, `VACUOUS`, `FLAKY`, `DISAGREE`, `SKIPPED`,
   green = `PASS` or `SKIPPED` only); `Attempt` (one run: PASS, FAIL or SKIPPED); `SkipReason` (the allowed skip reasons);
