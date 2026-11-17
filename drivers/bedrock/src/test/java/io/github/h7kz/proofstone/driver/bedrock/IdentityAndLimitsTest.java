@@ -107,6 +107,13 @@ class IdentityAndLimitsTest {
     }
 
     @Test
+    void aBlockDefinitionCarriesTheRuntimeIdTheServerSent() {
+        RuntimeIdBlocks blocks = new RuntimeIdBlocks();
+        assertThat(blocks.getDefinition(1234).getRuntimeId()).isEqualTo(1234);
+        assertThat(blocks.isRegistered(blocks.getDefinition(-5))).isTrue();
+    }
+
+    @Test
     void theHostsLimitsAreTheClientProfileAndTheCodecIsTheDocumentedOne() {
         assertThat(HostSession.LIMITS.maxListSize()).isGreaterThan(2088).isGreaterThan(EncodingSettings.DEFAULT.maxListSize());
         assertThat(Bedrock_v2225.CODEC.getProtocolVersion()).isEqualTo(BedrockRpc.PROTOCOL);

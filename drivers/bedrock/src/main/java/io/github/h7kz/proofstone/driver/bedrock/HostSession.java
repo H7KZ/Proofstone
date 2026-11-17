@@ -98,6 +98,7 @@ final class HostSession implements Wire, RpcServer.Connection {
                             host.session = created;
                             created.setCodec(CODEC);
                             created.getPeer().getCodecHelper().setEncodingSettings(LIMITS);
+                            created.getPeer().getCodecHelper().setBlockDefinitions(new RuntimeIdBlocks());
                             created.setPacketHandler(packets);
                         }
 
