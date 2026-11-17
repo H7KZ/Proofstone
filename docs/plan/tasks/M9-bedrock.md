@@ -1,6 +1,6 @@
 # M9: Bedrock (Geyser and Floodgate on a Java server, then Bedrock Dedicated Server add-ons)
 
-Refined from the M9 epic in [M7-M10-epics.md](M7-M10-epics.md) by the M8 review (T-M8-99, 2026-11-15). **Not approved yet.**
+Refined from the M9 epic in [M7-M10-epics.md](M7-M10-epics.md) by the M8 review (T-M8-99, 2026-11-15). **Approved 2026-11-17 by the maintainer's delegate (the maintainer said "decide"), with two limits:** (1) no BDS: T-M9-02 and the BDS cards 09 and 10 are deferred to M10, because a BDS image or zip is a Mojang binary with its own EULA and no redistribution, and a new image needs an explicit maintainer yes; (2) no new image or workflow in M9 at all. Geyser and Floodgate are plugin jars pinned by sha256 on the existing Paper image path. If a card turns out to need an image, it stops and says so.
 No card here is started. The maintainer approves the plan, or changes it, before any card is picked up. The two spikes decide
 the rest: if a spike says "not feasible", the cards that depend on it are dropped and the plan is re-made, never built on a
 guess.

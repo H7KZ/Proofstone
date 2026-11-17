@@ -18,7 +18,7 @@ conformance, golden files and the verdict engine exist.
 | **M6** | Dogfood and 0.1 release | Disenchantment's full suite runs on Proofstone in its CI. Maven and Gradle example projects work. Published to Maven Central and GHCR. GitHub Action published. Licence decided. Mutation check passes. | 9 | 6 / 2 / 1 | 2 |
 | **M7** | Proxies (exit met locally, reviewed in T-M7-99) | Velocity and BungeeCord topologies, with proxy agents, pass conformance. | 15 ([M7-proxies.md](tasks/M7-proxies.md)) | 1 / 9 / 5 | 3 (was 2; honest range 1.5 to 3). Actual: about 4 days of agent wall clock for PRs #98 to #112 (see the M7 review) |
 | **M8** | Mods and data (exit partly met, reviewed in T-M8-99; follow-ups T-M8-13 to 18 open) | Fabric and NeoForge agents (newest native row only; Stonecutter out, ADR-0017), plus data pack and resource-pack tests. | 13 ([M8-mods.md](tasks/M8-mods.md)) + 6 follow-ups ([M8-followups.md](tasks/M8-followups.md)) | 1 / 6 / 6 | 4 (range 2 to 5). Actual: about 17 h of agent wall clock for PRs #115 to #126 (see the M8 review) |
-| **M9** | Bedrock | Spikes (offline Bedrock through Geyser; a BDS script agent). Then a Bedrock driver, the Geyser topology and, if feasible, the BDS Script-API agent. | 13 (refined 2026-11-15, [M9-bedrock.md](tasks/M9-bedrock.md), awaiting approval) | 0 / 6 / 7 | 4 after the spikes (range 2 to 6) |
+| **M9** | Bedrock | Spikes (offline Bedrock through Geyser; a BDS script agent). Then a Bedrock driver, the Geyser topology and, if feasible, the BDS Script-API agent. | 13 (refined 2026-11-15, [M9-bedrock.md](tasks/M9-bedrock.md), approved 2026-11-17 without BDS) | 0 / 6 / 7 | 4 after the spikes (range 2 to 6) |
 | **M10** | Ecosystem | Community pack template, a TS front end (optional), more forks, a docs site, Sponge, PocketMine and others. | epic | refine | ongoing |
 
 **Cards M0–M6:** 66 in total. 40 are Haiku cards (61%), 24 Sonnet and 2 Opus (T-M3-02 moved from Haiku to Sonnet at T-M2-99).
@@ -1371,7 +1371,7 @@ player file persisted between tests) and the WARN fires on that login, before th
 3. **Approve `docs/plan/tasks/M8-followups.md`** (T-M8-13 to T-M8-18) and the T-M7-15 lead above.
 4. **Do not promote the loader rows yet.** ADR-0015's C01 to C08 three-green evidence is met for both rows, but the `zombie_villager`
    family is open and the row cannot take a user mod. Promotion after T-M8-13 and T-M8-16.
-5. **Approve `docs/plan/tasks/M9-bedrock.md`** (13 cards, two spikes first). Nothing in M9 is started.
+5. **(Done 2026-11-17, without BDS) Approve `docs/plan/tasks/M9-bedrock.md`** (13 cards, two spikes first). Nothing in M9 is started.
 6. Unchanged from M7: Central namespace verification, Disenchantment CI, publish, tag, 0.1.0 go/no-go.
 
 ### Re-estimate

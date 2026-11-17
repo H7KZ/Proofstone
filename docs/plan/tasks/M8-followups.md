@@ -590,7 +590,7 @@ a pinned artefact and an image or `versions.yml` change (ADR-0008, 0013). Bigger
 - specs: specs/versions-yml.md
 - test-first: yes
 
-**Not approved; not started.** Option B of T-M8-25, recorded as a proposal only. For the maintainer to decide.
+**Declined (2026-11-17, maintainer's delegate; the maintainer said "decide").** Option A (T-M8-25) removed the failure (loaded arm 10 of 10 green, was 7 of 10), so B has no failure left to fix. B would also ship a pre-patched Mojang server jar as a pinned artefact (redistribution, a new pin chain under ADR-0008 and 0013) and change what a cell runs. Not started, not planned; reopen only if boot time itself becomes the problem.
 
 **Goal.** Cut the per-boot work that fetches and patches the server (T-M8-24: the Paper jar download and Paperclip's Mojang jar
 download and patch, about 14 s of a 23 s idle bind and 48 s of 57 s loaded), so a boot is shorter and less sensitive to host load.
@@ -604,7 +604,7 @@ download and patch, about 14 s of a 23 s idle bind and 48 s of 57 s loaded), so 
 - Start before the maintainer approves; change a digest or a pin without the ADR-0008 and ADR-0013 steps.
 
 **Acceptance.**
-- [ ] The maintainer's decision recorded.
+- [x] The maintainer's decision recorded: declined, see above.
 - [ ] If approved: boot time before and after on the same host, idle and loaded, from logs.
 
 **Verify.**
@@ -680,3 +680,5 @@ defined, not from taste.
 
 **Verify.**
 `bash scripts/release-gate-test.sh`
+
+**Decision (2026-11-17, maintainer's delegate).** `metaLeakFabric` does not join `scripts/release-mutation-check.sh`, and no second mechanism is built for harness-detector tests. Reason: the check judges example projects by their `bugs:` toggles; the detector bad tests are already run by `metaTest`, `metaModTest` and `metaModFabricTest` and their pins by `scripts/bad-tests-pin-check.sh`, all inside `scripts/gates.sh` or the nightly set. A second mechanism would be new release code for no new signal. Reopen if a detector regresses unnoticed.
