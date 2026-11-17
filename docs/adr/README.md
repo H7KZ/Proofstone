@@ -23,5 +23,6 @@ that were rejected. **Accepted ADRs are not re-decided inside a task.** To chall
 | [0015](0015-local-evidence-row-promotion.md) | Row promotion to `required` on local per-row evidence (amends 0008) | Accepted |
 | [0016](0016-topology-cells.md) | Topology cells: one proxy row plus a backend row set | Accepted (2026-11-09) |
 | [0017](0017-mod-platform-packs.md) | Mod platform packs, artefact types and loader rows (Fabric, NeoForge, data packs, resource packs) | Accepted (2026-11-14), amended 2026-11-16 |
+| [0018](0018-bedrock-driver-geyser-cells.md) | Bedrock driver, Geyser cells and an offline login stand-in | Accepted (2026-11-17) |
 
 Template: [0000-template.md](0000-template.md).

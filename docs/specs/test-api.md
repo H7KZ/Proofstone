@@ -446,3 +446,49 @@ class PackE2E {
   record and by the join's outcome (play, or the server's kick message). C-R01 and C-R02 do exactly that.
 - **Content mods.** On Fabric a mod that adds a synced registry entry gets the client kicked at join: the test fails with the
   kick message. On NeoForge it is `unverified`; a mod-added item reaching the client is an error naming the item id.
+
+## 14. Bedrock clients on a Geyser cell (ADR-0018, design for T-M9-07)
+
+Design from [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Not built yet. T-M9-07 adds it as an `api-change`, **additions only** to
+`api-baseline.txt`: `Platform.GEYSER`, `Capability.BEDROCK_CLIENT`, and `Clients.bedrock(String)` as a **default** method (it throws
+`UnsupportedOperationException` unless overridden, as `Client.transferTo` does; core overrides it). No frozen v0 signature changes
+and there is no public `Edition`.
+
+```java
+@Proofstone(plugins = "build/libs/MyPlugin.jar")
+@Matrix(platform = Platform.GEYSER, versions = {"latest"})
+@Requires(Capability.BEDROCK_CLIENT)
+class BedrockE2E {
+    @CellTest
+    void bedrockOnlyBranch(Agent agent, Clients clients) {
+        Client bedrock = clients.bedrock("PsBed1");          // joins through Geyser; the server sees ".PsBed1"
+        agent.player(bedrock).give(Item.of("minecraft:stick"));
+        DualAssert.item(agent.player(bedrock), bedrock).inInventory(i -> i.is("stick"));
+    }
+}
+```
+
+- **Planning.** A `@Matrix` naming `Platform.GEYSER` plans Geyser cells from the `geyser` rows in scope (versions.yml, schema 5).
+  Rows are `experimental`, so a class plans one only when `-Dproofstone.cells` (or `PROOFSTONE_CELLS`) names it, for example
+  `geyser@2.12.1+paper@26.3`; otherwise it prints `NOT SELECTED (not run, not a pass)`. A differential or flake-detector run on a
+  Geyser cell is refused with an error. `plugins` works as on Paper; `mods` and `datapacks` are refused (`INVALID test declaration`).
+- **Injected.** `Agent` is the Paper server's (the Bukkit agent). `Client` is the Java `mcpl` client, joined as an ordinary Java
+  player. The `Cell` describes `paper@26.3` and holds `BEDROCK_CLIENT`; it does **not** hold `PROXY` or `TOPOLOGY`.
+- **`clients.bedrock(name)`.** Joins through the driver host, offline, and returns a `Client` once the spawn status arrived and the
+  agent lists the player. The name is 1 to 15 characters from `A-Za-z0-9_` (a bad name is an `IllegalArgumentException` before
+  anything connects). Floodgate prefixes one `.`, so the `Client` reports `.PsBed1` and `agent.player(client)` works. Clients from
+  `bedrock` are disconnected after the test with the test's own client (an await on the agent, never a sleep). Nothing is reset for
+  them.
+- **Supported in v1:** `chat`, `command`, `awaitMessage`, `inventory`, `position`, disconnect. Others (`useBlock`, windows and clicks,
+  `transferTo`, `resourcePacks`) throw `UnsupportedOperationException` naming the edition and ADR-0018.
+- **Capability.** `BEDROCK_CLIENT` is declared by the Geyser pack and held when the Bukkit agent reports the token `floodgate`.
+  `@Requires(BEDROCK_CLIENT)` on any other cell, including `paper@26.3` alone, is `SKIPPED` with `CAPABILITY_MISSING`
+  (`missing capability BEDROCK_CLIENT on cell paper@26.3`). `clients.bedrock(..)` there without the declaration is an
+  `IllegalStateException` naming the cell and the capability. A bridged cell is never a Geyser cell. `SIMULATED_BEDROCK` is
+  unchanged and means a Java client under a `.` name.
+- **Dual oracle.** Server: the agent's view of the player under the Floodgate name. Client: the Bedrock driver's inventory view from
+  server-sent packets. `DualAssert.item` compares id and count; a difference Geyser's translation causes is asserted as it is
+  and recorded in `geyser.md`, never weakened (T-M9-08). Disagreement is `DISAGREE`, as everywhere.
+- **Auth label.** The cell is *offline-stub* (`cell.json`: `"bedrockAuth": "offline-stub"`): Xbox login validation is off. A plugin
+  that depends on Xbox-verified identity cannot be tested here.
+- **Bad test.** T-M9-11 adds the pinned faults (stand-in absent, and the others the card names).

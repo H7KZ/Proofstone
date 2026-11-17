@@ -105,6 +105,11 @@ an empty-at-first log allowlist. Loader rows live under `loaders` in `versions.y
 **loader cell** has the identity `<loader>@<mc>` (`fabric@26.3`). Artefacts: mods to `/mods`, data packs to the world's
 `datapacks` (any cell with `DATAPACKS_VANILLA`), resource packs served from the harness JVM on loopback.
 
+**Geyser cell (M9, [ADR-0018](adr/0018-bedrock-driver-geyser-cells.md)).** `geyser` is not a proxy pack: Geyser-Spigot and
+Floodgate-Spigot are plugin jars pinned by sha256 on the existing Paper path (no new image). A `GeyserHost` owns a `PaperHost`, a
+discovery stand-in (DNS and TLS for two Microsoft names) and a driver host, all on one network. Rows live under `geyser` in
+`versions.yml` (schema 5); the identity is `geyser@<version>+paper@<mc>`. It is not a topology cell. The cell is *offline-stub*.
+
 ### 2.4 Client drivers (L3b)
 - SPI: `ClientDriver`, which provides `connect(name, endpoint)` and returns a `ClientSession` with
   `chat`, `command`, `awaitMessage`, `useBlock`, `openWindow`, `click(slot, button, mode)`,
@@ -115,7 +120,8 @@ an empty-at-first log allowlist. Loader rows live under `loaders` in `versions.y
     for the server's slot or content sync.
 - **Reference: `mineflayer-ref`.** A separate implementation in a sidecar image, used for differential
   runs on versions where it is native.
-- **Bedrock: `bedrock`.** Comes later ([platforms.md](platforms.md)).
+- **Bedrock: `bedrock`.** CloudburstMC Protocol in Java, run as a *driver host* container on the cell network of a Geyser cell
+  (`Edition.BEDROCK`, [ADR-0018](adr/0018-bedrock-driver-geyser-cells.md), client-driver.md section 6). Not built yet.
 - **Version translation:** the core inserts a ViaProxy container when
   `driver.protocol != server.protocol`, and marks the cell as *bridged*.
 - Full spec: [specs/client-driver.md](specs/client-driver.md).

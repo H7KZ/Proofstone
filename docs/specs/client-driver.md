@@ -7,7 +7,7 @@ Status: draft. Decision: [ADR-0004](../adr/0004-client-driver-latest-protocol-pl
 ```java
 public interface ClientDriver {
     String id();                         // "mcpl", "mineflayer-ref", "bedrock"
-    Edition edition();                   // JAVA | BEDROCK
+    Edition edition();                   // JAVA | BEDROCK (ADR-0018; internal, not public API)
     ProtocolInfo protocol();             // the version this driver speaks natively
     Set<Capability> capabilities();
     ClientSession connect(ConnectSpec spec);   // host, port, username, timeouts; offline auth
@@ -158,3 +158,37 @@ that never sends the first `SetHealth` still fails as `JOIN_TELEPORT_HELD_NO_HEA
   "bridged".
 - The flags were verified against the pinned image in card T-M3-03 and are recorded in
   [viaproxy](../platforms/viaproxy.md).
+
+## 6. Bedrock driver (`bedrock`, ADR-0018, built by T-M9-05)
+
+Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Facts: [geyser.md](../platforms/geyser.md). Status: design; nothing is built.
+
+- **`Edition`.** `JAVA` (`mcpl`, `mineflayer-ref`) or `BEDROCK` (`bedrock`). `ProtocolInfo` of a Bedrock driver is the Bedrock protocol
+  number and the game version (2225, `1.26.60`), never compared with a Java protocol. Core refuses a driver on an endpoint of the
+  other edition with an error naming both.
+- **Library and pin.** CloudburstMC Protocol (`bedrock-connection`, `bedrock-codec`, codec `Bedrock_v2225`), in `drivers/bedrock`,
+  pinned in the version catalog by its exact timestamped snapshot version with each artefact's sha256 checked by the build, shaded
+  and relocated into one jar. A `-SNAPSHOT` or dynamic version in the resolved graph fails the build.
+- **Driver host.** The driver does not run in the harness JVM. The harness starts one container of the pinned
+  `itzg/minecraft-server` image (the row's Java tag) with `--entrypoint java`, copies the shaded jar in, and puts it on the cell
+  network with the discovery stand-in as its only DNS server and a trust store that includes the stand-in certificate
+  (`JAVA_TOOL_OPTIONS`). `BedrockDriver implements ClientDriver` in `proofstone-core` is a thin client of it.
+- **Driver RPC v1 (internal; not the agent wire protocol).** HTTP/1.1 and JSON on the driver host, a per-cell bearer token, the
+  agent's envelope (`{ok, data}` or `{ok:false, error}`), `X-Proofstone-Request-Id`, and server-side timeouts that return
+  `TIMEOUT` and never a partial result. Both sides live in `drivers/bedrock`, so they cannot drift, and no schema under
+  `proofstone-protocol` changes. Requests: `POST /rpc/v1/sessions` (connect: host, port, name, xuid, timeouts), `POST
+  .../{id}/chat`, `.../command`, `GET .../{id}/messages?since=` and `POST .../{id}/await-message` (pattern, timeout),
+  `GET .../{id}/inventory`, `GET .../{id}/position`, `GET .../{id}/transcript`, `DELETE .../{id}`. State is the server's: the
+  driver host applies no prediction (section 2 holds for Bedrock too).
+- **Join.** RakNet protocol 11 to `server:19132` (UDP, cell network), `NETWORK_SETTINGS`, an **unsigned** (offline) login chain
+  with a numeric XUID, unique per join (Floodgate parses it as a number; a repeated one is refused while the first is online),
+  encryption handshake, resource-pack answers (have-all then completed), `START_GAME`, chunk radius, `SetLocalPlayerAsInitialized`
+  at the spawn status. Item definitions come from the start-game and item-registry data with a raised read limit (the spike's two
+  decode errors). An unknown field or packet the driver reads is an error naming it.
+- **Stages.** `RAKNET_CONNECT`, `NETWORK_SETTINGS`, `LOGIN_SENT`, `ENCRYPTION_HANDSHAKE`, `RESOURCE_PACKS`, `START_GAME`,
+  `SPAWN_STATUS`. A timeout is a `JoinTimeoutException` (message starts `timed out joining`); a server disconnect message is a
+  `ClientDriverException` quoting it (for example `Please log into Xbox to join this server.`, which means login validation is on).
+- **v1 surface.** Chat, command (a command request), text and system messages in (`awaitMessage`), inventory and position read,
+  disconnect. `useBlock`, window and click operations, `awaitServerSwitch`, resource packs and forms throw
+  `UnsupportedOperationException` naming the edition. Multiple sessions share one driver host; the Floodgate XUID is per session.
+- **No sleeps, no retries**, and a disconnect is awaited on the agent (the server notices it after about 10 s).

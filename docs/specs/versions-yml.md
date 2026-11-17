@@ -158,3 +158,51 @@ and so is a loader id other than `fabric` or `neoforge`. A `proxies` key is vali
   `required` row has no `TODO`.
 - `host.digests` has a key for the row's Java tag; a `required` row's tag has a real digest.
 - Native only: the row's `protocol` equals `drivers.mcpl.protocol`. A bridged loader row is refused (ADR-0017 §1).
+
+## Schema 5: Geyser (additive, ADR-0018)
+
+Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Schema 5 adds one optional top-level key, `geyser`, next to
+`platforms`, `proxies` and `loaders`, and one entry under `drivers`. A schema 4 file is a valid schema 5 file, every other key is
+read exactly as before, and every existing cell's `printMatrix` line stays identical. The values below are the T-M9-01 spike pins
+([geyser.md](../platforms/geyser.md)); the rows enter `versions.yml` in T-M9-04 as `experimental`. This page is the design;
+`versions.schema.json` and `VersionsCatalog` accept `schema: 5` only when T-M9-04 lands.
+
+```yaml
+schema: 5
+drivers:
+  bedrock: { library: "org.cloudburstmc.protocol:bedrock-connection", version: "3.0.0.Beta15-20261116.161745-6",
+             protocol: 2225, game-version: "1.26.60" }   # the timestamped snapshot (never -SNAPSHOT); sha256 list in the build
+geyser:
+  rows:
+    - version: "2.12.1"                    # Geyser's own version (string); the identity uses it
+      build: 1303                          # download.geysermc.org/v2 build
+      sha256: "218f6e1a09a2fe458cfd531e7295a0f19d17b00db38ceec16222e8982a4d7f21"   # Geyser-Spigot jar, checked after download
+      floodgate: { version: "2.2.5", build: 141, sha256: "21570aff9ce17d6983928e8552777760e1ede5050026b04c686b0ae112e6fd7e" }
+      bedrock-protocol: 2225               # the protocol the driver and this build are run with
+      java: java25                         # REQUIRED: the Java tag of the stand-in and the driver host (digest from the backend's host)
+      status: experimental                 # required | experimental | retired
+      backends:                            # the paper rows this build is paired with
+        - { platform: paper, mc: "26.3", status: experimental }
+      observed: "free text"
+      notes: "free text"
+```
+
+- **Geyser cell:** one entry of a row's `backends`, written `geyser@<version>+<platform>@<mc>` (`geyser@2.12.1+paper@26.3`). Its status
+  is the weakest of the Geyser row, the pairing and the backend row. `pr` scope plans the `required` ones, `nightly` also the
+  `experimental` ones, as for `proxies`. `latest` on the left is the highest `required` Geyser row (with none, an error naming
+  `geyser`); on the right it resolves as for that platform; the resolved pairing must be listed, or the selector is an error.
+- **Selector.** `geyser` is a reserved id and is read only left of the `+`. A Geyser id on the right, a proxy or loader id on
+  the left of a Geyser pairing, an unknown version or an empty request is an error, never a skip.
+- **`printMatrix`:** Geyser cells follow loader cells, one object each with `kind: "geyser"`, `platform` (`geyser`), `version`,
+  `build`, `mc`, `java`, `status` and `slug` (`geyser-2.12.1-paper-26.3`). A file with no `geyser` key prints what it printed
+  before schema 5.
+
+Validation rules for `geyser`, enforced by `VersionsCatalog.load` (T-M9-04). A `geyser` key or `drivers.bedrock` in a file below schema 5 is an error:
+- A `geyser` id is not a `platforms`, `proxies` or `loaders` id. `version` values are unique.
+- `build` and `sha256` are present on the Geyser row and on `floodgate`; a `required` row has no `TODO`. `java` is present and
+  `host.digests` of the backend platform has a key for it (a `required` row: a real digest).
+- Every `backends` entry names an existing `platforms` row, only `paper` is accepted in M9, and no pairing is listed twice.
+- Native only: the row's `bedrock-protocol` equals `drivers.bedrock.protocol`, and the backend row's protocol equals
+  `drivers.mcpl.protocol`. A bridged pairing is refused with an error naming ADR-0018.
+- A `required` pairing needs a `required` Geyser row and a `required` backend row, and a `drivers.bedrock.version` that is not a
+  snapshot (a version containing a timestamp or `SNAPSHOT`); ADR-0018 section 8.

@@ -46,9 +46,9 @@ Each platform is at one of these status levels:
 
 | Platform | Agent | Client driver | Milestone | Notes |
 |---|---|---|---|---|
-| Geyser + Floodgate on a Java server | Bukkit agent | Bedrock driver (CloudburstMC Protocol in Java, or the `bedrock-protocol` sidecar; spike decides) | M9 | Unproven: whether offline Bedrock clients can join through Geyser without Xbox auth. **Spike first.** |
+| Geyser + Floodgate on a Java server | Bukkit agent | Bedrock driver (CloudburstMC Protocol in Java, run as a driver host on the cell network, [ADR-0018](adr/0018-bedrock-driver-geyser-cells.md)) | M9 | Spike done: feasible offline on `paper@26.3` with `validate-bedrock-login: false`, `transport: both` and a stand-in for two Microsoft discovery names ([geyser](platforms/geyser.md)). Decided in ADR-0018: an *offline-stub* cell, not production auth. Not built yet. |
 | Simulated Bedrock players (prefix detection) | Bukkit agent | Java driver with prefixed name (`Clients.create(".Name")`) | M5 | Not Bedrock support: a Java client under a `.` name, so a plugin's Bedrock-only branch can run (`SIMULATED_BEDROCK`: native Paper only, C-B01; a bridged prefixed login stalled on 1.21.11). UUID detection is not simulated. |
-| Bedrock Dedicated Server add-ons (behaviour packs, Script API) | Script-API behaviour pack agent using `@minecraft/server-net` (beta, BDS-only) | Bedrock driver | M9 | The Script API changes often. Pin per BDS version. |
+| Bedrock Dedicated Server add-ons (behaviour packs, Script API) | Script-API behaviour pack agent using `@minecraft/server-net` (beta, BDS-only) | Bedrock driver | M10 (was M9) | Out of M9 by maintainer decision (2026-11-17, ADR-0018): a Mojang binary with its own EULA and a new image. The Script API changes often. Pin per BDS version. |
 | Third-party Bedrock servers (PocketMine-MP, Nukkit, Endstone, …) | community agents implementing the wire protocol | Bedrock driver | M10 | The wire protocol is language-neutral by design. |
 
 ## Per-platform knowledge files
