@@ -81,6 +81,8 @@ final class HostSession implements Wire, RpcServer.Connection {
      */
     static HostSession join(String id, ConnectRequest request, EventLoopGroup group) {
         Identity identity = new Identity(request.name(), request.xuid(), Clock.systemUTC());
+        // Only the T-M10-05 negative control changes the protocol number (ProtocolOverride); read before any connection opens.
+        int protocol = ProtocolOverride.fromSystemProperties(CODEC.getProtocolVersion());
         HostSession host = new HostSession(identity);
         ClientPackets packets = new ClientPackets(host.state, host, identity, request.host() + ":" + request.port(),
                 CODEC.getProtocolVersion(), CODEC.getMinecraftVersion());
@@ -126,7 +128,7 @@ final class HostSession implements Wire, RpcServer.Connection {
             }
             host.state.stage(JoinStage.NETWORK_SETTINGS);
             RequestNetworkSettingsPacket settings = new RequestNetworkSettingsPacket();
-            settings.setProtocolVersion(CODEC.getProtocolVersion());
+            settings.setProtocolVersion(protocol);
             host.session.sendPacketImmediately(settings);
             SessionState.JoinResult result = host.state.awaitJoin(Duration.ofNanos(Math.max(0, deadline - System.nanoTime())));
             if (result.failure() != null) {

@@ -86,6 +86,21 @@ class GeyserConformanceTest {
     }
 
     @Test
+    void geysersOwnRefusalOfTheProtocolNamesTheDriverToGeyserHopWithNothingAnsweredAndNothingAsked() {
+        String message = "Bedrock join of PSConfB failed: DISCONNECTED: Outdated Geyser proxy! This server supports the following "
+                + "Bedrock versions: 26.40, 26.63 (at join stage NETWORK_SETTINGS)";
+
+        String reason = GeyserConformance.joinFailure(message, Set.of(), Set.of(), "");
+
+        assertThat(reason).contains("Geyser refused the Bedrock protocol the driver sent")
+                .contains("hop: driver host to Geyser on the server (protocol number)")
+                .contains("Outdated Geyser proxy! This server supports the following Bedrock versions").contains("NETWORK_SETTINGS")
+                .doesNotContain("stand-in answered");
+        assertThat(GeyserConformance.joinFailure(message.replace("Geyser proxy", "Bedrock client"), Set.of(), Set.of(), ""))
+                .contains("hop: driver host to Geyser on the server (protocol number)");
+    }
+
+    @Test
     void anyOtherJoinFailureKeepsItsMessageAndGuessesNoHop() {
         String reason = GeyserConformance.joinFailure("Bedrock join of PSConfB failed: DISCONNECTED: nope", StandIn.NAMES, StandIn.NAMES, SERVER_LOG);
 

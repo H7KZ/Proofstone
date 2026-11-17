@@ -274,7 +274,7 @@ Testcontainers check is `bash scripts/dockerlock.sh bash scripts/spike/geyser/tc
 
 ## Unverified
 
-- Anything older than Bedrock protocol 2225, and Geyser's refusal text for a protocol it does not support (T-M9-11 could not make the fault without a driver switch, see "Negative controls").
+- Any Bedrock protocol inside Geyser's accepted range other than 2225 (the one codec the driver is built on). Geyser's refusal text for a protocol outside it is recorded (T-M10-05, "Negative controls").
 - Geyser and Floodgate on different servers, a Geyser cell with a proxy. (Geyser through a Testcontainers cell ran since: T-M9-06,
   below.)
 - Whether the stub's TLS trust store change affects Paper or Geyser outside the two stub names (all other TLS worked in the cold
@@ -389,7 +389,7 @@ them, all while writing the scenarios (each a wrong expectation of mine, kept as
 
 `examples/bad-tests` `metaBedrockTest` (`bedrock/BedrockFaultE2E`, pinned to `geyser@2.12.1+paper@26.3`, refused on any other cell by
 `scripts/bad-tests-pin-check.sh`) injects one fault per run with `-Dproofstone.injectGeyserFault`. The three faults the card named were each
-first tried with a real run, before any assertion was written. Two are reachable and in the test; one is dropped.
+first tried with a real run, before any assertion was written. All three are reachable and in the test (the third since T-M10-05).
 
 - **Stand-in absent: reachable.** `-Dproofstone.injectGeyserFault=stand-in-absent` starts the stand-in with `--refuse-names`: it answers the two
   Microsoft names with NXDOMAIN and logs `STUB refused <name>`, so nothing serves them (the spike's no-route case without touching the network).
@@ -407,12 +407,21 @@ first tried with a real run, before any assertion was written. Two are reachable
   `... :examples:bad-tests:metaBedrockKeyMismatch ...`. Result: the Bedrock join failed at stage `START_GAME` with `DISCONNECTED: Please connect
   through the official Geyser`, Floodgate's own `disconnect.invalid-key` text, within the join (no timeout). Both keys are secrets: every form of
   both is redacted from the bundle and the messages.
-- **Refused Bedrock protocol: dropped, not faked.** The driver sends the one codec it is built on (`Bedrock_v2225`, ADR-0018) in
-  `RequestNetworkSettings`, and Geyser 2.12.1 b1303 has no setting that narrows the protocols it accepts (the pinned default config has no such
-  key). A refusal therefore needs the driver to send another protocol number, which is a switch in `drivers/bedrock` (a production path, and a
-  module outside T-M9-11). Not run, so Geyser's refusal text stays unverified (the Unverified list above is unchanged). To make it: a
-  default-off `-D` read by the driver host's `HostSession` for the protocol number, set through the container's `JAVA_TOOL_OPTIONS`; a card for
-  that is the maintainer's call.
+- **Refused Bedrock protocol (T-M10-05, 2026-11-17): reachable with one driver switch.** Geyser 2.12.1 b1303 has no setting that narrows its
+  accepted protocols, so the driver host sends another number: the maintainer approved a default-off, test-only
+  `-Dproofstone.bedrock.protocolOverride=<n>` (`drivers/bedrock`, `ProtocolOverride`, read once by `HostSession.join` for the
+  `RequestNetworkSettings` protocol and nothing else). It is refused (an `IllegalStateException`, no join) unless
+  `-Dproofstone.injectGeyserFault=refused-protocol` is set beside it; the harness sets both, only for that fault, through the driver
+  host's `JAVA_TOOL_OPTIONS` (`GeyserFault.driverHostOptions`). Two real probes of `metaBedrockRefusedProtocol` (the cell's first check, one
+  Bedrock join) with the entry's text still empty:
+  protocol `2224` (one below the codec) was refused as `DISCONNECTED: Outdated Bedrock client! This server supports the following Bedrock
+  versions: 26.40, 26.41, 26.42, 26.43, 26.44, 26.45, 26.50, 26.51, 26.52, 26.60, 26.61, 26.62, 26.63 (at join stage NETWORK_SETTINGS)`;
+  protocol `9999` as `DISCONNECTED: Outdated Geyser proxy! This server supports the following Bedrock versions: 26.40 ... 26.63 (at join
+  stage NETWORK_SETTINGS)`. Both are Geyser's own text, also in the server log (`Bedrock user with ip: ... has disconnected for reason
+  §rOutdated ...`), at the first packet after RakNet connect, with no timeout and no login (the stand-in was asked nothing). The fault
+  uses `9999`: far outside any range, so a Geyser bump that supports 2224 cannot turn it green (the version list in the text changes per
+  build, so the test checks the text up to "Bedrock versions"). `GeyserConformance.joinFailure` names the hop: `Geyser refused the Bedrock
+  protocol the driver sent ... hop: driver host to Geyser on the server (protocol number)`.
 - **The messages.** A failed first Bedrock join now names its hop (`GeyserConformance.joinFailure`, core, unit tested): the stand-in is blamed
   only when it was asked a name and did not answer, or Geyser's own `Unable to fetch discovery data` line is in the server log; Floodgate's
   `Please connect through the official Geyser` is read as a key mismatch only when both names were answered. Anything else keeps the driver's
@@ -429,6 +438,12 @@ run. The clean cell (`:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26
 without the selector was red (`GeyserApiContract has no cell to run`, `initializationError`, 2 failures): the contract class needs the selector, as
 its doc says; not a regression. `metaTest` (`VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED`), `metaTopologyTest` (7 of 7
 `INVALID`) and `metaModTest` (`INVALID, LEAK, INVALID, INVALID, FAIL`) each gave every expected verdict in one run, XML read.
+
+Evidence (T-M10-05). `metaBedrockTest`, three separate invocations after the code was final, each `BUILD SUCCESSFUL` (2m 8s to 2m 13s) with
+`every bad test produced its expected verdict (INVALID, INVALID, INVALID)`; all three fault suites `tests=1 skipped=0 failures=1 errors=0` (the
+failure is the expected `INVALID`) in all three, no `the body ran` or `timed out joining`. Bedrock join timeouts: 0 of 9. The clean cell
+(`:conformance:run -Dproofstone.cells=geyser@2.12.1+paper@26.3`, once) stays `tests=7 skipped=3 failures=0 errors=0`. Unit tests: `ProtocolOverrideTest`
+4, `GeyserFaultTest` 4, `GeyserConformanceTest` 10, all `skipped=0 failures=0 errors=0`. The two probes above were red-as-expected (`INVALID`) runs, not flakes.
 
 ## Guards over the cell's whole life (T-M10-06, 2026-11-17: what ran)
 
