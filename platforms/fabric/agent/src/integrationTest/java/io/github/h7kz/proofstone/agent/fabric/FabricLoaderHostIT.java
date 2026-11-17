@@ -70,6 +70,14 @@ class FabricLoaderHostIT {
             mods.forEach(mod -> ids.add(mod.get("id").asText()));
             assertThat(ids).contains("proofstone_example", "fabric-api", "proofstone-agent");
             assertThat(host.logs().contains("[proofstone-example] example mod loaded")).isTrue();
+            // T-M8-27: the same deterministic-world rules PaperHost sets, so the baseline is not the vanilla default 3.
+            for (String rule : List.of("random_tick_speed", "advance_time", "advance_weather", "spawn_mobs")) {
+                System.out.println("LOADER-HOST " + cell.identity() + " " + host.command("gamerule " + rule));
+            }
+            assertThat(host.command("gamerule random_tick_speed")).contains("set to 0");
+            assertThat(host.command("gamerule advance_time")).contains("set to false");
+            assertThat(host.command("gamerule advance_weather")).contains("set to false");
+            assertThat(host.command("gamerule spawn_mobs")).contains("set to false");
         }
         assertThat(runningHostContainers()).as("containers of this run still running after close").isEmpty();
     }

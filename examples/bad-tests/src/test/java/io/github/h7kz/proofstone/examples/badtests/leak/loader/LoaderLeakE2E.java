@@ -8,9 +8,9 @@ import io.github.h7kz.proofstone.api.Proofstone;
 
 /**
  * A deliberately leaking test on a loader cell (T-M8-18, robustness R6). It changes the world's {@code random_tick_speed} rule
- * to 7 and never changes it back, through the Fabric agent's console. 7 is not the rule's default (3), which is what a loader
- * cell holds before the test: unlike {@code PaperHost}, {@code LoaderHost} does not set the deterministic-world rules, so a
- * leak test that set 3 would change nothing and pass (seen in the first run of this card). Its own work passes, so the leak detector
+ * to 7 and never changes it back, through the Fabric agent's console. 7 differs from the baseline (0 since T-M8-27, when
+ * {@code LoaderHost} began to set the deterministic-world rules as {@code PaperHost} does) and from the vanilla default 3 a loader
+ * cell held before it, where a test that set 3 changed nothing and passed (first run of T-M8-18). Its own work passes, so the leak detector
  * is the only thing that can fail it: the rule reads back different after the test, and the failure must start with {@code LEAK}
  * and name the rule. The detector snapshots any host, so this shows it works on a loader cell as on Paper
  * ({@code leak/LeakE2E}).

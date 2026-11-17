@@ -2,6 +2,7 @@ package io.github.h7kz.proofstone.core.host;
 
 import io.github.h7kz.proofstone.core.versions.VersionNumber;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * The deterministic-world setup commands. Minecraft 1.21.11 renamed game rules from camelCase to snake_case
@@ -13,6 +14,15 @@ final class GameRules {
     private static final String FIRST_SNAKE_CASE = "1.21.11";
 
     private GameRules() {
+    }
+
+    /**
+     * Sets the deterministic world through the host's console-command function, the one call for every host (T-M8-27: a
+     * loader cell held the vanilla default, {@code random_tick_speed} 3, while a Paper cell held 0). The commands are
+     * built, and an unparsable version fails, before the first one is sent.
+     */
+    static void apply(String mc, Consumer<String> command) {
+        commands(mc).forEach(command);
     }
 
     static List<String> commands(String mc) {

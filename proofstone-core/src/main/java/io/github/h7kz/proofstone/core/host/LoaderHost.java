@@ -113,6 +113,9 @@ public final class LoaderHost implements ServerHost, AutoCloseable {
             awaitAgent();
             PermissionCheck.require(cell.identity(), logs.all(), config.keySet());
             verifyMods();
+            // The same deterministic-world rules PaperHost sets (T-M8-27), so the leak detector's baseline and the world a
+            // test runs in do not depend on the platform. The spawn stays vanilla: PaperHost moves it only for 1.8.8's flat world.
+            GameRules.apply(cell.mc(), this::command);
         } catch (RuntimeException e) {
             String tail = logTail();
             close();

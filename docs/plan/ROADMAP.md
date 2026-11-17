@@ -1166,6 +1166,24 @@ Paper and topology numbers.
 - **Not shown:** a NeoForge leak test (the NeoForge agent serves the same rules, not run); a leak other than a world rule on a loader
   cell (plugin or player state).
 
+### T-M8-27: loader cells set the deterministic-world rules
+
+- **Change:** `LoaderHost` runs `GameRules.apply` (one entry point, also used by `PaperHost`) after its readiness checks: the four rules
+  `PaperHost` sets. Spawn and seed untouched. Local, one invocation at a time under `scripts/dockerlock.sh`, EULA in the command
+  environment only, evidence copied aside (`C:/pw/t827-ev`, not committed).
+- **Test first:** `GameRulesTest` `apply` cases: compile-red before (no `apply`), 6 of 6 green after. Host ITs (`FabricLoaderHostIT`,
+  `NeoForgeLoaderHostIT`) read the four rules after start: red before on both rows (1 run each: `random_tick_speed` 3, `advance_time`,
+  `advance_weather`, `spawn_mobs` all `true`), green after, 3 of 3 each, every boot reading 0, false, false, false (the snapshot is the
+  same in all six boots).
+- **Leak test:** `metaModFabricTest` 3 of 3: `LoaderLeakE2E` `LEAK`, `random_tick_speed ... currently set to 0 -> ... currently set to 7`
+  (was 3 -> 7), `BrokenFabricModE2E` `INVALID` in the same runs, no timeout. README and test comment updated. The seed (T-M8-21) is a
+  separate env var and unchanged.
+- **Other gates:** `:proofstone-core:integrationTest` (PaperHostIT, 4 tests), `:platforms:fabric:agent:integrationTest` (11 + 2),
+  `:platforms:neoforge:agent:integrationTest` (11 + 2): `skipped=0 failures=0 errors=0` each. `:conformance:run` `fabric@26.3` 3 of 3
+  green (11 tests, 0 skipped), `neoforge@26.3` 3 of 3 green (11 tests, 2 skipped: C-D01, C-D02 by capability, as before).
+- **Not shown:** a NeoForge leak test; a Paper cell is unchanged in behaviour (its `PaperHostIT` is green) but the full Paper conformance
+  was not re-run.
+
 ## M8 review (T-M8-99)
 
 Date 2026-11-15. Ran on `card/T-M8-99-review` from origin/main `d89cb4e` (PRs #115 to #126 merged; M8 diff `18432ae..d89cb4e`).

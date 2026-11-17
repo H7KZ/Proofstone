@@ -113,7 +113,7 @@ public final class PaperHost implements ServerHost, AutoCloseable {
             verifyServer();
             verifyPlugins();
             if (options.applyGameRules()) {
-                GameRules.commands(cell.mc()).forEach(this::command);
+                GameRules.apply(cell.mc(), this::command);
                 // 1.8.8's flat world spawns about 1500 blocks from the origin, where the fixture is. A spawn at the
                 // origin makes "teleport to spawn" (agent reset) load the fixture's chunk on every version.
                 command(WORLD_SPAWN);
