@@ -1,7 +1,11 @@
 # M10: Ecosystem (Bedrock leftovers from M9, then more platforms, packs and docs)
 
 Refined from the M10 epic in [M7-M10-epics.md](M7-M10-epics.md) by the M9 review (T-M9-99, 2026-11-17, ROADMAP "M9 review").
-**Not approved; no card is started.** The maintainer approves the plan, or changes it, before any card is picked up. Cards marked
+**State after the M10 review (T-M10-99, 2026-11-18, ROADMAP "M10 review").** The maintainer approved the plan on 2026-11-17.
+Merged: 08 (#161), 06 (#162), 05 (#163, the protocol switch approved), 07 (#164), 10 (#165). Deferred by the maintainer: 01 (BDS
+spike; 02 and 03 wait on it). Blocked upstream: 04 (no CloudburstMC Protocol release, checked 2026-11-17 and 2026-11-18); 09 waits on
+04. Part B (11 to 18): not started, waiting on maintainer decisions. Boxes of 05 and 06 were left unticked by their PRs; the M10 review
+is their evidence. Cards marked
 **Needs maintainer decision** stop at their first step until the maintainer says yes in writing (an issue or PR comment); a
 delegate's "decide" does not cover a new image, a Mojang binary, a new repository, hosting, publishing or a workflow.
 
