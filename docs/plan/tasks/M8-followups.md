@@ -609,3 +609,46 @@ download and patch, about 14 s of a 23 s idle bind and 48 s of 57 s loaded), so 
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
+
+### T-M8-27 · `LoaderHost` sets the deterministic-world rules `PaperHost` sets
+- tier: sonnet
+- depends: T-M8-18, T-M8-21
+- modules: proofstone-core, examples/bad-tests, docs/platforms
+- adrs: 0017
+- specs: specs/self-tests.md §3
+- test-first: yes
+
+**Goal.** A loader cell's world rules are the same deterministic ones a Paper cell has (no random ticks, no daylight or weather
+cycle, no mob spawning), so the leak detector's before-snapshot is the same on every platform and a loader test is not run in a
+world that ticks, rains and spawns differently from Paper's.
+
+**Evidence.** T-M8-18 (ROADMAP, M8 findings): a diagnosis run read `random_tick_speed` at the start of a Fabric test body and got the
+vanilla default 3, because `PaperHost.boot` runs `GameRules.commands(mc)` and `LoaderHost.boot` runs nothing. `docs/robustness.md`
+R6 (loader review) names the gap. T-M8-21 already shares one constant (`SEED`) between the two hosts, so the seed is not part of
+this card and must not change.
+
+**Do.**
+- Test first, no Docker: one shared entry point for the setup (`GameRules.apply`, taking the console-command function), tested with
+  a recording function for a camelCase and a snake_case version. Then the integration assertion, red before: on `fabric@26.3` and
+  `neoforge@26.3` the host IT reads `gamerule random_tick_speed` after start and expects 0 (it reads 3 before).
+- `PaperHost` and `LoaderHost` both call `GameRules.apply` after the readiness checks. Same constants, one list.
+- `metaLeakFabric` must still give `LEAK`. Its test sets 7 over a baseline that is now 0: update the expected text in
+  `examples/bad-tests/README.md` and the comments in `LoaderLeakE2E` to the value the run shows, with the run as evidence.
+- Documentation in the same PR: `docs/robustness.md` R6 (loader review row), the Fabric and NeoForge Gotchas, ROADMAP finding.
+
+**Don't.**
+- Move the world spawn (`setworldspawn`) to loaders: `PaperHost` sets it for the 1.8.8 flat world, a loader keeps the vanilla spawn.
+  Change the seed, `DIFFICULTY` or `GENERATE_STRUCTURES`. Add a switch to skip the rules, a sleep, a retry, a timeout change.
+
+**Acceptance.**
+- [x] The unit cases fail before (no `GameRules.apply`) and pass after.
+- [x] The host IT assertion is red on `fabric@26.3` and `neoforge@26.3` before the change (one run each), green after, three
+  separate invocations each, XML read.
+- [x] The world rules snapshot is the same in three separate boots of each row (the four rules read back, from the bundles or logs).
+- [x] `metaLeakFabric` is `LEAK` naming `random_tick_speed`, three invocations; its README text matches the run. `:conformance:run` on
+  `fabric@26.3` and `neoforge@26.3` stays green, three invocations each.
+- [x] `integrationTest` of every touched module (`proofstone-core`, `platforms/fabric/agent`, `platforms/neoforge/agent`), XML read;
+  `bash scripts/gates.sh --max-workers=1` passes.
+
+**Verify.**
+`./gradlew :proofstone-core:test --tests '*GameRulesTest*'`, then `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaModFabricTest --no-parallel --max-workers=1`

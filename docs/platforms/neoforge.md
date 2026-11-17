@@ -195,3 +195,8 @@ Observed in the spike, not yet tokens:
   `click` returns on the first stateId change and ignores a closed window's packets, so a scenario that closes at once loses the
   item (`DISAGREE ... no matching item among []`). Await the stack in the window's own player slots before the close
   (`ConformanceFixture.awaitInPlayerSlots`, `placeCursorInInventory`). Not reproduced live in 32 NeoForge runs; see ROADMAP "M8 findings".
+- **A loader cell runs the same deterministic-world rules as Paper (T-M8-27).** `LoaderHost` runs `GameRules.apply` (the four rules
+  `PaperHost` sets, snake_case names from 1.21.11) through the agent's console after the readiness checks. Before it the cell held the
+  vanilla default (`random_tick_speed` 3, daylight, weather and mob spawning on), which T-M8-18 found. The spawn is not moved
+  (`PaperHost` moves it for 1.8.8's flat world only). A test that relied on random ticks or spawning on a loader cell would now see
+  none; the conformance run on this row after the change is in ROADMAP "M8 findings", T-M8-27.
