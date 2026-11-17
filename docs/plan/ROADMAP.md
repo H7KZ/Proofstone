@@ -1394,6 +1394,8 @@ Total M8 follow-ups to M10 is about 4 to 6 weeks plus ongoing ecosystem work (wa
 rule, 13 cards (T-M9-01 Geyser spike and T-M9-02 BDS spike first, ADR-0018, schema and SPI, driver, Geyser host, API, conformance, BDS
 host and conformance only if the BDS spike says feasible, negative controls, docs, review). **Not approved; nothing started.**
 
+**Progress note (T-M9-12, 2026-11-17).** The Bedrock user guide ([bedrock.md](../user/bedrock.md)), the `examples/geyser-bedrock` example (3 of 3 green on `geyser@2.12.1+paper@26.3`) and the `docs/platforms.md` status (experimental, driver on a snapshot) are done. Cards 01, 03 to 08, 11 and 12 have their work in; BDS cards 02, 09 and 10 are M10. T-M9-99 (the review) is next and decides the exit criterion; this note scores nothing.
+
 ## M7 follow-up findings (T-M7-15)
 
 Date 2026-11-15. Ran on `card/T-M7-15-psconf-diagnosis` from origin/main `704839a`. Local only, Windows 11, Docker Desktop

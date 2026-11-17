@@ -36,7 +36,7 @@ class AnvilMechanicE2E {
 
 ## Choosing servers: `@Matrix` and the selector
 
-- `@Matrix(platform = ..., versions = {...})`. `Platform` has `PAPER`, `FOLIA`, `PURPUR` and `SPIGOT` only.
+- `@Matrix(platform = ..., versions = {...})`. `Platform` also has `GEYSER` for a Bedrock client through Geyser ([bedrock.md](bedrock.md)).
 - `versions` takes exact versions, `latest` (the newest `required` row) or `all` (every row in scope).
 - At run time, `-Dproofstone.cells=paper@26.3,folia@latest` **replaces** the `versions` of every matrix whose platform it
   names. A matrix whose platform is not named is not run, and the run prints `PROOFSTONE NOT SELECTED`. That is not a pass.
