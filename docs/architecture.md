@@ -195,6 +195,7 @@ proofstone/
   proofstone-protocol/            L3c schemas + generated types + golden files
   drivers/
     mcpl/                          primary Java driver
+    bedrock/                       Bedrock driver host on CloudburstMC Protocol, shaded into one jar (ADR-0018)
     mineflayer-ref/                Node sidecar + Dockerfile (reference driver)
   platforms/
     agent-core/                    envelope, auth, HTTP server, log buffer shared by the agents (Java 8 bytecode)

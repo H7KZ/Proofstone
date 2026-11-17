@@ -166,7 +166,7 @@ Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Schema 5 adds 
 read exactly as before, and every existing cell's `printMatrix` line stays identical. The values below are the T-M9-01 spike pins
 ([geyser.md](../platforms/geyser.md)); T-M9-04 added the row to `versions.yml` as `experimental`, with `versions.schema.json`
 and `VersionsCatalog` accepting `schema: 5`. The `drivers.bedrock` pin is the timestamped snapshot the spike resolved
-(ADR-0018 section 2); its artefact sha256 list and the release check are T-M9-05.
+(ADR-0018 section 2); no release of the library exists (checked by T-M9-05 on 2026-11-17), and its artefact sha256 list is `drivers/bedrock/cloudburst-artefacts.sha256`, checked by the build.
 
 ```yaml
 schema: 5

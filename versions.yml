@@ -16,7 +16,7 @@ drivers:
   viaproxy:        { image: "ghcr.io/viaversion/viaproxy", digest: "sha256:46eef05d0d3c165a2a731a94b3be1771510e3db3c6db2f12b93c91c73b6672c4" }  # ViaProxy 3.4.15, index digest of 2026-11-07 (T-M3-03)
   # Schema 5 (ADR-0018 section 2): the Bedrock client library, pinned to the exact timestamped snapshot the T-M9-01 spike resolved
   # (3.0.0.Beta15-SNAPSHOT -> 20261116.161745-6), never -SNAPSHOT. Protocol 2225 / game 1.26.60 are what the spike's joins sent
-  # (docs/platforms/geyser.md "Bedrock protocol and game version"). The sha256 list of the artefacts and the release check are T-M9-05.
+  # (docs/platforms/geyser.md "Bedrock protocol and game version"). T-M9-05 checked for a release (none exists) and keeps the sha256 list of every resolved artefact in drivers/bedrock/cloudburst-artefacts.sha256.
   bedrock:         { library: "org.cloudburstmc.protocol:bedrock-connection", version: "3.0.0.Beta15-20261116.161745-6", protocol: 2225, game-version: "1.26.60" }
 
 platforms:
