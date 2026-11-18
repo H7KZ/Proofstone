@@ -50,7 +50,7 @@ PROOFSTONE_RELEASE_CONFIRM=yes-publish bash scripts/release-maven.sh --publish
 
 ```bash
 bash scripts/release-mutation-check.sh                         # needs Docker; one real-server run at a time
-bash scripts/release-mutation-check.sh --allow-missing=maven   # only while the Maven example does not exist
+bash scripts/release-mutation-check.sh --allow-missing=maven-paper-plugin   # only if Maven is not installed; a publish gate refuses it
 ```
 
 - Reads each example's injected bugs from the `bugs:` block of its `src/main/resources/config.yml`.

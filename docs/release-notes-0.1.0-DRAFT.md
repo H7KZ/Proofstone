@@ -19,7 +19,7 @@ a wrong view of the world alone. See [vision](vision.md).
   all for missing capabilities.
 - Gradle example: `e2eTest` green on paper@26.3, and both injected bugs are killed by their assertions.
 - Maven example: `verify -Pe2e` green on paper@26.3, and both injected bugs are killed by their assertions.
-- Mutation check: `scripts/release-mutation-check.sh` (no flag) passes completely on the clean tree at 4df12c8, 4 bugs killed.
+- Mutation check: `scripts/release-mutation-check.sh` (no flag) passes completely on the clean tree at 4df12c8 and again at e77149b (2026-11-18, Gradle and Maven examples), 4 bugs killed.
 - Release scripts: `release-maven.sh --dry-run` OK (unsigned; signatures not checked). `--publish`, `release-images.sh --push`
   and `--write-digests` each refuse without their confirmation and credentials.
 

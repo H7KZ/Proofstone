@@ -254,7 +254,7 @@ The recorded run-through.
 - Tag the release without the maintainer's approval.
 
 **Acceptance.**
-- [ ] The exit criterion is demonstrated. **NOT MET** (NO-GO): Disenchantment CI is in another repo, the Maven example does not exist, nothing is published, the licence is undecided, and the mutation check is INCOMPLETE without `--allow-missing`. See [ROADMAP, M6 review](../ROADMAP.md).
+- [ ] The exit criterion is demonstrated. **NOT MET** (NO-GO) for a public 0.1.0: Disenchantment CI is in another repo, nothing is published or tagged, Central namespace verification and the GitHub Action are open. (Since 2026-11-09: the licence is decided, ADR-0011; the Maven example exists; the mutation check passes without `--allow-missing`. See [ROADMAP, M6 review addendum](../ROADMAP.md) and "M6 release status refresh".)
 - [x] The release notes are drafted. (Evidence: `docs/release-notes-0.1.0-DRAFT.md`, marked DRAFT and NO-GO. Claims limited to verified items.)
 
 **Verify.**
@@ -296,7 +296,7 @@ tests must honour the cell selector, and the docs and card evidence must claim o
 - [x] `metaTest` with no selector (default cells) gives all eight expected verdicts. (Evidence: `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel --max-workers=1`, BUILD SUCCESSFUL in 5m17s, "every bad test produced its expected verdict (VACUOUS, FLAKY, DISAGREE, INVALID, INVALID, LEAK, FAIL, SKIPPED)". Cells per XML: cell-agnostic tasks on paper@26.3, pinned `metaDisagree`, `metaInvalidWindow`, `metaLeak` on paper@26.1.2. 0 join timeouts.)
 - [x] A selector that a pinned task cannot run on is refused before any server starts, naming the task and its supported cell. (Evidence: `bash scripts/bad-tests-pin-check.sh`, run by `scripts/gates.sh`: `-Dproofstone.cells=paper@26.3` refused for `metaInvalidWindow`, `metaDisagree`, `metaLeak`, each with "Supported cells: paper@26.1.2"; no server started.)
 - [x] A differential run without `-Dproofstone.cells` fails with a clear message, and pinned differential runs take their pin. (Evidence: earlier `./gradlew :examples:bad-tests:test -Dproofstone.differential=true` refusal; `metaDisagree` runs on its pin in the default `metaTest`.)
-- [ ] `metaTest` with `-Dproofstone.cells=paper@26.1.2` only, for every task. **Not run.** Documented instead: `examples/bad-tests/README.md` "Cell pins" table lists which tasks accept which cells. The cell-agnostic tasks on 26.1.2 were not proven.
+- [x] `metaTest` with `-Dproofstone.cells=paper@26.1.2` only, for every task. (Evidence, 2026-11-18, `e77149b`: `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest -Dproofstone.cells=paper@26.1.2 --no-parallel --max-workers=1 --rerun-tasks`, BUILD SUCCESSFUL in 5m23s, all eight verdicts as expected, bridged cells.)
 - [x] The quickstart JDK statements say exactly what was verified; the Maven page names no missing path. (Evidence: `docs/user/quickstart-gradle.md` JDK section; `quickstart-maven.md` no longer names `examples/maven-paper-plugin/`.)
 - [x] T-M6-01 and T-M6-07 evidence is reworded as above. (Evidence: both lines in this card, now "author-reported, not re-verified" with reproducible commands.)
 
@@ -477,3 +477,28 @@ must say which handshake step the server never answered.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`, then `scripts/flake-loop.sh` on `:examples:gradle-paper-plugin:e2eTest`, `paper@26.3`, under `scripts/dockerlock.sh`.
+
+### T-M6-100 · Release status refresh (full local re-run at e77149b)
+- tier: haiku
+- depends: T-M6-99
+- modules: docs/plan, docs/release.md, docs/release-notes-0.1.0-DRAFT.md
+- adrs: 0010, 0011, 0014
+- specs: vision.md
+- test-first: no
+
+**Goal.** Make the release docs claim only what was verified at `e77149b`, and drop the NO-GO reasons that no longer hold.
+
+**Do.**
+- Add the "M6 release status refresh" section to the ROADMAP with the 2026-11-18 evidence.
+- Fix `docs/release.md` (the `--allow-missing` note) and the draft release notes (re-run head).
+
+**Don't.**
+- Tag, publish, push images or add a workflow. Round up a partial result.
+
+**Acceptance.**
+- [x] ROADMAP has the section, with each run and its result. (Evidence: ROADMAP "M6 release status refresh".)
+- [x] `docs/release.md` no longer says the Maven example does not exist. (Evidence: the diff.)
+- [x] `bash scripts/gates.sh` is green. (Evidence: PR description.)
+
+**Verify.**
+`bash scripts/gates.sh`
