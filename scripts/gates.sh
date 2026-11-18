@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Local replacement for the removed `ci.yml` (maintainer decision 2026-11-08: no CI, local only).
-# Runs what the old required checks ran: `./gradlew check docsCheck` (the `gates` job), and the pinned Renovate
+# The PR gate. The `gates` workflow (ADR-0019) runs this script, so local and hosted runs are the same.
+# Runs: `./gradlew check docsCheck` (the `gates` job), and the pinned Renovate
 # config validation (the `renovate-validate` job) when renovate.json differs from origin/main.
 # Needs no Docker. Real-server gates (`:conformance:smoke`, the card's Verify commands) still go through
 # `scripts/dockerlock.sh` with PROOFSTONE_ACCEPT_EULA=true in the command environment only.

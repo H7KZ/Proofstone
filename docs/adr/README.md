@@ -24,5 +24,6 @@ that were rejected. **Accepted ADRs are not re-decided inside a task.** To chall
 | [0016](0016-topology-cells.md) | Topology cells: one proxy row plus a backend row set | Accepted (2026-11-09) |
 | [0017](0017-mod-platform-packs.md) | Mod platform packs, artefact types and loader rows (Fabric, NeoForge, data packs, resource packs) | Accepted (2026-11-14), amended 2026-11-16 |
 | [0018](0018-bedrock-driver-geyser-cells.md) | Bedrock driver, Geyser cells and an offline login stand-in | Accepted (2026-11-17) |
+| [0019](0019-public-repo-workflows.md) | Public-repo workflows and a develop → main flow (amends 0014) | Accepted (2026-11-18) |
 
 Template: [0000-template.md](0000-template.md).

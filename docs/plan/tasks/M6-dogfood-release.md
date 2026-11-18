@@ -502,3 +502,30 @@ must say which handshake step the server never answered.
 
 **Verify.**
 `bash scripts/gates.sh`
+
+### T-M6-101 · Public repository readiness
+- tier: sonnet
+- depends: T-M6-100
+- modules: .github, docs, scripts, AGENTS.md
+- adrs: 0011, 0012, 0014, 0019
+- specs: vision.md
+- test-first: no
+
+**Goal.** Make the repository ready for public use by many plugin projects: community files, a compatibility and limits policy,
+workflows, a develop → main flow and an operator guide for releases.
+
+**Do.**
+- Add SECURITY, CODE_OF_CONDUCT, SUPPORT, CHANGELOG, CODEOWNERS, issue templates and release note categories.
+- Write ADR-0019, the contributing flow, the compatibility policy, the limits and the FAQ. Rewrite the README status.
+- Add `gates.yml` and `release.yml` (SHA-pinned actions, least privilege). Update AGENTS.md, ADR-0014 and docs/release.md.
+
+**Don't.**
+- Tag, publish, push images or change repository settings. Claim a workflow works before a hosted run has passed.
+
+**Acceptance.**
+- [x] `bash scripts/gates.sh` is green. (Evidence: PR description.)
+- [ ] The `gates` workflow ran green on a hosted runner. **UNVERIFIED until the PR's first run.**
+- [ ] The `release` workflow ran on a hosted runner. **UNVERIFIED**: needs the one-time setup in docs/release.md and a tag.
+
+**Verify.**
+`bash scripts/gates.sh`

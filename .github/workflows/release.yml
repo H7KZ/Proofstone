@@ -1,0 +1,117 @@
+# ADR-0019, docs/release.md. Runs on a pushed tag v<version> only. Nothing is released automatically:
+#   - Maven Central: uploaded as a USER_MANAGED deployment; the maintainer presses Publish in the Central Portal.
+#   - GitHub Release: created as a DRAFT with generated notes; the maintainer publishes it.
+#   - Images: pushed to GHCR; versions.yml digests are written by a PR the maintainer reviews, never by this workflow.
+# Secrets live in the protected environment "release" (required reviewer = maintainer). No pull_request trigger, no
+# pull_request_target, no self-hosted runner.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Tag must be on main and match the version
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "tag $GITHUB_REF_NAME is not on main"; exit 1; }
+          ver=$(sed -n 's/^proofstone = "\(.*\)"$/\1/p' gradle/libs.versions.toml)
+          [ "v$ver" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != version v$ver"; exit 1; }
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+            26
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - run: bash scripts/gates.sh --max-workers=2
+      - name: Real-server smoke (Docker, serialized)
+        env:
+          PROOFSTONE_ACCEPT_EULA: "true"
+        run: bash scripts/dockerlock.sh ./gradlew :conformance:smoke --no-parallel --max-workers=1
+      - name: Mutation check (the publish gate needs a PASS for this HEAD)
+        env:
+          PROOFSTONE_ACCEPT_EULA: "true"
+        run: bash scripts/release-mutation-check.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-check
+          path: build/release/
+  maven:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+            26
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      # The publish gate wants a fresh PASS for this HEAD, so the check runs again in this job (24 h rule, scripts/lib/mutation-gate.sh).
+      - name: Mutation check
+        env:
+          PROOFSTONE_ACCEPT_EULA: "true"
+        run: bash scripts/release-mutation-check.sh
+      - name: Publish to the Central Portal (USER_MANAGED)
+        env:
+          PROOFSTONE_RELEASE_CONFIRM: yes-publish
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
+          CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+        run: bash scripts/release-maven.sh --publish
+  images:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Push the images (scripts/release-images.sh)
+        env:
+          PROOFSTONE_RELEASE_CONFIRM: yes-push
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release-images.sh --push
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pushed-digests
+          path: build/release-images/
+  github-release:
+    needs: [maven, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Draft GitHub Release with generated notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --generate-notes --title "$GITHUB_REF_NAME"

@@ -1,6 +1,9 @@
 # Releasing Proofstone to Maven Central
 
-Local only. There is no CI and no workflow (maintainer decision 2026-11-08). The maintainer runs every step by hand.
+The release runs from the `release` workflow on a `v<version>` tag ([ADR-0019](adr/0019-public-repo-workflows.md),
+[contributing flow](contributing-flow.md)). Every step also works by hand with the scripts below, which the workflow calls.
+Nothing publishes itself: Central is `USER_MANAGED` and the GitHub Release is a draft. First-time setup is in
+"Release secrets and one-time setup" at the end of this page.
 Naming and the namespace are in [ADR-0012](adr/0012-name.md). The licence is in [ADR-0011](adr/0011-licensing.md).
 
 ## What is published
@@ -126,3 +129,21 @@ Unverified: pulling by digest (acceptance of T-M6-02). Nothing has been pushed y
 - Gradle writes `.asc` files with CRLF on Windows. The script strips the carriage return before checking the header.
 - Javadoc needs `UTF-8` set explicitly, or it fails on Windows. The publish plugin sets it.
 - `proofstone-protocol` exposes test fixtures as Gradle variants. They are not in the POM by design.
+
+## Release secrets and one-time setup
+
+Do these once, by hand. None of them is done by an agent.
+
+1. **Central namespace.** Sign up at the Central Portal with the GitHub account that owns the repository and verify the namespace
+   `io.github.h7kz` ([ADR-0012](adr/0012-name.md)). Only the signup username is auto-verified.
+2. **PGP key.** Create a signing key, publish the public key to a key server, and keep the private key out of the repository.
+3. **GitHub environment `release`.** Settings → Environments → New environment `release`. Add the maintainer as a required reviewer.
+   Add the secrets `SIGNING_KEY` (ASCII-armoured private key), `SIGNING_PASSWORD`, `CENTRAL_PORTAL_USERNAME` and
+   `CENTRAL_PORTAL_PASSWORD` (Portal user token). The workflow maps them to the variable names the scripts read.
+4. **Branch protection** on `main` and `develop`: PR required, the `gates` check required, code-owner review, no force push, no deletion.
+5. **GHCR packages.** After the first push, set each package public and link it to the repository, so `versions.yml` digests can be
+   pulled without a login. Do not push the `spigot-buildtools` image (it bundles BuildTools.jar).
+6. **Private vulnerability reporting.** Settings → Code security → enable it ([SECURITY.md](../SECURITY.md)).
+
+The first `release` run is the proof that the workflow works on a hosted runner. Do a dry run first: `bash scripts/release-maven.sh --dry-run`
+and `bash scripts/release-images.sh --dry-run`, and expect to fix the first hosted run.
