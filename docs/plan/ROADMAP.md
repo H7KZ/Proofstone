@@ -2046,3 +2046,25 @@ await; none of C03 to C08 does besides C04 and C05 (T-M7-20).
 
 10 greens do not prove the fix: at the earlier 20 to 30 percent rate, 10 greens happen about 3 to 6 percent of the time. The mechanism (T-M7-20) and
 the unit case are what carry it.
+
+## M6 release status refresh (T-M6-100, 2026-11-18)
+
+Full local re-run at HEAD `e77149b`, clean tree, one Docker run at a time under `dockerlock`, XML and logs read, no retries.
+Maven 3.9.9 was installed user-locally (zip SHA-512 checked against Apache's published value); `MAVEN_HOME` points at it.
+
+| Run | Result |
+|---|---|
+| `bash scripts/gates.sh` | OK (three orphan copies in `.claude/worktrees` had to be moved out first: `docsCheck` scanned them) |
+| `:conformance:smoke` | 8 tests, skipped 0, failures 0, errors 0 |
+| `:conformance:run`, default cells | 50 tests, failures 0, errors 0, 9 reasoned skips (`FOLIA_REGIONS`, `SIMULATED_BEDROCK`) |
+| `:conformance:run` on `fabric@26.3`, `neoforge@26.3`, `geyser@2.12.1+paper@26.3`, `velocity@4.3.1+paper@26.3`, `bungeecord@2111+paper@26.3` | BUILD SUCCESSFUL each |
+| Examples: gradle-paper-plugin, geyser-bedrock, loader-datapack, loader-mod (fabric, neoforge), smoke topology (velocity) | green |
+| `:examples:bad-tests:metaTest` | BUILD SUCCESSFUL, every bad test gave its expected verdict |
+| `integrationTest` of core, both drivers and the five platform agents | BUILD SUCCESSFUL |
+| `bash scripts/release-mutation-check.sh` (no flag) | **PASS**: head `e77149b`, dirty false, killed 4 (both examples, both bugs) |
+
+Not a defect: `:examples:smoke:topologyExample` on `bungeecord@...` fails with "has no cell to run", because that example is Velocity-only by design.
+
+**Verdict unchanged: NO-GO for a public 0.1.0 claim.** Blocking, all the maintainer's or external: Disenchantment CI (another repo),
+Central namespace verification and publish, GHCR push, the GitHub Action on a hosted runner, the tag. Code and local gates are
+tag-ready at `e77149b`; re-run the mutation check at the tag HEAD first.
