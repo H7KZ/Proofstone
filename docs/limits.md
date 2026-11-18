@@ -39,7 +39,7 @@ Read this before you build on Proofstone. Each limit says what you will see and 
 | Velocity, BungeeCord topologies | `required` rows. Velocity 3.x and Waterfall are not rows. |
 | Fabric, NeoForge (server-only mods) | `experimental`. Newest version row only. |
 | **Content mods** | Not supported. A content mod gets the client kicked, because the vanilla driver lacks the registry entries. |
-| **Declaring a mod under test** | Not available yet (`@Proofstone(mods)` does not exist). |
+| **Declaring a mod under test** | `@Proofstone(mods = "...")` works for **server-only** mods on `fabric@26.3` and `neoforge@26.3` ([mods guide](user/mods-and-packs.md)). Content mods stay unsupported. |
 | Data packs, resource packs | `experimental`. Paper 26.3 fires no resource-pack status event for the configuration-phase push ([troubleshooting](user/troubleshooting.md)). |
 | Bedrock through Geyser | `experimental`. An *offline-stub* cell: Xbox login validation is **off** on purpose. Client does join, chat, command, inventory (id and count) and position only; window clicks, `useBlock`, forms and resource packs are not implemented. The driver is pinned to a CloudburstMC Protocol **snapshot**. |
 | Bedrock Dedicated Server | Not available (spike deferred). |

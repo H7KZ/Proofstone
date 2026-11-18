@@ -137,10 +137,12 @@ Do these once, by hand. None of them is done by an agent.
 1. **Central namespace.** Sign up at the Central Portal with the GitHub account that owns the repository and verify the namespace
    `io.github.h7kz` ([ADR-0012](adr/0012-name.md)). Only the signup username is auto-verified.
 2. **PGP key.** Create a signing key, publish the public key to a key server, and keep the private key out of the repository.
-3. **GitHub environment `release`.** Settings → Environments → New environment `release`. Add the maintainer as a required reviewer.
+3. **GitHub environment `release`.** Settings → Environments → New environment `release`. Add the maintainer as a required reviewer and
+   set deployment branches and tags to the selected pattern `v*`. Add a tag ruleset for `v*` (Settings → Rules) so only the maintainer can
+   create or move a release tag.
    Add the secrets `SIGNING_KEY` (ASCII-armoured private key), `SIGNING_PASSWORD`, `CENTRAL_PORTAL_USERNAME` and
    `CENTRAL_PORTAL_PASSWORD` (Portal user token). The workflow maps them to the variable names the scripts read.
-4. **Branch protection** on `main` and `develop`: PR required, the `gates` check required, code-owner review, no force push, no deletion.
+4. **Create `develop`** from `main` (`git push origin main:refs/heads/develop`), then add **branch protection** on `main` and `develop`: PR required, the `gates` check required, code-owner review, no force push, no deletion.
 5. **GHCR packages.** After the first push, set each package public and link it to the repository, so `versions.yml` digests can be
    pulled without a login. Do not push the `spigot-buildtools` image (it bundles BuildTools.jar).
 6. **Private vulnerability reporting.** Settings → Code security → enable it ([SECURITY.md](../SECURITY.md)).
