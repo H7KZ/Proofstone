@@ -16,7 +16,7 @@ Naming and the namespace are in [ADR-0012](adr/0012-name.md). The licence is in 
 | `io.github.h7kz.proofstone:proofstone-drivers-mcpl` | `drivers:mcpl` |
 
 Each artefact has a jar, a sources jar, a javadoc jar, a POM and a signature (`.asc`) when signed.
-The version is `proofstone` in `gradle/libs.versions.toml`. The local version `0.1.0-local` is never released.
+The version is `proofstone` in `gradle/libs.versions.toml`. A version ending in `-local` is never released.
 
 ## Dry run (safe, the default)
 

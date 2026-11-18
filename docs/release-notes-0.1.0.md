@@ -1,8 +1,11 @@
-# Proofstone 0.1.0: release notes (DRAFT, not released)
+# Proofstone 0.1.0: release notes
 
-> **DRAFT.** Not a release. Nothing is tagged, published to Maven Central or GHCR, or announced. The release is
-> **NO-GO** for a public 0.1.0 claim (see [ROADMAP, M6 review addendum](plan/ROADMAP.md), 2026-11-09). Every claim below is
-> either verified locally (with the evidence named) or marked as not verified. Remove this banner only when the maintainer says GO.
+First public release. **Pre-1.0:** a minor release may break the public API ([compatibility](compatibility.md)). Read the
+[limits](limits.md) and the known problems below before you depend on it.
+
+**Release decision (2026-11-18, maintainer authorised, executed by Claude):** GO for a `0.1.0` pre-1.0 release of the harness
+(`proofstone-api`, `-core`, `-protocol`, `-drivers-mcpl`). Basis: every local gate, real-server suite, example and the release mutation
+check passed at `e77149b` ([ROADMAP, M6 release status refresh](plan/ROADMAP.md)). The decision does **not** claim the open items under "Not in 0.1.0".
 
 ## What Proofstone is
 
@@ -10,7 +13,7 @@ A framework for real-server end-to-end tests of Minecraft plugins. Tests run aga
 Minecraft client, and each result is checked by two oracles (the server agent and the client), so a test cannot pass on
 a wrong view of the world alone. See [vision](vision.md).
 
-## Verified locally (T-M6-13, 2026-11-09, at commit 4df12c8, one Docker run at a time)
+## Verified locally (T-M6-13 at 4df12c8, re-run in full at e77149b on 2026-11-18, one Docker run at a time)
 
 - Gates: `bash scripts/gates.sh --max-workers=1` passes (compile, unit tests, lint, architecture rules, docs checks).
 - Self-tests: `:examples:bad-tests:metaTest` with no selector. Each bad test gives its expected verdict: `VACUOUS`, `FLAKY`,
@@ -33,15 +36,18 @@ a wrong view of the world alone. See [vision](vision.md).
 
 ## Not in 0.1.0
 
-- Maven Central and GHCR artefacts: not published. Requires namespace verification on Central (ADR-0012). The licence is
-  decided (ADR-0011, Apache-2.0). The namespace is `io.github.h7kz.proofstone` (T-M6-12).
+- Nothing about Central or GHCR is verified before the first tagged release run: the `release` workflow has not run on a hosted runner
+  ([release.md](release.md)).
 - GitHub Action: local only (`integrations/github-action`), not published, hosted runner not verified.
 - Disenchantment's own suite on Proofstone: runs in another repository (T-M6-05), not verified here.
-- Proxies (Velocity, BungeeCord), mods (Fabric, NeoForge) and Bedrock beyond the prefixed simulation: later milestones.
+- Velocity and BungeeCord are `required` rows. Fabric, NeoForge, data packs, resource packs and Bedrock through Geyser are `experimental` ([limits](limits.md)).
 
 ## Install
 
-Not yet available from a public repository. For local use, build and publish to `mavenLocal` (see
+When the release is published, use `io.github.h7kz.proofstone:proofstone-api`, `-core` and `-drivers-mcpl` at `0.1.0` from Maven Central.
+Until then:
+
+For local use, build and publish to `mavenLocal` (see
 [quickstart-gradle.md](user/quickstart-gradle.md) and [quickstart-maven.md](user/quickstart-maven.md)). The quickstart
 run-through took 108 s on its first green run, with caveats recorded in the M6 review. Not timed again.
 

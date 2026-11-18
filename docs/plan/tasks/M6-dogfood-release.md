@@ -255,7 +255,7 @@ The recorded run-through.
 
 **Acceptance.**
 - [ ] The exit criterion is demonstrated. **NOT MET** (NO-GO) for a public 0.1.0: Disenchantment CI is in another repo, nothing is published or tagged, Central namespace verification and the GitHub Action are open. (Since 2026-11-09: the licence is decided, ADR-0011; the Maven example exists; the mutation check passes without `--allow-missing`. See [ROADMAP, M6 review addendum](../ROADMAP.md) and "M6 release status refresh".)
-- [x] The release notes are drafted. (Evidence: `docs/release-notes-0.1.0-DRAFT.md`, marked DRAFT and NO-GO. Claims limited to verified items.)
+- [x] The release notes are drafted. (Evidence: `docs/release-notes-0.1.0.md`, marked DRAFT and NO-GO. Claims limited to verified items.)
 
 **Verify.**
 The links to the gate, nightly and mutation-check runs.
@@ -428,7 +428,7 @@ next session an accurate M7 prompt. No code or test changes.
   each command exists and is correct. Fix doc errors.
 - Run `bash scripts/release-maven.sh --dry-run`, and confirm that `--publish`, `release-images.sh --push` and
   `--write-digests` each refuse with the release environment cleared.
-- Update ROADMAP, `docs/release-notes-0.1.0-DRAFT.md` (still DRAFT) and `docs/plan/NEXT-SESSION-M7-PROMPT.md`.
+- Update ROADMAP, `docs/release-notes-0.1.0.md` (still DRAFT) and `docs/plan/NEXT-SESSION-M7-PROMPT.md`.
 
 **Don't.**
 - Publish, push to any registry, set `PROOFSTONE_RELEASE_CONFIRM`, tag, add a workflow, or touch the `ohlidame-*` containers.
@@ -481,7 +481,7 @@ must say which handshake step the server never answered.
 ### T-M6-100 · Release status refresh (full local re-run at e77149b)
 - tier: haiku
 - depends: T-M6-99
-- modules: docs/plan, docs/release.md, docs/release-notes-0.1.0-DRAFT.md
+- modules: docs/plan, docs/release.md, docs/release-notes-0.1.0.md
 - adrs: 0010, 0011, 0014
 - specs: vision.md
 - test-first: no

@@ -117,7 +117,7 @@ the repo already have, and what conflicts with the "no CI, no workflows" decisio
 - ADR-0011 Accepted: Apache-2.0, DCO. ADR-0012 Accepted: name, group `io.github.h7kz.proofstone`, namespace verification **pending**.
   ADR-0014 update: all workflows removed 2026-11-08; no required checks.
 - `docs/release.md` and `scripts/release-maven.sh`, `release-images.sh`, `release-mutation-check.sh`: local release flow with dry run, publish
-  guards, `USER_MANAGED` upload, no tag or push by script. Version in catalog is `0.1.0-local`. No git tags exist. `docs/release-notes-0.1.0-DRAFT.md`
+  guards, `USER_MANAGED` upload, no tag or push by script. Version in catalog is `0.1.0-local`. No git tags exist. `docs/release-notes-0.1.0.md`
   says NO-GO and lists known flakiness.
 - `proofstone-api` has an API baseline test (`api-baseline.txt`). No binary-compat tool (japicmp or similar) found. No deprecation policy found in
   docs (grep for deprecat/semver in specs, versioning, architecture returned nothing relevant). Wire protocol is versioned (health reports
@@ -165,7 +165,7 @@ Title: ADR-0019 Minimal public-repo workflows. Amends ADR-0014 point 5 and AGENT
 | 8 | Issue templates | DONE (partial) | only `task.yml`; add bug report and `config.yml` (DECISION-NEEDED: card-only intake vs open bugs) |
 | 9 | PR template | DONE | card-centric |
 | 10 | CODEOWNERS | MISSING | needs branch rule to take effect |
-| 11 | CHANGELOG (Keep a Changelog) | MISSING | `release-notes-0.1.0-DRAFT.md` exists |
+| 11 | CHANGELOG (Keep a Changelog) | MISSING | `release-notes-0.1.0.md` exists |
 | 12 | `.github/release.yml` note categories | MISSING | needs labels on PRs |
 | 13 | Branch protection on `main` | DECISION-NEEDED | removed 2026-11-08; re-adding without CI limits to review/force-push rules |
 | 14 | develop -> main flow | DECISION-NEEDED | currently PR to `main` from `card/*` |
