@@ -22,7 +22,7 @@ The plugin carries two injected bugs, both off by default, so the suite can prov
 ## Boundaries
 
 - Proofstone is consumed from **mavenLocal only**: `io.github.h7kz.proofstone:proofstone-{api,core,drivers-mcpl}` at version
-  `0.1.0-local`. The version is pinned as `proofstone.version` in `pom.xml`, the same value as the `proofstone` key in
+  `0.1.0`. The version is pinned as `proofstone.version` in `pom.xml`, the same value as the `proofstone` key in
   `gradle/libs.versions.toml`. Nothing is published to Maven Central, GHCR or any other remote repository. Remote snapshots are
   never used.
 - The agent jar (`platforms/bukkit/agent/build/libs/agent-all.jar`) is a plugin, not a library. It is built from this
