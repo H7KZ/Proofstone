@@ -1,0 +1,15 @@
+name: Feature or platform request
+description: Propose a feature, a Minecraft version row or a new platform
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes: { label: What do you need to test, description: "The plugin or mod behaviour you cannot test today." }
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes: { label: Proposal, description: "API sketch, platform or version, and what would show it works." }
+    validations: { required: true }
+  - type: textarea
+    id: alternatives
+    attributes: { label: Alternatives you tried }

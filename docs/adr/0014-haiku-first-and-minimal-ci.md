@@ -55,3 +55,8 @@
 The maintainer removed `ci.yml` and the required status checks (`gates`, `renovate-validate`) from branch protection, to stop all
 billed Actions minutes. Point 5 above no longer holds: there is no PR workflow. The local gate is `scripts/gates.sh`
 (AGENTS.md section 4). `matrix`, `nightly` and `version-watch` were deleted too (same day): there is no workflow in the repo.
+
+## Update 2026-11-18: workflows return
+
+The repository is public, so hosted runners are free. [ADR-0019](0019-public-repo-workflows.md) amends point 5 and the 2026-11-08 update:
+two workflows (`gates`, `release`) and a develop → main flow. The Haiku-first rules above are unchanged.

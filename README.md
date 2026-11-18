@@ -3,8 +3,20 @@
 **Real-server end-to-end testing for Minecraft plugins, mods and add-ons.**
 Real servers, real clients, and every result checked twice.
 
-> Status: **design phase**. This repository contains only the plan so far: decisions, specs, a roadmap and
-> task cards. There is no code yet. See [docs/plan/ROADMAP.md](docs/plan/ROADMAP.md).
+> Status: **pre-1.0, not yet released** (`0.1.0` is being prepared). The harness, the Paper family, proxies, Fabric, NeoForge and
+> an experimental Bedrock path run against real servers. What is and is not supported: [platforms](docs/platforms.md) and
+> [limits](docs/limits.md). How versions and breaking changes work: [compatibility](docs/compatibility.md).
+
+## Quick start
+
+You need Docker, JDKs 17 and 21 (26 to compile a Paper 26.x plugin) and a Bash shell. Then:
+
+- **Gradle:** [docs/user/quickstart-gradle.md](docs/user/quickstart-gradle.md)
+- **Maven:** [docs/user/quickstart-maven.md](docs/user/quickstart-maven.md)
+- **Something fails:** [docs/user/troubleshooting.md](docs/user/troubleshooting.md), [FAQ](docs/faq.md)
+
+Proofstone never accepts the Minecraft EULA for you: set `PROOFSTONE_ACCEPT_EULA=true` in the environment of the command that
+runs the tests, after reading <https://aka.ms/MinecraftEULA>.
 
 ## Why
 
@@ -59,6 +71,10 @@ trademark. ([ADR-0012](docs/adr/0012-name.md))
 | How risks are covered | [docs/robustness.md](docs/robustness.md) |
 | What will be supported | [docs/platforms.md](docs/platforms.md) |
 | How it gets built | [docs/plan/ROADMAP.md](docs/plan/ROADMAP.md), [docs/plan/tasks/](docs/plan/tasks/) |
+| Writing tests, topologies, Bedrock, mods | [docs/user/](docs/user/) |
+| What you can rely on, and the limits | [compatibility](docs/compatibility.md), [limits](docs/limits.md), [FAQ](docs/faq.md) |
+| Branches, PRs and releases | [contributing flow](docs/contributing-flow.md), [releasing](docs/release.md), [changelog](CHANGELOG.md) |
+| Help, security, conduct | [SUPPORT.md](SUPPORT.md), [SECURITY.md](SECURITY.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 | How AI agents work here | [AGENTS.md](AGENTS.md), [docs/ai/](docs/ai/) |
 | The founding research and prototype | [docs/research/](docs/research/) |
 

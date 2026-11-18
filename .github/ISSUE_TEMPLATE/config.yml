@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/H7KZ/Proofstone/security/advisories/new
+    about: Report privately. Never open a public issue for a vulnerability.
+  - name: Question or help
+    url: https://github.com/H7KZ/Proofstone/blob/main/SUPPORT.md
+    about: Read the quickstarts, troubleshooting and FAQ first.

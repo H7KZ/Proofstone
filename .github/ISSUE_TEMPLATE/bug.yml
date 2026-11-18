@@ -1,0 +1,30 @@
+name: Bug report
+description: Something fails, flakes or gives a wrong verdict
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Read [troubleshooting](https://github.com/H7KZ/Proofstone/blob/main/docs/user/troubleshooting.md) first. A red run is a finding, so keep the repro bundle and the JUnit XML before you rerun.
+  - type: input
+    id: version
+    attributes: { label: Proofstone version, placeholder: "0.1.0" }
+    validations: { required: true }
+  - type: input
+    id: cell
+    attributes: { label: Cell, placeholder: "paper@26.3 (or geyser@2.12.1+paper@26.3)" }
+    validations: { required: true }
+  - type: input
+    id: host
+    attributes: { label: "Host OS, Docker and JDK", placeholder: "Windows 11, Docker Desktop 4.x, JDK 17" }
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes: { label: What happened and what you expected }
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes: { label: Smallest repro, description: "A test class, the command you ran and how often it fails (n of m runs)." }
+    validations: { required: true }
+  - type: textarea
+    id: bundle
+    attributes: { label: Verdict and repro bundle, description: "Paste the verdict line and attach the bundle files (build/proofstone/...). Remove secrets." }

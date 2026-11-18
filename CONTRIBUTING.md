@@ -1,8 +1,11 @@
 # Contributing
 
-Proofstone is planned to be maintained mostly by AI coding agents, with humans steering.
+Proofstone is maintained mostly by AI coding agents, with humans steering. Outside contributions from people and their agents are welcome:
+same rules for everyone.
 
 - **Everyone, human or agent, follows [AGENTS.md](AGENTS.md).**
+- **Branches and PRs:** branch from `develop`, open the PR into `develop` ([contributing flow](docs/contributing-flow.md)). The `gates` check must be green.
+- **Be kind:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Vulnerabilities go to [SECURITY.md](SECURITY.md), never a public issue.
 - **Work comes from task cards.** See [docs/plan/](docs/plan/) and [docs/ai/workflow.md](docs/ai/workflow.md).
 - **Decisions live in [ADRs](docs/adr/).** Challenge one by opening an issue; don't change it inside a PR.
 - **Adding a Minecraft version** is a data change. See [docs/versioning.md](docs/versioning.md).

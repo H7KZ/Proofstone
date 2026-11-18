@@ -1,0 +1,7 @@
+# Review routing. Branch protection on main and develop requires a code-owner review (docs/contributing-flow.md).
+*                       @H7KZ
+/proofstone-api/        @H7KZ
+/proofstone-protocol/   @H7KZ
+/.github/               @H7KZ
+/scripts/release-*      @H7KZ
+/docs/adr/              @H7KZ

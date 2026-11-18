@@ -70,18 +70,20 @@ A framework for real-server end-to-end tests of Minecraft plugins, mods and add-
 - Paste the gate output summary into the PR. If a gate can't run (for example, no Docker), say so
   explicitly. Never claim it passed.
 
-### CI cost
+### CI and branches (ADR-0019)
 
-There is no CI. GitHub Actions minutes were billed to the maintainer, so on 2026-11-08 the maintainer removed `ci.yml` and the
-required status checks on `main`. Local runs are the only gate.
+The repository is public, so hosted runners are free. Two workflows exist and no others: `gates.yml` (PR gate, no Docker) and `release.yml`
+(tag `v*` only). Real-server suites stay local.
 
-- Run `bash scripts/gates.sh` before every PR (it is `./gradlew check docsCheck`, plus the pinned Renovate validation when
-  `renovate.json` changed). Paste its summary into the PR. Never claim a gate passed without having run it.
-- There are no workflows at all (`.github/workflows` was deleted 2026-11-08). Never add one, and never add `push`, `pull_request`
-  or `schedule` triggers, without maintainer approval. The nightly set is `:examples:bad-tests:metaTest` run locally. New versions come
-  from `./gradlew updateVersions` run locally (docs/versioning.md).
-- A PR merges with no checks reported. The verifier (docs/ai/workflow.md) is the second pair of eyes: it merges `origin/main`,
-  re-runs `bash scripts/gates.sh` and the card's real-server tasks under `scripts/dockerlock.sh`, reads the XML, then merges.
+- Branch from `develop`, open the PR into **`develop`**. A release is a PR `develop → main` plus a tag ([docs/contributing-flow.md](docs/contributing-flow.md)).
+- Run `bash scripts/gates.sh` before every PR and paste its summary. The `gates` check must be green to merge. Never claim a gate
+  passed without having run it, and never retry a red run into green.
+- Never add or change a workflow, or add `schedule`, `pull_request_target` or `workflow_dispatch` triggers, without maintainer approval.
+  Actions are pinned to a full commit SHA. Secrets exist only in the protected `release` environment.
+- Nothing publishes itself: Central is `USER_MANAGED`, the GitHub Release is a draft. Never tag or publish without the maintainer.
+- The nightly set is `:examples:bad-tests:metaTest` run locally. New versions come from `./gradlew updateVersions` (docs/versioning.md).
+- The verifier (docs/ai/workflow.md) merges `origin/develop`, re-runs `bash scripts/gates.sh` and the card's real-server tasks under
+  `scripts/dockerlock.sh`, reads the XML, then merges.
 
 ## 5. When you are stuck
 

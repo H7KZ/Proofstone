@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Local replacement for the removed `ci.yml` (maintainer decision 2026-11-08: no CI, local only).
-# Runs what the old required checks ran: `./gradlew check docsCheck` (the `gates` job), and the pinned Renovate
+# The PR gate. The `gates` workflow (ADR-0019) runs this script, so local and hosted runs are the same.
+# Runs: `./gradlew check docsCheck` (the `gates` job), and the pinned Renovate
 # config validation (the `renovate-validate` job) when renovate.json differs from origin/main.
 # Needs no Docker. Real-server gates (`:conformance:smoke`, the card's Verify commands) still go through
 # `scripts/dockerlock.sh` with PROOFSTONE_ACCEPT_EULA=true in the command environment only.
@@ -14,6 +14,12 @@ cd "$(dirname "$0")/.."
 bash scripts/release-gate-test.sh
 # Bad-test cell pins (T-M6-09): a mismatched selector is refused before any server starts. No Docker.
 bash scripts/bad-tests-pin-check.sh
+
+# The Maven example pins its own copy of the Proofstone version (examples/maven-paper-plugin/pom.xml). A mismatch makes the
+# release mutation check unable to resolve its dependencies, so it fails here, early.
+LIB_VERSION=$(sed -n 's/^proofstone = "\(.*\)"$//p' gradle/libs.versions.toml)
+POM_VERSION=$(sed -n 's/.*<proofstone.version>\(.*\)<\/proofstone.version>.*//p' examples/maven-paper-plugin/pom.xml | head -1)
+[[ -n "$LIB_VERSION" && "$LIB_VERSION" == "$POM_VERSION" ]] || { echo "gates: proofstone version '$LIB_VERSION' (libs.versions.toml) != '$POM_VERSION' (maven example pom.xml)" >&2; exit 1; }
 
 if ! git diff --quiet origin/main -- renovate.json 2>/dev/null; then
   # Version pinned like the old workflow did (renovate@44.171.1); Node comes from the machine.

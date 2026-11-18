@@ -1,0 +1,20 @@
+# Note categories for generated GitHub Release notes (docs/release.md). Labels come from PR labels.
+changelog:
+  exclude:
+    labels: [skip-changelog]
+    authors: [renovate, dependabot]
+  categories:
+    - title: Breaking changes
+      labels: [breaking]
+    - title: New platforms and rows
+      labels: [platform, version-row]
+    - title: Features
+      labels: [feature, enhancement]
+    - title: Fixes
+      labels: [bug, fix]
+    - title: Documentation
+      labels: [docs, documentation]
+    - title: Dependencies
+      labels: [dependencies]
+    - title: Other
+      labels: ["*"]
