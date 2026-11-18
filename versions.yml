@@ -12,7 +12,7 @@ java-rules:            # first match wins; observed in T-M3-02, see docs/version
 
 drivers:
   mcpl:            { library: "org.geysermc.mcprotocollib:protocol", version: "26.3-2", protocol: "26.3" }
-  mineflayer-ref:  { library: "mineflayer", version: "4.39.0", max-native: "26.1.2" }
+  mineflayer-ref:  { library: "mineflayer", version: "4.39.0", max-native: "26.1.2", image: "ghcr.io/h7kz/proofstone-mineflayer-ref", digest: "sha256:7ec00e706dc1a79d2afa8190921d0f039d5846e36ce55d372c94c791baa8a1dc" }
   viaproxy:        { image: "ghcr.io/viaversion/viaproxy", digest: "sha256:46eef05d0d3c165a2a731a94b3be1771510e3db3c6db2f12b93c91c73b6672c4" }  # ViaProxy 3.4.15, index digest of 2026-11-07 (T-M3-03)
   # Schema 5 (ADR-0018 section 2): the Bedrock client library, pinned to the exact timestamped snapshot the T-M9-01 spike resolved
   # (3.0.0.Beta15-SNAPSHOT -> 20261116.161745-6), never -SNAPSHOT. Protocol 2225 / game 1.26.60 are what the spike's joins sent
