@@ -135,15 +135,22 @@ if ((ERRORS > 0)); then
 fi
 echo "artefacts: ${#MODULES[@]} modules x (pom, jar, sources, javadoc) present, jars readable, POM complete"
 
+# The bundle is built and checked in the dry run too, so a layout the portal would reject shows up before a release.
+BUNDLE="build/central-bundle-$VERSION.zip"
+rm -f "$BUNDLE"
+# --no-manifest: `jar` would add META-INF/MANIFEST.MF, and the Central Portal rejects a bundle with content that has no .pom
+# ("Bundle has content that does NOT have a .pom file: META-INF", seen on the first real upload, deployment of v0.1.0).
+jar --create --no-manifest --file "$BUNDLE" -C "$STAGING" .
+# Every entry must sit under the group path. Fail before upload, never at the portal.
+bad=$(jar --list --file "$BUNDLE" | awk -v g="$GROUP_PATH/" '$0 != "" && index($0, g) != 1 && index(g, $0) != 1 { print }' || true)
+[[ -z "$bad" ]] || die "bundle has entries outside $GROUP_PATH/: $(printf '%s' "$bad" | head -3 | tr '
+' ' ')"
 if [[ "$MODE" == dry-run ]]; then
   echo "DRY RUN OK. Nothing uploaded. Staging: $STAGING"
   exit 0
 fi
 
-echo "== bundle and upload (USER_MANAGED: release it in the portal UI, the script does not release)"
-BUNDLE="build/central-bundle-$VERSION.zip"
-rm -f "$BUNDLE"
-jar --create --file "$BUNDLE" -C "$STAGING" .
+echo "== upload (USER_MANAGED: release it in the portal UI, the script does not release)"
 auth=$(printf '%s:%s' "$CENTRAL_PORTAL_USERNAME" "$CENTRAL_PORTAL_PASSWORD" | base64 | tr -d '\n')
 # The bearer header goes through curl's config on stdin, so it never appears in the process list.
 response=$(printf 'header = "Authorization: Bearer %s"\n' "$auth" \
