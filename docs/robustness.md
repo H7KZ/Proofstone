@@ -118,13 +118,20 @@ run the five bad-test tasks ran concurrently, although the command had `--no-par
 added up to about 240 s, and the whole Gradle run took 76 s. AGENTS.md section 4 allows one Docker run at a time, and one
 `gradlew` invocation is one run, so `examples/bad-tests/build.gradle.kts` now orders every run task after all earlier ones
 (`mustRunAfter`, not only the neighbour, so a meta task that selects a subset keeps the order). With `--max-workers=1` the
-tasks never overlapped anyway; the ordering makes it hold under any flags. After-change XML timestamps: not recorded (the
-Docker engine returned HTTP 500 during T-M4-13, so no real-server run completed; see the PR).
+tasks never overlapped anyway; the ordering makes it hold under any flags. After-change evidence (metaTest, no selector,
+`--no-parallel --max-workers=1`, 2026-11-19, run 2 of 3, XML `testsuite` start and `time`; each suite starts 1.7 to 2.4 s
+after the previous one ended): VacuousE2E 17:35:20.764 (27.7 s), FlakyE2E 17:35:50.277 (35.4 s), DriverFaultDisagreeE2E
+17:36:27.489 (51.7 s), InvalidConformanceE2E 17:37:21.727 (22.0 s), WindowConformanceInvalidE2E 17:37:45.422 (28.3 s),
+LeakE2E 17:38:16.040 (33.2 s), ExpectFailsE2E 17:38:51.624 (26.6 s), RequiresSkipsE2E 17:39:19.917 (25.3 s), TopologySkipsE2E
+17:39:45.603. The suites are strictly sequential; the whole run took 4:27 to 4:54, near the sum of the testcase times.
 
 **Repeat that re-boots per repeat (T-M4-13).** `@Isolation(PER_TEST)` already gives a new server per test, so
-`-Dproofstone.repeat=N` on such a class boots N times and covers boot-level races. No code is needed, so the mode is kept as an
-opt-in. Expected cost: about N times the 35 to 50 s boot of one cell. That is a projection from the numbers above, not a
-measurement: the measured run is still open (Docker was down).
+`-Dproofstone.repeat=5` on such a class boots five times and covers boot-level races. Measured with a throwaway copy of
+`FlakyE2E` carrying `@Isolation(PER_TEST)` (not committed), `-Dproofstone.cells=paper@26.3`, 2026-11-19, Docker lock, one run:
+repeats 1 to 5 took 30.3, 27.0, 27.2, 27.1 and 27.0 s (suite 139.8 s, Gradle 2:32). The shared-boot flake run in the metaTest
+above took 35.4 s for the same five repeats (one boot, then about 1 s each). So re-booting per repeat costs about 27 s a
+repeat, roughly 4 times the shared run at N=5, and grows linearly with N. Decision: keep the mode as an opt-in for a test whose
+risk is a boot race; the default stays one boot, because 5 boots per test is too slow for the nightly set. No code change.
 
 **Release:** nightly plus mutation checks on example projects. Not measured: no mutation check exists yet (self-tests
 section 5).
