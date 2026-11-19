@@ -2131,3 +2131,52 @@ Data points read (all local evidence, kept outside the repo):
 - Contention (other containers on the host). Never measured at a stall.
 
 Next step: card **T-M6-109** in [M6-dogfood-release.md](tasks/M6-dogfood-release.md) (proposed, not started).
+
+## T-M6-109 differential runs (2026-11-19, no repo code changed)
+
+`:conformance:run -Dproofstone.cells=<cell> -Dproofstone.repeat=N --tests '*ConformanceSmokeTest.c02*'` (one cell boot, N joins through
+one ViaProxy), one invocation at a time under dockerlock, evidence in `/c/pw/evidence-T-M6-109/<run>` (local). Windows, Docker Desktop.
+
+| Run | Cell | Joins | Stall shape (no `Configuration finished`) | Other reds |
+|---|---|---|---|---|
+| b1 | paper@1.8.8 | 30 | 1 (repeat 4), reported as `could not join ... disconnect.endOfStream`, not a join timeout | 0 |
+| e1 | paper@1.8.8 | 100 | 0 | 1 (repeat 42, ViaProxy kick, below) |
+| e2 | paper@1.8.8, 16 host CPU burners | 100 | 1 (repeat 62, same report) | 0 |
+| w1 | paper@1.8.8 (+ read-only socket queue watcher) | 100 | 0 | 1 (repeat 43, ViaProxy kick) |
+| w2, w3 | paper@1.8.8 (+ watcher) | 100 each | 0 | 0 |
+| b2, b4 | paper@26.1.2 | 30, 100 | 0 | 0 |
+| b3 | paper@26.3 native (control) | 30 | 0 | 0 |
+
+Totals: paper@1.8.8 530 joins, stall shape 2 (0.4 percent), ViaProxy kick 2; paper@26.1.2 130 joins, 0; native 30, 0. A
+`CONFIGURATION_STALLED` `JoinTimeoutException` was 0 of 6 runs here (point B's shape occurred twice but both were classified as
+`could not join`). Point A (26.1.2) was not reproduced: 0 of 130. e1 ran with an unused env-gated diagnostic compiled in (never set).
+
+**Shown.**
+- A stalled join is the same on the wire as points A and B: `LoginFinished`, client `LoginAcknowledged` 1 ms later, nothing more
+  (the `driver-transcript` of the failed repeat is empty; the packet order is in the timeout message when there is one). ViaProxy log
+  ends at `Connected successfully! Switching to CONFIGURATION state`, the 1.8.8 server logged `logged in with entity id`. The packets
+  that ViaProxy should send to the client (`UpdateEnabledFeatures`, tags, known packs, registry data, 4 ms after the ack in every
+  passing join) never leave ViaProxy. So the holder is **ViaProxy** (or the link to it), not Paper and not the driver, for the
+  1.8.8 shape.
+- The close at +30 s races the client's own PT30S: 2 of 2 stalls here came back as `ClientDriverException: could not join ...
+  disconnect.endOfStream`, with no stage and no `join-stall.txt`. That is an evidence gap in the harness, not yet fixed.
+- Not load: 16 CPU burners gave 1 of 100, the idle runs 1 of 330.
+- A second ViaProxy-side failure on the same cell: `S2CLoginCompressionPacket.read` `IndexOutOfBoundsException` (ridx 1, widx 1) in
+  the proxy to server decoder, with a Via remap error of `DISGUISED_CHAT (0x1C)`, 2 of 530 joins, at repeat 42 and 43.
+
+**Guessed, not shown.**
+- Mechanism: ViaProxy `ChannelUtil.disableAutoRead` at login success and `restoreAutoRead` only in `ConfigurationPacketHandler` on the
+  client's ack (source read on GitHub main, not the pinned 3.4.15 build; the helpers are not thread-safe). A lost restore would leave
+  the server socket unread, which fits both A and B. The socket watcher (`/proc/net/tcp` rx queue of the ViaProxy container, 1 s
+  samples, read-only) was running in w1 to w3 but no stall happened in them, so it never had the chance to show unread bytes.
+- Whether the decode error is the same race (a state switch applied late to the proxy to server decoder) or not.
+- Whether A (26.1.2) and B share the cause; whether C-F02 (folia 1.20.6) and the prefixed-Bedrock stall are this stage:
+  folia 1.20.6 stalled before login (`Hello`, no reply, no ViaProxy line), a different stage; the Bedrock-prefixed one has no `[AUTH]` line
+  either, so it is not this stage as observed. Not pooled.
+
+**Fix:** none in this repo. No test could be written first (the cause is in ViaProxy). The ack-delay experiment (hold
+`LoginAcknowledged`) was built and compiled but not run: at 0.4 percent a run of 300 joins per arm is the minimum, and any fix that
+delays the ack is a sleep. **Next experiment:** run `w`-style loops until a stall is caught with the socket watcher on (expect rx queue
+above 0 on the proxy to server socket if the restore was lost); then try ViaProxy 3.4.16+ (pin change: needs maintainer approval).
+Proposed (not carded): make a +30 s disconnect during join report the stage (small, test-first, `McplDriver`).
+

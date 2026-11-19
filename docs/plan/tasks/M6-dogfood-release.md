@@ -662,3 +662,5 @@ reds (3 of 61, no reply to the hello) are a different stage and are not this car
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel --max-workers=1`
 
+_Result 2026-11-19 (diagnosis only, see ROADMAP "T-M6-109 differential runs"): 530 joins on paper@1.8.8, stall shape 2, ViaProxy decode kick 2; 130 on paper@26.1.2, 0. Holder: ViaProxy (shown on the wire and logs for 1.8.8); mechanism guessed. Not met: 30 runs of `:examples:bad-tests:metaTest`, fix, thread dump. Open: report the stage when the disconnect beats the timeout._
+
