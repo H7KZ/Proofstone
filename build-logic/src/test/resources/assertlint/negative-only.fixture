@@ -1,0 +1,20 @@
+package fixture;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+// Every assertion checks absence, and nothing is marked @ControlRun: the lint must reject this class.
+class NegativeOnlyE2E {
+
+    @Test
+    void nothingLeftBehind() {
+        assertThat(agent.player(client).state().inventory()).isEmpty();
+        assertThat(Boolean.getBoolean("forced")).isFalse();
+    }
+
+    @Test
+    void noneOfThem() {
+        assertThat(client.inventory()).noneMatch(item -> item.is("emerald"));
+    }
+}

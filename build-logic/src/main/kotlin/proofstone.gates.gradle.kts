@@ -1,6 +1,7 @@
 // Gate tasks from AGENTS.md §4. Applied once, to the root project.
 // `check` runs each module's `check` (which runs archTest), the lintVersions scan and the build-logic tests.
 import io.github.h7kz.proofstone.build.docs.DocsCheck
+import io.github.h7kz.proofstone.build.lint.AssertionLint
 import io.github.h7kz.proofstone.build.lint.VersionLint
 import io.github.h7kz.proofstone.build.matrix.PrintMatrix
 import io.github.h7kz.proofstone.build.versions.HttpVersionSource
@@ -50,8 +51,10 @@ tasks.register("docsCheck") {
     doLast {
         val report = DocsCheck.run(root.toPath())
         report.warnings().forEach { logger.warn("docsCheck warning: $it") }
-        if (!report.passed()) {
-            throw GradleException("docsCheck failed:\n" + report.errors().joinToString("\n"))
+        // Assertion lint (T-M4-14, robustness R2): a test class whose assertions are all negative fails here.
+        val assertionErrors = AssertionLint.scan(root.toPath())
+        if (!report.passed() || assertionErrors.isNotEmpty()) {
+            throw GradleException("docsCheck failed:\n" + (report.errors() + assertionErrors).joinToString("\n"))
         }
         logger.lifecycle("docsCheck: 0 errors, ${report.warnings().size} warning(s)")
     }
