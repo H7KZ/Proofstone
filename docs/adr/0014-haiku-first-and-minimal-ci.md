@@ -59,4 +59,4 @@ billed Actions minutes. Point 5 above no longer holds: there is no PR workflow. 
 ## Update 2026-11-18: workflows return
 
 The repository is public, so hosted runners are free. [ADR-0019](0019-public-repo-workflows.md) amends point 5 and the 2026-11-08 update:
-two workflows (`gates`, `release`) and a develop → main flow. The Haiku-first rules above are unchanged.
+two workflows (`gates`, `release`; a third, `docs`, was added by the 2026-11-19 ADR-0019 amendment) and a develop → main flow. The Haiku-first rules above are unchanged.
