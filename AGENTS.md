@@ -72,8 +72,9 @@ A framework for real-server end-to-end tests of Minecraft plugins, mods and add-
 
 ### CI and branches (ADR-0019)
 
-The repository is public, so hosted runners are free. Two workflows exist and no others: `gates.yml` (PR gate, no Docker) and `release.yml`
-(tag `v*` only). Real-server suites stay local.
+The repository is public, so hosted runners are free. Three workflows exist and no others: `gates.yml` (PR gate, no Docker), `release.yml`
+(tag `v*` only) and `docs.yml` (push to `main` touching `docs/**` or `scripts/docs-site.sh`; builds the docs site with `scripts/docs-site.sh`
+and deploys it to GitHub Pages; maintainer-approved 2026-11-19). Real-server suites stay local.
 
 - Branch from `develop`, open the PR into **`develop`**. A release is a PR `develop → main` plus a tag ([docs/contributing-flow.md](docs/contributing-flow.md)).
 - Run `bash scripts/gates.sh` before every PR and paste its summary. The `gates` check must be green to merge. Never claim a gate

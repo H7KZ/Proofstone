@@ -489,17 +489,18 @@ it needs, and whether the M9 driver's protocol matches.
 
 **Goal.** A static docs site and a compatibility page generated from `proofstone-report.json` files of local runs.
 
-**Needs maintainer decision:** hosting (GitHub Pages needs a workflow or a pushed branch; there is no CI, AGENTS.md section 4) and
-whether a "nightly" exists at all (it is local today).
+**Decision (2026-11-19, maintainer):** GitHub Pages hosting and one new workflow, `docs.yml`, are approved. A "nightly" does not exist
+(it is local today) and is not claimed.
 
 **Do.**
-- A local script that builds the site from `docs/` and a compatibility table from report files given to it. No workflow.
+- A local script (`scripts/docs-site.sh`) that builds the site from `docs/` and a compatibility table from report files given to it.
+- `.github/workflows/docs.yml`: push to `main` with paths `docs/**` and `scripts/docs-site.sh` only, SHA-pinned actions, Pages deploy.
 
 **Don't.**
-- Add a workflow, a schedule or a deployment. Claim a nightly that does not run.
+- Add a schedule, `workflow_dispatch` or `pull_request_target`. Claim a nightly that does not run. Enable Pages (the maintainer does).
 
 **Acceptance.**
-- [ ] The script builds the site locally from the repository and two report files; `bash scripts/gates.sh --max-workers=1` passes.
+- [x] The script builds the site locally from the repository and two report files; `bash scripts/gates.sh --max-workers=1` passes. Evidence (2026-11-19): `bash scripts/docs-site.sh --out build/docs-site scripts/fixtures/docs-site/report-a.json scripts/fixtures/docs-site/report-b.json` wrote 80 pages and the matrix; `gates: OK` under dockerlock.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`

@@ -36,6 +36,11 @@ deletion are off.
    and publishes the GitHub Release draft.
 6. Merge `main` back into `develop` so the version and changelog agree.
 
+## Docs site
+
+A push to `main` that changes `docs/**` or `scripts/docs-site.sh` runs the `docs` workflow, which builds the site and deploys it to GitHub
+Pages ([docs site](docs-site.md)). It is the only deployment besides the release.
+
 ## Hotfixes
 
 Branch `hotfix/<name>` from `main`, fix, PR into `main`, release as a patch (`v0.1.1`), then merge `main` into `develop`.

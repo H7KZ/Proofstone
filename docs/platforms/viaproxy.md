@@ -8,6 +8,8 @@ network, and never installs Via plugins in the server under test.
 - `ghcr.io/viaversion/viaproxy`, pinned by index digest in `versions.yml` (`drivers.viaproxy`). GPL-3.0, run as a
   separate container and never linked (ADR-0011).
 - Pinned build: ViaProxy 3.4.15 (`latest` on 2026-11-07), Java 25, supports servers 1.7+ and clients up to 26.3.
+- No newer stable release exists (T-M9-14, 2026-11-19): GitHub's newest is v3.4.14 (2026-09-27); the pin is a main snapshot 28 commits past it.
+  `:latest` has since moved to 3.5.0-SNAPSHOT (`sha256:5a1ed8d1...`, main `23719ec`) with renamed CLI flags, so it is not a drop-in pin.
 - The image entrypoint is `java -jar /app/ViaProxy.jar config viaproxy.yml` in `/app/run`. That mode needs a config
   file. Core overrides the entrypoint with `java -jar /app/ViaProxy.jar` and passes `cli` plus flags, so no file is
   copied or mounted (ADR-0005).

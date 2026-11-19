@@ -1,0 +1,37 @@
+# T-M10-16, ADR-0019 (amended 2026-11-19): publishes the docs site to GitHub Pages. Builds with scripts/docs-site.sh from docs/.
+# The compatibility matrix uses the reports committed under docs/compat-reports/ (none yet means an empty matrix page).
+# Real-server runs stay local; no nightly runs here.
+name: docs
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "scripts/docs-site.sh"
+permissions:
+  contents: read
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the site
+        run: |
+          shopt -s nullglob
+          bash scripts/docs-site.sh --out _site docs/compat-reports/*.json
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
