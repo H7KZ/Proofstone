@@ -1,0 +1,23 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "proofstone-bds-spike",
+    "description": "T-M10-01 spike: read-only agent over the inverted transport",
+    "uuid": "1c0fea80-1fa8-4482-a430-3e4737c3847c",
+    "version": [0, 0, 1],
+    "min_engine_version": [1, 26, 0]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "0c1f42a0-9269-4f01-84a6-b8a9879cda63",
+      "entry": "scripts/main.js",
+      "version": [0, 0, 1]
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "@SERVER_VERSION@" },
+    { "module_name": "@minecraft/server-net", "version": "@NET_VERSION@" }
+  ]
+}
