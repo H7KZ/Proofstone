@@ -46,7 +46,11 @@ def slug(text):
     return re.sub(r"[^a-z0-9 -]", "", re.sub(r"<[^>]+>", "", text).lower()).strip().replace(" ", "-")
 
 def rewrite(url, page_dir):
-    if re.match(r"^[a-z][a-z0-9+.-]*:", url) or url.startswith("#") or url.startswith("//"):
+    m = re.match(r"^([a-z][a-z0-9+.-]*):", url, re.I)
+    if m:
+        # Only these schemes may reach the generated HTML. javascript:, data: and the like become a dead link.
+        return url if m.group(1).lower() in ("http", "https", "mailto") else "#"
+    if url.startswith("#") or url.startswith("//"):
         return url
     path, _, frag = url.partition("#")
     if not path:
@@ -185,6 +189,9 @@ def load_report(path):
     results = data.get("results")
     if not isinstance(results, list) or not results:
         sys.exit(f"docs-site: {path}: no results")
+    summary = data.get("summary", {})
+    if not isinstance(summary, dict) or not all(isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in summary.values()):
+        sys.exit(f"docs-site: {path}: summary must map names to non-negative integers")
     for r in results:
         if not isinstance(r, dict) or not all(isinstance(r.get(k), str) for k in ("cell", "test", "verdict")) or r["verdict"] not in VERDICTS:
             sys.exit(f"docs-site: {path}: unknown or missing field in result {r!r}")
@@ -207,7 +214,7 @@ def matrix_page(paths):
         summary = data.get("summary") or {}
         b.append(f"<h2>{esc(name)}</h2>")
         b.append("<p>Overall: <strong>" + ("green" if data.get("green") is True else "not green") + "</strong>. " +
-                 ", ".join(f"{v} {summary.get(v, 0)}" for v in VERDICTS) + ".</p>")
+                 ", ".join(f"{v} {esc(str(summary.get(v, 0)))}" for v in VERDICTS) + ".</p>")
         t = "<table><thead><tr><th>Test</th>" + "".join(f"<th>{esc(c)}</th>" for c in cells) + "</tr></thead><tbody>"
         for test in tests:
             t += f"<tr><td>{esc(test)}</td>"
