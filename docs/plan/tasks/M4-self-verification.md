@@ -436,8 +436,8 @@ check the bundle files and the report.
 - Lint the framework's own tests.
 
 **Acceptance.**
-- [ ] A fixture test with only negative assertions fails the lint. The current examples pass it.
-- [ ] `./gradlew check docsCheck` is green.
+- [x] A fixture test with only negative assertions fails the lint. The current examples pass it.
+- [x] `./gradlew check docsCheck` is green.
 
 **Verify.**
 `./gradlew check docsCheck`

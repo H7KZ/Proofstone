@@ -1,0 +1,15 @@
+package fixture;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+// One positive assertion next to a negative one: the class is not negative-only, so the lint must accept it.
+class MixedE2E {
+
+    @Test
+    void positiveAndNegative() {
+        assertThat(agent.player(client).state().inventory()).isEmpty();
+        DualAssert.level(player, client).isEqualTo(3);
+    }
+}

@@ -1,0 +1,16 @@
+package fixture;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.github.h7kz.proofstone.api.ControlRun;
+import org.junit.jupiter.api.Test;
+
+// The only assertion checks absence, but its method is a declared control-run invariant: the lint must accept it.
+class ControlRunNegativeE2E {
+
+    @Test
+    @ControlRun(value = ControlRun.Expectation.EXPECTED_PASS, reason = "vanilla behaviour without the plugin")
+    void vanillaUnchanged() {
+        assertThat(player.state().inventory()).isEmpty();
+    }
+}
