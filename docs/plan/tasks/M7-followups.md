@@ -102,9 +102,13 @@ timeout family on single-server cells is bounded but unexplained (ROADMAP "M6 re
   contributor, and does not fix it. If T-M8-02 is dropped from M8, open a new card for it.
 
 **Acceptance.**
-- [ ] 10 separate invocations, each reported with its XML counts (`skipped`, `failures`, `errors`) and C04 result.
-- [ ] Every red has its verdict type, stalled stage and kept log, or the report says 0 of 10 red with the item still open.
-- [ ] A fix card is proposed, or the card says why none is needed. No code changed.
+- [x] 10 separate invocations, each reported with its XML counts (`skipped`, `failures`, `errors`) and C04 result. Evidence:
+  ROADMAP "T-M7-16 result". Every run: 17 tests, skipped 3, failures 6, errors 0, C04 `skipped="0" failures="0" errors="0"`.
+  The 6 failures are the same in all 10 runs and are not C04 (see the result).
+- [x] Every red has its verdict type, stalled stage and kept log, or the report says 0 of 10 red with the item still open. Evidence:
+  **not reproduced, 0 of 10 C04 red**, 0 join timeouts, 0 `PSConf moved too quickly`; the item stays open as unexplained.
+- [x] A fix card is proposed, or the card says why none is needed. No code changed. Evidence: none needed for C04 (no red to
+  explain). The related join-stall diagnosis is carded as **T-M6-109** in [M6-dogfood-release.md](M6-dogfood-release.md).
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --no-parallel --max-workers=1`

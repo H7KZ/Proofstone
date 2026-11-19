@@ -510,6 +510,7 @@ Next step: keep the XML of every red run (this run's loop copies it aside; reuse
 T-M6-10 (2026-11-09, ROADMAP "M6 pre-release findings" item 3): 45 more runs, 2 red (both `join-timeout`, verdict types named
 from the kept XML and bundles), plus 1 smoke pass. Combined with the 15 plain runs above: 3 red of 61 runs (2 of 46 unstressed, 1 of 15 under the artificial stressor), all join
 timeouts. Cause unknown; contention unresolved (see item 3).
+Update (T-M6-109, 2026-11-19): a fourth join-timeout shape was kept with full evidence, a bridged `CONFIGURATION_STALLED` on paper@26.1.2. It is a different stage from the 3 native reds. See "T-M6-109 join-stall analysis" below; card T-M6-109 proposes the fix work.
 
 ### Exit criterion (six items of T-M6-99 / the M6 goal)
 
@@ -792,7 +793,7 @@ is unexplained.** The single-server family (3 of 61 Gradle-example runs, M6) is 
 
 ### Known open items: verdicts
 
-1. **spigot@26.3 C04 timeout seen once by an agent.** **Not reproduced: 1 run, C04 green** (row above). The earlier red left no kept XML, bundle or stage message in the repository or the evidence folders, so its verdict type and stage cannot be named. Verdict: **unexplained, unverified, kept open**, counted as 1 red of 2 known spigot@26.3 C04 runs since then. A repeat count (for example 10 C04 runs, as the M5 follow-up did for C06) is a maintainer call; not run here.
+1. **spigot@26.3 C04 timeout seen once by an agent.** **Not reproduced: 1 run, C04 green** (row above). The earlier red left no kept XML, bundle or stage message in the repository or the evidence folders, so its verdict type and stage cannot be named. Verdict: **unexplained, unverified, kept open**, counted as 1 red of 2 known spigot@26.3 C04 runs since then. A repeat count (for example 10 C04 runs, as the M5 follow-up did for C06) is a maintainer call; not run here. **Update (T-M7-16, 2026-11-19): 10 separate runs, C04 green 10 of 10, not reproduced.** Counted with the earlier two: 1 red of 12 known spigot@26.3 C04 runs. Still unexplained, kept open (section "T-M7-16 result" below).
 2. **`FileOutputStream.open` stack trace in the wrong-secret `server-lobby` log: baseline, not caused by the fault.** It is
    `ERROR Could not save bukkit.yml ... (Permission denied)` from `CraftServer.saveConfig` at start, on **every** Paper boot in
    this review, single-server too (12 of 12 `server.log` files in this run's metaTest bundles, paper@26.3 and @26.1.2), because
@@ -2068,3 +2069,65 @@ Not a defect: `:examples:smoke:topologyExample` on `bungeecord@...` fails with "
 **Verdict unchanged: NO-GO for a public 0.1.0 claim.** Blocking, all the maintainer's or external: Disenchantment CI (another repo),
 Central namespace verification and publish, GHCR push, the GitHub Action on a hosted runner, the tag. Code and local gates are
 tag-ready at `e77149b`; re-run the mutation check at the tag HEAD first.
+
+## T-M7-16 result (2026-11-19, card T-M6-109 branch from origin/develop `0eb960c`)
+
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --no-parallel --max-workers=1`,
+10 separate invocations, one at a time, no retry, evidence copied aside after each (`/c/pw/evidence-T-M7-16/run-NN`, local, not
+committed). The pinned jar was in the Spigot cache (`build/proofstone/spigot-cache/22b5f5b3...jar`, copied from an earlier worktree);
+no BuildTools line in any log, so no rebuild was part of any run. Windows 11, Docker Desktop 29.9.3, JDK 25 toolchain.
+
+| Run | Wall | tests | skipped | failures | errors | C04 | Join timeouts | `moved too quickly` |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 7 m 50 s (first run, cold Gradle home) | 17 | 3 | 6 | 0 | `skipped=0 failures=0 errors=0` | 0 | 0 |
+| 2 to 10 | 3 m 14 s to 3 m 17 s each | 17 | 3 | 6 | 0 | `skipped=0 failures=0 errors=0` | 0 | 0 |
+
+- **C04 red: 0 of 10. Not reproduced.** C03 to C08 and both smoke tests passed in all 10. Join timeouts on spigot@26.3: 0 of 10
+  runs (no `JOIN STALL` or `timed out joining` line in any gradle log). Counted apart from M6's flake (which is paper@26.3
+  Gradle example, 3 of 61): none of those numbers move. Item stays **open, unexplained**: 1 red of 12 known spigot@26.3 C04 runs.
+- **The card's Verify command is itself red, 10 of 10, for a reason that is not spigot.** Gradle exit 1 each time: 6 failures, all
+  `initializationError` from `ProofstoneExtension.plan` ("has no cell to run: -Dproofstone.cells names none of its @Matrix
+  platforms") in `CD01DataPackFunctionTest`, `CD02DataPackRecipeTest`, `CR01ResourcePackTest` (3) and
+  `CR02ResourcePackWrongHashTest`. Those classes declare paper, fabric and neoforge, not spigot, and fail loudly instead of
+  skipping when the selector names a cell none of their platforms contain. The 3 skips are reasoned (`SIMULATED_BEDROCK` once,
+  `FOLIA_REGIONS` twice). So `:conformance:run -Dproofstone.cells=<spigot or purpur row>` cannot be green until those classes
+  skip or are excluded; the other 10 classes were green. Not fixed here (no code changes); not carded yet, maintainer call
+  (the loud failure follows the "fail loudly on unknowns" rule, so this may be intended and the Verify lines should add `--tests`).
+- The root-owned `bukkit.yml` line (T-M8-02) is not in any gradle log; a green run keeps no server log, so it could not be
+  checked per run. No red, so no log to read.
+- Cleanup: no Proofstone container left, Gradle daemon of this worktree stopped.
+
+## T-M6-109 join-stall analysis (2026-11-19, no code changed)
+
+Data points read (all local evidence, kept outside the repo):
+
+| # | Where | Path | Stalled stage | Server saw login? | Source |
+|---|---|---|---|---|---|
+| A | `:examples:bad-tests:metaTest`, paper@26.1.2, `LeakE2E` conformance client `PSConf`, protocol 777 | bridged (ViaProxy) | `CONFIGURATION_STALLED`, last packet `ClientboundLoginFinishedPacket` | yes: `UUID of player PSConf`, no `logged in with entity id`, then `lost connection: Disconnected` at +30 s | `/c/pw/evidence-T-M4-13/dev2/` (`join-stall.txt`, `server.log`, `viaproxy.log`) |
+| B | C05 repeat run 9, paper@1.8.8 | bridged | `CONFIGURATION_STALLED`, last packet `ClientboundLoginFinishedPacket` | yes: `logged in with entity id 52` (1.8.8 has no configuration phase) | `/c/pw/ev/rep/c05/bundles/` |
+| C | paper@26.3 Gradle example and plugin tests, 3 of 61 (T-M6-10 and earlier) | native | client sent `ClientIntentionPacket` and `ServerboundHelloPacket`, no reply (`LOGIN_START_SENT_NO_REPLY` shape; recorded before T-M6-14, stage not logged) | not recorded | ROADMAP "M6 pre-release findings" item 3 |
+| D | smoke c02 on paper@1.8.8 and spigot@1.8.8 | bridged | `JOIN_TELEPORT_HELD_NO_HEALTH` (different stage, fixed by T-M7-19) | yes | `/c/pw/t719-ev2/` |
+
+**Shown.**
+- In A the client received `ClientboundLoginFinishedPacket` and then nothing for 30 s: no registry data, known packs or finish
+  configuration packet reached the client. ViaProxy logged `Connected successfully! Switching to CONFIGURATION state` and, unlike
+  every passing connection in the same evidence (3 other joins, same ViaProxy and server image), never logged `Configuration finished!
+  Switching to PLAY state`. The Paper log has no error, no kick and no `logged in` line; it ends with the player's UUID line.
+- The stalled stage common to A and B is **configuration, after login finished**, on a **ViaProxy-bridged** cell, with ViaProxy
+  logging the switch to CONFIGURATION and never the finish. A and B are on different servers (26.1.2 and 1.8.8), so the stall is not
+  one Paper version.
+- C is a **different stage** (no reply to the hello, before login finished), on native cells. So there is **no single stage common
+  to all of the join timeouts on record**. Calling them one flake would be a guess. Do not pool A with C.
+- The ViaVersion mapping loader finishing in the same second as the join (A) is not a discriminator: it happens in the passing runs
+  too (evidence dev2, other ViaProxy logs).
+- The `driver-transcript.jsonl` of A holds 0 lines (conformance client; `driver-transcript` is written by the scenario), so the
+  packet record comes only from `join-stall.txt`.
+
+**Guessed, not shown.**
+- Whether the configuration packets were never sent by Paper, or were sent and lost or held inside ViaProxy's 26.3 to 26.1
+  translation (registry data, tags, known packs). The logs of both sides are silent at the stall.
+- Whether 2 data points (A, B) are one cause. Same stage and same ViaProxy log shape, but B's server was already in play.
+- Whether any of it relates to the 3 native reds (C). Nothing observed ties them.
+- Contention (other containers on the host). Never measured at a stall.
+
+Next step: card **T-M6-109** in [M6-dogfood-release.md](tasks/M6-dogfood-release.md) (proposed, not started).

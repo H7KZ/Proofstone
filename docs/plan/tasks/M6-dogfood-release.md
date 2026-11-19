@@ -617,3 +617,48 @@ from Central, as the Gradle example already does.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/consumer-cleanroom.sh maven 1`
+
+### T-M6-109 · Name and fix the join-configuration stall
+- tier: sonnet
+- depends: T-M6-14
+- modules: proofstone-core, drivers/mcpl, docs/platforms
+- adrs: 0003, 0007
+- specs: specs/client-driver.md, specs/self-tests.md §3
+- test-first: yes
+
+**Goal.** A conformance or test client sometimes receives `ClientboundLoginFinishedPacket` and then no configuration packet for
+PT30S (`CONFIGURATION_STALLED`; ROADMAP "T-M6-109 join-stall analysis", points A and B: paper@26.1.2 through ViaProxy, paper@1.8.8
+through ViaProxy). Say which side drops or holds the packets, then fix it if the cause is in this repo. The native paper@26.3
+reds (3 of 61, no reply to the hello) are a different stage and are not this card's scope.
+
+**Do.**
+- Write the failing test first where the cause allows (a loopback listener that sends `LoginFinished` and then goes silent already
+  exists as the model in `McplDriverTest`); otherwise first extend the stall evidence, below, and say that no test was possible.
+- Extend the stall evidence (read-only): on a `CONFIGURATION_STALLED` timeout, record in `join-stall.txt` every packet the client
+  received and sent in order with timestamps (the conformance client's `driver-transcript.jsonl` is empty today), the ViaProxy
+  container log for the whole join, and a thread dump of the server JVM (`jcmd 1 Thread.print` through the container exec API) taken at
+  the timeout. None of this waits on a sleep: it runs at the existing deadline.
+- Collect the stalls with `scripts/flake-loop.sh`-style runs of `:examples:bad-tests:metaTest` and `:conformance:run` on
+  `paper@26.1.2` (bridged) and `paper@1.8.8`, at least 30 runs per cell, one run at a time under `dockerlock`, XML and bundles of every
+  red kept aside before the next run.
+- From the first kept stall, state in the ROADMAP which side holds the packets (server never sent, ViaProxy translation held them, or
+  the client dropped them), with log lines. If it is ViaProxy or Paper and not this repo, document it in `docs/platforms/viaproxy.md`
+  and `paper.md` Gotchas and say what the harness can do (for example a wait for ViaProxy's `Configuration finished` line before
+  the first scenario), or that nothing can be done.
+- If it is in the driver (a configuration packet the client does not answer, such as known packs or a keep-alive), fix it with a
+  test, and run the loop again to count the result.
+
+**Don't.**
+- Raise the PT30S timeout, add a retry, a sleep or a re-join, or treat a green rerun as a fix (AGENTS.md section 3).
+- Pool the native paper@26.3 hello-no-reply reds with this stall unless the kept evidence shows the same stage.
+- Edit a `versions.yml` row or demote a cell, or change an ADR.
+
+**Acceptance.**
+- [ ] A failing test or, if impossible, the written reason; then it passes after the fix (or no fix is in this repo, and the card says why).
+- [ ] At least 30 runs per cell (paper@26.1.2, paper@1.8.8), with the count of `CONFIGURATION_STALLED` and every kept bundle read.
+- [ ] The ROADMAP names the side that holds the packets, from log lines, with what is evidence and what is guessed.
+- [ ] Gates: `bash scripts/gates.sh --max-workers=1` green; unit tests of the new stall evidence pass.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel --max-workers=1`
+
