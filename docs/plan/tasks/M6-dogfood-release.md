@@ -560,3 +560,30 @@ workflows, a develop → main flow and an operator guide for releases.
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/consumer-cleanroom.sh`
+
+### T-M6-108 · GitHub Action usage docs and self-check hardening
+- tier: haiku
+- depends: T-M6-105
+- modules: integrations/github-action, scripts, docs
+- adrs: 0019
+- specs: docs/limits.md, docs/release.md
+- test-first: no
+
+**Goal.** Document the GitHub Action as a product a plugin author can copy, and make its local self-check fail loudly when a prerequisite is missing. Nothing is published.
+
+**Do.**
+- Rewrite `integrations/github-action/README.md`: a copy-pasteable workflow snippet; the inputs and outputs of `action.yml`, copied verbatim; the versioning policy (a major tag `v1` is planned but not created, so until it exists consumers pin a full commit SHA); runner requirements (Docker, the EULA input); known limits, linked to `docs/limits.md` and not copied; and an explicit status line: not published, not on the GitHub Marketplace.
+- Harden `scripts/action-selfcheck.sh`: for the real run (not `--plan-only`), exit non-zero with a clear message when Docker is unreachable, when `PROOFSTONE_ACCEPT_EULA` is not `true`, or when the Bukkit agent jar is missing. Pass and fail meaning stays the same when the prerequisites are present.
+
+**Don't.**
+- Create a tag, a workflow file, a Marketplace listing or a `v1` tag. Edit the interface of `action.yml`.
+- Publish, push, merge, or add a dependency, image or workflow. Write the EULA value to any file.
+
+**Acceptance.**
+- [ ] `integrations/github-action/README.md` has a copy-pasteable workflow snippet, the inputs and outputs copied verbatim from `action.yml`, the versioning policy, runner requirements, known limits linked to `docs/limits.md`, and the line "not published, not on the Marketplace".
+- [ ] `scripts/action-selfcheck.sh` exits non-zero with a named message when Docker, the EULA env var or the agent jar is missing for the real run.
+- [ ] `bash -n scripts/action-selfcheck.sh` passes; the missing-prerequisite path is run and its output is pasted into the PR.
+- [ ] `bash scripts/gates.sh --max-workers=1` is green, run under `scripts/dockerlock.sh`.
+
+**Verify.**
+`bash -n scripts/action-selfcheck.sh && bash scripts/action-selfcheck.sh --plan-only; PROOFSTONE_ACCEPT_EULA=true bash scripts/action-selfcheck.sh`
