@@ -8,7 +8,7 @@
 | Specs (contracts) | [test API](specs/test-api.md) · [agent wire protocol](specs/agent-protocol.md) · [client driver SPI](specs/client-driver.md) · [versions.yml](specs/versions-yml.md) |
 | User guides | [writing tests](user/writing-tests.md) · [mods, data packs, resource packs](user/mods-and-packs.md) · [topologies](user/topologies.md) · [Bedrock through Geyser](user/bedrock.md) · [troubleshooting](user/troubleshooting.md) |
 | Versions and platforms | [versioning](versioning.md) · [platform plan](platforms.md) · [paper](platforms/paper.md) · [folia](platforms/folia.md) · [viaproxy](platforms/viaproxy.md) · [geyser](platforms/geyser.md) |
-| Using Proofstone | [compatibility and deprecation](compatibility.md) · [limits](limits.md) · [FAQ](faq.md) |
+| Using Proofstone | [compatibility and deprecation](compatibility.md) · [limits](limits.md) · [FAQ](faq.md) · [docs site and compatibility matrix](docs-site.md) |
 | Contributing and releases | [branches, PRs, releases](contributing-flow.md) · [releasing to Maven Central and GHCR](release.md) · [changelog](../CHANGELOG.md) |
 | Plan | [roadmap](plan/ROADMAP.md) · [task cards](plan/tasks/) |
 | AI agents | [AGENTS.md](../AGENTS.md) · [model tiering](ai/model-tiering.md) · [workflow and card format](ai/workflow.md) |

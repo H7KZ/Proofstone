@@ -1,0 +1,9 @@
+{
+  "schema": "proofstone-report/1",
+  "green": false,
+  "summary": {"PASS": 1, "FAIL": 1, "INVALID": 0, "VACUOUS": 0, "FLAKY": 0, "DISAGREE": 0, "SKIPPED": 0},
+  "results": [
+    {"cell": "folia@26.3", "test": "AnvilTest.disenchant", "verdict": "PASS", "green": true, "runs": 1, "reason": null, "skipReason": null},
+    {"cell": "folia@26.3", "test": "AnvilTest.grindstone", "verdict": "FAIL", "green": false, "runs": 1, "reason": "expected book, got air", "skipReason": null}
+  ]
+}
