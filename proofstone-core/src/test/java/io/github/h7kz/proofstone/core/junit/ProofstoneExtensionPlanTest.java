@@ -221,6 +221,39 @@ class ProofstoneExtensionPlanTest {
     }
 
     @Test
+    void aLoaderRowTheSelectorLeavesOutIsAJunitSkipWithItsReasonNotOnlyAStderrLine() throws IOException {
+        // T-M4-13 (robustness X1): "a skip is reported as a skip" (AGENTS.md section 3).
+        ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, null);
+
+        assertThat(plan.notSelected()).extracting(ProofstoneExtension.NotSelected::what)
+                .containsExactlyInAnyOrder("fabric", "neoforge");
+        assertThat(plan.notSelected()).allSatisfy(row -> assertThat(row.reason()).startsWith("NOT SELECTED: declares ")
+                .contains("experimental loader row"));
+        // Each becomes a disabled invocation, which JUnit lists as a skipped testcase carrying the reason.
+        assertThat(ProofstoneExtension.notSelectedInvocations(plan)).hasSize(2).allSatisfy(invocation -> {
+            assertThat(invocation.getDisplayName(0)).contains("not run: NOT SELECTED");
+            assertThat(((org.junit.jupiter.api.extension.ExecutionCondition) invocation.getAdditionalExtensions().get(0))
+                    .evaluateExecutionCondition(null).isDisabled()).isTrue();
+        });
+    }
+
+    @Test
+    void aPlatformTheSelectorDoesNotNameIsANotSelectedRowToo() throws IOException {
+        ProofstoneExtension.Plan plan = ProofstoneExtension.plan(PaperAndFolia.class, matrices(PaperAndFolia.class),
+                CellSelector.parse("paper@1.20.4", "-Dtest"),
+                new CellPlanner(VersionsFixture.load(dir, VersionsFixture.valid())), Scope.PR, VersionFamilies.none());
+
+        assertThat(plan.cells()).extracting(Cell::platform).containsExactly("paper");
+        assertThat(plan.notSelected()).extracting(ProofstoneExtension.NotSelected::what).containsExactly("folia");
+        assertThat(plan.notSelected().get(0).reason()).contains("NOT SELECTED").contains("declares folia");
+    }
+
+    @Test
+    void aClassWhoseEveryRowIsSelectedHasNoNotSelectedRow() throws IOException {
+        assertThat(planLoader(PaperAndLoaders.class, "paper@26.3,fabric@26.3,neoforge@26.3").notSelected()).isEmpty();
+    }
+
+    @Test
     void aLoaderSelectorPlansTheLoaderCellAndNoPaperCell() throws IOException {
         ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, "fabric@26.3");
 

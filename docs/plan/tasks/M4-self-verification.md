@@ -407,7 +407,7 @@ check the bundle files and the report.
 - Weaken a meta expectation to make it pass.
 
 **Acceptance.**
-- [ ] A unit test of the metaTest checker shows red when one bad test gives the wrong verdict.
+- [x] A unit test of the metaTest checker shows red when one bad test gives the wrong verdict. (`MetaCheckTest`, 16 tests, build-logic)
 - [ ] The overlap question is answered in the PR with XML timestamps.
 - [ ] The repeat-with-boot cost is in robustness.md §4.
 

@@ -1,8 +1,7 @@
 // Deliberately bad tests (T-M4-03 and later M4 cards): each one must produce its expected verdict. Its tests boot a
 // real server, so they need Docker and are not part of `check`. `metaTest` runs each bad test with its switch and
 // asserts the verdict (T-M4-07).
-import javax.xml.parsers.DocumentBuilderFactory
-import org.w3c.dom.Element
+import io.github.h7kz.proofstone.build.meta.MetaCheck
 
 plugins {
     id("proofstone.java-host")
@@ -143,50 +142,148 @@ tasks.test {
 }
 
 /**
- * One bad test on its own: the class pattern, the verdict its failure must start with, and the switches that make it
- * produce that verdict. Each run is a separate Test task, so the switches never leak into another run.
+ * One bad test's expectation (T-M4-13): checked on its own by MetaCheck, from the run's proofstone-report.json, its JUnit XML
+ * and its repro bundles. [test] is the report's name without the package, `Class.method`.
  */
+data class BadTest(
+    val test: String,
+    val verdict: String,
+    /** Text the report's reason must contain (the fault's own reason). */
+    val reasonHas: List<String> = emptyList(),
+    /** Text the reason must not contain, for example the join timeout that an injected fault must not be mistaken for. */
+    val reasonLacks: List<String> = emptyList(),
+    /** Bundle directories the run must have written for this test, relative to build/proofstone/<cell>/ (BundleWriter). */
+    val bundles: List<String> = emptyList(),
+    /** JUnit testcases this test makes: a flake run makes one per repeat, a differential run one per driver row. */
+    val testcases: Int = 1,
+    /** One entry per JUnit failure of this test, all its texts in one failure, most specific first. No failure may go unclaimed. */
+    val xml: List<List<String>> = emptyList(),
+    /** Text that no failure of this test may hold (a different red from the one this fault must give). */
+    val xmlLacks: List<String> = emptyList(),
+    val skipReason: String? = null,
+)
+
+/** A red test whose failure is the harness's own message, `VERDICT Class.method on cell: reason` (VerdictGate). */
+fun red(test: String, verdict: String, reasonHas: List<String> = emptyList(), bundle: Boolean = false) = BadTest(
+    test, verdict, reasonHas = reasonHas, bundles = if (bundle) listOf(test) else emptyList(),
+    xml = listOf(listOf("$verdict $test")),
+)
+
+/** A test that must be green: no failure, no bundle (a green single run writes none). */
+fun green(test: String) = BadTest(test, "PASS")
+
 /**
+ * One bad test class on its own: the class pattern, the switches that make it produce its verdict, and what each of its tests
+ * must give. Each run is a separate Test task, so the switches never leak into another run.
  * [pin] is the one cell the test's @Matrix names, or null for the rolling row (any paper cell). The pinned tests are the ones
  * whose verdict depends on their cell: the differential driver (26.1.2 only), the window fault and the leak test.
  */
 data class BadRun(
     val task: String, val include: String, val verdict: String, val switches: Map<String, String>, val pin: String? = null,
-    /** Text the failure must contain (the fault's own reason, its container and hop), so no other red satisfies the run. */
-    val mustContain: List<String> = emptyList(),
-    /** Text the failure must not contain, for example the join timeout that an injected fault must not be mistaken for. */
-    val mustNotContain: List<String> = emptyList(),
+    /** Every test the run's classes hold, each judged on its own (T-M4-13). */
+    val tests: List<BadTest> = emptyList(),
     /** A topology run needs the proxy agent jars in the test JVM (T-M7-13). */
     val topology: Boolean = false,
     /** A loader run needs this loader's agent jar in the test JVM and its crashing example mod under build/fixture-mods (T-M8-13). */
     val loader: String? = null,
     /** The run declares the crashing example mod (T-M8-13); a loader run that needs no mod (the leak test, T-M8-18) does not build it. */
     val crashingMod: Boolean = loader != null,
-    /** The failure is the test body's own assertion (a plain FAIL), not a message the harness prefixes with the verdict. */
-    val plainFailure: Boolean = false,
-    /** The verdict the run's proofstone-report.json must hold for the test, so the report agrees with the XML (T-M8-11). */
-    val reportVerdict: String? = null,
     /** A Geyser run needs the Bedrock driver host jar and its pinned-jar cache in the test JVM (T-M9-11). */
     val bedrock: Boolean = false,
 )
 
+val vacuousTest = "VacuousE2E.aFreshPlayerHasNoExperienceLevel"
+val flakyTest = "FlakyE2E.theOutcomeOfThisRunIsRandom"
+val disagreeTest = "DriverFaultDisagreeE2E.theDriversDisagreeOnTheDamageOfAGivenSword"
+val windowOne = "WindowConformanceInvalidE2E.aWindowBrokenCellGivesNoPluginVerdictForThisTest"
+val windowTwo = "WindowConformanceInvalidE2E.aSecondTestOnTheSameWindowBrokenCellIsInvalidToo"
+val expectWrong = "ExpectFailsE2E.theWrongExpectationFailsTheTest"
+val leakTest = "LeakE2E.leavesTheRandomTickSpeedChangedBehind"
+
 val badRuns = listOf(
-    BadRun("metaVacuous", "**/VacuousE2E*", "VACUOUS", mapOf("proofstone.controlRun" to "true")),
-    BadRun("metaFlaky", "**/FlakyE2E*", "FLAKY", mapOf("proofstone.repeat" to "5")),
+    BadRun(
+        "metaVacuous", "**/VacuousE2E*", "VACUOUS", mapOf("proofstone.controlRun" to "true"),
+        tests = listOf(red(vacuousTest, "VACUOUS", listOf("passes without the plugin"), bundle = true)),
+    ),
+    // Seed 3 draws pass, pass, fail, pass, fail: repeats 1, 2 and 4 are green, repeat 3 fails on its draw and repeat 5 carries the
+    // FLAKY verdict (and its own failed draw). Each failure is claimed by name, so the draw is no longer exempt (T-M4-13).
+    BadRun(
+        "metaFlaky", "**/FlakyE2E*", "FLAKY", mapOf("proofstone.repeat" to "5"),
+        tests = listOf(
+            BadTest(
+                flakyTest, "FLAKY", reasonHas = listOf("verdicts differ across 5 runs: PASS, FAIL"),
+                bundles = (1..5).map { "$flakyTest.r$it" }, testcases = 5,
+                xml = listOf(
+                    listOf("FLAKY $flakyTest on ", "over 5 runs: verdicts differ across 5 runs"),
+                    listOf("this run's random draw"),
+                ),
+            ),
+        ),
+    ),
     BadRun(
         "metaDisagree", "**/differential/DriverFaultDisagreeE2E*", "DISAGREE",
         mapOf("proofstone.differential" to "true", "proofstone.injectDriverFault" to "true"),
         pin = "paper@26.1.2",
+        tests = listOf(
+            green("$disagreeTest [mcpl]"),
+            BadTest(
+                "$disagreeTest [mineflayer-ref]", "DISAGREE", reasonHas = listOf("client and reference driver observations differ"),
+                bundles = listOf("$disagreeTest/mineflayer-ref"), xml = listOf(listOf("DISAGREE $disagreeTest on ")),
+            ),
+        ),
     ),
-    BadRun("metaInvalid", "**/invalid/InvalidConformanceE2E*", "INVALID", mapOf("proofstone.injectConformanceFault" to "true")),
+    BadRun(
+        "metaInvalid", "**/invalid/InvalidConformanceE2E*", "INVALID", mapOf("proofstone.injectConformanceFault" to "true"),
+        tests = listOf(
+            red(
+                "InvalidConformanceE2E.aCellWhoseConformanceFailsGivesNoPluginVerdict", "INVALID",
+                listOf("cell conformance failed: `list` did not print \"PROOFSTONE-CONFORMANCE-FAULT\""), bundle = true,
+            ),
+        ),
+    ),
     BadRun(
         "metaInvalidWindow", "**/invalid/window/**", "INVALID",
         mapOf("proofstone.injectConformanceFault" to "window"),
         pin = "paper@26.1.2",
+        tests = listOf(windowOne, windowTwo).map {
+            red(it, "INVALID", listOf("cell conformance failed: C04 failed: chest window type"), bundle = true)
+        },
     ),
-    BadRun("metaLeak", "**/leak/LeakE2E*", "LEAK", emptyMap(), pin = "paper@26.1.2"),
-    BadRun("metaExpect", "**/expect/**", "FAIL", emptyMap()),
-    BadRun("metaRequires", "**/requires/**", "SKIPPED", emptyMap()),
+    BadRun(
+        "metaLeak", "**/leak/LeakE2E*", "LEAK", emptyMap(), pin = "paper@26.1.2",
+        // The leak is a failure, not a verdict (self-tests section 4b): the report holds FAIL, and the reason starts with LEAK.
+        tests = listOf(
+            BadTest(
+                leakTest, "FAIL", reasonHas = listOf("LEAK $leakTest on ", "random_tick_speed"), bundles = listOf(leakTest),
+                xml = listOf(listOf("LEAK $leakTest on ")),
+            ),
+        ),
+    ),
+    BadRun(
+        "metaExpect", "**/expect/**", "FAIL", emptyMap(),
+        tests = listOf(
+            BadTest(
+                expectWrong, "FAIL", reasonHas = listOf("FoliaRegionsOnly"), bundles = listOf(expectWrong),
+                xml = listOf(listOf("FAIL expect ", "ExpectFailsE2E\$FoliaRegionsOnly")),
+            ),
+            green("ExpectFailsE2E.aHoldingExpectationLeavesThePass"),
+        ),
+    ),
+    BadRun(
+        "metaRequires", "**/requires/**", "SKIPPED", emptyMap(),
+        tests = listOf(
+            BadTest(
+                "RequiresSkipsE2E.skippedWithoutFolia", "SKIPPED", reasonHas = listOf("missing capability FOLIA_REGIONS on cell"),
+                skipReason = "CAPABILITY_MISSING",
+            ),
+            green("RequiresSkipsE2E.runsWithHeldCapabilities"),
+            // T-M7-10: a topology test on a single-server cell is skipped with its reason, never run or passed.
+            BadTest(
+                "TopologySkipsE2E.skippedOnASingleServerCell", "SKIPPED", reasonHas = listOf("missing capability TOPOLOGY on cell"),
+                skipReason = "CAPABILITY_MISSING",
+            ),
+        ),
+    ),
 )
 
 // T-M7-13: the topology faults, each on its own cell and with the reason it must give. The pins are the topology cells of
@@ -196,8 +293,13 @@ val plus = 43.toChar()
 val velocityCell = "velocity@4.3.1${plus}paper@26.3"
 val bungeeCell = "bungeecord@2111${plus}paper@26.3"
 fun topologyFault(task: String, cell: String, fault: String, vararg reason: String) = BadRun(
-    task, "**/topology/**", "INVALID", mapOf("proofstone.injectTopologyFault" to fault), pin = cell,
-    mustContain = listOf("INVALID ") + reason, mustNotContain = listOf("timed out joining"), topology = true,
+    task, "**/topology/**", "INVALID", mapOf("proofstone.injectTopologyFault" to fault), pin = cell, topology = true,
+    tests = listOf(
+        BadTest(
+            "TopologyFaultE2E.aTestOnABrokenTopologyNeverRuns", "INVALID",
+            xml = listOf(listOf("INVALID ") + reason), xmlLacks = listOf("timed out joining"),
+        ),
+    ),
 )
 
 val topologyRuns = listOf(
@@ -237,35 +339,71 @@ val topologyRuns = listOf(
 // needs the Fabric agent (a Java 25 toolchain and a build-time download), which metaTest must not depend on. `metaModTest`.
 val fabricCell = "fabric@26.3"
 val paperCell = "paper@26.3"
+val crashTest = "aModThatCrashesAtLoadNeverGivesAVerdict"
+val crashNeedles = listOf("INVALID ", "proofstone_example", "proofstone-crashing-mod.jar", "example mod was asked to fail")
 val modRuns = listOf(
     BadRun(
-        "metaModCrash", "**/mod/BrokenFabricModE2E*", "INVALID", emptyMap(), pin = fabricCell,
-        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-crashing-mod.jar", "example mod was asked to fail"),
-        mustNotContain = listOf("timed out", "BOOT TIMEOUT", "the body ran"), loader = "fabric", reportVerdict = "INVALID",
+        "metaModCrash", "**/mod/BrokenFabricModE2E*", "INVALID", emptyMap(), pin = fabricCell, loader = "fabric",
+        tests = listOf(
+            BadTest(
+                "BrokenFabricModE2E.$crashTest", "INVALID", xml = listOf(crashNeedles),
+                xmlLacks = listOf("timed out", "BOOT TIMEOUT", "the body ran"),
+            ),
+        ),
     ),
     // T-M8-18: the leak detector on a loader cell. The rule is the Paper leak test's (robustness R6), read back through the Fabric
     // agent's console; the failure is a plain AssertionFailedError starting LEAK, never a boot or join timeout.
     BadRun(
-        "metaLeakFabric", "**/leak/loader/LoaderLeakE2E*", "LEAK", emptyMap(), pin = fabricCell,
-        mustContain = listOf("LEAK LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind on fabric@26.3", "random_tick_speed: ", "is currently set to 7"),
-        mustNotContain = listOf("timed out", "BOOT TIMEOUT", "INVALID "), loader = "fabric", crashingMod = false,
-        reportVerdict = "FAIL",
+        "metaLeakFabric", "**/leak/loader/LoaderLeakE2E*", "LEAK", emptyMap(), pin = fabricCell, loader = "fabric",
+        crashingMod = false,
+        tests = listOf(
+            BadTest(
+                "LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind", "FAIL",
+                xml = listOf(
+                    listOf(
+                        "LEAK LoaderLeakE2E.leavesTheRandomTickSpeedChangedBehind on fabric@26.3", "random_tick_speed: ",
+                        "is currently set to 7",
+                    ),
+                ),
+                xmlLacks = listOf("timed out", "BOOT TIMEOUT", "INVALID "),
+            ),
+        ),
     ),
     BadRun(
-        "metaModCrashNeoForge", "**/mod/BrokenNeoForgeModE2E*", "INVALID", emptyMap(),
-        pin = "neoforge@26.3",
-        mustContain = listOf("INVALID ", "proofstone_example", "proofstone-crashing-mod.jar", "example mod was asked to fail"),
-        mustNotContain = listOf("timed out", "BOOT TIMEOUT", "the body ran"), loader = "neoforge", reportVerdict = "INVALID",
+        "metaModCrashNeoForge", "**/mod/BrokenNeoForgeModE2E*", "INVALID", emptyMap(), pin = "neoforge@26.3", loader = "neoforge",
+        tests = listOf(
+            BadTest(
+                "BrokenNeoForgeModE2E.$crashTest", "INVALID", xml = listOf(crashNeedles),
+                xmlLacks = listOf("timed out", "BOOT TIMEOUT", "the body ran"),
+            ),
+        ),
     ),
     BadRun(
         "metaModDataPack", "**/datapack/**", "INVALID", emptyMap(), pin = paperCell,
-        mustContain = listOf("INVALID ", "file/broken-function.zip", "proofstone_broken:hello"),
-        mustNotContain = listOf("timed out", "the body ran"), reportVerdict = "INVALID",
+        tests = listOf(
+            BadTest(
+                "BrokenFunctionE2E.aDataPackWithABrokenFunctionNeverGivesAVerdict", "INVALID",
+                xml = listOf(listOf("INVALID ", "file/broken-function.zip", "proofstone_broken:hello")),
+                xmlLacks = listOf("timed out", "the body ran"),
+            ),
+        ),
     ),
+    // A plain FAIL is the test body's own assertion: only an assertion counts, so a timeout or any other exception cannot satisfy
+    // the run, and the message must still carry the fault's own reason.
     BadRun(
         "metaModPackHash", "**/resourcepack/**", "FAIL", emptyMap(), pin = paperCell,
-        mustContain = listOf("FAILED_DOWNLOAD", "hash mismatch: expected 0000000000000000000000000000000000000000, got "),
-        mustNotContain = listOf("timed out", "CONFIGURATION_STALLED", "kicked"), plainFailure = true, reportVerdict = "FAIL",
+        tests = listOf(
+            BadTest(
+                "WrongHashPackE2E.aPackThatFailsItsHashCheckIsNotLoaded", "FAIL",
+                xml = listOf(
+                    listOf(
+                        "AssertionFailedError", "FAILED_DOWNLOAD",
+                        "hash mismatch: expected 0000000000000000000000000000000000000000, got ",
+                    ),
+                ),
+                xmlLacks = listOf("timed out", "CONFIGURATION_STALLED", "kicked"),
+            ),
+        ),
     ),
 )
 // T-M9-11: the Bedrock negative controls on the Geyser row, each with the reason it must give. Not part of metaTest: a Geyser cell is
@@ -273,8 +411,13 @@ val modRuns = listOf(
 // -Dproofstone.bedrock.protocolOverride, which only that fault sets (docs/platforms/geyser.md, "Negative controls").
 val geyserCell = "geyser@2.12.1${plus}paper@26.3"
 fun bedrockFault(task: String, fault: String, vararg reason: String) = BadRun(
-    task, "**/bedrock/**", "INVALID", mapOf("proofstone.injectGeyserFault" to fault), pin = geyserCell,
-    mustContain = listOf("INVALID ") + reason, mustNotContain = listOf("the body ran", "timed out joining", "BOOT TIMEOUT"), bedrock = true, reportVerdict = "INVALID",
+    task, "**/bedrock/**", "INVALID", mapOf("proofstone.injectGeyserFault" to fault), pin = geyserCell, bedrock = true,
+    tests = listOf(
+        BadTest(
+            "BedrockFaultE2E.aTestOnABrokenGeyserCellNeverRuns", "INVALID", xml = listOf(listOf("INVALID ") + reason),
+            xmlLacks = listOf("the body ran", "timed out joining", "BOOT TIMEOUT"),
+        ),
+    ),
 )
 val bedrockRuns = listOf(
     bedrockFault(
@@ -359,134 +502,58 @@ allRuns.forEach { run ->
     }
 }
 
+// T-M4-13: the run tasks never overlap. AGENTS.md section 4 allows one Docker run at a time, and one `gradlew` invocation is one
+// run, so its Testcontainers boots must not run side by side either. T-M4-08's metaTest overlapped five of them (suite starts
+// within 0.11 s) with gradle.properties' org.gradle.parallel=true. Each run waits for every earlier one that is in the graph,
+// not only its neighbour, so the order holds when a meta task selects a subset.
+allRuns.forEachIndexed { index, run ->
+    tasks.named(run.task) { mustRunAfter(allRuns.take(index).map { it.task }) }
+}
+
 val badRunReportDirs: Map<String, File> = allRuns.associate { run ->
     run.task to layout.buildDirectory.dir("proofstone-meta/${run.task}").get().asFile
 }
 
-// Runs every bad test with its switch and asserts its verdict. It needs Docker and the EULA; run it through
-// scripts/dockerlock.sh (examples/bad-tests/README.md). Per run: nothing skipped or errored, at least one test case, and
-// every failure starts with the expected verdict, with at least one such failure.
+// Runs every bad test with its switch and judges each test on its own (T-M4-13, MetaCheck): its verdict in the proofstone report,
+// its failure in the JUnit XML, its repro bundle, and no skip, failure or report row that no expectation names. It needs Docker
+// and the EULA; run it through scripts/dockerlock.sh (examples/bad-tests/README.md).
 fun registerMeta(taskName: String, taskDescription: String, runs: List<BadRun>, mergedName: String) {
 tasks.register(taskName) {
     group = "verification"
     description = taskDescription
     dependsOn(runs.map { it.task })
-    // Local copies, so the action captures only these values and not the script.
+    // Local copies, so the action captures only these values (strings and files) and not the script.
     val expectations = runs.map { run -> run.task to run.verdict }
-    val mustContainByTask = runs.associate { run -> run.task to run.mustContain }
-    val mustNotContainByTask = runs.associate { run -> run.task to run.mustNotContain }
-    val plainByTask = runs.associate { run -> run.task to run.plainFailure }
-    val reportVerdictByTask = runs.associate { run -> run.task to run.reportVerdict }
+    // The expectations travel as JSON text, which the configuration cache stores as it is; MetaCheck.parse reads them back.
+    val expectedByTask = runs.associate { run ->
+        run.task to groovy.json.JsonOutput.toJson(
+            run.tests.map { t ->
+                mapOf(
+                    "test" to t.test, "verdict" to t.verdict, "reasonHas" to t.reasonHas, "reasonLacks" to t.reasonLacks,
+                    "bundles" to t.bundles, "testcases" to t.testcases, "xmlFailures" to t.xml, "xmlLacks" to t.xmlLacks,
+                    "skipReason" to t.skipReason,
+                )
+            },
+        )
+    }
     val dirsByTask = badRunDirs
     val reportDirsByTask = badRunReportDirs
+    // BundleWriter writes build/proofstone/<cell>/<test> under the test's working directory, which is this project's.
+    val bundleRoot = layout.buildDirectory.dir("proofstone").get().asFile
     val mergedDir = layout.buildDirectory.dir(mergedName).get().asFile
     doLast {
         val problems = mutableListOf<String>()
-        val factory = DocumentBuilderFactory.newInstance()
-        for ((task, verdict) in expectations) {
-            val dir = dirsByTask.getValue(task)
-            val reports = dir.listFiles { file -> file.name.startsWith("TEST-") && file.name.endsWith(".xml") }
-                .orEmpty()
-            if (reports.isEmpty()) {
-                problems += "$task: no JUnit XML in $dir, so the run did not happen"
-                continue
-            }
-            var testCases = 0
-            var verdictFailures = 0
-            for (report in reports) {
-                val suite = factory.newDocumentBuilder().parse(report).documentElement
-                // Only the SKIPPED task expects skips; its skipped test is checked below, against the report's reason.
-                if (verdict != "SKIPPED" && suite.getAttribute("skipped") != "0") {
-                    problems += "$task: skipped=${suite.getAttribute("skipped")} in ${report.name} (a skip is not a pass)"
-                }
-                if (suite.getAttribute("errors") != "0") {
-                    problems += "$task: errors=${suite.getAttribute("errors")} in ${report.name}"
-                }
-                val cases = suite.getElementsByTagName("testcase")
-                for (index in 0 until cases.length) {
-                    testCases++
-                    val case = cases.item(index) as Element
-                    if (verdict == "SKIPPED" && case.getElementsByTagName("skipped").item(0) != null) {
-                        verdictFailures++
-                        continue
-                    }
-                    val failure = case.getElementsByTagName("failure").item(0) as Element? ?: continue
-                    // JUnit prefixes the message with the exception class; the verdict follows it.
-                    val message = failure.getAttribute("message").replaceFirst(Regex("^[\\w.$]+: "), "")
-                    // JUnit reports the test method's own failure first; a verdict from afterEach (the flake judgement)
-                    // is attached to it as a suppressed exception, which the XML keeps in its body.
-                    // A plain FAIL (T-M8-11) is the test body's own assertion; only an assertion counts, so a timeout or any
-                    // other exception cannot satisfy the run, and the message must still carry the fault's own reason.
-                    val plain = plainByTask.getValue(task) && failure.getAttribute("type").endsWith("AssertionFailedError")
-                    val named = plain || message.startsWith("$verdict ") ||
-                        failure.textContent.contains(Regex("Suppressed: [\\w.$]+: $verdict "))
-                    if (named) {
-                        verdictFailures++
-                        // The failure must give the reason this run was built for, not any other red (T-M7-13).
-                        val text = failure.getAttribute("message") + "\n" + failure.textContent
-                        for (needle in mustContainByTask.getValue(task)) {
-                            if (!text.contains(needle)) {
-                                problems += "$task: ${case.getAttribute("name")} is $verdict but its message lacks " +
-                                    "\"$needle\": " + message.take(300)
-                            }
-                        }
-                        for (needle in mustNotContainByTask.getValue(task)) {
-                            if (text.contains(needle)) {
-                                problems += "$task: ${case.getAttribute("name")} is $verdict but its message holds " +
-                                    "\"$needle\": a different red from the one this fault must give"
-                            }
-                        }
-                    } else if (task == "metaFlaky" && message.contains("random draw")) {
-                        // A flake's own runs fail on their draws; the FLAKY verdict is on the last run, and the draws
-                        // are the evidence that the runs differ.
-                    } else {
-                        problems += "$task: ${case.getAttribute("name")} failed without $verdict: " +
-                            message.take(300)
-                    }
-                }
-            }
-            if (testCases == 0) {
-                problems += "$task: no test case ran"
-            }
-            if (verdict == "SKIPPED") {
-                // The skip must name the missing capability in the proofstone report, not only in JUnit's own XML.
-                val file = File(reportDirsByTask.getValue(task), "proofstone-report.json")
-                val rows = if (file.isFile) (groovy.json.JsonSlurper().parse(file) as Map<*, *>)["results"] as List<*> else emptyList<Any>()
-                val named = rows.filterIsInstance<Map<*, *>>().any { row ->
-                    row["verdict"] == "SKIPPED" && row["skipReason"] == "CAPABILITY_MISSING" &&
-                        (row["reason"] as String?)?.contains("missing capability FOLIA_REGIONS on cell") == true
-                }
-                if (!named) {
-                    problems += "$task: no SKIPPED report naming the missing capability FOLIA_REGIONS"
-                }
-                // T-M7-10: a topology test on a single-server cell is skipped with its reason, never run or passed.
-                val topology = rows.filterIsInstance<Map<*, *>>().any { row ->
-                    row["verdict"] == "SKIPPED" && row["skipReason"] == "CAPABILITY_MISSING" &&
-                        (row["reason"] as String?)?.contains("missing capability TOPOLOGY on cell") == true
-                }
-                if (!topology) {
-                    problems += "$task: no SKIPPED report naming the missing capability TOPOLOGY"
-                }
-            }
-            // The report must say what the XML says (T-M8-11): a fault that JUnit shows red must not be green in the report.
-            reportVerdictByTask.getValue(task)?.let { wanted ->
-                val file = File(reportDirsByTask.getValue(task), "proofstone-report.json")
-                val rows = if (file.isFile) (groovy.json.JsonSlurper().parse(file) as Map<*, *>)["results"] as List<*> else emptyList<Any>()
-                if (rows.isEmpty() || !rows.filterIsInstance<Map<*, *>>().all { row -> row["verdict"] == wanted }) {
-                    problems += "$task: the proofstone report does not hold $wanted for every test: " +
-                        rows.filterIsInstance<Map<*, *>>().joinToString { "${it["test"]}=${it["verdict"]}" }
-                }
-            }
-            if (verdictFailures == 0) {
-                problems += "$task: no test produced $verdict"
-            }
+        for ((task, _) in expectations) {
+            problems += MetaCheck.check(
+                task, dirsByTask.getValue(task).toPath(), reportDirsByTask.getValue(task).toPath(), bundleRoot.toPath(),
+                MetaCheck.parse(expectedByTask.getValue(task)),
+            )
         }
         // One report for the whole meta run (T-M4-09): every task's own results, in the report's cell and test order.
         val results = mutableListOf<Map<String, Any?>>()
         for ((task, _) in expectations) {
             val file = File(reportDirsByTask.getValue(task), "proofstone-report.json")
             if (!file.isFile) {
-                problems += "$task: no proofstone-report.json, so its verdicts are missing from the report"
                 continue
             }
             val parsed = groovy.json.JsonSlurper().parse(file) as Map<*, *>
