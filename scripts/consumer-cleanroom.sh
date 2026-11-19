@@ -170,11 +170,12 @@ run_maven() {
   rm -rf "$dir"; mkdir -p "$proj" "$dir/consumer-build"
   cp -r "$REPO/examples/maven-paper-plugin/src" "$proj/"
   cp "$REPO/examples/maven-paper-plugin/pom.xml" "$proj/"
-  # Central first. Maven tries a POM's repositories in declaration order, and the example declares papermc (a proxy that also
-  # serves Central) before the implicit central, so Proofstone came from papermc (maven-run-1 red, kept as evidence). Gradle's
-  # mavenCentral() is already first. The example pom itself is not edited.
-  sed -i 's|<repositories>|<repositories><repository><id>central</id><url>https://repo.maven.apache.org/maven2</url></repository>|' "$proj/pom.xml"
-  [ "$(grep -c '<id>central</id>' "$proj/pom.xml")" = 1 ] || fail "could not put central first in the maven consumer pom"
+  # The example pom declares central before papermc (T-M6-107): Maven tries repositories in declaration order, and papermc is a
+  # proxy that also serves Central. The pom is used unedited; the guard below fails if that order is lost.
+  local cl pl
+  cl=$(grep -n '<id>central</id>' "$proj/pom.xml" | head -1 | cut -d: -f1 || true)
+  pl=$(grep -n '<id>papermc</id>' "$proj/pom.xml" | head -1 | cut -d: -f1 || true)
+  [ -n "$cl" ] && [ -n "$pl" ] && [ "$cl" -lt "$pl" ] || fail "maven consumer pom must declare central before papermc (T-M6-107)"
   cp "$proj/pom.xml" "$dir/consumer-build/"
   # Empty user settings: no mirrors or profiles from ~/.m2 can redirect a download away from Central.
   printf '<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"/>\n' > "$dir/empty-settings.xml"
