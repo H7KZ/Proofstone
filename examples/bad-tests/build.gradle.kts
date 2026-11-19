@@ -215,7 +215,7 @@ val badRuns = listOf(
                 bundles = (1..5).map { "$flakyTest.r$it" }, testcases = 5,
                 xml = listOf(
                     listOf("FLAKY $flakyTest on ", "over 5 runs: verdicts differ across 5 runs"),
-                    listOf("this run's random draw"),
+                    listOf("[this run's random draw]"),
                 ),
             ),
         ),
@@ -397,7 +397,7 @@ val modRuns = listOf(
                 "WrongHashPackE2E.aPackThatFailsItsHashCheckIsNotLoaded", "FAIL",
                 xml = listOf(
                     listOf(
-                        "AssertionFailedError", "FAILED_DOWNLOAD",
+                        "*FAILED_DOWNLOAD", "AssertionFailedError",
                         "hash mismatch: expected 0000000000000000000000000000000000000000, got ",
                     ),
                 ),

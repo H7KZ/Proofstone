@@ -221,31 +221,27 @@ class ProofstoneExtensionPlanTest {
     }
 
     @Test
-    void aLoaderRowTheSelectorLeavesOutIsAJunitSkipWithItsReasonNotOnlyAStderrLine() throws IOException {
-        // T-M4-13 (robustness X1): "a skip is reported as a skip" (AGENTS.md section 3).
+    void aPartlySelectedClassKeepsItsUnselectedRowsOutOfTheJunitReport() throws IOException {
+        // T-M4-13 review: a normal selector run (paper@26.3 over a class that also declares loaders) must stay skipped="0"
+        // (AGENTS.md section 4). The unselected rows are said on stderr and are kept on the plan only for the zero-row error.
         ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, null);
 
+        assertThat(plan.cells()).extracting(Cell::platform).containsExactly("paper");
         assertThat(plan.notSelected()).extracting(ProofstoneExtension.NotSelected::what)
                 .containsExactlyInAnyOrder("fabric", "neoforge");
-        assertThat(plan.notSelected()).allSatisfy(row -> assertThat(row.reason()).startsWith("NOT SELECTED: declares ")
-                .contains("experimental loader row"));
-        // Each becomes a disabled invocation, which JUnit lists as a skipped testcase carrying the reason.
-        assertThat(ProofstoneExtension.notSelectedInvocations(plan)).hasSize(2).allSatisfy(invocation -> {
-            assertThat(invocation.getDisplayName(0)).contains("not run: NOT SELECTED");
-            assertThat(((org.junit.jupiter.api.extension.ExecutionCondition) invocation.getAdditionalExtensions().get(0))
-                    .evaluateExecutionCondition(null).isDisabled()).isTrue();
-        });
+        assertThat(ProofstoneExtension.notSelectedInvocations(plan)).isEmpty();
     }
 
     @Test
-    void aPlatformTheSelectorDoesNotNameIsANotSelectedRowToo() throws IOException {
-        ProofstoneExtension.Plan plan = ProofstoneExtension.plan(PaperAndFolia.class, matrices(PaperAndFolia.class),
-                CellSelector.parse("paper@1.20.4", "-Dtest"),
-                new CellPlanner(VersionsFixture.load(dir, VersionsFixture.valid())), Scope.PR, VersionFamilies.none());
-
-        assertThat(plan.cells()).extracting(Cell::platform).containsExactly("paper");
-        assertThat(plan.notSelected()).extracting(ProofstoneExtension.NotSelected::what).containsExactly("folia");
-        assertThat(plan.notSelected().get(0).reason()).contains("NOT SELECTED").contains("declares folia");
+    void aClassWithNoSelectedRowFailsByNameAndListsEveryRowTheSelectorLeftOut() {
+        // The silent-vanish hole (robustness R15, X1): nothing selected is an error that names each unselected row, not a pass.
+        assertThatThrownBy(() -> planLoader(OnlyFabric.class, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(OnlyFabric.class.getName())
+                .hasMessageContaining("NOT SELECTED: declares fabric, an experimental loader row");
+        assertThatThrownBy(() -> plan(Declared.class, "folia@latest"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NOT SELECTED: declares paper, which -Dproofstone.cells or PROOFSTONE_CELLS does not name");
     }
 
     @Test

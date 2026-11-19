@@ -58,6 +58,34 @@ public final class MetaCheck {
         }
     }
 
+    /**
+     * One JUnit failure: its message without the exception class, and its body (the stack, with suppressed exceptions).
+     * An entry's first text must START the message (or a suppressed exception's message, where a verdict judged after the
+     * test is attached), so a failure that only quotes the verdict somewhere in its stack does not satisfy it. A first
+     * text starting with {@code *} may be anywhere; the other texts of an entry may be anywhere in the failure.
+     */
+    private record Failure(String message, String body) {
+
+        String text() {
+            return message + "\n" + body;
+        }
+
+        boolean matches(List<String> needles) {
+            String first = needles.get(0);
+            boolean head;
+            if (first.startsWith("*")) {
+                first = first.substring(1);
+                head = text().contains(first);
+            } else {
+                head = message.startsWith(first)
+                        || java.util.regex.Pattern.compile("Suppressed: [\\w.$]+: " + java.util.regex.Pattern.quote(first))
+                                .matcher(body).find();
+            }
+            String all = text();
+            return head && needles.stream().skip(1).allMatch(all::contains);
+        }
+    }
+
     /** Reads the expectations of a run from the JSON the build script writes (a string, so the configuration cache keeps it). */
     public static List<Expected> parse(String json) {
         try {
@@ -91,7 +119,7 @@ public final class MetaCheck {
         int testcases = 0;
         int skipped = 0;
         Instant start = null;
-        List<String> failures = new ArrayList<>();
+        List<Failure> failures = new ArrayList<>();
         for (Path file : files) {
             Element suite = parse(file);
             if (!"0".equals(suite.getAttribute("errors"))) {
@@ -109,7 +137,8 @@ public final class MetaCheck {
                 NodeList red = testcase.getElementsByTagName("failure");
                 for (int f = 0; f < red.getLength(); f++) {
                     Element failure = (Element) red.item(f);
-                    failures.add(failure.getAttribute("message") + "\n" + failure.getTextContent());
+                    failures.add(new Failure(failure.getAttribute("message").replaceFirst("^[\\w.$]+: ", ""),
+                            failure.getTextContent()));
                 }
             }
         }
@@ -126,7 +155,7 @@ public final class MetaCheck {
             for (List<String> needles : one.xmlFailures()) {
                 int found = -1;
                 for (int i = 0; i < failures.size() && found < 0; i++) {
-                    if (!claimed.contains(i) && needles.stream().allMatch(failures.get(i)::contains)) {
+                    if (!claimed.contains(i) && failures.get(i).matches(needles)) {
                         found = i;
                     }
                 }
@@ -136,7 +165,7 @@ public final class MetaCheck {
                 }
                 claimed.add(found);
                 for (String lacks : one.xmlLacks()) {
-                    if (failures.get(found).contains(lacks)) {
+                    if (failures.get(found).text().contains(lacks)) {
                         problems.add(task + ": " + one.test() + " failure holds \"" + lacks
                                 + "\", a different red from the one this fault must give");
                     }
@@ -146,7 +175,7 @@ public final class MetaCheck {
         for (int i = 0; i < failures.size(); i++) {
             if (!claimed.contains(i)) {
                 problems.add(task + ": a JUnit failure no expected test claims: "
-                        + failures.get(i).replace('\n', ' ').substring(0, Math.min(300, failures.get(i).length())));
+                        + abbreviate(failures.get(i).text().replace('\n', ' ')));
             }
         }
         return start;
@@ -185,6 +214,11 @@ public final class MetaCheck {
                         + row.path("reason").asText());
             }
             String reason = row.path("reason").asText("");
+            JsonNode code = row.path("skipReason");
+            if (one.skipReason() == null && !code.isMissingNode() && !code.isNull()) {
+                problems.add(task + ": " + one.test() + " carries skipReason " + code.asText() + " but is expected "
+                        + one.verdict() + ", not a skip");
+            }
             if (one.skipReason() != null && !one.skipReason().equals(row.path("skipReason").asText())) {
                 problems.add(task + ": " + one.test() + " skipReason " + row.path("skipReason").asText() + ", expected "
                         + one.skipReason());

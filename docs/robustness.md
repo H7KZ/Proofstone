@@ -119,8 +119,8 @@ added up to about 240 s, and the whole Gradle run took 76 s. AGENTS.md section 4
 `gradlew` invocation is one run, so `examples/bad-tests/build.gradle.kts` now orders every run task after all earlier ones
 (`mustRunAfter`, not only the neighbour, so a meta task that selects a subset keeps the order). With `--max-workers=1` the
 tasks never overlapped anyway; the ordering makes it hold under any flags. After-change evidence (metaTest, no selector,
-`--no-parallel --max-workers=1`, 2026-11-19, run 2 of 3, XML `testsuite` start and `time`; each suite starts 1.7 to 2.4 s
-after the previous one ended): VacuousE2E 17:35:20.764 (27.7 s), FlakyE2E 17:35:50.277 (35.4 s), DriverFaultDisagreeE2E
+`--no-parallel --max-workers=1`, 2026-11-19, run 2 of 3, XML `testsuite` start and `time`; each suite starts 1.7 to 2.5 s
+after the previous one ended, except RequiresSkipsE2E to TopologySkipsE2E, 0.4 s, which are two classes of one task): VacuousE2E 17:35:20.764 (27.7 s), FlakyE2E 17:35:50.277 (35.4 s), DriverFaultDisagreeE2E
 17:36:27.489 (51.7 s), InvalidConformanceE2E 17:37:21.727 (22.0 s), WindowConformanceInvalidE2E 17:37:45.422 (28.3 s),
 LeakE2E 17:38:16.040 (33.2 s), ExpectFailsE2E 17:38:51.624 (26.6 s), RequiresSkipsE2E 17:39:19.917 (25.3 s), TopologySkipsE2E
 17:39:45.603. The suites are strictly sequential; the whole run took 4:27 to 4:54, near the sum of the testcase times.
@@ -131,7 +131,10 @@ LeakE2E 17:38:16.040 (33.2 s), ExpectFailsE2E 17:38:51.624 (26.6 s), RequiresSki
 repeats 1 to 5 took 30.3, 27.0, 27.2, 27.1 and 27.0 s (suite 139.8 s, Gradle 2:32). The shared-boot flake run in the metaTest
 above took 35.4 s for the same five repeats (one boot, then about 1 s each). So re-booting per repeat costs about 27 s a
 repeat, roughly 4 times the shared run at N=5, and grows linearly with N. Decision: keep the mode as an opt-in for a test whose
-risk is a boot race; the default stays one boot, because 5 boots per test is too slow for the nightly set. No code change.
+risk is a boot race; the default stays one boot, because 5 boots per test is too slow for the nightly set. No code change. The
+measuring class is not committed (a committed copy would need its own meta task and a red-by-design place in `metaTest`); it
+is `FlakyE2E` with one more line above `@Proofstone`: `@Isolation(Isolation.Mode.PER_TEST)`, renamed `FlakyPerTestE2E`, run with
+`./gradlew :examples:bad-tests:test --tests '*FlakyPerTestE2E' -Dproofstone.repeat=5 -Dproofstone.cells=paper@26.3`.
 
 **Release:** nightly plus mutation checks on example projects. Not measured: no mutation check exists yet (self-tests
 section 5).
@@ -165,9 +168,10 @@ to T-M4-15. Cards are not implemented here.
 **Cross-cutting findings**
 
 - **X1. Skips printed to stderr only.** `NOT DIFFERENTIAL` and `NOT SELECTED` were printed to stderr and never reported
-  as JUnit skips. That broke "a skip is reported as a skip" (AGENTS.md section 3). Both are JUnit skips now: `NOT DIFFERENTIAL`
-  since T-M4-11, `NOT SELECTED` since T-M4-13 (a disabled invocation named `<row> (not run: NOT SELECTED: ...)`). A class whose
-  every row is unselected still fails by name, as before.
+  as JUnit skips. That broke "a skip is reported as a skip" (AGENTS.md section 3). `NOT DIFFERENTIAL` is a JUnit skip since
+  T-M4-11. `NOT SELECTED` stays stderr-only while a class has another selected row, because a normal selector run must stay
+  `skipped="0"` (AGENTS.md section 4; T-M4-13 first reported them all as skips and the review caught it). The silent-vanish
+  case is closed another way: a class with no selected row fails by name and lists each row as `NOT SELECTED: ...`.
 - **X2. The machine-readable report is never written.** `ReportWriter` and `JunitXml` have no caller outside their
   unit tests, so `build/proofstone/proofstone-report.json` does not exist at run time. The T-M4-01 Do list is not met,
   though its acceptance box was ticked. Card 09.

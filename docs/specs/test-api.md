@@ -29,7 +29,9 @@ void scenario(Cell cell, Agent agent, Client client) { ... }
   (the property wins if both are set). Entries are `platform@version` with a lower-case platform and a version that is
   an exact version, `latest` or `all`. When set, it **replaces** the `versions` of every `@Matrix` whose platform it
   names, so `paper@1.8.8` runs even if the class says `latest`. A `@Matrix` whose platform it does not name is not run,
-  and the run prints `PROOFSTONE NOT SELECTED`. The selector is not a skip: nothing is reported for those cells.
+  and the run prints `PROOFSTONE NOT SELECTED` on stderr. That is not a JUnit skip, so a selector run over a multi-platform class
+  stays `skipped="0"`. A class for which the selector names none of its `@Matrix` platforms fails by name, listing each row as
+  `NOT SELECTED: ...`: it never vanishes silently, and is never a skip or a pass.
 - Scope: `-Dproofstone.scope=pr|nightly` or `PROOFSTONE_SCOPE` (default `pr`). It decides what `all` takes:
   - `pr`: the `required` rows, plus the newest version of each version family (see below);
   - `nightly`: every `required` and `experimental` row, plus every family version; `retired` rows never, unless named.
@@ -389,8 +391,8 @@ class PackE2E {
 
 - **Loader cells (T-M8-08).** A `@Matrix` naming `Platform.FABRIC` or `Platform.NEOFORGE` plans a loader cell on a `loaders` row.
   Loader rows are `experimental`, so the matrix plans a cell only when `-Dproofstone.cells` (or `PROOFSTONE_CELLS`) names it, for
-  example `fabric@26.3`; without it the class prints `NOT SELECTED (not run, not a pass)` for that platform and runs its other
-  matrices. Loader cells run with the native `mcpl` driver only, never with `-Dproofstone.differential` or `-Dproofstone.repeat`,
+  example `fabric@26.3`; without it the class prints `NOT SELECTED (not run, not a pass)` on stderr for that platform (not a JUnit skip) and runs its
+  other matrices; a class with no other matrix fails by name with `NOT SELECTED: ...` for each row, never a skip or a pass. Loader cells run with the native `mcpl` driver only, never with `-Dproofstone.differential` or `-Dproofstone.repeat`,
   and `plugins` on one is an `INVALID test declaration`. A loader pack holds `CONSOLE` (verified by C03) and no other
   capability yet.
 - **New constants:** `Platform.FABRIC`, `Platform.NEOFORGE` (in the API since T-M8-08); `Capability.MODS`, `Capability.DATAPACKS_VANILLA`,
@@ -471,7 +473,8 @@ class BedrockE2E {
 
 - **Planning.** A `@Matrix` naming `Platform.GEYSER` plans Geyser cells from the `geyser` rows in scope (versions.yml, schema 5).
   Rows are `experimental`, so a class plans one only when `-Dproofstone.cells` (or `PROOFSTONE_CELLS`) names it, for example
-  `geyser@2.12.1+paper@26.3`; otherwise it prints `NOT SELECTED (not run, not a pass)`. A differential or flake-detector run on a
+  `geyser@2.12.1+paper@26.3`; otherwise it prints `NOT SELECTED (not run, not a pass)` on stderr (not a JUnit skip) and, if the class has no other matrix,
+  fails by name with `NOT SELECTED: ...` for each row, never a skip or a pass. A differential or flake-detector run on a
   Geyser cell is refused with an error. `plugins` works as on Paper; `mods` and `datapacks` are refused (`INVALID test declaration`).
 - **Injected.** `Agent` is the Paper server's (the Bukkit agent). `Client` is the Java `mcpl` client, joined as an ordinary Java
   player. The `Cell` describes `paper@26.3` and holds `BEDROCK_CLIENT`; it does **not** hold `PROXY` or `TOPOLOGY`.

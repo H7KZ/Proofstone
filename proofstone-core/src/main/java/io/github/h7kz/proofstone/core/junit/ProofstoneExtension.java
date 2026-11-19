@@ -208,8 +208,9 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
     }
 
     /**
-     * A declared row the selector left out (T-M4-13, robustness X1): reported as a JUnit skip with its reason, so it is never
-     * mistaken for a pass, as well as printed to stderr.
+     * A declared row the selector left out (T-M4-13, robustness X1). It is said on stderr, and kept on the plan so that a class
+     * with no selected row at all fails naming each one. It is not a JUnit skip while the class has other rows: a selector run
+     * over a multi-platform class must stay {@code skipped="0"} (AGENTS.md section 4).
      *
      * @param what the platform or cell entry that was not selected
      * @param reason why, starting with {@code NOT SELECTED}
@@ -217,8 +218,17 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
     record NotSelected(String what, String reason) {
     }
 
-    /** One disabled invocation per {@link NotSelected} row: JUnit lists each as a skip with its reason. */
+    /**
+     * The unselected rows as JUnit skips, only when the plan selects nothing, so no test or class can vanish silently. A plan
+     * with a selected row reports none (its unselected rows stay on stderr). {@link #plan} fails a class with no selected row
+     * before it gets here, so this holds for any plan built another way.
+     */
     static List<TestTemplateInvocationContext> notSelectedInvocations(Plan plan) {
+        boolean selected = !plan.cells().isEmpty() || !plan.topologies().isEmpty() || !plan.loaders().isEmpty()
+                || !plan.geysers().isEmpty();
+        if (selected) {
+            return List.of();
+        }
         return plan.notSelected().stream()
                 .<TestTemplateInvocationContext>map(row -> new NotRunInvocation(row.what(), row.reason())).toList();
     }
@@ -304,7 +314,8 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         }
         if (cells.isEmpty() && topologies.isEmpty() && loaders.isEmpty() && geysers.isEmpty()) {
             throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
-                    + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
+                    + " names none of its @Matrix platforms. Name one, or run only the classes that match."
+                    + notSelected.stream().map(row -> "\n  " + row.reason()).collect(java.util.stream.Collectors.joining()));
         }
         return new Plan(List.copyOf(cells), List.copyOf(topologies), List.copyOf(loaders), List.copyOf(geysers),
                 List.copyOf(notSelected));

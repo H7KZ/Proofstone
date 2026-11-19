@@ -33,7 +33,7 @@ PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:loade
   -Dproofstone.cells=fabric@26.3 --no-parallel --max-workers=1
 ```
 
-Without `-Dproofstone.cells=fabric@26.3` the class plans no cell and prints `NOT SELECTED`, which is not a pass. Read the XML in
+Without `-Dproofstone.cells=fabric@26.3` the class plans no cell and fails by name with `NOT SELECTED: ...` for each row, never a skip or a pass. Read the XML in
 `examples/loader-datapack/build/test-results/loaderExample/` and expect `tests="1" skipped="0" failures="0" errors="0"`.
 
 What was run (T-M8-12, 2026-11-15, warm loader cache): three separate invocations on `fabric@26.3`, all green, 1 test each,

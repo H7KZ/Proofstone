@@ -223,6 +223,27 @@ class MetaCheckTest {
     }
 
     @Test
+    void aFailureThatOnlyQuotesTheVerdictInItsStackIsRed() throws IOException {
+        // The review gap: contains-over-message-and-stack let a different red satisfy the run if the verdict text sat in a trace.
+        greenWindowRun();
+        String quoting = "<failure message=\"java.lang.IllegalStateException: boot failed\" type=\"x\">at x\n"
+                + "Caused by: INVALID " + ONE + " on paper@26.1.2: cell conformance failed</failure>";
+        writeXml(0, testcase(quoting), testcase(failure(TWO)));
+
+        assertThat(check(invalid(ONE), invalid(TWO))).anyMatch(p -> p.contains(ONE) && p.contains("no JUnit failure holds"));
+    }
+
+    @Test
+    void aTestThatIsNotASkipButCarriesASkipReasonIsRed() throws IOException {
+        greenWindowRun();
+        writeReport(row(ONE, "INVALID", "cell conformance failed: C04"),
+                "{\"cell\":\"paper@26.1.2\",\"test\":\"" + PKG + TWO + "\",\"verdict\":\"INVALID\","
+                        + "\"reason\":\"cell conformance failed\",\"skipReason\":\"EULA\"}");
+
+        assertThat(check(invalid(ONE), invalid(TWO))).anyMatch(p -> p.contains(TWO) && p.contains("carries skipReason EULA"));
+    }
+
+    @Test
     void aTaskWithNoXmlDidNotRun() throws IOException {
         assertThat(check(invalid(ONE))).anyMatch(p -> p.contains("no JUnit XML"));
     }
@@ -243,7 +264,7 @@ class MetaCheckTest {
             writeBundle(test + ".r" + run, START.plusSeconds(run));
         }
         Expected expected = new Expected(test, "FLAKY", List.of("verdicts differ across 5 runs"), List.of(), runs, 5,
-                List.of(List.of("FLAKY " + test + " on paper@26.3 over 5 runs"), List.of("this run's random draw")), List.of(),
+                List.of(List.of("FLAKY " + test + " on paper@26.3 over 5 runs"), List.of("[this run's random draw]")), List.of(),
                 null);
 
         assertThat(check(expected)).isEmpty();
@@ -256,7 +277,7 @@ class MetaCheckTest {
         writeXml(0, testcase(""), testcase(""), testcase(draw), testcase(""), testcase(draw));
         writeReport(row(test, "FLAKY", "verdicts differ across 5 runs: PASS, FAIL"));
         Expected expected = new Expected(test, "FLAKY", List.of(), List.of(), List.of(), 5,
-                List.of(List.of("FLAKY " + test + " on paper@26.3 over 5 runs"), List.of("this run's random draw")), List.of(),
+                List.of(List.of("FLAKY " + test + " on paper@26.3 over 5 runs"), List.of("[this run's random draw]")), List.of(),
                 null);
 
         assertThat(check(expected)).anyMatch(p -> p.contains("FLAKY " + test) && p.contains("no JUnit failure holds"));
