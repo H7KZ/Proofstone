@@ -15,9 +15,11 @@
   `scripts/release-mutation-check.sh`). Workflows call them, so there is one release path.
 
 ## Decision
-1. **Two workflows, nothing scheduled.**
+1. **Three workflows, nothing scheduled.** (Amended 2026-11-19: `docs.yml` added, maintainer decision, T-M10-16.)
    - `gates.yml`: on pull requests to `develop` and `main`, and pushes to `develop`. Runs `bash scripts/gates.sh` (no Docker).
    - `release.yml`: on a pushed tag `v*` only. Runs gates, the real-server smoke test and the mutation check, then publishes.
+   - `docs.yml`: on pushes to `main` that touch `docs/**` or `scripts/docs-site.sh` only. Builds the static docs site with `scripts/docs-site.sh`
+     and deploys it to GitHub Pages (permissions: contents read, pages write, id-token write). No schedule, no manual trigger, no secrets.
 2. **Nothing publishes itself.** Central gets a `USER_MANAGED` deployment (the maintainer presses Publish in the Portal). The GitHub
    Release is a **draft**. `versions.yml` digests change only through a reviewed PR.
 3. **Secrets sit in a protected environment** named `release` (required reviewer: the maintainer). Signing key, Portal token and
