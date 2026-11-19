@@ -472,3 +472,35 @@ only from runs already recorded in `geyser.md`; no flake rate is claimed. `-Dpro
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
+
+### T-M9-14 · Try a newer ViaProxy pin against the bridged join stall
+- tier: sonnet
+- depends: T-M6-109
+- modules: docs
+- adrs: 0006
+- specs: specs/versions-yml.md
+- test-first: no
+
+**Goal.** Find out whether a newer ViaProxy release changes the bridged `paper@1.8.8` join stall (`LoginFinished` acked, no configuration
+packets; 2 of 530 joins on 3.4.15, ROADMAP "T-M6-109 differential runs").
+
+**Do.**
+- Find the newest stable ViaProxy release and compare it with the pin (`drivers.viaproxy` in `versions.yml`).
+- If one is newer: pin it by index digest, run the counted C02 loop (at least 300 joins on paper@1.8.8, 100 on paper@26.1.2, at most 100 per
+  invocation) and the bridged conformance rows, and compare with the 530-join baseline as k stalls of n.
+
+**Don't.**
+- Keep a pin change that regresses a bridged row, claim the stall fixed from counts that cannot show it, or change core flags in a pin card.
+
+**Acceptance.**
+- [x] The newest stable release is named and compared with the pin. Result: GitHub releases end at v3.4.14 (2026-09-27); the pin is
+  3.4.15-SNAPSHOT (main at `3e81750e`, 2026-11-02), 28 commits past v3.4.14. There is no newer stable release.
+- [ ] Counted loops on a newer pin. Not run: the only newer artifact is `ghcr.io/viaversion/viaproxy:latest` (digest
+  `sha256:5a1ed8d14e246b6e756a20dd9b42c292775babf2fd055f2e3d8af91de787d2ab`, 3.5.0-SNAPSHOT, main at `23719ec`, 2026-11-17), an unreleased
+  build whose CLI was rewritten (#669): `cli --help` lists `--backend-address`, `--backend-version`, `--frontend-online-mode`, not the
+  `--target-address`, `--target-version`, `--auth-method`, `--proxy-online-mode` flags core passes. Using it needs a core change and a
+  maintainer yes for a snapshot pin. The 6 commits between the two builds touch no login or configuration fix (gradle, translations,
+  RakNet status helpers, config rewrite).
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`
