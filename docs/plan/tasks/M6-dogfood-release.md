@@ -529,3 +529,34 @@ workflows, a develop → main flow and an operator guide for releases.
 
 **Verify.**
 `bash scripts/gates.sh`
+
+### T-M6-105 · Clean-room consumer check against Maven Central
+- tier: haiku
+- depends: T-M6-102
+- modules: scripts, examples/gradle-paper-plugin, examples/maven-paper-plugin
+- adrs: 0012, 0019
+- specs: vision.md
+- test-first: no
+
+**Goal.** Prove that a project outside this repository resolves `proofstone-api`, `-core`, `-protocol` and `-drivers-mcpl` at
+`0.1.0` from Maven Central, and that both example e2e suites go green on `paper@26.3` that way.
+
+**Do.**
+- Write `scripts/consumer-cleanroom.sh`. It copies each example's sources into a scratch directory outside the repository, with a
+  fresh empty Maven repository (`-Dmaven.repo.local`) and a fresh empty `GRADLE_USER_HOME`, and `mavenLocal` disabled. A consumer
+  build file there names only `mavenCentral()`, the Paper repo and the opencollab repo, as the example READMEs do.
+- Make the script fail if any `io.github.h7kz.proofstone` artefact resolves from anywhere but Central (check the resolved URLs in the Maven
+  or Gradle log).
+- Run each e2e suite on `paper@26.3` three times, one invocation per run, through `scripts/dockerlock.sh`
+  (`--no-parallel --max-workers=1` for Gradle). Copy XML, bundles and logs aside after each run.
+
+**Don't.**
+- Publish, tag, add a dependency, workflow or image, or edit an existing example build file. Replace a red run with a later green.
+
+**Acceptance.**
+- [x] The script exists and exits non-zero when a Proofstone artefact does not come from Central.
+- [x] Both examples resolve all four artefacts from Maven Central (`repo.maven.apache.org` or `repo1.maven.org`; log lines kept). Host seen in logs: `repo.maven.apache.org` (Central's canonical host, same repository); see the commit body.
+- [x] Gradle and Maven e2e: three invocations each on `paper@26.3`, every XML `skipped="0" failures="0" errors="0"`.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/consumer-cleanroom.sh`
