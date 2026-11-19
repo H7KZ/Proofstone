@@ -53,6 +53,17 @@ Local real-server runs, one full `:conformance:run` per row, through this ViaPro
   on the cursor", about 3 in 10 full runs). Await the cursor, do not read it at once: C04 and C05 do
   (`ConformanceFixture.awaitCursor`, T-M7-21). _1.8.8 (bridged) · T-M7-20, T-M7-21_
 
+- **Bridged join stalls after `LoginFinished`, about 1 in 250 joins on 1.8.8 (T-M6-109).** The client gets `LoginFinished`, acks it
+  1 ms later, then nothing for 30 s. ViaProxy logs `Connected successfully! Switching to CONFIGURATION state` and never `Configuration
+  finished!`. Paper 1.8.8 is already in play (`logged in with entity id`). It is on the ViaProxy side of the bridge, not the server
+  and not the driver (packets are in the failure message when it is a `JoinTimeoutException`). Source read, not run-proven: ViaProxy's
+  `LoginPacketHandler` calls `ChannelUtil.disableAutoRead` on the server channel at login success and, for a 1.20.2+ client, only
+  `ConfigurationPacketHandler` (on the client's `LoginAcknowledged`) calls `restoreAutoRead`; a lost restore leaves the server socket
+  unread. Not shown: that this is what happens. The harness can do nothing: the client cannot see the proxy's state, and a wait,
+  retry or re-join is forbidden. A second shape of the same bridged 1.8.8 join, 2 of 530 joins: ViaProxy kicks the client with
+  `IndexOutOfBoundsException` in `S2CLoginCompressionPacket.read` (and `ERROR IN Protocol1_20_2To1_20_3 IN REMAP OF DISGUISED_CHAT`);
+  seen both times at join 42 or 43 of a 100-join cell. _1.8.8 (bridged) · ROADMAP "T-M6-109 differential runs"_
+
 ### Bridged login stall (M5 follow-up, 2026-11-08)
 - **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,
   Java 25) lists `--auth-method` (default NONE), `--proxy-online-mode` (default false), `--chat-signing`,
