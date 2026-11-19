@@ -587,3 +587,33 @@ workflows, a develop → main flow and an operator guide for releases.
 
 **Verify.**
 `bash -n scripts/action-selfcheck.sh && bash scripts/action-selfcheck.sh --plan-only; PROOFSTONE_ACCEPT_EULA=true bash scripts/action-selfcheck.sh`
+
+### T-M6-107 · Maven example resolves Proofstone from Central first
+- tier: haiku
+- depends: T-M6-105
+- modules: examples/maven-paper-plugin, scripts
+- adrs: 0012
+- specs: vision.md
+- test-first: no
+
+**Goal.** Make the Maven example declare Maven Central before the papermc proxy, so a consumer resolves the Proofstone artefacts
+from Central, as the Gradle example already does.
+
+**Do.**
+- Declare `central` first in the example `pom.xml` `<repositories>`, with a comment saying why. No version or dependency changes.
+- Keep the README and quickstart ordering text consistent with that (grep `docs/` and the example READMEs for papermc claims).
+- In `scripts/consumer-cleanroom.sh`, drop the sed that prepends Central. Keep the check that fails when a Proofstone artefact is not
+  from Central, and add a guard that fails when the pom does not declare central before papermc.
+
+**Don't.**
+- Change a version, add a dependency, workflow or image, or edit an ADR.
+- Patch the pom inside the cleanroom script to make it pass.
+
+**Acceptance.**
+- [x] The example `pom.xml` declares `central` before `papermc`, with a comment that links the reason.
+- [x] `consumer-cleanroom.sh` no longer edits the pom, still fails when a Proofstone artefact is not from Central, and fails when
+  papermc comes before central.
+- [x] Three separate `maven` cleanroom runs each show a verdict; every suite XML is `skipped="0" failures="0" errors="0"`.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/consumer-cleanroom.sh maven 1`
