@@ -5,6 +5,7 @@
 #   3. one real-server run of examples/gradle-paper-plugin on paper@26.3, under scripts/dockerlock.sh;
 #   4. the JUnit XML check, and the XML printed.
 # Step 3 needs Docker and runs the real server. Pass --plan-only to stop after step 2 (no Docker).
+# Before a real run the script checks Docker, the EULA env var and the built agent jar, and exits 1 with a message if one is missing.
 # The EULA is read from the environment only: PROOFSTONE_ACCEPT_EULA=true bash scripts/action-selfcheck.sh
 # Usage: bash scripts/action-selfcheck.sh [--plan-only]
 set -euo pipefail
@@ -19,10 +20,27 @@ case "${1:-}" in
 esac
 
 if [ "$plan_only" = false ] && [ "${PROOFSTONE_ACCEPT_EULA:-}" != "true" ]; then
-  echo "action-selfcheck: PROOFSTONE_ACCEPT_EULA=true must be set in the command environment (https://aka.ms/MinecraftEULA)" >&2
+  echo "action-selfcheck: MISSING EULA: PROOFSTONE_ACCEPT_EULA=true must be set in the command environment (https://aka.ms/MinecraftEULA)" >&2
   exit 1
 fi
 [ -f "$ROOT/versions.yml" ] && [ -f "$ROOT/gradlew" ] || { echo "action-selfcheck: not a Proofstone checkout: $ROOT" >&2; exit 1; }
+
+# The real run needs Docker and the built Bukkit agent jar. --plan-only needs neither. Missing ones fail here, not later.
+AGENT_JAR="$ROOT/platforms/bukkit/agent/build/libs/agent-all.jar"
+if [ "$plan_only" = false ]; then
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "action-selfcheck: MISSING Docker: no 'docker' command on PATH. Start Docker Desktop (Linux containers) and retry." >&2
+    exit 1
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    echo "action-selfcheck: MISSING Docker: the daemon does not answer 'docker info'. Start Docker Desktop and retry." >&2
+    exit 1
+  fi
+  if [ ! -f "$AGENT_JAR" ]; then
+    echo "action-selfcheck: MISSING agent jar: $AGENT_JAR. Build it with ./gradlew :platforms:bukkit:agent:shadowJar (never committed)." >&2
+    exit 1
+  fi
+fi
 
 export PROOFSTONE_ROOT="$ROOT"
 export PROOFSTONE_SCOPE=pr

@@ -221,6 +221,35 @@ class ProofstoneExtensionPlanTest {
     }
 
     @Test
+    void aPartlySelectedClassKeepsItsUnselectedRowsOutOfTheJunitReport() throws IOException {
+        // T-M4-13 review: a normal selector run (paper@26.3 over a class that also declares loaders) must stay skipped="0"
+        // (AGENTS.md section 4). The unselected rows are said on stderr and are kept on the plan only for the zero-row error.
+        ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, null);
+
+        assertThat(plan.cells()).extracting(Cell::platform).containsExactly("paper");
+        assertThat(plan.notSelected()).extracting(ProofstoneExtension.NotSelected::what)
+                .containsExactlyInAnyOrder("fabric", "neoforge");
+        assertThat(ProofstoneExtension.notSelectedInvocations(plan)).isEmpty();
+    }
+
+    @Test
+    void aClassWithNoSelectedRowFailsByNameAndListsEveryRowTheSelectorLeftOut() {
+        // The silent-vanish hole (robustness R15, X1): nothing selected is an error that names each unselected row, not a pass.
+        assertThatThrownBy(() -> planLoader(OnlyFabric.class, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(OnlyFabric.class.getName())
+                .hasMessageContaining("NOT SELECTED: declares fabric, an experimental loader row");
+        assertThatThrownBy(() -> plan(Declared.class, "folia@latest"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NOT SELECTED: declares paper, which -Dproofstone.cells or PROOFSTONE_CELLS does not name");
+    }
+
+    @Test
+    void aClassWhoseEveryRowIsSelectedHasNoNotSelectedRow() throws IOException {
+        assertThat(planLoader(PaperAndLoaders.class, "paper@26.3,fabric@26.3,neoforge@26.3").notSelected()).isEmpty();
+    }
+
+    @Test
     void aLoaderSelectorPlansTheLoaderCellAndNoPaperCell() throws IOException {
         ProofstoneExtension.Plan plan = planLoader(PaperAndLoaders.class, "fabric@26.3");
 

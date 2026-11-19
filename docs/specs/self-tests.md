@@ -207,7 +207,7 @@ erun.txt names
 - **Section 3 (differential):** only client observations at `DualAssert` points are compared, so a test with no dual
   assertion cannot DISAGREE. Only paper@26.1.2 is a differential row. Card T-M4-11.
 - **Section 4 (flake detector):** repeats share the class server, so they do not repeat boots. FLAKY is shown on the
-  last repeat only; the report lists every run's verdict (T-M4-09). Boot coverage: card T-M4-13.
+  last repeat only; the report lists every run's verdict (T-M4-09). Boot coverage: `@Isolation(PER_TEST)` with repeat (robustness.md section 4, T-M4-13).
 - **Section 4b (leak detector):** world rules, plugin configs and enabled flags, and player XP and inventory, compared
   after the harness cleanup (T-M4-12b). Open: no public-API test can leave a state the snapshot covers. See the PR.
 - **Section 5 (mutation check):** not built.

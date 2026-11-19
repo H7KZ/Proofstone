@@ -529,3 +529,138 @@ workflows, a develop → main flow and an operator guide for releases.
 
 **Verify.**
 `bash scripts/gates.sh`
+
+### T-M6-105 · Clean-room consumer check against Maven Central
+- tier: haiku
+- depends: T-M6-102
+- modules: scripts, examples/gradle-paper-plugin, examples/maven-paper-plugin
+- adrs: 0012, 0019
+- specs: vision.md
+- test-first: no
+
+**Goal.** Prove that a project outside this repository resolves `proofstone-api`, `-core`, `-protocol` and `-drivers-mcpl` at
+`0.1.0` from Maven Central, and that both example e2e suites go green on `paper@26.3` that way.
+
+**Do.**
+- Write `scripts/consumer-cleanroom.sh`. It copies each example's sources into a scratch directory outside the repository, with a
+  fresh empty Maven repository (`-Dmaven.repo.local`) and a fresh empty `GRADLE_USER_HOME`, and `mavenLocal` disabled. A consumer
+  build file there names only `mavenCentral()`, the Paper repo and the opencollab repo, as the example READMEs do.
+- Make the script fail if any `io.github.h7kz.proofstone` artefact resolves from anywhere but Central (check the resolved URLs in the Maven
+  or Gradle log).
+- Run each e2e suite on `paper@26.3` three times, one invocation per run, through `scripts/dockerlock.sh`
+  (`--no-parallel --max-workers=1` for Gradle). Copy XML, bundles and logs aside after each run.
+
+**Don't.**
+- Publish, tag, add a dependency, workflow or image, or edit an existing example build file. Replace a red run with a later green.
+
+**Acceptance.**
+- [x] The script exists and exits non-zero when a Proofstone artefact does not come from Central.
+- [x] Both examples resolve all four artefacts from Maven Central (`repo.maven.apache.org` or `repo1.maven.org`; log lines kept). Host seen in logs: `repo.maven.apache.org` (Central's canonical host, same repository); see the commit body.
+- [x] Gradle and Maven e2e: three invocations each on `paper@26.3`, every XML `skipped="0" failures="0" errors="0"`.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/consumer-cleanroom.sh`
+
+### T-M6-108 · GitHub Action usage docs and self-check hardening
+- tier: haiku
+- depends: T-M6-105
+- modules: integrations/github-action, scripts, docs
+- adrs: 0019
+- specs: docs/limits.md, docs/release.md
+- test-first: no
+
+**Goal.** Document the GitHub Action as a product a plugin author can copy, and make its local self-check fail loudly when a prerequisite is missing. Nothing is published.
+
+**Do.**
+- Rewrite `integrations/github-action/README.md`: a copy-pasteable workflow snippet; the inputs and outputs of `action.yml`, copied verbatim; the versioning policy (a major tag `v1` is planned but not created, so until it exists consumers pin a full commit SHA); runner requirements (Docker, the EULA input); known limits, linked to `docs/limits.md` and not copied; and an explicit status line: not published, not on the GitHub Marketplace.
+- Harden `scripts/action-selfcheck.sh`: for the real run (not `--plan-only`), exit non-zero with a clear message when Docker is unreachable, when `PROOFSTONE_ACCEPT_EULA` is not `true`, or when the Bukkit agent jar is missing. Pass and fail meaning stays the same when the prerequisites are present.
+
+**Don't.**
+- Create a tag, a workflow file, a Marketplace listing or a `v1` tag. Edit the interface of `action.yml`.
+- Publish, push, merge, or add a dependency, image or workflow. Write the EULA value to any file.
+
+**Acceptance.**
+- [ ] `integrations/github-action/README.md` has a copy-pasteable workflow snippet, the inputs and outputs copied verbatim from `action.yml`, the versioning policy, runner requirements, known limits linked to `docs/limits.md`, and the line "not published, not on the Marketplace".
+- [ ] `scripts/action-selfcheck.sh` exits non-zero with a named message when Docker, the EULA env var or the agent jar is missing for the real run.
+- [ ] `bash -n scripts/action-selfcheck.sh` passes; the missing-prerequisite path is run and its output is pasted into the PR.
+- [ ] `bash scripts/gates.sh --max-workers=1` is green, run under `scripts/dockerlock.sh`.
+
+**Verify.**
+`bash -n scripts/action-selfcheck.sh && bash scripts/action-selfcheck.sh --plan-only; PROOFSTONE_ACCEPT_EULA=true bash scripts/action-selfcheck.sh`
+
+### T-M6-107 · Maven example resolves Proofstone from Central first
+- tier: haiku
+- depends: T-M6-105
+- modules: examples/maven-paper-plugin, scripts
+- adrs: 0012
+- specs: vision.md
+- test-first: no
+
+**Goal.** Make the Maven example declare Maven Central before the papermc proxy, so a consumer resolves the Proofstone artefacts
+from Central, as the Gradle example already does.
+
+**Do.**
+- Declare `central` first in the example `pom.xml` `<repositories>`, with a comment saying why. No version or dependency changes.
+- Keep the README and quickstart ordering text consistent with that (grep `docs/` and the example READMEs for papermc claims).
+- In `scripts/consumer-cleanroom.sh`, drop the sed that prepends Central. Keep the check that fails when a Proofstone artefact is not
+  from Central, and add a guard that fails when the pom does not declare central before papermc.
+
+**Don't.**
+- Change a version, add a dependency, workflow or image, or edit an ADR.
+- Patch the pom inside the cleanroom script to make it pass.
+
+**Acceptance.**
+- [x] The example `pom.xml` declares `central` before `papermc`, with a comment that links the reason.
+- [x] `consumer-cleanroom.sh` no longer edits the pom, still fails when a Proofstone artefact is not from Central, and fails when
+  papermc comes before central.
+- [x] Three separate `maven` cleanroom runs each show a verdict; every suite XML is `skipped="0" failures="0" errors="0"`.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/consumer-cleanroom.sh maven 1`
+
+### T-M6-109 · Name and fix the join-configuration stall
+- tier: sonnet
+- depends: T-M6-14
+- modules: proofstone-core, drivers/mcpl, docs/platforms
+- adrs: 0003, 0007
+- specs: specs/client-driver.md, specs/self-tests.md §3
+- test-first: yes
+
+**Goal.** A conformance or test client sometimes receives `ClientboundLoginFinishedPacket` and then no configuration packet for
+PT30S (`CONFIGURATION_STALLED`; ROADMAP "T-M6-109 join-stall analysis", points A and B: paper@26.1.2 through ViaProxy, paper@1.8.8
+through ViaProxy). Say which side drops or holds the packets, then fix it if the cause is in this repo. The native paper@26.3
+reds (3 of 61, no reply to the hello) are a different stage and are not this card's scope.
+
+**Do.**
+- Write the failing test first where the cause allows (a loopback listener that sends `LoginFinished` and then goes silent already
+  exists as the model in `McplDriverTest`); otherwise first extend the stall evidence, below, and say that no test was possible.
+- Extend the stall evidence (read-only): on a `CONFIGURATION_STALLED` timeout, record in `join-stall.txt` every packet the client
+  received and sent in order with timestamps (the conformance client's `driver-transcript.jsonl` is empty today), the ViaProxy
+  container log for the whole join, and a thread dump of the server JVM (`jcmd 1 Thread.print` through the container exec API) taken at
+  the timeout. None of this waits on a sleep: it runs at the existing deadline.
+- Collect the stalls with `scripts/flake-loop.sh`-style runs of `:examples:bad-tests:metaTest` and `:conformance:run` on
+  `paper@26.1.2` (bridged) and `paper@1.8.8`, at least 30 runs per cell, one run at a time under `dockerlock`, XML and bundles of every
+  red kept aside before the next run.
+- From the first kept stall, state in the ROADMAP which side holds the packets (server never sent, ViaProxy translation held them, or
+  the client dropped them), with log lines. If it is ViaProxy or Paper and not this repo, document it in `docs/platforms/viaproxy.md`
+  and `paper.md` Gotchas and say what the harness can do (for example a wait for ViaProxy's `Configuration finished` line before
+  the first scenario), or that nothing can be done.
+- If it is in the driver (a configuration packet the client does not answer, such as known packs or a keep-alive), fix it with a
+  test, and run the loop again to count the result.
+
+**Don't.**
+- Raise the PT30S timeout, add a retry, a sleep or a re-join, or treat a green rerun as a fix (AGENTS.md section 3).
+- Pool the native paper@26.3 hello-no-reply reds with this stall unless the kept evidence shows the same stage.
+- Edit a `versions.yml` row or demote a cell, or change an ADR.
+
+**Acceptance.**
+- [ ] A failing test or, if impossible, the written reason; then it passes after the fix (or no fix is in this repo, and the card says why).
+- [ ] At least 30 runs per cell (paper@26.1.2, paper@1.8.8), with the count of `CONFIGURATION_STALLED` and every kept bundle read.
+- [ ] The ROADMAP names the side that holds the packets, from log lines, with what is evidence and what is guessed.
+- [ ] Gates: `bash scripts/gates.sh --max-workers=1` green; unit tests of the new stall evidence pass.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel --max-workers=1`
+
+_Result 2026-11-19 (diagnosis only, see ROADMAP "T-M6-109 differential runs"): 530 joins on paper@1.8.8, stall shape 2, ViaProxy decode kick 2; 130 on paper@26.1.2, 0. Holder: ViaProxy (shown on the wire and logs for 1.8.8); mechanism guessed. Not met: 30 runs of `:examples:bad-tests:metaTest`, fix, thread dump. Open: report the stage when the disconnect beats the timeout._
+

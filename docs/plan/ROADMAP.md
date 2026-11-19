@@ -510,6 +510,7 @@ Next step: keep the XML of every red run (this run's loop copies it aside; reuse
 T-M6-10 (2026-11-09, ROADMAP "M6 pre-release findings" item 3): 45 more runs, 2 red (both `join-timeout`, verdict types named
 from the kept XML and bundles), plus 1 smoke pass. Combined with the 15 plain runs above: 3 red of 61 runs (2 of 46 unstressed, 1 of 15 under the artificial stressor), all join
 timeouts. Cause unknown; contention unresolved (see item 3).
+Update (T-M6-109, 2026-11-19): a fourth join-timeout shape was kept with full evidence, a bridged `CONFIGURATION_STALLED` on paper@26.1.2. It is a different stage from the 3 native reds. See "T-M6-109 join-stall analysis" below; card T-M6-109 proposes the fix work.
 
 ### Exit criterion (six items of T-M6-99 / the M6 goal)
 
@@ -792,7 +793,7 @@ is unexplained.** The single-server family (3 of 61 Gradle-example runs, M6) is 
 
 ### Known open items: verdicts
 
-1. **spigot@26.3 C04 timeout seen once by an agent.** **Not reproduced: 1 run, C04 green** (row above). The earlier red left no kept XML, bundle or stage message in the repository or the evidence folders, so its verdict type and stage cannot be named. Verdict: **unexplained, unverified, kept open**, counted as 1 red of 2 known spigot@26.3 C04 runs since then. A repeat count (for example 10 C04 runs, as the M5 follow-up did for C06) is a maintainer call; not run here.
+1. **spigot@26.3 C04 timeout seen once by an agent.** **Not reproduced: 1 run, C04 green** (row above). The earlier red left no kept XML, bundle or stage message in the repository or the evidence folders, so its verdict type and stage cannot be named. Verdict: **unexplained, unverified, kept open**, counted as 1 red of 2 known spigot@26.3 C04 runs since then. A repeat count (for example 10 C04 runs, as the M5 follow-up did for C06) is a maintainer call; not run here. **Update (T-M7-16, 2026-11-19): 10 separate runs, C04 green 10 of 10, not reproduced.** Counted with the earlier two: 1 red of 12 known spigot@26.3 C04 runs. Still unexplained, kept open (section "T-M7-16 result" below).
 2. **`FileOutputStream.open` stack trace in the wrong-secret `server-lobby` log: baseline, not caused by the fault.** It is
    `ERROR Could not save bukkit.yml ... (Permission denied)` from `CraftServer.saveConfig` at start, on **every** Paper boot in
    this review, single-server too (12 of 12 `server.log` files in this run's metaTest bundles, paper@26.3 and @26.1.2), because
@@ -2068,3 +2069,305 @@ Not a defect: `:examples:smoke:topologyExample` on `bungeecord@...` fails with "
 **Verdict unchanged: NO-GO for a public 0.1.0 claim.** Blocking, all the maintainer's or external: Disenchantment CI (another repo),
 Central namespace verification and publish, GHCR push, the GitHub Action on a hosted runner, the tag. Code and local gates are
 tag-ready at `e77149b`; re-run the mutation check at the tag HEAD first.
+
+## T-M7-16 result (2026-11-19, card T-M6-109 branch from origin/develop `0eb960c`)
+
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --no-parallel --max-workers=1`,
+10 separate invocations, one at a time, no retry, evidence copied aside after each (`/c/pw/evidence-T-M7-16/run-NN`, local, not
+committed). The pinned jar was in the Spigot cache (`build/proofstone/spigot-cache/22b5f5b3...jar`, copied from an earlier worktree);
+no BuildTools line in any log, so no rebuild was part of any run. Windows 11, Docker Desktop 29.9.3, JDK 25 toolchain.
+
+| Run | Wall | tests | skipped | failures | errors | C04 | Join timeouts | `moved too quickly` |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 7 m 50 s (first run, cold Gradle home) | 17 | 3 | 6 | 0 | `skipped=0 failures=0 errors=0` | 0 | 0 |
+| 2 to 10 | 3 m 14 s to 3 m 17 s each | 17 | 3 | 6 | 0 | `skipped=0 failures=0 errors=0` | 0 | 0 |
+
+- **C04 red: 0 of 10. Not reproduced.** C03 to C08 and both smoke tests passed in all 10. Join timeouts on spigot@26.3: 0 of 10
+  runs (no `JOIN STALL` or `timed out joining` line in any gradle log). Counted apart from M6's flake (which is paper@26.3
+  Gradle example, 3 of 61): none of those numbers move. Item stays **open, unexplained**: 1 red of 12 known spigot@26.3 C04 runs.
+- **The card's Verify command is itself red, 10 of 10, for a reason that is not spigot.** Gradle exit 1 each time: 6 failures, all
+  `initializationError` from `ProofstoneExtension.plan` ("has no cell to run: -Dproofstone.cells names none of its @Matrix
+  platforms") in `CD01DataPackFunctionTest`, `CD02DataPackRecipeTest`, `CR01ResourcePackTest` (3) and
+  `CR02ResourcePackWrongHashTest`. Those classes declare paper, fabric and neoforge, not spigot, and fail loudly instead of
+  skipping when the selector names a cell none of their platforms contain. The 3 skips are reasoned (`SIMULATED_BEDROCK` once,
+  `FOLIA_REGIONS` twice). So `:conformance:run -Dproofstone.cells=<spigot or purpur row>` cannot be green until those classes
+  skip or are excluded; the other 10 classes were green. Not fixed here (no code changes); not carded yet, maintainer call
+  (the loud failure follows the "fail loudly on unknowns" rule, so this may be intended and the Verify lines should add `--tests`).
+- The root-owned `bukkit.yml` line (T-M8-02) is not in any gradle log; a green run keeps no server log, so it could not be
+  checked per run. No red, so no log to read.
+- Cleanup: no Proofstone container left, Gradle daemon of this worktree stopped.
+
+## T-M6-109 join-stall analysis (2026-11-19, no code changed)
+
+Data points read (all local evidence, kept outside the repo):
+
+| # | Where | Path | Stalled stage | Server saw login? | Source |
+|---|---|---|---|---|---|
+| A | `:examples:bad-tests:metaTest`, paper@26.1.2, `LeakE2E` conformance client `PSConf`, protocol 777 | bridged (ViaProxy) | `CONFIGURATION_STALLED`, last packet `ClientboundLoginFinishedPacket` | yes: `UUID of player PSConf`, no `logged in with entity id`, then `lost connection: Disconnected` at +30 s | `/c/pw/evidence-T-M4-13/dev2/` (`join-stall.txt`, `server.log`, `viaproxy.log`) |
+| B | C05 repeat run 9, paper@1.8.8 | bridged | `CONFIGURATION_STALLED`, last packet `ClientboundLoginFinishedPacket` | yes: `logged in with entity id 52` (1.8.8 has no configuration phase) | `/c/pw/ev/rep/c05/bundles/` |
+| C | paper@26.3 Gradle example and plugin tests, 3 of 61 (T-M6-10 and earlier) | native | client sent `ClientIntentionPacket` and `ServerboundHelloPacket`, no reply (`LOGIN_START_SENT_NO_REPLY` shape; recorded before T-M6-14, stage not logged) | not recorded | ROADMAP "M6 pre-release findings" item 3 |
+| D | smoke c02 on paper@1.8.8 and spigot@1.8.8 | bridged | `JOIN_TELEPORT_HELD_NO_HEALTH` (different stage, fixed by T-M7-19) | yes | `/c/pw/t719-ev2/` |
+
+**Shown.**
+- In A the client received `ClientboundLoginFinishedPacket` and then nothing for 30 s: no registry data, known packs or finish
+  configuration packet reached the client. ViaProxy logged `Connected successfully! Switching to CONFIGURATION state` and, unlike
+  every passing connection in the same evidence (3 other joins, same ViaProxy and server image), never logged `Configuration finished!
+  Switching to PLAY state`. The Paper log has no error, no kick and no `logged in` line; it ends with the player's UUID line.
+- The stalled stage common to A and B is **configuration, after login finished**, on a **ViaProxy-bridged** cell, with ViaProxy
+  logging the switch to CONFIGURATION and never the finish. A and B are on different servers (26.1.2 and 1.8.8), so the stall is not
+  one Paper version.
+- C is a **different stage** (no reply to the hello, before login finished), on native cells. So there is **no single stage common
+  to all of the join timeouts on record**. Calling them one flake would be a guess. Do not pool A with C.
+- The ViaVersion mapping loader finishing in the same second as the join (A) is not a discriminator: it happens in the passing runs
+  too (evidence dev2, other ViaProxy logs).
+- The `driver-transcript.jsonl` of A holds 0 lines (conformance client; `driver-transcript` is written by the scenario), so the
+  packet record comes only from `join-stall.txt`.
+
+**Guessed, not shown.**
+- Whether the configuration packets were never sent by Paper, or were sent and lost or held inside ViaProxy's 26.3 to 26.1
+  translation (registry data, tags, known packs). The logs of both sides are silent at the stall.
+- Whether 2 data points (A, B) are one cause. Same stage and same ViaProxy log shape, but B's server was already in play.
+- Whether any of it relates to the 3 native reds (C). Nothing observed ties them.
+- Contention (other containers on the host). Never measured at a stall.
+
+Next step: card **T-M6-109** in [M6-dogfood-release.md](tasks/M6-dogfood-release.md) (proposed, not started).
+
+## T-M6-109 differential runs (2026-11-19, no repo code changed)
+
+`:conformance:run -Dproofstone.cells=<cell> -Dproofstone.repeat=N --tests '*ConformanceSmokeTest.c02*'` (one cell boot, N joins through
+one ViaProxy), one invocation at a time under dockerlock, evidence in `/c/pw/evidence-T-M6-109/<run>` (local). Windows, Docker Desktop.
+
+| Run | Cell | Joins | Stall shape (no `Configuration finished`) | Other reds |
+|---|---|---|---|---|
+| b1 | paper@1.8.8 | 30 | 1 (repeat 4), reported as `could not join ... disconnect.endOfStream`, not a join timeout | 0 |
+| e1 | paper@1.8.8 | 100 | 0 | 1 (repeat 42, ViaProxy kick, below) |
+| e2 | paper@1.8.8, 16 host CPU burners | 100 | 1 (repeat 62, same report) | 0 |
+| w1 | paper@1.8.8 (+ read-only socket queue watcher) | 100 | 0 | 1 (repeat 43, ViaProxy kick) |
+| w2, w3 | paper@1.8.8 (+ watcher) | 100 each | 0 | 0 |
+| b2, b4 | paper@26.1.2 | 30, 100 | 0 | 0 |
+| b3 | paper@26.3 native (control) | 30 | 0 | 0 |
+
+Totals: paper@1.8.8 530 joins, stall shape 2 (0.4 percent), ViaProxy kick 2; paper@26.1.2 130 joins, 0; native 30, 0. A
+`CONFIGURATION_STALLED` `JoinTimeoutException` was 0 of 6 runs here (point B's shape occurred twice but both were classified as
+`could not join`). Point A (26.1.2) was not reproduced: 0 of 130. e1 ran with an unused env-gated diagnostic compiled in (never set).
+
+**Shown.**
+- A stalled join is the same on the wire as points A and B: `LoginFinished`, client `LoginAcknowledged` 1 ms later, nothing more
+  (the `driver-transcript` of the failed repeat is empty; the packet order is in the timeout message when there is one). ViaProxy log
+  ends at `Connected successfully! Switching to CONFIGURATION state`, the 1.8.8 server logged `logged in with entity id`. The packets
+  that ViaProxy should send to the client (`UpdateEnabledFeatures`, tags, known packs, registry data, 4 ms after the ack in every
+  passing join) never leave ViaProxy. So the holder is **ViaProxy** (or the link to it), not Paper and not the driver, for the
+  1.8.8 shape.
+- The close at +30 s races the client's own PT30S: 2 of 2 stalls here came back as `ClientDriverException: could not join ...
+  disconnect.endOfStream`, with no stage and no `join-stall.txt`. That is an evidence gap in the harness, not yet fixed.
+- Not load: 16 CPU burners gave 1 of 100, the idle runs 1 of 330.
+- A second ViaProxy-side failure on the same cell: `S2CLoginCompressionPacket.read` `IndexOutOfBoundsException` (ridx 1, widx 1) in
+  the proxy to server decoder, with a Via remap error of `DISGUISED_CHAT (0x1C)`, 2 of 530 joins, at repeat 42 and 43.
+
+**Guessed, not shown.**
+- Mechanism: ViaProxy `ChannelUtil.disableAutoRead` at login success and `restoreAutoRead` only in `ConfigurationPacketHandler` on the
+  client's ack (source read on GitHub main, not the pinned 3.4.15 build; the helpers are not thread-safe). A lost restore would leave
+  the server socket unread, which fits both A and B. The socket watcher (`/proc/net/tcp` rx queue of the ViaProxy container, 1 s
+  samples, read-only) was running in w1 to w3 but no stall happened in them, so it never had the chance to show unread bytes.
+- Whether the decode error is the same race (a state switch applied late to the proxy to server decoder) or not.
+- Whether A (26.1.2) and B share the cause; whether C-F02 (folia 1.20.6) and the prefixed-Bedrock stall are this stage:
+  folia 1.20.6 stalled before login (`Hello`, no reply, no ViaProxy line), a different stage; the Bedrock-prefixed one has no `[AUTH]` line
+  either, so it is not this stage as observed. Not pooled.
+
+**Fix:** none in this repo. No test could be written first (the cause is in ViaProxy). The ack-delay experiment (hold
+`LoginAcknowledged`) was built and compiled but not run: at 0.4 percent a run of 300 joins per arm is the minimum, and any fix that
+delays the ack is a sleep. **Next experiment:** run `w`-style loops until a stall is caught with the socket watcher on (expect rx queue
+above 0 on the proxy to server socket if the restore was lost); then try ViaProxy 3.4.16+ (pin change: needs maintainer approval).
+Proposed (not carded): make a +30 s disconnect during join report the stage (small, test-first, `McplDriver`).
+
+
+
+## Final ledger (2026-11-19, orchestrator session)
+
+**Release state.** `v0.1.0` is tagged on `main`. All four artefacts (`proofstone-api`, `-core`, `-protocol`, `-drivers-mcpl` at `0.1.0`) are on Maven Central
+(POM, jar, sources, javadoc and `.asc` return HTTP 200, checked 2026-11-19; deployment `c9a579d2-231a-448a-bb0f-fc9c400716b3` PUBLISHING then synced). Namespace
+verification is recorded in ADR-0012. A clean-room consumer build of both examples against Central is green three times each on paper@26.3 (T-M6-105, #174; T-M6-107, #179).
+The GitHub Release `v0.1.0` is still a draft (maintainer action). No release PR for a next version is prepared: the post-0.1.0 changes are tooling, docs and test-harness only,
+and the maintainer picks `0.1.1` or `0.2.0`.
+
+**Known problems.**
+- Join stalls: T-M7-16 not reproduced (0 of 10); T-M6-109 names ViaProxy for the 1.8.8 bridged stall, mechanism unproven (#182). Native paper@26.3 flake (3 of 61) is a different stage, cause unexplained.
+- Prefixed-Bedrock stall through ViaProxy and Folia 1.20.6: not shown to be the same family; no card of their own beyond T-M6-109 notes.
+- GitHub Action: documented (T-M6-108, #178), still not published or verified on a hosted runner.
+- Hosted `gates` fails intermittently on the first run when `repo.opencollab.dev` does not serve `text-serializer-nbt-0.2.1.jar` (4 of 5 first runs this session; reruns passed). Needs a maintainer decision (mirror or pin change).
+- The T-M7-16 Verify command is red because six conformance classes (`CD01`, `CD02`, `CR01`, `CR02`) declare no spigot cell: needs a maintainer call.
+
+**Cards.** Every card ID in `docs/plan/tasks/`: merged cards with their PR, open cards with the reason. Nothing is silently open. Checkbox state in the card files is not reliable for older cards.
+
+| Card | Status | PR or reason |
+|---|---|---|
+| T-M0-01 | merged | #1 |
+| T-M0-02 | merged | #3 |
+| T-M0-03 | merged | #4 |
+| T-M0-04 | merged | #5 |
+| T-M0-05 | merged | #6 |
+| T-M0-06 | merged | #2 |
+| T-M0-07 | merged | #7 |
+| T-M0-99 | merged | #8 |
+| T-M1-01 | merged | #10 |
+| T-M1-02 | merged | #12 |
+| T-M1-03 | merged | #13 |
+| T-M1-04 | merged | #15, #16, #18 |
+| T-M1-05 | merged | #20 |
+| T-M1-06 | merged | #9 |
+| T-M1-07 | merged | #14 |
+| T-M1-08 | merged | #17 |
+| T-M1-09 | merged | #11 |
+| T-M1-10 | merged | #19 |
+| T-M1-11 | merged | #21 |
+| T-M1-99 | merged | #22 |
+| T-M2-01 | merged | #24 |
+| T-M2-02 | merged | #27 |
+| T-M2-03 | merged | #26 |
+| T-M2-04 | merged | #25 |
+| T-M2-05 | merged | #29 |
+| T-M2-06 | merged | #28 |
+| T-M2-07 | merged | #30 |
+| T-M2-08 | merged | #31 |
+| T-M2-09 | merged | #32 |
+| T-M2-10 | merged | #33 |
+| T-M2-99 | merged | #34 |
+| T-M3-01 | merged | #36 |
+| T-M3-02 | merged | #38 |
+| T-M3-03 | merged | #39 |
+| T-M3-04 | merged | #35 |
+| T-M3-05 | merged | #41 |
+| T-M3-06 | merged | #42 |
+| T-M3-07 | merged | #37 |
+| T-M3-08 | merged | #43 |
+| T-M3-99 | merged | #44 |
+| T-M4-01 | merged | #49 |
+| T-M4-02 | merged | #51 |
+| T-M4-03 | merged | #52 |
+| T-M4-04 | merged | #54 |
+| T-M4-05 | merged | #50, #53 |
+| T-M4-06 | merged | #55 |
+| T-M4-07 | merged | #56 |
+| T-M4-08 | merged | #57 |
+| T-M4-09 | merged | #58 |
+| T-M4-10 | merged | #77, #78 |
+| T-M4-11 | merged | #60 |
+| T-M4-12 | merged | #79, #80 |
+| T-M4-13 | merged | #180 |
+| T-M4-14 | merged | #177 |
+| T-M4-15 | merged | #61 |
+| T-M4-99 | merged | #59 |
+| T-M5-01 | merged | #62 |
+| T-M5-02 | merged | #63 |
+| T-M5-03 | merged | #64 |
+| T-M5-04 | merged | #65 |
+| T-M5-05 | merged | #66 |
+| T-M5-06 | merged | #67 |
+| T-M5-07 | merged | #69 |
+| T-M5-99 | merged | #71 |
+| T-M6-01 | merged | #82 |
+| T-M6-02 | merged | #83 |
+| T-M6-03 | merged | #85 |
+| T-M6-04 | merged | #81 |
+| T-M6-05 | open | waiting: maintainer OK to open a PR in the Disenchantment repo (master) |
+| T-M6-06 | merged | #90 |
+| T-M6-07 | merged | #84 |
+| T-M6-08 | merged | #86 |
+| T-M6-09 | merged | #88 |
+| T-M6-10 | merged | #89, #93 |
+| T-M6-11 | merged | #92 |
+| T-M6-12 | merged | #91 |
+| T-M6-13 | merged | #94 |
+| T-M6-14 | merged | #96 |
+| T-M6-99 | merged | #87 |
+| T-M6-100 | merged | #167 |
+| T-M6-101 | merged | #168 |
+| T-M6-105 | merged | #174 |
+| T-M6-107 | merged | #179 |
+| T-M6-108 | merged | #178 |
+| T-M6-109 | merged | #181, #182 |
+| T-M7-01 | merged | #98 |
+| T-M7-02 | merged | #99 |
+| T-M7-03 | merged | #100, #102 |
+| T-M7-04 | merged | #101 |
+| T-M7-05 | merged | #103 |
+| T-M7-06 | merged | #104 |
+| T-M7-07 | merged | #105 |
+| T-M7-08 | merged | #106 |
+| T-M7-09 | merged | #107 |
+| T-M7-10 | merged | #108 |
+| T-M7-11 | merged | #109 |
+| T-M7-12 | merged | #110 |
+| T-M7-13 | merged | #111 |
+| T-M7-14 | merged | #112 |
+| T-M7-15 | merged | #128 |
+| T-M7-16 | merged | #181 |
+| T-M7-17 | merged | #128, #129 |
+| T-M7-18 | merged | #130 |
+| T-M7-19 | merged | #131 |
+| T-M7-20 | merged | #143 |
+| T-M7-21 | merged | #145 |
+| T-M7-99 | merged | #113 |
+| T-M8-01 | merged | #116 |
+| T-M8-02 | merged | #115 |
+| T-M8-03 | merged | #117 |
+| T-M8-04 | merged | #118 |
+| T-M8-05 | merged | #119 |
+| T-M8-06 | merged | #120 |
+| T-M8-07 | merged | #121 |
+| T-M8-08 | merged | #122 |
+| T-M8-09 | merged | #123 |
+| T-M8-10 | merged | #124 |
+| T-M8-11 | merged | #125 |
+| T-M8-12 | merged | #126 |
+| T-M8-13 | merged | #133 |
+| T-M8-14 | merged | #132 |
+| T-M8-15 | merged | #134, #147 |
+| T-M8-16 | merged | #136 |
+| T-M8-17 | merged | #140 |
+| T-M8-18 | merged | #141 |
+| T-M8-19 | merged | #142 |
+| T-M8-20 | merged | #135 |
+| T-M8-21 | merged | #137 |
+| T-M8-22 | merged | #138 |
+| T-M8-23 | merged | #139 |
+| T-M8-24 | merged | #144 |
+| T-M8-25 | merged | #146 |
+| T-M8-26 | open | proposed, not approved: per-boot Paper jar work (opus) |
+| T-M8-27 | merged | #148 |
+| T-M8-28 | merged | #149 |
+| T-M8-99 | merged | #127 |
+| T-M9-01 | merged | #151 |
+| T-M9-02 | open | moved to M10 as T-M10-01 |
+| T-M9-03 | merged | #152 |
+| T-M9-04 | merged | #153 |
+| T-M9-05 | merged | #154 |
+| T-M9-06 | merged | #155 |
+| T-M9-07 | merged | #156 |
+| T-M9-08 | merged | #157 |
+| T-M9-09 | open | moved to M10 as T-M10-02 |
+| T-M9-10 | open | moved to M10 as T-M10-03 |
+| T-M9-11 | merged | #158 |
+| T-M9-12 | merged | #159 |
+| T-M9-99 | merged | #160 |
+| T-M10-01 | open | waiting: maintainer approval of the BDS spike (image pull); was T-M9-02 |
+| T-M10-02 | open | waiting: follows T-M10-01; was T-M9-09 |
+| T-M10-03 | open | waiting: follows T-M10-01; was T-M9-10 |
+| T-M10-04 | open | waiting: upstream CloudburstMC release (not checked as none was approved) |
+| T-M10-05 | merged | #163 |
+| T-M10-06 | merged | #162 |
+| T-M10-07 | merged | #164 |
+| T-M10-08 | merged | #161 |
+| T-M10-09 | open | waiting: follows ADR-0015 (Geyser row promotion) |
+| T-M10-10 | merged | #165 |
+| T-M10-11 | open | waiting: maintainer approval of the Sponge spike |
+| T-M10-12 | open | waiting: maintainer approval of the Gate spike |
+| T-M10-13 | open | waiting: maintainer approval of the Nukkit spike |
+| T-M10-14 | open | waiting: maintainer approval of the PocketMine and Endstone scope spike |
+| T-M10-15 | open | waiting: depends on spike decisions |
+| T-M10-16 | open | waiting: maintainer decision on the docs site (GitHub Pages or not) |
+| T-M10-17 | open | waiting: maintainer approval of the TypeScript front end and Fabric client gametest scope spike |
+| T-M10-18 | open | waiting: depends on spike decisions |
+| T-M10-99 | merged | #166 |
+
+Also this session: T-M7-16 diagnosed: not reproduced in 10 runs, kept open as unexplained (#181); T-M6-109 partly done: ViaProxy named for the 1.8.8 stall, mechanism not proven, no code fix (#182).

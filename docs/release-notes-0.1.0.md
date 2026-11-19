@@ -36,16 +36,22 @@ a wrong view of the world alone. See [vision](vision.md).
 
 ## Not in 0.1.0
 
-- Nothing about Central or GHCR is verified before the first tagged release run: the `release` workflow has not run on a hosted runner
-  ([release.md](release.md)).
+- GHCR images: not verified here. Central is published, see "Published" below.
 - GitHub Action: local only (`integrations/github-action`), not published, hosted runner not verified.
 - Disenchantment's own suite on Proofstone: runs in another repository (T-M6-05), not verified here.
 - Velocity and BungeeCord are `required` rows. Fabric, NeoForge, data packs, resource packs and Bedrock through Geyser are `experimental` ([limits](limits.md)).
 
+## Published
+
+- Maven Central (2026-11-19): `io.github.h7kz.proofstone:proofstone-api`, `-core`, `-protocol` and `-drivers-mcpl` at `0.1.0` all return HTTP 200 on
+  `repo1.maven.org` for the POM, `.jar`, `-sources.jar`, `-javadoc.jar` and the `.asc` signatures of the POM and jar. The namespace
+  record is in [ADR-0012](adr/0012-name.md).
+- Clean-room consumer check of both examples against Central: T-M6-105 (result recorded in the ROADMAP when it lands).
+
 ## Install
 
-When the release is published, use `io.github.h7kz.proofstone:proofstone-api`, `-core` and `-drivers-mcpl` at `0.1.0` from Maven Central.
-Until then:
+Use `io.github.h7kz.proofstone:proofstone-api`, `-core` and `-drivers-mcpl` at `0.1.0` from Maven Central (see "Published").
+To build from source instead:
 
 For local use, build and publish to `mavenLocal` (see
 [quickstart-gradle.md](user/quickstart-gradle.md) and [quickstart-maven.md](user/quickstart-maven.md)). The quickstart

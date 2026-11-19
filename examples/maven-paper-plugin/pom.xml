@@ -47,6 +47,12 @@
   </properties>
 
   <repositories>
+    <!-- Maven Central first. Maven tries a POM's repositories in declaration order, and papermc (below) is a proxy that also
+         serves Central: with papermc first, the Proofstone artefacts came from the proxy, not Central (T-M6-107, ADR-0012). -->
+    <repository>
+      <id>central</id>
+      <url>https://repo.maven.apache.org/maven2</url>
+    </repository>
     <!-- Paper's API. Used only for io.papermc.paper artefacts (the Gradle settings use the same URL, exclusive). -->
     <repository>
       <id>papermc</id>

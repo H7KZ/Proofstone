@@ -39,7 +39,7 @@ class AnvilMechanicE2E {
 - `@Matrix(platform = ..., versions = {...})`. `Platform` also has `GEYSER` for a Bedrock client through Geyser ([bedrock.md](bedrock.md)).
 - `versions` takes exact versions, `latest` (the newest `required` row) or `all` (every row in scope).
 - At run time, `-Dproofstone.cells=paper@26.3,folia@latest` **replaces** the `versions` of every matrix whose platform it
-  names. A matrix whose platform is not named is not run, and the run prints `PROOFSTONE NOT SELECTED`. That is not a pass.
+  names. A matrix whose platform is not named is not run, and the run prints `PROOFSTONE NOT SELECTED` on stderr (not a JUnit skip, not a pass). A class whose platforms the selector names not at all fails by name.
 - The rows that are `required` today are listed in
   [docs/plan/tasks/M6-dogfood-release.md](../plan/tasks/M6-dogfood-release.md) and in `versions.yml`.
 
