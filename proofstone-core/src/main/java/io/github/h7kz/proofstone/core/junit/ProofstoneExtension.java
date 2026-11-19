@@ -118,7 +118,7 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             throw new IllegalStateException("-D" + DifferentialRun.PROPERTY + " and -D" + FlakeDetector.REPEAT
                     + " cannot be combined: run the differential once, or the flake detector on its own");
         }
-        List<TestTemplateInvocationContext> invocations = new ArrayList<>();
+        List<TestTemplateInvocationContext> invocations = new ArrayList<>(notSelectedInvocations(plan));
         boolean runnable = false;
         for (Cell cell : cells) {
             if (differential && !referenceNative(cell)) {
@@ -195,11 +195,48 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
      * The cells of one test class: single-server cells, topology cells (ADR-0016), loader cells (ADR-0017) and Geyser cells
      * (ADR-0018).
      */
-    record Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders, List<GeyserCell> geysers) {
+    record Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders, List<GeyserCell> geysers,
+            List<NotSelected> notSelected) {
+
+        Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders, List<GeyserCell> geysers) {
+            this(cells, topologies, loaders, geysers, List.of());
+        }
 
         Plan(List<Cell> cells, List<TopologyCell> topologies, List<LoaderCell> loaders) {
-            this(cells, topologies, loaders, List.of());
+            this(cells, topologies, loaders, List.of(), List.of());
         }
+    }
+
+    /**
+     * A declared row the selector left out (T-M4-13, robustness X1). It is said on stderr, and kept on the plan so that a class
+     * with no selected row at all fails naming each one. It is not a JUnit skip while the class has other rows: a selector run
+     * over a multi-platform class must stay {@code skipped="0"} (AGENTS.md section 4).
+     *
+     * @param what the platform or cell entry that was not selected
+     * @param reason why, starting with {@code NOT SELECTED}
+     */
+    record NotSelected(String what, String reason) {
+    }
+
+    /**
+     * The unselected rows as JUnit skips, only when the plan selects nothing, so no test or class can vanish silently. A plan
+     * with a selected row reports none (its unselected rows stay on stderr). {@link #plan} fails a class with no selected row
+     * before it gets here, so this holds for any plan built another way.
+     */
+    static List<TestTemplateInvocationContext> notSelectedInvocations(Plan plan) {
+        boolean selected = !plan.cells().isEmpty() || !plan.topologies().isEmpty() || !plan.loaders().isEmpty()
+                || !plan.geysers().isEmpty();
+        if (selected) {
+            return List.of();
+        }
+        return plan.notSelected().stream()
+                .<TestTemplateInvocationContext>map(row -> new NotRunInvocation(row.what(), row.reason())).toList();
+    }
+
+    /** Says a row is not selected on stderr and records it for the plan, so JUnit can report it as a skip. */
+    private static void notSelected(List<NotSelected> rows, Class<?> type, String what, String text) {
+        System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " " + text);
+        rows.add(new NotSelected(what, "NOT SELECTED: " + text));
     }
 
     /**
@@ -220,6 +257,7 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         List<TopologyCell> topologies = new ArrayList<>();
         List<LoaderCell> loaders = new ArrayList<>();
         List<GeyserCell> geysers = new ArrayList<>();
+        List<NotSelected> notSelected = new ArrayList<>();
         boolean declaresGeyser = false;
         List<String> declaredLoaders = new ArrayList<>();
         List<String> backends = AnnotationSupport.findAnnotation(type, Topology.Backends.class)
@@ -233,23 +271,23 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
                         .orElse(null)).ifPresent(reason -> {
                             throw new IllegalStateException(reason);
                         });
-                geysers.addAll(planGeysers(type, selector, planner, scope));
+                geysers.addAll(planGeysers(type, selector, planner, scope, notSelected));
                 continue;
             }
             if (planner.isProxy(platform)) {
                 proxies.add(platform);
-                topologies.addAll(planTopologies(type, platform, matrix, selector, planner, scope, backends));
+                topologies.addAll(planTopologies(type, platform, matrix, selector, planner, scope, backends, notSelected));
                 continue;
             }
             if (planner.isLoader(platform)) {
                 declaredLoaders.add(platform);
-                loaders.addAll(planLoaders(type, platform, selector, planner, scope));
+                loaders.addAll(planLoaders(type, platform, selector, planner, scope, notSelected));
                 continue;
             }
             List<String> requested = selector.isSet() ? selector.versions(platform) : List.of(matrix.versions());
             if (requested.isEmpty()) {
-                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares "
-                        + platform + ", which " + CELLS_SOURCE + " does not name");
+                notSelected(notSelected, type, platform, "declares " + platform + ", which " + CELLS_SOURCE
+                        + " does not name");
                 continue;
             }
             cells.addAll(planner.plan(platform, requested, scope, families));
@@ -257,28 +295,30 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
         // A topology entry whose proxy no @Matrix names is said out loud, never dropped silently.
         for (CellSelector.Topology topology : selector.topologies()) {
             if (!proxies.contains(topology.proxy())) {
-                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
-                        + "that plans the topology cell " + topology.entry());
+                notSelected(notSelected, type, topology.entry(), "has no @Matrix that plans the topology cell "
+                        + topology.entry());
             }
         }
         for (CellSelector.LoaderEntry entry : selector.loaders()) {
             if (!declaredLoaders.contains(entry.loader())) {
-                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
-                        + "that plans the loader cell " + entry.entry());
+                notSelected(notSelected, type, entry.entry(), "has no @Matrix that plans the loader cell "
+                        + entry.entry());
             }
         }
         // A Geyser entry no @Matrix plans is said out loud, never dropped silently.
         for (CellSelector.GeyserEntry entry : selector.geysers()) {
             if (!declaresGeyser) {
-                System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " has no @Matrix "
-                        + "that plans the Geyser cell " + entry.entry());
+                notSelected(notSelected, type, entry.entry(), "has no @Matrix that plans the Geyser cell "
+                        + entry.entry());
             }
         }
         if (cells.isEmpty() && topologies.isEmpty() && loaders.isEmpty() && geysers.isEmpty()) {
             throw new IllegalStateException(type.getName() + " has no cell to run: " + CELLS_SOURCE
-                    + " names none of its @Matrix platforms. Name one, or run only the classes that match.");
+                    + " names none of its @Matrix platforms. Name one, or run only the classes that match."
+                    + notSelected.stream().map(row -> "\n  " + row.reason()).collect(java.util.stream.Collectors.joining()));
         }
-        return new Plan(List.copyOf(cells), List.copyOf(topologies), List.copyOf(loaders), List.copyOf(geysers));
+        return new Plan(List.copyOf(cells), List.copyOf(topologies), List.copyOf(loaders), List.copyOf(geysers),
+                List.copyOf(notSelected));
     }
 
     /**
@@ -286,16 +326,16 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
      * it runs only when the selector names it, for example {@code geyser@2.12.1+paper@26.3}: without one the matrix plans
      * nothing and says so, so an experimental cell never boots in a default run and is never skipped silently.
      */
-    private static List<GeyserCell> planGeysers(Class<?> type, CellSelector selector, CellPlanner planner, Scope scope) {
+    private static List<GeyserCell> planGeysers(Class<?> type, CellSelector selector, CellPlanner planner, Scope scope,
+            List<NotSelected> notSelected) {
         List<GeyserCell> planned = new ArrayList<>();
         for (CellSelector.GeyserEntry entry : selector.geysers()) {
             planned.addAll(planner.planGeysers(List.of(entry.version()), entry.backend(), List.of(entry.backendVersion()),
                     scope));
         }
         if (planned.isEmpty()) {
-            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares geyser, an "
-                    + "experimental row that runs only when " + CELLS_SOURCE + " names it, for example "
-                    + "geyser@<version>+paper@<mc>");
+            notSelected(notSelected, type, "geyser", "declares geyser, an experimental row that runs only when "
+                    + CELLS_SOURCE + " names it, for example geyser@<version>+paper@<mc>");
         }
         return planned;
     }
@@ -306,7 +346,7 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
      * default run and is never skipped silently.
      */
     private static List<LoaderCell> planLoaders(Class<?> type, String loader, CellSelector selector, CellPlanner planner,
-            Scope scope) {
+            Scope scope, List<NotSelected> notSelected) {
         List<LoaderCell> planned = new ArrayList<>();
         for (CellSelector.LoaderEntry entry : selector.loaders()) {
             if (entry.loader().equals(loader)) {
@@ -314,9 +354,8 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             }
         }
         if (planned.isEmpty()) {
-            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares " + loader
-                    + ", an experimental loader row that runs only when " + CELLS_SOURCE + " names it, for example "
-                    + loader + "@<mc>");
+            notSelected(notSelected, type, loader, "declares " + loader + ", an experimental loader row that runs only when "
+                    + CELLS_SOURCE + " names it, for example " + loader + "@<mc>");
         }
         return planned;
     }
@@ -327,7 +366,7 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
      * {@link Topology.Backends} fails the class before anything starts.
      */
     private static List<TopologyCell> planTopologies(Class<?> type, String proxy, Matrix matrix, CellSelector selector,
-            CellPlanner planner, Scope scope, List<String> backends) {
+            CellPlanner planner, Scope scope, List<String> backends, List<NotSelected> notSelected) {
         if (!selector.isSet()) {
             return planner.planTopologies(proxy, List.of(matrix.versions()), TOPOLOGY_BACKEND, List.of("latest"), scope,
                     backends);
@@ -340,8 +379,7 @@ public final class ProofstoneExtension implements TestTemplateInvocationContextP
             }
         }
         if (planned.isEmpty()) {
-            System.err.println("PROOFSTONE NOT SELECTED (not run, not a pass): " + type.getName() + " declares "
-                    + proxy + ", which " + CELLS_SOURCE + " does not name");
+            notSelected(notSelected, type, proxy, "declares " + proxy + ", which " + CELLS_SOURCE + " does not name");
         }
         return planned;
     }

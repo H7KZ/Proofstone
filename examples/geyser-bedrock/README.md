@@ -12,7 +12,7 @@ plugin detects the Floodgate name (`.PsEx1`) as Bedrock and a Java player as not
 - Not part of `check`: the test boots a real Geyser cell (Paper, Geyser, Floodgate, a discovery stand-in and the Bedrock driver host),
   so it needs Docker and the EULA. `check` runs only `archTest`.
 - The Geyser row is `experimental`, so a cell runs only when you name it: `-Dproofstone.cells=geyser@2.12.1+paper@26.3` (or
-  `PROOFSTONE_CELLS`). **One cell per invocation.** Without it the class prints `NOT SELECTED`, which is not a pass.
+  `PROOFSTONE_CELLS`). **One cell per invocation.** Without it the class fails by name with `NOT SELECTED: ...` for each row, never a skip or a pass.
 - The cell is *offline-stub*: Xbox login validation is off. It cannot test a plugin that needs a verified identity.
 - It does not click windows, use blocks, answer forms or resource packs: the v1 Bedrock driver has none of them.
 - Contains no framework code, only a test project that uses the public API. Not published.

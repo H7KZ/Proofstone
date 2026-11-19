@@ -31,7 +31,7 @@ risk shows up if the safeguard fails anyway.
 | R2 | **Vacuous test**: it passes even when the feature is absent | H/H | Nightly **control run** without the jar under test. Paired negative tests (feature disabled → vanilla outcome) are not enforced. The assertion lint (`docsCheck`, T-M4-14) rejects a test class whose assertions are all negative, unless the method is `@ControlRun`. | `VACUOUS` verdict | None for tests that run in the control run. |
 | R3 | **Agent bug or observer effect** | M/H | Agents never act during the act phase. Listeners run at MONITOR priority and are read-only. Agent **contract tests** against golden files. **Agent round-trip conformance** on every cell (give, then read, then compare). Responses include raw data next to parsed data. | Conformance `INVALID`; golden-file test failure | Low |
 | R4 | **Protocol churn breaks the driver** | H/M | The driver touches about 10 packet types behind one adapter. MCProtocolLib bumps arrive as Renovate PRs, gated by conformance on the newest version and a sample of bridged cells. | Conformance on the bump PR | A few days' gap after a new MC release. The new version stays `experimental` until it is green. |
-| R5 | **Timing flakiness** (chunk sends, slot sync, tick races) | H/M | `await(predicate, timeout)` only, with generous timeouts. Agent tick waits. Fixed world setup. Fresh client per test. Nightly **repeat-N** (N=5) flake detector. | `FLAKY` verdict | Low |
+| R5 | Partly | Repeat-N works: `metaFlaky` gives FLAKY. Since T-M4-13 `metaFlaky` names each red repeat: repeat 3 fails on its draw, repeat 5 carries FLAKY, repeats 1, 2 and 4 are green, and all five runs have a bundle. | Repeats share the class server, so boot-level races are not repeated by default. `@Isolation(PER_TEST)` with `-Dproofstone.repeat=N` re-boots per repeat; its cost is in section 4. FLAKY is on repeat 5 only. The flake detector has no nightly job yet. | 09, 13 (done) |
 | R6 | **State leaks between tests** | M/M | Player and world reset with config snapshot and restore for each test, plus a fresh client. `PER_TEST` isolation is available. A leak detector compares agent state before and after each test. | Leak-detector failure | Low |
 | R7 | **Wrong version mapping in the plugin**, for example the wrong NMS module | M/H | A per-cell `expect` hook in the user's suite checks a log-line or agent query (for example, Disenchantment's `NMS module: NMS_v1_21_R5`). Nightly runs cover every Paper version, not just one per module. | Test failure on that cell | None |
 | R8 | **Folia threading** | M/H | The agent runs each operation on the owning region's scheduler. Thread checks are never disabled. Log patterns catch thread-check violations. | Error-log failure | Low |
@@ -41,7 +41,7 @@ risk shows up if the safeguard fails anyway.
 | R12 | **The server download source changes or disappears** | L/H | Downloaded jars are cached by checksum. A mirror is configurable. `versions.yml` stores the checksums. | Checksum mismatch fails the run | Low |
 | R13 | **Bedrock unknowns** (auth, protocol) | H/M | Delivered in stages: name-prefix simulation first, then a spike, then a real driver. Never claimed as supported before conformance passes. Real Bedrock only on an *offline-stub* Geyser cell (Xbox login validation off, a discovery stand-in, a name guard; ADR-0018); the row stays `experimental` while the driver is on a snapshot. | Geyser cell check `INVALID` (stand-in names, name guard); `metaBedrockTest` | Plugins needing Xbox-verified identity cannot be tested; BDS not built (M10); see section 5 "Bedrock review (T-M9-99)" |
 | R14 | **Framework too hard to maintain** | M/H | Strict layering. Small modules with READMEs. ADRs. Task cards. AI gates. Platform packs isolated behind an SPI. | Card cycle time, gate failure rate | — |
-| R15 | **AI agent produces plausible but wrong code** | H/H | Tiered models. Hard gates (conformance, golden files, control runs). Mandatory higher-tier review on `core`, `protocol` and `drivers`. Card diffs capped around 400 lines. "Never weaken a test" rule. | Gates; review | See [ai/model-tiering.md](ai/model-tiering.md) |
+| R15 | Partly | Gates, control run, meta-tests and this review. Since T-M4-13 `metaTest` judges every bad test on its own (`MetaCheck`, unit-tested in build-logic): its report verdict and reason, its JUnit failure, its bundle, and no skip, failure or report row that nothing names. The `random draw` exemption is gone. | Two claims in this file were wrong before this review: the PR row in section 4 and the self-tests spec. | 13 (done) |
 | R16 | **EULA and licence missteps** | L/H | EULA acceptance is an explicit opt-in. No redistribution of server or client binaries. GPL components such as ViaProxy run only as separate containers. | Release checklist | — |
 
 ## 3. What cannot be fully removed (stated honestly)
@@ -87,7 +87,7 @@ What the numbers say:
 - One boot, join and teardown costs about 35 to 50 s per cell and driver run. A bridged cell adds ViaProxy.
 - The control run costs the same as a normal run. It needs no extra boot.
 - A repeat run reuses the class server, so repeats 2 to 5 cost about 1 s each. Repeat-N measures variance in the test
-  body, not in the boot. Boot-level races are not repeated (card T-M4-13).
+  body, not in the boot. Boot-level races are repeated only with `@Isolation(PER_TEST)` (see below).
 - The second driver of a differential run adds about 1.6 s on a shared boot.
 - The nightly set's CI run is not measured (no dispatch was triggered). The set is `metaTest`, which the local runs
   of T-M4-99 measured on Windows and Docker Desktop, one lock, one run each (Gradle wall clock):
@@ -112,11 +112,29 @@ The cost is paid once per cell per run, not per test. A full `metaTest` with its
 the window bad test added). The check adds no boot. Its one extra cost is the join and the scenario time, so a cell's
 first test is about 3 s slower on native and about 8 s slower on bridged rows.
 
-**Overlap inside one locked run.** The five bad-test tasks ran concurrently, although the command had `--no-parallel`
-and `gradle.properties` sets `org.gradle.parallel=true`. The XML suite start times are 10:22:20.67 to 10:22:20.78 UTC,
-within 0.11 s. The testcase times add up to about 240 s, and the whole Gradle run took 76 s. Parallel Testcontainers
-boots inside one invocation pass on this host, but AGENTS.md section 4 says one Docker run at a time (card T-M4-13
-decides whether to serialise them).
+**Overlap inside one locked run (decided in T-M4-13).** Decision: the bad-test run tasks must not overlap. In the T-M4-08
+run the five bad-test tasks ran concurrently, although the command had `--no-parallel` and `gradle.properties` sets
+`org.gradle.parallel=true`: the XML suite start times were 10:22:20.67 to 10:22:20.78 UTC (within 0.11 s), the testcase times
+added up to about 240 s, and the whole Gradle run took 76 s. AGENTS.md section 4 allows one Docker run at a time, and one
+`gradlew` invocation is one run, so `examples/bad-tests/build.gradle.kts` now orders every run task after all earlier ones
+(`mustRunAfter`, not only the neighbour, so a meta task that selects a subset keeps the order). With `--max-workers=1` the
+tasks never overlapped anyway; the ordering makes it hold under any flags. After-change evidence (metaTest, no selector,
+`--no-parallel --max-workers=1`, 2026-11-19, run 2 of 3, XML `testsuite` start and `time`; each suite starts 1.7 to 2.5 s
+after the previous one ended, except RequiresSkipsE2E to TopologySkipsE2E, 0.4 s, which are two classes of one task): VacuousE2E 17:35:20.764 (27.7 s), FlakyE2E 17:35:50.277 (35.4 s), DriverFaultDisagreeE2E
+17:36:27.489 (51.7 s), InvalidConformanceE2E 17:37:21.727 (22.0 s), WindowConformanceInvalidE2E 17:37:45.422 (28.3 s),
+LeakE2E 17:38:16.040 (33.2 s), ExpectFailsE2E 17:38:51.624 (26.6 s), RequiresSkipsE2E 17:39:19.917 (25.3 s), TopologySkipsE2E
+17:39:45.603. The suites are strictly sequential; the whole run took 4:27 to 4:54, near the sum of the testcase times.
+
+**Repeat that re-boots per repeat (T-M4-13).** `@Isolation(PER_TEST)` already gives a new server per test, so
+`-Dproofstone.repeat=5` on such a class boots five times and covers boot-level races. Measured with a throwaway copy of
+`FlakyE2E` carrying `@Isolation(PER_TEST)` (not committed), `-Dproofstone.cells=paper@26.3`, 2026-11-19, Docker lock, one run:
+repeats 1 to 5 took 30.3, 27.0, 27.2, 27.1 and 27.0 s (suite 139.8 s, Gradle 2:32). The shared-boot flake run in the metaTest
+above took 35.4 s for the same five repeats (one boot, then about 1 s each). So re-booting per repeat costs about 27 s a
+repeat, roughly 4 times the shared run at N=5, and grows linearly with N. Decision: keep the mode as an opt-in for a test whose
+risk is a boot race; the default stays one boot, because 5 boots per test is too slow for the nightly set. No code change. The
+measuring class is not committed (a committed copy would need its own meta task and a red-by-design place in `metaTest`); it
+is `FlakyE2E` with one more line above `@Proofstone`: `@Isolation(Isolation.Mode.PER_TEST)`, renamed `FlakyPerTestE2E`, run with
+`./gradlew :examples:bad-tests:test --tests '*FlakyPerTestE2E' -Dproofstone.repeat=5 -Dproofstone.cells=paper@26.3`.
 
 **Release:** nightly plus mutation checks on example projects. Not measured: no mutation check exists yet (self-tests
 section 5).
@@ -149,8 +167,11 @@ to T-M4-15. Cards are not implemented here.
 
 **Cross-cutting findings**
 
-- **X1. Skips printed to stderr only.** `NOT DIFFERENTIAL` and `NOT SELECTED` are printed to stderr and never reported
-  as JUnit skips. That breaks "a skip is reported as a skip" (AGENTS.md section 3). Cards 11 and 13.
+- **X1. Skips printed to stderr only.** `NOT DIFFERENTIAL` and `NOT SELECTED` were printed to stderr and never reported
+  as JUnit skips. That broke "a skip is reported as a skip" (AGENTS.md section 3). `NOT DIFFERENTIAL` is a JUnit skip since
+  T-M4-11. `NOT SELECTED` stays stderr-only while a class has another selected row, because a normal selector run must stay
+  `skipped="0"` (AGENTS.md section 4; T-M4-13 first reported them all as skips and the review caught it). The silent-vanish
+  case is closed another way: a class with no selected row fails by name and lists each row as `NOT SELECTED: ...`.
 - **X2. The machine-readable report is never written.** `ReportWriter` and `JunitXml` have no caller outside their
   unit tests, so `build/proofstone/proofstone-report.json` does not exist at run time. The T-M4-01 Do list is not met,
   though its acceptance box was ticked. Card 09.

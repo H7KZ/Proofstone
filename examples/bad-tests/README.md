@@ -54,7 +54,7 @@ Read <https://aka.ms/MinecraftEULA> first. The harness never accepts the EULA fo
 PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel
 ```
 
-`metaTest` runs the eight bad tests, each in its own task (`metaVacuous`, `metaFlaky`, `metaDisagree`, `metaInvalid`,
+`metaTest` (T-M4-13) judges every test of the eight bad-test tasks on its own (`MetaCheck`: report verdict and reason, JUnit failure, repro bundle; an unnamed failure, skip or report row is red). The tasks never overlap (`mustRunAfter`). It runs the eight bad tests, each in its own task (`metaVacuous`, `metaFlaky`, `metaDisagree`, `metaInvalid`,
 `metaInvalidWindow`, `metaLeak`, `metaExpect`, `metaRequires`), reads each task's JUnit XML under `build/test-results/<task>/`, and fails unless
 every run has `skipped="0"` and `errors="0"`, and every failure starts with the expected verdict. A skip or a missing
 report is red. `metaRequires` is the one task that expects a skip: its skipped test must name the missing capability in

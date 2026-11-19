@@ -38,6 +38,6 @@ PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:loade
   -Dproofstone.cells=neoforge@26.3 --no-parallel --max-workers=1
 ```
 
-Without `-Dproofstone.cells` the build defaults to the Fabric agent and the class prints `NOT SELECTED` for both rows, which is
-not a pass. Read the XML in `examples/loader-mod/build/test-results/loaderExample/` and expect
+Without `-Dproofstone.cells` the build defaults to the Fabric agent and the class fails by name with `NOT SELECTED: ...` for each row, never a skip or a pass
+for both rows. Read the XML in `examples/loader-mod/build/test-results/loaderExample/` and expect
 `tests="1" skipped="0" failures="0" errors="0"`.

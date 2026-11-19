@@ -47,7 +47,7 @@ PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew <task> \
 ```
 
 `PROOFSTONE_CELLS` is the environment form of the same selector (shared with every other row; the runs recorded here used the `-D`
-form). Without a selector the class prints `NOT SELECTED (not run, not a pass)`. Read the EULA first (<https://aka.ms/MinecraftEULA>);
+form). Without a selector a Geyser-only class fails by name with `NOT SELECTED: ...` for each row, never a skip or a pass. Read the EULA first (<https://aka.ms/MinecraftEULA>);
 the harness never accepts it for you.
 
 Geyser cells in v1 run from a repository checkout: the cell needs the Bedrock driver host jar (`drivers/bedrock`, built by

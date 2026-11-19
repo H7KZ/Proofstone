@@ -11,7 +11,7 @@ Every test on one cell gets one verdict. Only `PASS` and a `SKIPPED` with an all
 |---|---|---|
 | `PASS` | The test passed on that cell. | Nothing. |
 | `FAIL` | An assertion failed. `FAIL: ...` comes from `DualAssert`; `FAIL expect <class> on <platform>@<version>: ...` comes from an `@Expect` check. | Read the message. Decide whether the plugin or the test is wrong. |
-| `SKIPPED (not a pass)` | Not run, with a printed reason: EULA not accepted, Docker unavailable, a missing capability, or the cell was not selected (`PROOFSTONE NOT SELECTED`). | Fix the reason. A skip never counts as a pass. |
+| `SKIPPED (not a pass)` | Not run, with a printed reason: EULA not accepted, Docker unavailable, or a missing capability. A `@Matrix` platform the selector leaves out is printed as `PROOFSTONE NOT SELECTED` (stderr, not a skip); a class with no selected row fails by name. | Fix the reason. A skip never counts as a pass. |
 | `INVALID` | The cell's conformance failed, so no plugin verdict exists for it. The test body did not run. | The harness or the server is at fault, not your plugin. Look for `PROOFSTONE CONFORMANCE <cell>` lines in the log. |
 | `VACUOUS` | In a control run (`-Dproofstone.controlRun=true`, no plugin jars installed) the test still passed. The test does not prove the plugin's behaviour. | Make the test assert something only the plugin provides. |
 | `DISAGREE` | The client's view and the server's view differ (`DISAGREE: ...`), or the primary driver and the reference driver differ in a differential run. | Either side may be the bug. Read both observed values in the bundle. Differential runs cover `paper@26.1.2` only today. |

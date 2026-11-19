@@ -44,7 +44,8 @@ class MyModE2E { ... }
 ## Loader cells
 
 - Name the cell: `-Dproofstone.cells=fabric@26.3` (or `PROOFSTONE_CELLS`), **one cell per invocation**. Without it the class
-  prints `NOT SELECTED (not run, not a pass)` for the loader platform.
+  prints `NOT SELECTED (not run, not a pass)` on stderr for the loader platform (not a JUnit skip); a class with no other
+  matrix fails by name with `NOT SELECTED: ...` for each row, never a skip or a pass.
 - Declare the platform in the test: `@Matrix(platform = Platform.FABRIC, versions = {"26.3"})`. `Platform.NEOFORGE` works the
   same.
 - A loader cell uses the native `mcpl` driver only. It does not run bridged, differential (`-Dproofstone.differential`) or

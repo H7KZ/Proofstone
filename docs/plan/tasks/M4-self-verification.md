@@ -407,9 +407,9 @@ check the bundle files and the report.
 - Weaken a meta expectation to make it pass.
 
 **Acceptance.**
-- [ ] A unit test of the metaTest checker shows red when one bad test gives the wrong verdict.
-- [ ] The overlap question is answered in the PR with XML timestamps.
-- [ ] The repeat-with-boot cost is in robustness.md §4.
+- [x] A unit test of the metaTest checker shows red when one bad test gives the wrong verdict. (`MetaCheckTest`, 16 tests, build-logic)
+- [x] The overlap question is answered in the PR with XML timestamps. (decision: no overlap; timestamps in robustness.md §4 and the commit body)
+- [x] The repeat-with-boot cost is in robustness.md §4. (about 27 s per repeat)
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:bad-tests:metaTest --no-parallel`.
