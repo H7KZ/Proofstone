@@ -175,4 +175,50 @@ class ServerLogLinesTest {
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("dropped 2 of 5 records");
         assertThat(host.paths).hasSize(1);
     }
+
+    @Test
+    void bootLogLinesAreTheRecordsBeforeTheTestCursorAndTheComplementOfLogLines() {
+        FakeAgent host = new FakeAgent();
+        host.records.add(record("INFO", "Disenchantment", "NMS module: NMS_v1_21_R5", null));
+        host.records.add(record("INFO", "Minecraft", "Done (3.1s)!", null));
+        AtomicLong cursor = new AtomicLong(host.records.size());
+        host.records.add(record("INFO", "Minecraft", "Steve joined the game", null));
+        Agent agent = agent(host, cursor);
+
+        assertThat(agent.bootLogLines()).containsExactly(
+                "INFO Disenchantment: NMS module: NMS_v1_21_R5", "INFO Minecraft: Done (3.1s)!");
+        assertThat(agent.logLines()).containsExactly("INFO Minecraft: Steve joined the game");
+        assertThat(host.paths).contains("GET /v1/log?since=0&minLevel=TRACE");
+    }
+
+    @Test
+    void bootLogLinesRenderStackTracesAndAreEmptyBeforeAnyRecord() {
+        FakeAgent host = new FakeAgent();
+        assertThat(agent(host, new AtomicLong(0)).bootLogLines()).isEmpty();
+        host.records.add(record("ERROR", "P", "failed", "java.lang.IllegalStateException: boom\n\tat a.B.c(B.java:1)"));
+        assertThat(agent(host, new AtomicLong(1)).bootLogLines()).containsExactly(
+                "ERROR P: failed", "java.lang.IllegalStateException: boom", "\tat a.B.c(B.java:1)");
+    }
+
+    @Test
+    void bootLogLinesFailLoudlyWhenTheRingBufferDroppedTheBoot() {
+        FakeAgent host = new FakeAgent();
+        for (int i = 0; i < 5; i++) {
+            host.records.add(record("INFO", "Minecraft", "line " + i, null));
+        }
+        host.evictedBelow = 2;
+
+        assertThatThrownBy(() -> agent(host, new AtomicLong(4)).bootLogLines())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("dropped 2 of 5 records logged since the agent enabled, so the boot log window is incomplete");
+    }
+
+    @Test
+    void aCursorPastTheLoggedRecordsFailsLoudly() {
+        FakeAgent host = new FakeAgent();
+        host.records.add(record("INFO", "Minecraft", "only", null));
+
+        assertThatThrownBy(() -> agent(host, new AtomicLong(3)).bootLogLines())
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("past the 1 records");
+    }
 }

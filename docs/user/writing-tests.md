@@ -79,6 +79,7 @@ CapturedEvent ev = e.awaitOne();
 int xp = ev.getInt("xpCost");                        // an unknown getter is an error, never a default
 
 List<String> log = agent.logLines();                 // server log since the test started: "INFO <logger>: <message>"
+List<String> boot = agent.bootLogLines();             // before the test: a plugin's start-up line
 List<String> hits = agent.logLines(Pattern.compile("Reloaded"), Duration.ofSeconds(10)); // waits, returns the matching lines
 ```
 
@@ -88,6 +89,10 @@ List<String> hits = agent.logLines(Pattern.compile("Reloaded"), Duration.ofSecon
   record plus a line per line of a stack trace. It is a snapshot, not a barrier: wait for a line with
   `logLines(Pattern, Duration)`. The per-test check for WARN and worse still runs on its own. A log buffer that overflowed throws
   instead of returning a short list. To assert something was **not** logged, first wait for something that is logged after it.
+- `Agent.bootLogLines()` is the complement: every line from the agent's enable up to the test start, so a plugin's start-up line (for example
+  `NMS module: NMS_v1_21_R5`) can be asserted. The agent loads at server STARTUP, so the lines before it are not captured (the server banner,
+  library loading, the plugin loading list); the enable lines of ordinary plugins are. The agent keeps the last 5000 records: a long suite
+  that overflowed it makes `bootLogLines()` throw rather than return a short list.
 - `PlayerState.openWindow()` is what the server says the player has open: an `Optional<ServerWindow>` with `type`, `title` and the
   container's own `slots` (not the player's 36; empty slots are `ItemView.EMPTY`). Use it to assert a menu a plugin opened, for example
   `player.awaitState("menu open", s -> s.openWindow().map(w -> w.title().startsWith("X")).orElse(false))`. `type` is the platform's

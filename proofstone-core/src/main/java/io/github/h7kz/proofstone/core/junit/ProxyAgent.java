@@ -52,6 +52,11 @@ record ProxyAgent(ProxyHost host, Set<String> patched, LongSupplier logCursor) i
     }
 
     @Override
+    public List<String> bootLogLines() {
+        return ServerLogLines.readBoot(host, logCursor.getAsLong());
+    }
+
+    @Override
     public List<String> logLines(Pattern pattern, Duration timeout) {
         return ServerLogLines.await(host, logCursor, pattern, timeout);
     }
