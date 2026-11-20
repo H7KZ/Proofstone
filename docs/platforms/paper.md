@@ -138,7 +138,7 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   item reads and reports the agent token `pdc` where `org.bukkit.persistence.PersistentDataType` exists (1.14 and later; before
   that the field is absent and there is no token). `pdc` in an item given by a test is still `INVALID_REQUEST`. A container with no
   entries reads as no `pdc` (`null`), so the token, not the value, says whether PDC is served. Test items get their data with
-  the vanilla `give` command under `PublicBukkitValues` (C-I01). _No PDC before 1.14 · T-M11-05_
+  the vanilla `give` command under `PublicBukkitValues` (C-I01). The server's meta class (`CraftMetaItem`) is package-private, so the container getter is resolved from the public `ItemMeta` interface: invoking the method found on the class threw `IllegalAccessException` on 1.18.2. _No PDC before 1.14 · T-M11-05_
 
 #### Enchantments, anvils and grindstones
 - **Mending and other 1.9+ enchantments are absent on 1.8.8.** C03 used mending as its second stored enchantment, so the
