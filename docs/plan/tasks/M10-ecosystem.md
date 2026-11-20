@@ -431,7 +431,7 @@ agent can serve `health` and `players` there.
 - Commit production code or a pin. Use an account.
 
 **Acceptance.**
-- [ ] A verdict with runs and the protocol gap stated (the server's Bedrock protocol vs the driver's 2225).
+- [x] A verdict with runs and the protocol gap stated (the server's Bedrock protocol vs the driver's 2225): [nukkit.md](../../platforms/nukkit.md).
 
 **Verify.**
 Reviewer re-runs one documented join under `scripts/dockerlock.sh`.

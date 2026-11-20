@@ -1,0 +1,5 @@
+name: ProofstoneSpikeAgent
+main: proofstone.spike.nukkit.SpikeAgent
+version: 0.0.1-spike
+api: ["3.0.0"]
+description: T-M10-13 throwaway agent (health and players only). Not production code.
