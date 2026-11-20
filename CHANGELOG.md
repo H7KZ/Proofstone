@@ -5,6 +5,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 
 ## [Unreleased]
 
+### Added
+- `Agent.logLines()` and `Agent.logLines(Pattern, Duration)`: the server log since the test started, as plain text (API addition, T-M11-01).
+
 ## [0.1.0] - 2026-11-18
 
 First public release. It is `0.x`: a minor release may break the public API ([compatibility](docs/compatibility.md)). Scope, evidence

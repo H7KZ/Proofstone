@@ -77,11 +77,18 @@ String value = (String) agent.plugin("AnvilMechanic").config("some.key"); // rea
 EventProbe e = agent.events().subscribe("org.bukkit.event.player.PlayerJoinEvent");
 CapturedEvent ev = e.awaitOne();
 int xp = ev.getInt("xpCost");                        // an unknown getter is an error, never a default
+
+List<String> log = agent.logLines();                 // server log since the test started: "INFO <logger>: <message>"
+List<String> hits = agent.logLines(Pattern.compile("Reloaded"), Duration.ofSeconds(10)); // waits, returns the matching lines
 ```
 
 - `Agent.command(String)` returns the raw console reply as a `String`. It is for setup. Never assert on it.
 - Probes are read-only and listen at MONITOR priority.
-- Not in v0: `agent.world()`, `agent.awaitTicks`, `agent.logLines`, `PlayerHandle.gamemode`, `PlayerState.location`,
+- `Agent.logLines()` is the server log since the test started (not the boot, not earlier tests), one `LEVEL logger: message` line per
+  record plus a line per line of a stack trace. It is a snapshot, not a barrier: wait for a line with
+  `logLines(Pattern, Duration)`. The per-test check for WARN and worse still runs on its own. A log buffer that overflowed throws
+  instead of returning a short list. To assert something was **not** logged, first wait for something that is logged after it.
+- Not in v0: `agent.world()`, `agent.awaitTicks`, `PlayerHandle.gamemode`, `PlayerState.location`,
   `PlayerState.openWindow`, `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md); mods, data packs and resource packs in [mods-and-packs](mods-and-packs.md).
   Use `agent.command(...)` for setup instead of `world()`.
 
