@@ -73,16 +73,11 @@ final class EventProbes {
 
     @SuppressWarnings("unchecked")
     private Class<? extends Event> eventClass(String className) {
-        Class<?> found = null;
+        List<ClassLoader> loaders = new ArrayList<>();
         for (Plugin owner : Bukkit.getPluginManager().getPlugins()) {
-            found = load(className, owner.getClass().getClassLoader());
-            if (found != null) {
-                break;
-            }
+            loaders.add(owner.getClass().getClassLoader());
         }
-        if (found == null) {
-            found = load(className, getClass().getClassLoader());
-        }
+        Class<?> found = resolve(className, loaders, getClass().getClassLoader());
         if (found == null) {
             throw new AgentException(400, "INVALID_REQUEST", "no class named " + className, null);
         }
@@ -90,6 +85,26 @@ final class EventProbes {
             throw new AgentException(400, "INVALID_REQUEST", className + " is not a Bukkit event", null);
         }
         return (Class<? extends Event>) found;
+    }
+
+    /**
+     * Loads the class through the loader that holds its file, then {@code own}. A plugin loader asked for a class it
+     * does not hold answers through Spigot's global lookup in the other plugins' loaders and logs "Loaded class X from Y
+     * which is not a depend or softdepend of this plugin", which the conformance error-log guard fails on (T-M6-111).
+     * {@code getResource} looks at the loader's own jar and its parents only, never at other plugins, so it finds the
+     * owner without that lookup.
+     */
+    static Class<?> resolve(String className, List<ClassLoader> pluginLoaders, ClassLoader own) {
+        String file = className.replace('.', '/') + ".class";
+        for (ClassLoader loader : pluginLoaders) {
+            if (loader.getResource(file) != null) {
+                Class<?> found = load(className, loader);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return load(className, own);
     }
 
     private static Class<?> load(String name, ClassLoader loader) {

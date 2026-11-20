@@ -231,6 +231,13 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in `setupConfig`). The
   fixture plugin only survived because it loads every class on first enable. A plugin that caches config in `onEnable`
   needs a reload hook. (T-M2-03, changed in T-M2-10.)
+- **A plugin loader asked for a class it does not hold warns.** Paper 1.18.2's `PluginClassLoader` answers through a global lookup in the
+  other plugins' loaders and logs `Loaded class X from Y which is not a depend or softdepend of this plugin` under the asking plugin's
+  name, which fails an error-log guard. The agent's event probe used to try every plugin loader in load order (the agent first), so
+  probing a third-party event (Disenchantment's `PostDisenchantEvent`) logged it on paper@1.18.2 only. It now finds the owner with
+  `ClassLoader#getResource` (own jar and parents only, no global lookup) and loads through that loader alone. (T-M6-111)
+  Open, not fixed: on paper@1.18.2 `GET /v1/datapacks` answers `500 zip file closed` after the reload cases, because the agent's own
+  `Class.forName` of a Paper class falls into the same global lookup and reaches the disabled fixture's closed loader.
 - **`ConfigurationSection.getValues(false)` leaves out jar defaults.** A key the plugin never wrote to `config.yml` reads
   through `get()` but is missing from `getValues`. `GET /v1/snapshot` reads `getKeys(true)` plus the defaults' keys, so
   the fixture's `greeting` shows as `hi`. (T-M4-12)
