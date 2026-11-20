@@ -26,9 +26,6 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
-- **Items handed back on a menu close arrive as `ClientboundSetPlayerInventoryPacket` (1.21.2+), with no window id and no state id** (T-M11-06,
-  `folia@26.3`, 1 run in 4). The mcpl driver ignored it, so the client oracle missed a book the server had put in slot 9. The driver now applies
-  it by inventory index (0-8 hotbar, 9-35 main, 36-39 feet to head, 40 offhand) to window 0 and to an open window's player section.
 
 - **A Paper cell fails as `Container startup failed` (`HostPortWaitStrategy`) when the boot takes over 60 s, which a busy host
   does** (T-M8-24, `paper@1.21.11` bridged, Testcontainers 2.0.5). `PaperHost` sets no wait strategy, so the default port wait

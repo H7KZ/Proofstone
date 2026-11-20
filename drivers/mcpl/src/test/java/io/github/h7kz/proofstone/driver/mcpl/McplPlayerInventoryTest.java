@@ -140,4 +140,28 @@ class McplPlayerInventoryTest {
 
         assertThat(registryIdAt(9)).isEqualTo(BOOK);
     }
+
+    @Test
+    void aHotbarIndexLandsAtTheTailOfAnOpenWindowAfterTheMainSlots() {
+        join();
+        var anvil = openAnvil();
+
+        received(new ClientboundSetPlayerInventoryPacket(0, new ItemStack(BOOK, 1)));
+
+        assertThat(anvil.slots().get(3 + 27)).as("hotbar 0 follows the 27 main slots").isEqualTo(new SlotStack(BOOK, 1));
+        assertThat(session.inventory().slots().get(36)).as("window 0 takes it as hotbar 0").isEqualTo(new SlotStack(BOOK, 1));
+    }
+
+    @Test
+    void anArmorIndexWhileAWindowIsOpenIsLeftToWindowZero() {
+        join();
+        var anvil = openAnvil();
+        var before = anvil.slots();
+
+        received(new ClientboundSetPlayerInventoryPacket(39, new ItemStack(BOOK, 1)));
+        received(new ClientboundSetPlayerInventoryPacket(99, new ItemStack(BOOK, 1)));
+
+        assertThat(anvil.slots()).as("a container has no armor section and an unknown index has no place").isEqualTo(before);
+        assertThat(session.inventory().slots().get(5)).as("window 0 takes the head slot").isEqualTo(new SlotStack(BOOK, 1));
+    }
 }

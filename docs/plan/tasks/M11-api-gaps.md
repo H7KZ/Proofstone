@@ -121,7 +121,7 @@ Bukkit-family agent already fills it and the host's `HostPlayer.state()` already
 **Evidence.** Disenchantment e2e `PreEventCancelE2E.aCancelledPreDisenchantEventChangesNothing` on `folia@26.3` failed 1 run in 4: the server oracle saw the
 returned enchanted book in slot 9, the client oracle saw only the sword. The driver transcript ends with a click, a window resync, the window close, then
 `ClientboundSetPlayerInventoryPacket` and a `SetSlot` for slot 36. `McplSession` had no branch for that packet (1.21.2+), so a stack handed back on a menu close was never applied.
-The other suspect, `Window.click` not waiting for the answer, is not the cause: it already waits for a state id or resync change.
+The other suspect, `Window.click` racing the resync, is not the cause: click returns on the first sync and the oracle polls (ROADMAP.md documents that it can return before the rest of the answer).
 
 **Do.**
 - Apply the packet by inventory index (0-8 hotbar, 9-35 main, 36-39 feet to head, 40 offhand) to window 0, and to the player section of an open window so a later close does not adopt a stale stack.
