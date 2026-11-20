@@ -61,6 +61,7 @@ Each supported platform gets `docs/platforms/<id>.md` with these sections:
 
 Written so far: [paper](platforms/paper.md), [folia](platforms/folia.md), [purpur](platforms/purpur.md), [spigot](platforms/spigot.md). Bridged-row facts: [viaproxy](platforms/viaproxy.md).
 Proxy facts (T-M7-01 spike, then the M7 cards; both rows `required` since 2026-11-14, P01 to P05 green 3 of 3 per row again in the M7 review): [velocity](platforms/velocity.md), [bungeecord](platforms/bungeecord.md).
+Proxy spike, no row (T-M10-12, Gate, a Go proxy with no agent, oracle gap stated): [gate](platforms/gate.md).
 Mod loader facts (T-M8-01 spike, then the M8 cards; design in [ADR-0017](adr/0017-mod-platform-packs.md); both rows `experimental`): [fabric](platforms/fabric.md), [neoforge](platforms/neoforge.md). How to test mods, data packs and resource packs: [user guide](user/mods-and-packs.md).
 A loader cell's first start fetches the vanilla server jar from Mojang and libraries from the loader's maven: a listed,
 content-pinned exception to "no Mojang dependency in runs" (ADR-0017 §6). Logins never reach Mojang (offline mode).
