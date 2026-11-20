@@ -75,3 +75,35 @@ Bukkit-family agent already fills it and the host's `HostPlayer.state()` already
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceOpenWindowTest' --no-parallel --max-workers=1`
+
+### T-M11-03 · `Agent.bootLogLines()`: the server log from the agent's enable to the test start
+- tier: sonnet
+- depends: T-M11-01
+- modules: proofstone-api, proofstone-core, conformance, docs/specs, docs/user
+- adrs: 0002
+- specs: specs/test-api.md §3, specs/agent-protocol.md §2
+- test-first: yes
+
+**Goal.** A test reads the lines the server logged before the test started (a plugin's start-up line, for example
+`NMS module: NMS_v1_21_R5`), through the public API. Label `api-change`.
+
+**Evidence.** `logLines()` (T-M11-01) reads from the cursor taken before the client joins, so boot lines are not visible.
+
+**Do.**
+- Add `Agent.bootLogLines()` as a default method that throws `UnsupportedOperationException`. Implement it in core for `HostAgent`
+  and `ProxyAgent` over `GET /v1/log?since=0&minLevel=TRACE`, cut at the test cursor (disjoint from `logLines()`).
+- A ring buffer (5000 records) that dropped records throws `IllegalStateException`.
+- Document the coverage: the agent loads at STARTUP and attaches in `onEnable`, so lines from there on are held (every ordinary
+  plugin's enable lines, the `Done` line); the banner, library loading and the agent's own "Enabling" line are not.
+- Unit tests in core and api, one real-server scenario (C-L02), docs, a regenerated `api-baseline.txt`.
+
+**Don't.** Change the wire protocol (no version bump, golden or schema change), the agents or add a capability; add a sleep or retry.
+
+**Acceptance.**
+- [ ] `api-baseline.txt` gains only `Agent.bootLogLines()`; `ApiSurfaceTest` is green.
+- [ ] Unit tests: window cut at the cursor, stack traces, dropped records throw, cursor past the records throws, api default throws.
+- [ ] C-L02 (`ConformanceBootLogLinesTest`) green on `paper@26.3` in three separate invocations, XML read, `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green; docs and CHANGELOG updated.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceBootLogLinesTest' --no-parallel --max-workers=1`

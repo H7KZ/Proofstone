@@ -7,6 +7,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 
 ### Added
 - `Agent.logLines()` and `Agent.logLines(Pattern, Duration)`: the server log since the test started, as plain text (API addition, T-M11-01).
+- `Agent.bootLogLines()`: the server log lines from the agent's enable up to the test start, so a plugin's start-up line is readable (API addition, T-M11-03; no protocol change).
 - `PlayerState.openWindow()` and `ServerWindow`: the server's view of the container a player has open (type, title, the container's own slots), read from the agent state that already carried it (API addition, T-M11-02).
 
 ## [0.1.0] - 2026-11-18

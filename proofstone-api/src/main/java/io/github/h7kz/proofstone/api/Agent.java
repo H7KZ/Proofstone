@@ -47,6 +47,21 @@ public interface Agent {
     }
 
     /**
+     * The server log lines logged before the test started, oldest first, in the form of {@link #logLines()}: the complement
+     * of it, so the two together are every line the agent captured. It starts at the agent's own enable (the agent loads at
+     * server STARTUP, before every ordinary plugin and before the worlds), so it holds the enable lines of the plugins under
+     * test, for example a plugin's start-up line, and the earlier tests' lines. It does not hold what the server logged
+     * before the agent enabled (the server banner, library loading, the plugin loading list). Read-only.
+     *
+     * @throws IllegalStateException when the agent's log buffer (the last 5000 records) dropped a record since the agent
+     *                               enabled, which a suite of many tests can cause; the result would then be incomplete
+     * @throws UnsupportedOperationException when this agent cannot read the log
+     */
+    default List<String> bootLogLines() {
+        throw new UnsupportedOperationException("this agent cannot read the server log");
+    }
+
+    /**
      * Waits until a log line logged since the test started contains a match of {@code pattern} ({@link
      * java.util.regex.Matcher#find()}), then returns every such line, oldest first. Lines are as in {@link #logLines()}.
      *

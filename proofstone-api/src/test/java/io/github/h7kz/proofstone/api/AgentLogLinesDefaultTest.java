@@ -48,4 +48,10 @@ class AgentLogLinesDefaultTest {
         assertThatThrownBy(() -> minimal.logLines(Pattern.compile("x"), Duration.ofSeconds(1)))
                 .isInstanceOf(UnsupportedOperationException.class).hasMessage("this agent cannot read the server log");
     }
+
+    @Test
+    void bootLogLinesFailsLoudlyOnAnAgentThatDoesNotOverrideIt() {
+        assertThatThrownBy(minimal::bootLogLines).isInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("this agent cannot read the server log");
+    }
 }

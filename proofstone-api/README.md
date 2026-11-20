@@ -22,6 +22,8 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
   `Cell.capabilities()` a default method that throws, and removed `Capability.NMS` and `Capability.DATAPACKS` (no agent token).
 - Server log (T-M11-01, api-change, additions only): `Agent.logLines()` and `Agent.logLines(Pattern, Duration)`, default methods that
   throw `UnsupportedOperationException`. No protocol change (`GET /v1/log` already exists), no capability.
+- Boot log (T-M11-03, api-change, addition only): `Agent.bootLogLines()`, a default method that throws `UnsupportedOperationException`. No
+  protocol change (`GET /v1/log?since=0`), no capability.
 - Server window (T-M11-02, api-change, additions only): `PlayerState.openWindow()` (an `Optional<ServerWindow>`, a new last record
   component) and `ServerWindow(type, title, slots)`. The 7-argument `PlayerState` constructor stays. No protocol change (`openWindow` is in
   `player-state.json` already), no capability.

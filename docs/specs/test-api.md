@@ -80,6 +80,7 @@ e.awaitOne().getInt("xpCost");                   // getters serialised to JSON
 agent.awaitTicks(2);
 agent.assertNoErrorsLogged();                    // pack patterns + allowlist
 agent.logLines();                                // lines since the test started, as plain text (T-M11-01)
+agent.bootLogLines();                            // lines from the agent's enable up to the test start (T-M11-03)
 agent.logLines(Pattern.compile("NMS module: (\\S+)"), Duration.ofSeconds(10));   // waits for a match, returns the matching lines
 ```
 
@@ -183,6 +184,12 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
   waits (through `Await`) for a line that contains a match of the pattern and returns every matching line. A ring buffer that
   dropped records since the cursor is an `IllegalStateException`, never a short list. Backed by `GET /v1/log`, so no protocol
   change and no capability; a proxy `Agent` and every backend `Agent` of a topology read their own container.
+- `Agent.bootLogLines()` (T-M11-03, api-change, addition only, a default method that throws): the lines before the test window,
+  `GET /v1/log?since=0` cut at the lifecycle's log cursor, so it and `logLines()` are disjoint and together are every captured line.
+  Covered: from the agent's own `onEnable` (it loads at STARTUP) on, which holds the enable lines of every ordinary plugin and
+  the `Done` line. Not covered: what the server logged before the agent enabled (banner, libraries, the plugin loading list,
+  and the agent's own "Enabling" line). The agent ring holds 5000 records; a dropped record is an `IllegalStateException`.
+  No protocol change, no version bump, no capability.
 - `PlayerState.openWindow()` and `ServerWindow` (T-M11-02, api-change, additions only): `Optional<ServerWindow>` as a new last component of
   `PlayerState` (the 7-argument constructor stays). It is the server's view of the container the player has open, from the
   `openWindow` field `player-state.json` already has, so no protocol change and no capability. `ServerWindow` has `type` (the
