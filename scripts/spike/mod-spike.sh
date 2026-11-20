@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# SPIKE (T-M8-01). Not production code. Boots one Fabric, NeoForge or Paper server in itzg/minecraft-server (pinned by
+# SPIKE (T-M8-01; sponge added by T-M10-11). Not production code. Boots one Fabric, NeoForge, Paper or SpongeVanilla server in itzg/minecraft-server (pinned by
 # digest), copies the pinned loader jar, mods, a data pack and server properties in, joins with the mcpl driver through
 # scripts/spike/ModJoin.java, and keeps every log under build/spike/.
 #
 # Usage (Git Bash on Windows needs MSYS_NO_PATHCONV=1 so container paths are not rewritten):
 #   PROOFSTONE_ACCEPT_EULA=true MSYS_NO_PATHCONV=1 bash scripts/dockerlock.sh bash scripts/spike/mod-spike.sh \
-#     <fabric|neoforge|paper> <mc> <joins> [ModJoin steps...]
+#     <fabric|neoforge|paper|sponge> <mc> <joins> [ModJoin steps...]
 # Environment:
+#   SPIKE_CACHE=dir      where the pinned loader jars are (default build/spike/cache); SPIKE_OUT=dir for the run output.
+#                        The Sponge spike keeps both outside the repository (docs/platforms/sponge.md).
+#   MODS on sponge       SpongeVanilla reads plugins from /data/mods, so a Sponge plugin goes in MODS as well.
 #   MODS="a.jar b.jar"   copied into /mods (the image copies them to /data/mods as the server user)
 #   DATAPACK=x.zip       copied into /datapacks-in and installed with the image's DATAPACKS (world/datapacks)
 #   PACK=x.zip           a resource pack: server.properties points at http://127.0.0.1:28765/pack.zip with its sha1,
@@ -23,7 +26,7 @@
 # docs/platforms/fabric.md and neoforge.md; versions.yml is not changed by this card.
 set -euo pipefail
 
-LOADER=${1:?loader: fabric | neoforge | paper}
+LOADER=${1:?loader: fabric | neoforge | paper | sponge}
 MC=${2:?minecraft version}
 JOINS=${3:-5}
 shift 3 || true
@@ -33,7 +36,7 @@ if [ "${PROOFSTONE_ACCEPT_EULA:-}" != "true" ]; then
 fi
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-CACHE=$ROOT/build/spike/cache
+CACHE=${SPIKE_CACHE:-$ROOT/build/spike/cache}
 OUT=${SPIKE_OUT:-$ROOT/build/spike/$LOADER-$MC-$(date +%Y%m%dT%H%M%S)}
 mkdir -p "$OUT/stage/pins"
 
@@ -48,10 +51,12 @@ esac
 FABRIC_LOADER=0.20.1
 FABRIC_LAUNCHER_VER=1.1.2
 NEOFORGE=26.3.0.103
+SPONGEVANILLA=26.3-21.0.0-RC2792 # T-M10-11: newest 26.3 build on dl-api.spongepowered.org (an RC, not "recommended")
 declare -A PIN_SHA=(
   [fabric-server-mc.26.3-loader.0.20.1-launcher.1.1.2.jar]=70446947655b4f8f286aba896aa4c19a255e8ca8a730636ef2a6017ae4415d95
   [fabric-server-mc.1.21.11-loader.0.20.1-launcher.1.1.2.jar]=2b06e5e0719199ba100659a283626d9b055e5fded1cb87fa1cdf4df571c0754d
   [neoforge-26.3.0.103-installer.jar]=d8a92e17cf12b5739a2518b11afd47eeec0e636a6e63f94b6400c5dbd3603e48
+  [spongevanilla-26.3-21.0.0-RC2792-universal.jar]=603d2fa0292d9c15f39a3ba39624823ad90b25ff3349380620f7d72455b170b7
 )
 
 C=ps-spike-mod
@@ -83,6 +88,12 @@ case "$LOADER" in
   neoforge)
     PIN=neoforge-$NEOFORGE-installer.jar
     ENV+=(-e TYPE=NEOFORGE -e NEOFORGE_INSTALLER=/pins/$PIN) ;;
+  sponge)
+    # itzg runs a jar it is given as-is; SpongeVanilla's installer fetches the Mojang server and its libraries itself.
+    PIN=spongevanilla-$SPONGEVANILLA-universal.jar
+    # A bearer token per run for the spike plugin (agent-protocol.md section 1); ModJoin's http: steps send it.
+    AGENT_TOKEN=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    ENV+=(-e TYPE=CUSTOM -e CUSTOM_SERVER=/pins/$PIN -e PROOFSTONE_AGENT_TOKEN="$AGENT_TOKEN") ;;
   paper)
     PIN=
     ENV+=(-e TYPE=PAPER -e PAPER_BUILD=244) ;;
@@ -134,6 +145,11 @@ echo "BOOT $LOADER@$MC ready in $(( $(date +%s) - t0 ))s (first start, includes 
 # The spike mod's HTTP port (only when a spike mod is loaded): the agent's shape and its ready flag.
 HPORT=$(docker port "$C" 25590/tcp | head -1 | sed 's/.*://')
 echo "spike mod /health: $(curl -s -m 5 "http://127.0.0.1:$HPORT/health" || echo 'no answer')"
+if [ -n "${AGENT_TOKEN:-}" ]; then
+  echo "spike plugin /v1/health: $(curl -s -m 5 -H "Authorization: Bearer $AGENT_TOKEN" "http://127.0.0.1:$HPORT/v1/health" || echo 'no answer')"
+  echo "spike plugin /v1/health, wrong token: $(curl -s -m 5 -w ' HTTP %{http_code}' -H 'Authorization: Bearer wrong' "http://127.0.0.1:$HPORT/v1/health" || echo 'no answer')"
+  STEPS_ENV+=(SPIKE_AGENT_PORT="$HPORT" SPIKE_AGENT_TOKEN="$AGENT_TOKEN")
+fi
 grep -a '\[proofstone-spike\]' <(docker logs "$C" 2>&1) || true
 
 if [ "${OFFLINE:-}" = 1 ]; then
@@ -177,5 +193,6 @@ env SPIKE_CONSOLE="$C" "${STEPS_ENV[@]}" "$JAVA" -cp "$SPIKE_CP" "$(hostpath "$R
   127.0.0.1 "$PORT" "$JOINS" "$(hostpath "$OUT")" "$@" | tee "$OUT/client.txt"
 
 docker logs "$C" >"$OUT/server.log" 2>&1
-echo "server: login lines $(grep -c 'logged in with entity id' "$OUT/server.log" || true), joined lines $(grep -c 'joined the game' "$OUT/server.log" || true)"
+# Sponge logs "logged in to world '<key>' with entity id" and no "joined the game" line (T-M10-11).
+echo "server: login lines $(grep -c -E 'logged in (to world .* )?with entity id' "$OUT/server.log" || true), joined lines $(grep -c 'joined the game' "$OUT/server.log" || true), left lines $(grep -c 'left the game' "$OUT/server.log" || true)"
 echo "output: $OUT"

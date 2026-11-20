@@ -13,7 +13,10 @@
 // Steps after each counted join (args after <outDir>), each "<kind>:<text>[=><regex>]":
 //   console:<command>   sent to the server console with `docker exec <SPIKE_CONSOLE> mc-send-to-console`
 //   cmd:<command>       sent by the client as a chat command
-// With "=>", the step waits up to 20 s for a chat line matching the regex and prints it.
+//   http:<path>         (T-M10-11) GET http://127.0.0.1:<SPIKE_AGENT_PORT><path> with "Authorization: Bearer <SPIKE_AGENT_TOKEN>",
+//                       while the player is online; the status and body are printed. With "=>", the body must match the regex
+//                       (one read, no retry: a mismatch is a step failure)
+// With "=>" on console and cmd, the step waits up to 20 s for a chat line matching the regex and prints it.
 //
 // Run through scripts/spike/mod-spike.sh, which builds the classpath:
 //   java -cp <mcpl runtime classpath> scripts/spike/ModJoin.java <host> <port> <joins> <outDir> [steps...]
@@ -129,6 +132,17 @@ public class ModJoin {
             }
         } else if (action.startsWith("cmd:")) {
             session.command(action.substring("cmd:".length()));
+        } else if (action.startsWith("http:")) {
+            HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + System.getenv("SPIKE_AGENT_PORT")
+                            + action.substring("http:".length())))
+                    .header("Authorization", "Bearer " + System.getenv("SPIKE_AGENT_TOKEN"))
+                    .header("X-Proofstone-Request-Id", "spike-" + i).timeout(WAIT).GET().build();
+            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("  [" + i + "] " + action + " -> " + response.statusCode() + " " + response.body());
+            if (parts.length == 2 && !Pattern.compile(parts[1]).matcher(response.body()).find()) {
+                throw new IllegalStateException("body does not match " + parts[1]);
+            }
+            return;
         } else {
             throw new IllegalArgumentException("unknown step kind: " + step);
         }
