@@ -108,6 +108,35 @@ Bukkit-family agent already fills it and the host's `HostPlayer.state()` already
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceBootLogLinesTest' --no-parallel --max-workers=1`
 
+### T-M11-06 · mcpl driver: apply `ClientboundSetPlayerInventoryPacket` to the client inventory
+- tier: sonnet
+- depends: T-M2-06
+- modules: drivers/mcpl, docs/platforms
+- adrs: 0002
+- specs: specs/client-driver.md §2
+- test-first: yes
+
+**Goal.** The client oracle (`DualAssert.item().inInventory`) sees every stack the server put into the player's inventory. Bugfix, no API change.
+
+**Evidence.** Disenchantment e2e `PreEventCancelE2E.aCancelledPreDisenchantEventChangesNothing` on `folia@26.3` failed 1 run in 4: the server oracle saw the
+returned enchanted book in slot 9, the client oracle saw only the sword. The driver transcript ends with a click, a window resync, the window close, then
+`ClientboundSetPlayerInventoryPacket` and a `SetSlot` for slot 36. `McplSession` had no branch for that packet (1.21.2+), so a stack handed back on a menu close was never applied.
+The other suspect, `Window.click` racing the resync, is not the cause: click returns on the first sync and the oracle polls (ROADMAP.md documents that it can return before the rest of the answer).
+
+**Do.**
+- Apply the packet by inventory index (0-8 hotbar, 9-35 main, 36-39 feet to head, 40 offhand) to window 0, and to the player section of an open window so a later close does not adopt a stale stack.
+- Unit tests with scripted packets (`McplPlayerInventoryTest`), red before the fix.
+
+**Don't.** Change the wire protocol, public API, or add a sleep or retry.
+
+**Acceptance.**
+- [ ] `McplPlayerInventoryTest` fails without the fix and passes with it.
+- [ ] The window and inventory conformance subset is green on `paper@26.3` in three separate invocations, XML read, `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceOpenWindowTest' --no-parallel --max-workers=1`
+
 ### T-M11-04 · `Client.placeBlock` and `Client.breakBlock`: a player's block place and break
 - tier: sonnet
 - depends: —

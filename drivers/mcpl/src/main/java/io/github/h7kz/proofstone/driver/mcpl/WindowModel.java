@@ -74,6 +74,45 @@ class WindowModel implements WindowView {
         return true;
     }
 
+    /**
+     * Applies a ClientboundSetPlayerInventoryPacket slot (inventory index: 0-8 hotbar, 9-35 main, 36-39 feet to head,
+     * 40 offhand) to this model: by window-0 numbering for the player inventory, else to the player section at the tail
+     * of a container (hotbar and main only). Leaves the state id alone, as the packet has none. Returns false when the
+     * slot has no place in this model, so the caller can record it.
+     */
+    synchronized boolean setPlayerInventorySlot(int inventorySlot, ItemStack item) {
+        if (slots == null) {
+            return false;
+        }
+        int target;
+        if (id == 0) {
+            if (inventorySlot >= 0 && inventorySlot < 9) {
+                target = 36 + inventorySlot;
+            } else if (inventorySlot >= 9 && inventorySlot < 36) {
+                target = inventorySlot;
+            } else if (inventorySlot >= 36 && inventorySlot < 40) {
+                target = 8 - (inventorySlot - 36); // feet is window slot 8, head is 5
+            } else if (inventorySlot == 40) {
+                target = 45;
+            } else {
+                return false;
+            }
+        } else {
+            int tail = slots.size() - PLAYER_SLOTS;
+            if (tail < 0 || inventorySlot < 0 || inventorySlot >= PLAYER_SLOTS) {
+                return false;
+            }
+            // The container lists the 27 main slots, then the 9 hotbar slots.
+            target = tail + (inventorySlot < 9 ? 27 + inventorySlot : inventorySlot - 9);
+        }
+        if (target >= slots.size()) {
+            return false;
+        }
+        slots.set(target, convert(item));
+        rawSlots.set(target, item);
+        return true;
+    }
+
     synchronized void setCursor(ItemStack item) {
         cursor = convert(item);
         rawCursor = item;

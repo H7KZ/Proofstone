@@ -59,6 +59,10 @@ Not diagnosed. Two different reds on one row is an unexplained flake, so that ro
 M5 follow-up_
 
 ## Gotchas
+
+- **Items handed back on a menu close arrive as `ClientboundSetPlayerInventoryPacket` (1.21.2+), with no window id and no state id** (T-M11-06,
+  `folia@26.3`, 1 run in 4; the driver is shared, so Paper cells are affected too). The mcpl driver ignored it, so the client oracle missed a book the server had put in slot 9. The driver now applies
+  it by inventory index (0-8 hotbar, 9-35 main, 36-39 feet to head, 40 offhand) to window 0 and to an open window's player section.
 - **Boot used to fail on every row.** `ProofstoneAgent.onEnable` called `Bukkit.getScheduler().scheduleSyncRepeatingTask`
   for the tick counter. Folia's `CraftScheduler` throws `UnsupportedOperationException` (there is no main thread), and
   `onDisable` failed on `cancelTasks` too. Fixed by `FoliaScheduler` (T-M5-02). _1.21.11, 26.1.2, 26.2, 26.3_
