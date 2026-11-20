@@ -161,4 +161,18 @@ class ServerLogLinesTest {
         assertThatThrownBy(() -> agent(host, cursor).logLines(Pattern.compile("boot marker"), Duration.ofMillis(100)))
                 .isInstanceOf(AwaitTimeoutException.class);
     }
+
+    @Test
+    void awaitRethrowsDroppedRecordsAtOnceInsteadOfPollingToTheTimeout() {
+        FakeAgent host = new FakeAgent();
+        for (int i = 0; i < 5; i++) {
+            host.records.add(record("INFO", "Minecraft", "line " + i, null));
+        }
+        host.evictedBelow = 2;
+
+        // A timeout of an hour: only an immediate rethrow lets this test finish.
+        assertThatThrownBy(() -> agent(host, new AtomicLong(0)).logLines(Pattern.compile("never"), Duration.ofHours(1)))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("dropped 2 of 5 records");
+        assertThat(host.paths).hasSize(1);
+    }
 }

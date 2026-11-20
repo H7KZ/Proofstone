@@ -42,12 +42,31 @@ final class ServerLogLines {
         return render(page.records());
     }
 
-    /** Waits for a line matching {@code pattern}, then returns every matching line. */
+    /** What one poll saw: the lines, or the drop that made them unreadable. */
+    private record Poll(List<String> lines, IllegalStateException dropped) {
+    }
+
+    /**
+     * Waits for a line matching {@code pattern}, then returns every matching line. {@link Await} records a probe that throws
+     * and polls on, which would turn a dropped-records failure into a timeout, so the probe carries the drop out as a value
+     * and it is rethrown at once.
+     */
     static List<String> await(AgentEndpoint host, LongSupplier cursor, Pattern pattern, Duration timeout) {
-        List<String> lines = Await.until("a server log line matching /" + pattern.pattern() + "/",
-                () -> read(host, cursor.getAsLong()), all -> all.stream().anyMatch(line -> pattern.matcher(line).find()),
+        Poll poll = Await.until("a server log line matching /" + pattern.pattern() + "/", () -> {
+            try {
+                return new Poll(read(host, cursor.getAsLong()), null);
+            } catch (IllegalStateException e) {
+                if (e.getMessage() != null && e.getMessage().contains("dropped")) {
+                    return new Poll(List.of(), e);
+                }
+                throw e;
+            }
+        }, found -> found.dropped() != null || found.lines().stream().anyMatch(line -> pattern.matcher(line).find()),
                 timeout);
-        return lines.stream().filter(line -> pattern.matcher(line).find()).toList();
+        if (poll.dropped() != null) {
+            throw poll.dropped();
+        }
+        return poll.lines().stream().filter(line -> pattern.matcher(line).find()).toList();
     }
 
     /** One line per line of text: {@code LEVEL logger: message}, then the rest of the message, then the stack trace. */

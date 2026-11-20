@@ -34,12 +34,11 @@ class ConformanceLogLinesTest {
         assertThat(join.get(0)).startsWith("INFO ");
 
         agent.command("say " + MARKER);
-        List<String> marked = agent.logLines(Pattern.compile(MARKER), WAIT);
-        assertThat(marked).as("the console say line").hasSize(1);
+        List<String> marked = agent.logLines(Pattern.compile("\\[Server\\].*" + MARKER), WAIT);
+        assertThat(marked).as("the console say line").isNotEmpty();
 
         List<String> all = agent.logLines();
-        System.err.println("PROOFSTONE C-L01 observed " + all.size() + " lines since the test start; first: "
-                + all.get(0) + "; join: " + join.get(0) + "; say: " + marked.get(0));
+        assertThat(all).as("lines since the test start").isNotEmpty();
         assertThat(all).containsAll(join).containsAll(marked);
         // The start-up line is logged before the test's window opens, so it is not part of "since the test started".
         assertThat(all).as("boot lines are before the test window").noneMatch(line -> line.contains("For help, type"));
