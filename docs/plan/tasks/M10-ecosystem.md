@@ -94,8 +94,8 @@ whether a BDS image may be pulled at all (AGENTS.md section 3: never committed, 
 - Use a Microsoft or Xbox account, a token or any secret. Commit BDS or any part of it.
 
 **Acceptance.**
-- [ ] `bds.md` states the BDS pin, the beta flag, whether the HTTP call works, the measured round trip, and the offline-join verdict.
-- [ ] A plain verdict: feasible (with the transport) or not, with evidence. If not, T-M10-02 and T-M10-03 are closed with a link.
+- [x] `bds.md` states the BDS pin, the beta flag, whether the HTTP call works, the measured round trip, and the offline-join verdict.
+- [x] A plain verdict: feasible (with the transport) or not, with evidence. If not, T-M10-02 and T-M10-03 are closed with a link.
 
 **Verify.**
 Reviewer re-runs the documented boot and one round trip under `scripts/dockerlock.sh`.
@@ -107,6 +107,10 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 - adrs: 0002, 0005, 0006, 0008, 0018
 - specs: agent-protocol.md, versions-yml.md
 - test-first: yes
+
+**Closed: not feasible (T-M10-01, 2026-11-20).** BDS 1.26.66.1 refuses the M9 driver's unsigned login (`Connection Request invalid.`,
+5 of 5 joins) and supports only NetherNet for players; with `online-mode=true` it does not start offline. Evidence and what would reopen
+this card: [bds.md](../../platforms/bds.md). Not started.
 
 **Goal.** A BDS cell boots with the script agent and serves the protocol subset an ADR names, observe-only.
 
@@ -135,6 +139,10 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 - adrs: 0003, 0015, 0018
 - specs: specs/self-tests.md §1
 - test-first: yes
+
+**Closed: not feasible (T-M10-01, 2026-11-20).** BDS 1.26.66.1 refuses the M9 driver's unsigned login (`Connection Request invalid.`,
+5 of 5 joins) and supports only NetherNet for players; with `online-mode=true` it does not start offline. Evidence and what would reopen
+this card: [bds.md](../../platforms/bds.md). Not started.
 
 **Goal.** The BDS row passes the scenarios its protocol subset allows, with the Bedrock driver joining natively.
 
