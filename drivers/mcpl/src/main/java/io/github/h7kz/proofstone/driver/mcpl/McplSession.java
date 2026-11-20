@@ -71,6 +71,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.C
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetSlotPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundOpenScreenPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundSetCursorItemPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundSetPlayerInventoryPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundRenameItemPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
@@ -262,6 +263,8 @@ final class McplSession implements ClientSession {
                     }
                 }
             }
+        } else if (packet instanceof ClientboundSetPlayerInventoryPacket inventorySlot) {
+            summary += applyPlayerInventory(inventorySlot);
         } else if (packet instanceof ClientboundSetCursorItemPacket cursor) {
             playerInventory.setCursor(cursor.getContents());
             summary += " cursor";
@@ -375,6 +378,23 @@ final class McplSession implements ClientSession {
             return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " (not applied: unknown window or slot)";
         }
         return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " stateId=" + slot.getStateId();
+    }
+
+    /**
+     * A stack the server put into one slot of the player's own inventory (1.21.2+), by inventory index. It carries no
+     * window id and no state id: the server uses it for stacks returned on a menu close (T-M11-06). Window 0 takes it,
+     * and so does an open window, whose player section is what a close hands back to window 0 (see retire).
+     */
+    private String applyPlayerInventory(ClientboundSetPlayerInventoryPacket packet) {
+        boolean applied = playerInventory.setPlayerInventorySlot(packet.getSlot(), packet.getContents());
+        synchronized (opened) {
+            for (WindowModel window : opened) {
+                if (!window.isClosed()) {
+                    window.setPlayerInventorySlot(packet.getSlot(), packet.getContents());
+                }
+            }
+        }
+        return " slot=" + packet.getSlot() + (applied ? "" : " (not applied: unknown slot or not synced)");
     }
 
     /** Marks a window closed and hands its player slots back to window 0 (see {@link WindowModel#adoptPlayerSlots}). */
