@@ -98,7 +98,14 @@ List<String> hits = agent.logLines(Pattern.compile("Reloaded"), Duration.ofSecon
   `player.awaitState("menu open", s -> s.openWindow().map(w -> w.title().startsWith("X")).orElse(false))`. `type` is the platform's
   name (`chest` on the Bukkit family), not the client's `minecraft:generic_9x3`. Fabric and NeoForge cannot read a title, so reading a
   player with a window open fails there.
-- Not in v0: `agent.world()`, `agent.awaitTicks`, `PlayerHandle.gamemode`, `PlayerState.location`,
+- `client.placeBlock(against, Face.UP)` and `client.breakBlock(pos)` act as a player: the server fires its real `BlockPlaceEvent` /
+  `BlockBreakEvent`, and the call returns once the server has answered (no sleep needed). Place uses the held item of the selected
+  hotbar slot (`player.give(...)` puts it in slot 0 after a reset); the new block lands on the neighbouring position of `face`. Assert
+  with the server: `agent.blockType("world", pos)` returns `minecraft:stone`, `minecraft:air` and so on. A break completes at once only in
+  creative (`agent.command("gamemode creative " + client.name())`) or with a zero break time (survival with the
+  `minecraft:block_break_speed` attribute raised); otherwise the server refuses the finish and the block stays. Reach, protection plugins
+  and cancelled events also leave the block unchanged, and a block with a use action (anvil, chest, crafting table) opens instead of being placed against, as for a player who is not sneaking. Only the Java driver (`mcpl`) supports it; Bedrock throws.
+- Not in v0: `agent.world()` (only `blockType`), `agent.awaitTicks`, `PlayerHandle.gamemode`, `PlayerState.location`,
   `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md); mods, data packs and resource packs in [mods-and-packs](mods-and-packs.md).
   Use `agent.command(...)` for setup instead of `world()`.
 

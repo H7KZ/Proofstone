@@ -26,6 +26,7 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
+- **Placing against an anvil opens it (T-M11-04).** `Client.placeBlock` sends use-item-on without the sneak flag, so against an anvil, chest or crafting table the server opens the window and fires no `BlockPlaceEvent`, though it still acknowledges the sequence. C-B01 places against plain stone. _26.3_
 - **A Paper cell fails as `Container startup failed` (`HostPortWaitStrategy`) when the boot takes over 60 s, which a busy host
   does** (T-M8-24, `paper@1.21.11` bridged, Testcontainers 2.0.5). `PaperHost` sets no wait strategy, so the default port wait
   with its 60 s `startupTimeout` runs beside the harness's own 3 minute `bootTimeout`, and Paper binds 25565 only 1 to 3 s before

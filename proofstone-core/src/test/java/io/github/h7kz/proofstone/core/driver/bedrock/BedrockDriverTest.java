@@ -9,7 +9,7 @@ import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
 import io.github.h7kz.proofstone.core.driver.Edition;
-import io.github.h7kz.proofstone.core.driver.Face;
+import io.github.h7kz.proofstone.api.Face;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.SlotStack;
 import io.github.h7kz.proofstone.core.driver.WindowView;
@@ -239,6 +239,10 @@ class BedrockDriverTest {
         ClientSession session = joined(new Script());
         assertThatThrownBy(() -> session.useBlock(new BlockPos(0, 0, 0), Face.UP))
                 .isInstanceOf(UnsupportedOperationException.class).hasMessageContaining("Bedrock").hasMessageContaining("ADR-0018");
+        assertThatThrownBy(() -> session.placeBlock(new BlockPos(0, 0, 0), Face.UP))
+                .isInstanceOf(UnsupportedOperationException.class).hasMessageContaining("Bedrock");
+        assertThatThrownBy(() -> session.breakBlock(new BlockPos(0, 0, 0)))
+                .isInstanceOf(UnsupportedOperationException.class).hasMessageContaining("Bedrock");
         assertThatThrownBy(() -> session.awaitWindow(Duration.ofSeconds(1))).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(session::experienceLevel).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> session.awaitServerSwitch(Duration.ofSeconds(1))).isInstanceOf(UnsupportedOperationException.class);

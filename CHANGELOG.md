@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 - `Agent.logLines()` and `Agent.logLines(Pattern, Duration)`: the server log since the test started, as plain text (API addition, T-M11-01).
 - `Agent.bootLogLines()`: the server log lines from the agent's enable up to the test start, so a plugin's start-up line is readable (API addition, T-M11-03; no protocol change).
 - `PlayerState.openWindow()` and `ServerWindow`: the server's view of the container a player has open (type, title, the container's own slots), read from the agent state that already carried it (API addition, T-M11-02).
+- `Client.placeBlock(BlockPos, Face)`, `Client.breakBlock(BlockPos)`, `Agent.blockType(String, BlockPos)` and the public enum `Face`: a player's block place and break through the Java driver, read back from the server (API addition, T-M11-04; no protocol change).
 
 ## [0.1.0] - 2026-11-18
 

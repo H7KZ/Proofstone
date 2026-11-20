@@ -71,4 +71,17 @@ public interface Agent {
     default List<String> logLines(Pattern pattern, Duration timeout) {
         throw new UnsupportedOperationException("this agent cannot read the server log");
     }
+
+    /**
+     * The server's block type at the position, as a namespaced id such as {@code minecraft:stone} (the oracle for
+     * {@link Client#placeBlock} and {@link Client#breakBlock}). Read-only: a {@code GET /v1/world/block}, no state.
+     *
+     * <p>Additive (T-M11-04). The default throws, so a custom {@code Agent} fails loudly instead of passing.
+     *
+     * @param world the world name (the default world of a fixture is {@code world})
+     * @throws RuntimeException when the world is unknown or the agent does not answer, with the reason
+     */
+    default String blockType(String world, BlockPos pos) {
+        throw new UnsupportedOperationException("this agent cannot read blocks");
+    }
 }

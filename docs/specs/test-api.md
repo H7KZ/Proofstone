@@ -81,6 +81,8 @@ agent.awaitTicks(2);
 agent.assertNoErrorsLogged();                    // pack patterns + allowlist
 agent.logLines();                                // lines since the test started, as plain text (T-M11-01)
 agent.bootLogLines();                            // lines from the agent's enable up to the test start (T-M11-03)
+client.placeBlock(groundPos, Face.UP);           // a real BlockPlaceEvent from the held item; the server answers (T-M11-04)
+client.breakBlock(pos);                          // a real BlockBreakEvent; agent.blockType(world, pos) is the oracle
 agent.logLines(Pattern.compile("NMS module: (\\S+)"), Duration.ofSeconds(10));   // waits for a match, returns the matching lines
 ```
 
@@ -194,6 +196,18 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
   the `Done` line. Not covered: what the server logged before the agent enabled (banner, libraries, the plugin loading list,
   and the agent's own "Enabling" line). The agent ring holds 5000 records; a dropped record is an `IllegalStateException`.
   No protocol change, no version bump, no capability.
+- `Client.placeBlock(BlockPos against, Face face)`, `Client.breakBlock(BlockPos)`, `Agent.blockType(String world, BlockPos)` and the public enum
+  `Face` (T-M11-04, api-change, additions only; `Face` moved from `proofstone-core`'s `driver` package, which is not public API, so no
+  public signature changes). The two `Client` methods and `blockType` are default methods that throw `UnsupportedOperationException`.
+  `placeBlock` looks at the block and sends use-item-on with the main hand's selected hotbar slot, so the server fires its real
+  `BlockPlaceEvent`; `breakBlock` looks at the block and sends start-digging then finish-digging at once, so the server fires its
+  real `BlockBreakEvent`. Both return when the server acknowledges the action's sequence number (the server sends that after handling
+  it), so no sleep is needed and `blockType` read afterwards sees the result. The server's rules decide the outcome: reach, a
+  protection plugin, or a cancelled event leave the block unchanged and are read from the server, not reported by the call; placing against a block with a use action (anvil, chest) opens it, as for a player who is not sneaking. A break
+  completes at once only in creative or with a zero break time (for example `attribute <name> minecraft:block_break_speed base set 1000`
+  in survival); a slower block is rejected by the server at the finish and stays. `blockType` is a read of the existing
+  `GET /v1/world/block`, so no protocol change, no version bump, no capability. The `mcpl` driver supports the calls; the Bedrock and
+  reference Mineflayer drivers throw (the `ClientSession` default), as for `useBlock` windows.
 - `PlayerState.openWindow()` and `ServerWindow` (T-M11-02, api-change, additions only): `Optional<ServerWindow>` as a new last component of
   `PlayerState` (the 7-argument constructor stays). It is the server's view of the container the player has open, from the
   `openWindow` field `player-state.json` already has, so no protocol change and no capability. `ServerWindow` has `type` (the
@@ -213,7 +227,7 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 
 ### 8.4 Not in v0 (post-v0 backlog)
 These appear in the sketches and are **not** part of the contract. Each needs an `api-change` card.
-- `Agent.world()` (`setBlock`, `block`): blocks are placed with `command` today, and the agent has the endpoints.
+- `Agent.world()` (`setBlock`, `block`): blocks are placed with `command` today, and the agent has the endpoints. The one read a test needs, `Agent.blockType`, exists since T-M11-04.
 - `Agent.plugin(..).reload()`, `Agent.awaitTicks` and the explicit `Agent.assertNoErrorsLogged()`
   (the per-test log check runs automatically; the explicit call is not exposed).
 - `PlayerHandle.gamemode` and `PlayerState.location`.

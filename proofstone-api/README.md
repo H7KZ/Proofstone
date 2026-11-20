@@ -24,6 +24,7 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
   throw `UnsupportedOperationException`. No protocol change (`GET /v1/log` already exists), no capability.
 - Boot log (T-M11-03, api-change, addition only): `Agent.bootLogLines()`, a default method that throws `UnsupportedOperationException`. No
   protocol change (`GET /v1/log?since=0`), no capability.
+- Block actions (T-M11-04, api-change, additions only): `Client.placeBlock(BlockPos, Face)`, `Client.breakBlock(BlockPos)` and `Agent.blockType(String, BlockPos)`, default methods that throw `UnsupportedOperationException`, and the enum `Face` (moved from core's non-public `driver` package). No protocol change (`GET /v1/world/block` exists), no capability.
 - Server window (T-M11-02, api-change, additions only): `PlayerState.openWindow()` (an `Optional<ServerWindow>`, a new last record
   component) and `ServerWindow(type, title, slots)`. The 7-argument `PlayerState` constructor stays. No protocol change (`openWindow` is in
   `player-state.json` already), no capability.
