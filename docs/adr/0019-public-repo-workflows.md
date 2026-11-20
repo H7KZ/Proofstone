@@ -17,6 +17,8 @@
 ## Decision
 1. **Three workflows, nothing scheduled.** (Amended 2026-11-19: `docs.yml` added, maintainer decision, T-M10-16.)
    - `gates.yml`: on pull requests to `develop` and `main`, and pushes to `develop`. Runs `bash scripts/gates.sh` (no Docker).
+     Amendment (T-M6-113, maintainer-approved): a prior step `scripts/ci-prefetch-deps.sh` downloads dependencies, retried up to 3 times
+     only on a dependency resolution error, and pushes to `develop` write the Gradle cache. The gates themselves are never retried.
    - `release.yml`: on a pushed tag `v*` only. Runs gates, the real-server smoke test and the mutation check, then publishes.
    - `docs.yml`: on pushes to `main` that touch `docs/**` or `scripts/docs-site.sh` only. Builds the static docs site with `scripts/docs-site.sh`
      and deploys it to GitHub Pages (permissions: contents read, pages write, id-token write). No schedule, no manual trigger, no secrets.
