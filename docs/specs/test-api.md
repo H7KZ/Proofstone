@@ -161,8 +161,8 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 - `io.github.h7kz.proofstone.api.spi.OracleWaiter` and its records: a service provider interface for `proofstone-core`, not for
   test authors.
 - `DualAssert.serverOnlyReasons()` and `ServerOnly.reason()`: a stop-gap until reports exist (M4).
-- Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`,
-  `location`). Test authors read them and never construct them. Accessors that exist today are frozen.
+- Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`).
+  Test authors read them and never construct them. Accessors that exist today are frozen.
 - `CapturedEvent.getInt` (accepts `xpCost` and `getXpCost`) and `fields()`: the value types are whatever the agent's
   JSON serialisation gives. Typed accessors may be added; the existing ones stay.
 - `Window.close()` returns after sending the close. It does not yet await the server close or the inventory resync,

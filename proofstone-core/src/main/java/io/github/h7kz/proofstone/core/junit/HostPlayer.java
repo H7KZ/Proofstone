@@ -89,6 +89,12 @@ final class HostPlayer implements PlayerHandle {
         if (wire == null) {
             return Optional.empty();
         }
+        if (wire.type() == null || wire.type().isBlank()) {
+            throw new IllegalStateException("the agent reported an open window with no type");
+        }
+        if (wire.title() == null) {
+            throw new IllegalStateException("the agent reported an open " + wire.type() + " window with no title");
+        }
         if (wire.slots() == null) {
             throw new IllegalStateException("the agent reported an open " + wire.type() + " window with no slots");
         }

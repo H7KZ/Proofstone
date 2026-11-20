@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.api;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -14,6 +15,7 @@ public record PlayerState(String name, int level, double exp, String gamemode, d
 
     public PlayerState {
         inventory = Map.copyOf(inventory);
+        Objects.requireNonNull(openWindow, "openWindow");
     }
 
     /** A state with no open window; kept so the constructor of v0 still compiles. */

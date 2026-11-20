@@ -85,6 +85,22 @@ class HostPlayerOpenWindowTest {
     }
 
     @Test
+    void aWindowWithoutTypeOrTitleIsAnError() {
+        assertThatThrownBy(() -> read("\"openWindow\":{\"slots\":[]}}"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("no type");
+        assertThatThrownBy(() -> read("\"openWindow\":{\"type\":\" \",\"title\":\"x\",\"slots\":[]}}"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("no type");
+        assertThatThrownBy(() -> read("\"openWindow\":{\"type\":\"chest\",\"slots\":[]}}"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("no title");
+    }
+
+    @Test
+    void aNullOptionalIsRejected() {
+        assertThatThrownBy(() -> new PlayerState("A", 0, 0, "survival", 20, java.util.Map.of(),
+                io.github.h7kz.proofstone.api.ItemView.EMPTY, null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
     void theV0ConstructorHasNoWindow() {
         assertThat(new PlayerState("A", 0, 0, "survival", 20, java.util.Map.of(),
                 io.github.h7kz.proofstone.api.ItemView.EMPTY).openWindow()).isEmpty();
