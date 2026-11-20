@@ -2093,9 +2093,33 @@ no BuildTools line in any log, so no rebuild was part of any run. Windows 11, Do
   `FOLIA_REGIONS` twice). So `:conformance:run -Dproofstone.cells=<spigot or purpur row>` cannot be green until those classes
   skip or are excluded; the other 10 classes were green. Not fixed here (no code changes); not carded yet, maintainer call
   (the loud failure follows the "fail loudly on unknowns" rule, so this may be intended and the Verify lines should add `--tests`).
+- **Verify corrected (T-M7-22, 2026-11-20).** The loud failure is intended, so the selection changes, not the guard. Corrected
+  command (the 10 spigot-capable classes, by `--tests`; the four paper-only classes are not selected):
+  `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --tests '*C03GiveRoundTripTest' --tests '*C04ChestMoveTest' --tests '*C05AnvilRenameCostTest' --tests '*C06AnvilCombineTest' --tests '*C07GrindstoneTest' --tests '*C08ShiftClickCraftTest' --tests '*ConformanceSmokeTest' --tests '*ConformanceFoliaEventTest' --tests '*ConformanceFoliaTeleportTest' --tests '*ConformanceBedrockPrefixTest' --no-parallel --max-workers=1`.
+  The old command (no `--tests`) is **red by design**, 10 of 10.
 - The root-owned `bukkit.yml` line (T-M8-02) is not in any gradle log; a green run keeps no server log, so it could not be
   checked per run. No red, so no log to read.
 - Cleanup: no Proofstone container left, Gradle daemon of this worktree stopped.
+
+## T-M7-22 result (2026-11-20, card T-M7-17 branch `card/T-M7-17-verify-selector`)
+
+Corrected Verify (ROADMAP "T-M7-16 result", card T-M7-16 Verify): `:conformance:run -Dproofstone.cells=spigot@26.3` with ten
+`--tests` class filters (C03 to C08, `ConformanceSmokeTest`, `ConformanceFoliaEventTest`, `ConformanceFoliaTeleportTest`,
+`ConformanceBedrockPrefixTest`), `--no-parallel --max-workers=1`, under `scripts/dockerlock.sh`. One run, no retry. Gradle
+`BUILD SUCCESSFUL in 11m 22s`, exit 0. Windows 11, Docker Desktop, JDK 25 toolchain.
+
+| Suite (XML) | tests | skipped | failures | errors | Skip reason |
+|---|---|---|---|---|---|
+| C03, C04, C05, C06, C07, C08 | 1 each | 0 | 0 | 0 | none |
+| ConformanceSmokeTest | 2 | 0 | 0 | 0 | none |
+| ConformanceFoliaEventTest | 1 | 1 | 0 | 0 | missing `FOLIA_REGIONS` on spigot@26.3 |
+| ConformanceFoliaTeleportTest | 1 | 1 | 0 | 0 | missing `FOLIA_REGIONS` on spigot@26.3 |
+| ConformanceBedrockPrefixTest | 1 | 1 | 0 | 0 | missing `SIMULATED_BEDROCK` on spigot@26.3 |
+| **Total** | **11** | **3** | **0** | **0** | all 3 reasoned (capability absent on Spigot) |
+
+- Green: 0 failures, 0 errors. The 3 skips are the reasoned capability skips; the paper-only classes are not selected, so no
+  `initializationError`. Counted apart from the T-M7-16 numbers (17 tests there included the 6 initialization errors).
+- Single run only: C04 green (C04 result in its XML: `skipped="0" failures="0" errors="0"`). Item stays as in T-M7-16.
 
 ## T-M6-109 join-stall analysis (2026-11-19, no code changed)
 
