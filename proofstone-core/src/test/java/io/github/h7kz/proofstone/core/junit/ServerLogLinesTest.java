@@ -209,7 +209,8 @@ class ServerLogLinesTest {
         host.evictedBelow = 2;
 
         assertThatThrownBy(() -> agent(host, new AtomicLong(4)).bootLogLines())
-                .isInstanceOf(IllegalStateException.class).hasMessageContaining("dropped 2 of 5 records");
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("dropped 2 of 5 records logged since the agent enabled, so the boot log window is incomplete");
     }
 
     @Test

@@ -25,7 +25,7 @@ final class ServerLogLines {
 
     /** The lines of every record logged since {@code cursor}. @throws IllegalStateException when records were dropped */
     static List<String> read(AgentEndpoint host, long cursor) {
-        return render(page(host, cursor).records());
+        return render(page(host, cursor, "since the test started, so the log lines are incomplete").records());
     }
 
     /**
@@ -34,7 +34,7 @@ final class ServerLogLines {
      * before the test. @throws IllegalStateException when the ring buffer dropped any of them
      */
     static List<String> readBoot(AgentEndpoint host, long cursor) {
-        List<LogRecord> records = page(host, 0).records();
+        List<LogRecord> records = page(host, 0, "since the agent enabled, so the boot log window is incomplete").records();
         if (cursor > records.size()) {
             throw new IllegalStateException("the test cursor " + cursor + " is past the " + records.size()
                     + " records the agent logged");
@@ -42,7 +42,8 @@ final class ServerLogLines {
         return render(records.subList(0, (int) cursor));
     }
 
-    private static LogPage page(AgentEndpoint host, long cursor) {
+    /** @param droppedContext what a drop means to this reader, appended to the loud failure */
+    private static LogPage page(AgentEndpoint host, long cursor, String droppedContext) {
         LogPage page;
         try {
             page = JSON.treeToValue(host.request("GET", "/v1/log?since=" + cursor + "&minLevel=TRACE", null),
@@ -55,7 +56,7 @@ final class ServerLogLines {
         long expected = page.next() - cursor;
         if (page.records().size() != expected) {
             throw new IllegalStateException("the agent's log buffer dropped " + (expected - page.records().size())
-                    + " of " + expected + " records logged since the test started, so the log lines are incomplete");
+                    + " of " + expected + " records logged " + droppedContext);
         }
         return page;
     }

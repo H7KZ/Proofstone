@@ -23,12 +23,11 @@ class ConformanceBootLogLinesTest {
     void bootLogLinesHoldThePluginEnableLineAndNotTheTestsOwnLines(Agent agent, Client client) {
         List<String> boot = agent.bootLogLines();
 
+        // The line ProofstoneAgentPlugin.java:55 logs at the end of onEnable, after LogBuffer.attach() ran at its start.
         assertThat(boot).as("the agent plugin's own enable line").anyMatch(
                 line -> line.startsWith("INFO ProofstoneAgent: Proofstone agent listening on port "));
         assertThat(boot).as("the start-up line").anyMatch(line -> line.contains("For help, type"));
         assertThat(boot).as("no line of the test window").noneMatch(line -> line.contains(client.name() + " joined"));
-
-        List<String> since = agent.logLines();
-        assertThat(since).as("lines since the test start are disjoint from the boot").noneMatch(boot::contains);
+        // Disjointness from logLines() is by record index, proven in ServerLogLinesTest; text can repeat across records.
     }
 }
