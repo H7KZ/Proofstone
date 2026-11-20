@@ -23,7 +23,7 @@ Minimum scenarios for Java packs. Each one uses the dual oracle, with vanilla be
 | C11 | Log capture: the fixture plugin logs a SEVERE, `assertNoErrorsLogged` fails, the allowlist works | error oracle |
 | C12 | Reset leaves no residue: state before and after compares equal | isolation |
 | C-L01 | `Agent.logLines` (T-M11-01, `ConformanceLogLinesTest`, Bukkit family): the harness client's join line and a console `say` line are in the lines since the test start; the boot `Done ... For help, type` line is not | server log capture through the public API |
-| C-L02 | `Agent.bootLogLines` (T-M11-03, `ConformanceBootLogLinesTest`, Paper): the fixture plugin's enable WARN record and the `Done ... For help, type` line are in the lines before the test; none of the test's own lines are, and `logLines` shares no line with it | boot log through the public API |
+| C-L02 | `Agent.bootLogLines` (T-M11-03, `ConformanceBootLogLinesTest`, Paper): the agent's own `Proofstone agent listening on port` line and the `Done ... For help, type` line are in the lines before the test; none of the test's own lines are, and `logLines` shares no line with it | boot log through the public API |
 | C-W01 | `PlayerState.openWindow` (T-M11-02, `ConformanceOpenWindowTest`, Bukkit family): empty before a chest is opened; while open, type `chest`, title `Chest`, the 27 own slots with the moved sword in slot 13 and an empty slot kept in place; empty again after the client closes it | server view of an open window |
 
 v0 limit for C04: it checks the move through server-answered clicks on the client window and dual-checks only the player
