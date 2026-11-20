@@ -123,7 +123,7 @@ item (for example Disenchantment's `disenchantment:special_anvil` byte) rather t
 filled it, so `pdc()` was `null` for every item.
 
 **Do.**
-- Read `ItemMeta.getPersistentDataContainer()` by reflection (the agent is built against 1.8.8; PDC exists from 1.14) and send each
+- Read `ItemMeta.getPersistentDataContainer()` by reflection (the agent is built against 1.8.8; PDC exists from 1.14; resolved defensively, verified on 1.18.2 and 26.3) and send each
   key as `{"type", "value"}`: byte, short, int, long, float, double, string, byte[], int[], long[], a nested container, and
   `unsupported` for a value it cannot read, never dropped. Report the agent token `pdc` where the API exists.
 - Map the wire entries to typed Java values in core (`PdcWire`); an unknown type or shape is an error.
@@ -135,7 +135,7 @@ filled it, so `pdc()` was `null` for every item.
 
 **Acceptance.**
 - [ ] Unit tests: every type, arrays, nested container, unsupported marker, empty container, unknown wire type fails, capability token.
-- [ ] C-I01 (`ConformanceItemPdcTest`) green on `paper@26.3` in three separate invocations and once on `paper@1.18.2`, XML read, `skipped="0" failures="0" errors="0"`.
+- [ ] C-I01 (`ConformanceItemPdcTest`) green on `paper@26.3` in three separate invocations and and on `paper@1.18.2` (also in the test's `@Matrix`), XML read, `skipped="0" failures="0" errors="0"`.
 - [ ] `bash scripts/gates.sh --max-workers=1` green; docs and CHANGELOG updated.
 
 **Verify.**

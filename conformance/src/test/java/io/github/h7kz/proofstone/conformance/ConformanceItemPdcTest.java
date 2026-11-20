@@ -21,7 +21,7 @@ import java.util.Map;
  * with no data has none.
  */
 @Proofstone
-@Matrix(platform = Platform.PAPER, versions = {"latest"})
+@Matrix(platform = Platform.PAPER, versions = {"latest", "1.18.2"})
 @Matrix(platform = Platform.FOLIA, versions = {"latest"})
 @Matrix(platform = Platform.PURPUR, versions = {"latest"})
 @Matrix(platform = Platform.SPIGOT, versions = {"latest"})

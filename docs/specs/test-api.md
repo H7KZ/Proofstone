@@ -176,7 +176,7 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
   list the agent reports.
 - `Item` has no `repairCost` or `pdc` setter, and `ItemView.repairCost()` reads 0 from the agent, because the agent's
   `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only). Since
-  T-M11-05 the Bukkit agent fills `pdc()` on 1.14 and later: `"namespace:key"` to a `Byte`, `Short`, `Integer`, `Long`, `Float`,
+  T-M11-05 the Bukkit agent fills `pdc()` where the server's PDC API has `getKeys`, `has` and `get` (verified on 1.18.2 and 26.3; the PDC API arrived in 1.14 and the agent checks the shape at start-up, so any other server reports no `pdc` token and no field): `"namespace:key"` to a `Byte`, `Short`, `Integer`, `Long`, `Float`,
   `Double`, `String`, `byte[]`, `int[]` or `long[]`; a nested container is a `Map` of the same; a value it cannot read is
   `Map.of("unsupported", description)`. `pdc()` is `null` for an item with no data and on a cell with no PDC (agent token `pdc`).
   `DualAssert...serverOnly(reason).pdc(key, expected)` compares arrays by content.

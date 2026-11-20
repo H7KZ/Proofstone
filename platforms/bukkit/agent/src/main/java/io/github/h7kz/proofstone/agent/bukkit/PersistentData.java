@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * Reads an item's persistent data container into the wire form of {@code item.pdc} (T-M11-05). The agent is built
@@ -33,7 +34,7 @@ final class PersistentData {
             {"double", "DOUBLE"}, {"string", "STRING"}, {"byte[]", "BYTE_ARRAY"}, {"int[]", "INTEGER_ARRAY"},
             {"long[]", "LONG_ARRAY"}, {"container", "TAG_CONTAINER"}};
 
-    private static final Api API = Api.load();
+    private static final Api API = Api.load(PersistentData.class.getClassLoader(), CONTAINER, DATA_TYPE);
 
     private PersistentData() {
     }
@@ -42,19 +43,29 @@ final class PersistentData {
         return API != null;
     }
 
+    /** As {@link #read(Object, Supplier)} for a meta with no better name. */
+    static Map<String, Object> read(Object meta) {
+        return read(meta, () -> "an item");
+    }
+
     /**
      * The meta's PDC, or null when the server has no PDC or the container is empty (an empty container adds nothing, so
-     * an item without data reads the same as before).
+     * an item without data reads the same as before). A failure is rethrown naming {@code what}, so a bad item in a long
+     * inventory is found; the call still fails, never skips the item.
      */
-    static Map<String, Object> read(Object meta) {
+    static Map<String, Object> read(Object meta, Supplier<String> what) {
         if (API == null || meta == null) {
             return null;
         }
-        Map<String, Object> out = API.read(API.container(meta));
-        return out.isEmpty() ? null : out;
+        try {
+            Map<String, Object> out = API.read(API.container(meta));
+            return out.isEmpty() ? null : out;
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("could not read the persistent data of " + what.get() + ": " + e.getMessage(), e);
+        }
     }
 
-    /** The reflective handles, resolved once. A class that cannot be loaded at all means no PDC on this server. */
+    /** The reflective handles, resolved once. Anything missing means no PDC on this server, never an exception. */
     static final class Api {
         private final Method getKeys;
         private final Method has;
@@ -62,29 +73,36 @@ final class PersistentData {
         private final Map<String, Object> constants = new LinkedHashMap<>();
         private final Map<Class<?>, Method> accessors = new ConcurrentHashMap<>();
 
-        private Api(Class<?> container, Class<?> dataType) throws NoSuchMethodException, ClassNotFoundException {
+        private Api(Class<?> container, Class<?> dataType) throws ReflectiveOperationException {
             this.getKeys = container.getMethod("getKeys");
             Class<?> key = Class.forName("org.bukkit.NamespacedKey", false, container.getClassLoader());
             this.has = container.getMethod("has", key, dataType);
             this.get = container.getMethod("get", key, dataType);
             for (String[] type : TYPES) {
+                Object constant = null;
                 try {
-                    constants.put(type[0], dataType.getField(type[1]).get(null));
-                } catch (NoSuchFieldException | IllegalAccessException e) {
-                    // The constant is newer than this server: its values fall to "unsupported", never a guess.
-                    constants.put(type[0], null);
+                    constant = dataType.getField(type[1]).get(null);
+                } catch (NoSuchFieldException e) {
+                    // Only the nested container may be absent (its values then read as unsupported); a missing primitive
+                    // means the API is not the one the agent knows.
+                    if (!"container".equals(type[0])) {
+                        throw e;
+                    }
                 }
+                constants.put(type[0], constant);
             }
         }
 
-        static Api load() {
+        /**
+         * The handles, or null when this server's PDC API is absent or not the shape the agent reads (a missing class,
+         * method or primitive constant). Never throws: it runs in a static initialiser, where a throw would be an
+         * ExceptionInInitializerError in the agent's onEnable.
+         */
+        static Api load(ClassLoader loader, String containerName, String dataTypeName) {
             try {
-                ClassLoader loader = PersistentData.class.getClassLoader();
-                return new Api(Class.forName(CONTAINER, false, loader), Class.forName(DATA_TYPE, false, loader));
-            } catch (ClassNotFoundException e) {
+                return new Api(Class.forName(containerName, false, loader), Class.forName(dataTypeName, false, loader));
+            } catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
                 return null;
-            } catch (NoSuchMethodException e) {
-                throw new IllegalStateException("this server's PersistentDataContainer has an unknown shape", e);
             }
         }
 

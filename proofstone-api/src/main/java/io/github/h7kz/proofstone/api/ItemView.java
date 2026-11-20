@@ -108,7 +108,7 @@ public final class ItemView {
 
     /**
      * The server's persistent data container, {@code "namespace:key"} to a typed value, or {@code null} when the item has
-     * none, when the cell serves no PDC (the Bukkit agent reports it from 1.14, agent token {@code pdc}) or when the view is
+     * none, when the cell serves no PDC (the Bukkit agent reports the token {@code pdc} where the server's PDC API is present: 1.18.2 and 26.3 verified) or when the view is
      * from the client. A value is a {@code Byte}, {@code Short}, {@code Integer}, {@code Long}, {@code Float}, {@code Double},
      * {@code String}, {@code byte[]}, {@code int[]} or {@code long[]}; a nested container is a {@code Map} of the same;
      * a value the agent could not read is {@code Map.of("unsupported", description)}, never left out.

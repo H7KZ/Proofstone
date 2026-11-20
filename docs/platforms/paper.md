@@ -134,9 +134,8 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   The anvil rows (0 south, 1 west, 2 north, 3 east) come from the wiki and were not checked against a client. Any other
   state is `UNKNOWN_KEY`. _1.8.8 to 1.12.2 · [PR #42](https://github.com/H7KZ/Proofstone/pull/42),
   [3a427e0](https://github.com/H7KZ/Proofstone/commit/3a427e0)_
-- **PDC is read from 1.14, never given.** Until T-M11-05 the agent served no PDC at any version. It now fills `ItemView.pdc()` on
-  item reads and reports the agent token `pdc` where `org.bukkit.persistence.PersistentDataType` exists (1.14 and later; before
-  that the field is absent and there is no token). `pdc` in an item given by a test is still `INVALID_REQUEST`. A container with no
+- **PDC is read where the server has the API, never given.** Until T-M11-05 the agent served no PDC at any version. It now fills `ItemView.pdc()` on
+  item reads and reports the agent token `pdc` where `org.bukkit.persistence.PersistentDataType` exists (the API arrived in 1.14; the agent also checks `getKeys`, `has`, `get` and the primitive type constants at start-up, so a server without them has no field and no token; verified on 1.18.2 and 26.3, not on 1.14 to 1.17). `pdc` in an item given by a test is still `INVALID_REQUEST`. A container with no
   entries reads as no `pdc` (`null`), so the token, not the value, says whether PDC is served. Test items get their data with
   the vanilla `give` command under `PublicBukkitValues` (C-I01). The server's meta class (`CraftMetaItem`) is package-private, so the container getter is resolved from the public `ItemMeta` interface: invoking the method found on the class threw `IllegalAccessException` on 1.18.2. _No PDC before 1.14 · T-M11-05_
 

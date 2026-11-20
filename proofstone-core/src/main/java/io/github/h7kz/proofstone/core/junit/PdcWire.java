@@ -1,5 +1,6 @@
 package io.github.h7kz.proofstone.core.junit;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,24 +40,24 @@ final class PdcWire {
         }
         switch ((String) type) {
             case "byte":
-                return number(key, value).byteValue();
+                return (byte) integral(key, value, Byte.MIN_VALUE, Byte.MAX_VALUE, "byte");
             case "short":
-                return number(key, value).shortValue();
+                return (short) integral(key, value, Short.MIN_VALUE, Short.MAX_VALUE, "short");
             case "int":
-                return number(key, value).intValue();
+                return (int) integral(key, value, Integer.MIN_VALUE, Integer.MAX_VALUE, "int");
             case "long":
-                return number(key, value).longValue();
+                return integral(key, value, Long.MIN_VALUE, Long.MAX_VALUE, "long");
             case "float":
-                return value instanceof String ? Float.valueOf((String) value) : number(key, value).floatValue();
+                return (float) floating(key, value, Float.MAX_VALUE, "float");
             case "double":
-                return value instanceof String ? Double.valueOf((String) value) : number(key, value).doubleValue();
+                return floating(key, value, Double.MAX_VALUE, "double");
             case "string":
                 return text(key, value);
             case "byte[]": {
                 List<?> list = list(key, value);
                 byte[] out = new byte[list.size()];
                 for (int i = 0; i < out.length; i++) {
-                    out[i] = number(key, list.get(i)).byteValue();
+                    out[i] = (byte) integral(key, list.get(i), Byte.MIN_VALUE, Byte.MAX_VALUE, "byte");
                 }
                 return out;
             }
@@ -64,7 +65,7 @@ final class PdcWire {
                 List<?> list = list(key, value);
                 int[] out = new int[list.size()];
                 for (int i = 0; i < out.length; i++) {
-                    out[i] = number(key, list.get(i)).intValue();
+                    out[i] = (int) integral(key, list.get(i), Integer.MIN_VALUE, Integer.MAX_VALUE, "int");
                 }
                 return out;
             }
@@ -72,7 +73,7 @@ final class PdcWire {
                 List<?> list = list(key, value);
                 long[] out = new long[list.size()];
                 for (int i = 0; i < out.length; i++) {
-                    out[i] = number(key, list.get(i)).longValue();
+                    out[i] = integral(key, list.get(i), Long.MIN_VALUE, Long.MAX_VALUE, "long");
                 }
                 return out;
             }
@@ -91,11 +92,50 @@ final class PdcWire {
         }
     }
 
-    private static Number number(String key, Object value) {
+    /**
+     * A whole number within {@code [min, max]}. A fraction, a value out of range or a non-number is an error: a narrowing
+     * cast would turn byte 300 into 44 and int 1.5 into 1, and a test would then assert on a value the server never held.
+     */
+    private static long integral(String key, Object value, long min, long max, String type) {
         if (!(value instanceof Number)) {
             throw bad(key, "value is not a number: " + value);
         }
-        return (Number) value;
+        long out;
+        try {
+            out = new BigDecimal(value.toString()).longValueExact();
+        } catch (NumberFormatException | ArithmeticException e) {
+            throw bad(key, type + " value is not a whole number in range: " + value);
+        }
+        if (out < min || out > max) {
+            throw bad(key, type + " value is out of range: " + value);
+        }
+        return out;
+    }
+
+    /**
+     * A number within the type's range, or the strings Jackson writes for NaN and the infinities. Anything else is an error.
+     */
+    private static double floating(String key, Object value, double max, String type) {
+        if (value instanceof String) {
+            switch ((String) value) {
+                case "NaN":
+                    return Double.NaN;
+                case "Infinity":
+                    return Double.POSITIVE_INFINITY;
+                case "-Infinity":
+                    return Double.NEGATIVE_INFINITY;
+                default:
+                    throw bad(key, type + " value is not a number: " + value);
+            }
+        }
+        if (!(value instanceof Number)) {
+            throw bad(key, "value is not a number: " + value);
+        }
+        double out = ((Number) value).doubleValue();
+        if (Math.abs(out) > max) {
+            throw bad(key, type + " value is out of range: " + value);
+        }
+        return out;
     }
 
     private static String text(String key, Object value) {

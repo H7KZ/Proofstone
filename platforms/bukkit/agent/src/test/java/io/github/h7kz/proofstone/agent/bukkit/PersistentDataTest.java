@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.agent.bukkit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,7 +42,30 @@ class PersistentDataTest {
         }
     }
 
-    static final class Container implements PersistentDataContainer {
+    /** A container without getKeys: a server whose PDC API is not the one the agent reads. */
+    public interface NoKeys {
+        boolean has(NamespacedKey key, PersistentDataType type);
+
+        Object get(NamespacedKey key, PersistentDataType type);
+    }
+
+    /** A data type holder without the primitive constants. */
+    public static final class NoConstants {
+    }
+
+    /** A meta whose container fails on read. */
+    public static final class FailingMeta {
+        public PersistentDataContainer getPersistentDataContainer() {
+            return new Container() {
+                @Override
+                public Set<NamespacedKey> getKeys() {
+                    throw new UnsupportedOperationException("boom");
+                }
+            };
+        }
+    }
+
+    static class Container implements PersistentDataContainer {
         final Map<String, Object> values = new LinkedHashMap<>();
 
         Container with(String key, Object value) {
@@ -127,6 +151,28 @@ class PersistentDataTest {
     @Test
     void aPackagePrivateMetaClassIsReadThroughItsPublicInterface() {
         assertThat(PersistentData.read(new HiddenMeta())).containsOnlyKeys("p:b");
+    }
+
+    private static final String HERE = PersistentDataTest.class.getName();
+
+    @Test
+    void loadingNeverThrowsAndAnswersNullWhenTheApiIsMissingOrNotTheExpectedShape() {
+        ClassLoader loader = PersistentDataTest.class.getClassLoader();
+        String container = "org.bukkit.persistence.PersistentDataContainer";
+        String type = "org.bukkit.persistence.PersistentDataType";
+
+        assertThat(PersistentData.Api.load(loader, container, type)).isNotNull();
+        assertThat(PersistentData.Api.load(loader, "org.bukkit.persistence.NoSuchContainer", type)).isNull();
+        assertThat(PersistentData.Api.load(loader, container, "org.bukkit.persistence.NoSuchType")).isNull();
+        assertThat(PersistentData.Api.load(loader, HERE + "$NoKeys", type)).as("no getKeys").isNull();
+        assertThat(PersistentData.Api.load(loader, container, HERE + "$NoConstants")).as("no BYTE constant").isNull();
+    }
+
+    @Test
+    void aReadFailureNamesTheItemAndStillFails() {
+        assertThatThrownBy(() -> PersistentData.read(new FailingMeta(), () -> "STICK x3"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("STICK x3")
+                .hasMessageContaining("boom");
     }
 
     @Test

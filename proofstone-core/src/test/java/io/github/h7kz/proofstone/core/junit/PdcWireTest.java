@@ -69,4 +69,52 @@ class PdcWireTest {
         assertThatThrownBy(() -> view(",\"pdc\":{\"p:x\":{\"type\":\"byte[]\"}}"))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("p:x");
     }
+
+    private static String pdc(String type, String value) {
+        return ",\"pdc\":{\"p:x\":{\"type\":\"" + type + "\",\"value\":" + value + "}}";
+    }
+
+    @Test
+    void aNumberOutOfRangeOrWithAFractionIsAnErrorNotATruncation() {
+        assertThatThrownBy(() -> view(pdc("byte", "300"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("p:x").hasMessageContaining("300");
+        assertThatThrownBy(() -> view(pdc("short", "40000"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("out of range");
+        assertThatThrownBy(() -> view(pdc("int", "1.5"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("whole number");
+        assertThatThrownBy(() -> view(pdc("int", "3000000000"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("out of range");
+        assertThatThrownBy(() -> view(pdc("long", "1e30"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("p:x");
+        assertThatThrownBy(() -> view(pdc("byte[]", "[1,200]"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("out of range");
+        assertThatThrownBy(() -> view(pdc("int[]", "[1,2.5]"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("whole number");
+        assertThatThrownBy(() -> view(pdc("long[]", "[\"a\"]"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("not a number");
+        assertThatThrownBy(() -> view(pdc("float", "1e300"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("out of range");
+    }
+
+    @Test
+    void aBadFloatingPointStringIsAnIllegalStateExceptionNotANumberFormatException() {
+        assertThatThrownBy(() -> view(pdc("double", "\"abc\""))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("p:x").hasMessageContaining("abc");
+        assertThatThrownBy(() -> view(pdc("float", "\"1.5\""))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("p:x");
+    }
+
+    @Test
+    void theBoundariesAndJacksonsNonFiniteStringsAreAccepted() throws Exception {
+        Map<String, Object> pdc = view(",\"pdc\":{"
+                + "\"p:lo\":{\"type\":\"byte\",\"value\":-128},\"p:hi\":{\"type\":\"byte\",\"value\":127},"
+                + "\"p:max\":{\"type\":\"long\",\"value\":9223372036854775807},"
+                + "\"p:whole\":{\"type\":\"int\",\"value\":2.0},"
+                + "\"p:nan\":{\"type\":\"double\",\"value\":\"NaN\"},"
+                + "\"p:inf\":{\"type\":\"float\",\"value\":\"-Infinity\"}}").pdc();
+
+        assertThat(pdc).containsEntry("p:lo", (byte) -128).containsEntry("p:hi", (byte) 127)
+                .containsEntry("p:max", Long.MAX_VALUE).containsEntry("p:whole", 2)
+                .containsEntry("p:nan", Double.NaN).containsEntry("p:inf", Float.NEGATIVE_INFINITY);
+    }
 }
