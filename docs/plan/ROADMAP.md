@@ -2371,3 +2371,32 @@ and the maintainer picks `0.1.1` or `0.2.0`.
 | T-M10-99 | merged | #166 |
 
 Also this session: T-M7-16 diagnosed: not reproduced in 10 runs, kept open as unexplained (#181); T-M6-109 partly done: ViaProxy named for the 1.8.8 stall, mechanism not proven, no code fix (#182).
+
+## Ledger update (2026-11-20, second orchestrator session)
+
+The maintainer approved the remaining work on 2026-11-19 ("do it all"): the Phase C spikes, the Disenchantment PR, GitHub Pages and the ViaProxy experiment. Status of each, replacing the "open" rows above:
+
+| Card | Status | Result |
+|---|---|---|
+| T-M10-01 (BDS add-on spike) | done: not feasible | #188. Pack side works; the unsigned join is refused (MALFORMED_PACKET, 5 of 5), NetherNet is BDS's only player transport. T-M10-02 and T-M10-03 closed by this verdict. |
+| T-M10-11 (Sponge spike) | done: feasible | #191. SpongeVanilla 26.3-21.0.0-RC2792, 23 of 23 joins, plugin agent read `health` and `players`. RC build only; no promotion. |
+| T-M10-12 (Gate spike) | done: fits ADR-0016, agent-less | #189. Oracle gap: no proxy-side players, events or log. |
+| T-M10-13 (Nukkit spike) | done: not feasible today | #194. PowerNukkitX 3.0.6 is NetherNet-only; 3.0.5 is protocol 2193. |
+| T-M10-14 (PocketMine, Endstone scope) | done: not now | #193. |
+| T-M10-17 (TypeScript, Fabric client gametest scope) | done: drop TypeScript, defer Fabric client gametest | #192. |
+| T-M10-16 (docs site) | merged | #186. GitHub Pages enabled; `docs.yml` workflow; ADR-0019 and ADR-0014 amended (three workflows). Site: https://h7kz.github.io/Proofstone/ |
+| T-M9-14 (ViaProxy bump experiment) | done: nothing to bump | #185. No stable release newer than the pin; 3.5.0-SNAPSHOT has a rewritten CLI and no login fix. |
+| T-M6-111 (EventProbes class loading) | merged | #190. Third-party event classes load without the cross-plugin WARN. |
+| T-M6-05 (Disenchantment suite) | draft PR, not merged | H7KZ/Disenchantment#80. paper@26.3 and paper@1.21.11 green 3 of 3; paper@1.18.2 red (deterministic, was the EventProbes bug fixed by #190: re-run needed); grindstone, erase mode and special anvils are skips (not on master). |
+| T-M10-02, T-M10-03 | closed by the BDS verdict | see T-M10-01 |
+| T-M10-04, T-M10-09, T-M10-15, T-M10-18 | open | depend on upstream releases, ADR-0015 and the spike decisions |
+| T-M8-26 | open | opus work, not started in either session |
+
+**Open follow-ups, not yet carded:**
+- `datapacks/list` fails `500 zip file closed` on paper@1.18.2 after the reload cases (DataPackList's `Class.forName` reaches the disabled fixture's closed loader); red under the old code too (T-M6-111 finding).
+- The Bedrock driver speaks RakNet only; BDS, PowerNukkitX 3.0.6, Nukkit master and Geyser's default transport need NetherNet (T-M10-01, T-M10-13): a maintainer decision.
+- The T-M7-16 Verify command is red because six conformance classes declare no spigot cell (T-M7-16 note).
+- Hosted `gates` failed on the first run when `repo.opencollab.dev` did not serve `text-serializer-nbt-0.2.1.jar` (4 of 5 first runs); reruns passed.
+- `patchConfig` restore builds a config object the target plugin never sees (T-M6-111 note).
+- A fast client disconnect hides the join-stall stage in McplDriver (T-M6-109 note); the ViaProxy mechanism for the 1.8.8 stall is unproven.
+- Not done by choice: the `v1` tag of the GitHub Action (a `v*` tag triggers the release workflow) and a Marketplace listing (the action is not at the repository root).
