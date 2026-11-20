@@ -1,0 +1,26 @@
+{
+  "global": {
+    "loader": {
+      "name": "java_plain",
+      "version": "1.0"
+    },
+    "license": "Apache-2.0",
+    "version": "0.0.0-spike",
+    "dependencies": [
+      {
+        "id": "spongeapi",
+        "version": "21.0.0",
+        "load-order": "after",
+        "optional": false
+      }
+    ]
+  },
+  "plugins": [
+    {
+      "id": "proofstone_spike",
+      "name": "Proofstone Sponge spike",
+      "entrypoint": "proofstone.spike.SpikeSponge",
+      "description": "T-M10-11 throwaway agent shape: health and players, read-only"
+    }
+  ]
+}
