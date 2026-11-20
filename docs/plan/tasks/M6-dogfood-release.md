@@ -583,7 +583,7 @@ workflows, a develop → main flow and an operator guide for releases.
 - [ ] `integrations/github-action/README.md` has a copy-pasteable workflow snippet, the inputs and outputs copied verbatim from `action.yml`, the versioning policy, runner requirements, known limits linked to `docs/limits.md`, and the line "not published, not on the Marketplace".
 - [ ] `scripts/action-selfcheck.sh` exits non-zero with a named message when Docker, the EULA env var or the agent jar is missing for the real run.
 - [ ] `bash -n scripts/action-selfcheck.sh` passes; the missing-prerequisite path is run and its output is pasted into the PR.
-- [ ] `bash scripts/gates.sh --max-workers=1` is green, run under `scripts/dockerlock.sh`.
+- [x] `bash scripts/gates.sh --max-workers=1` is green (2026-11-20, local). run under `scripts/dockerlock.sh`.
 
 **Verify.**
 `bash -n scripts/action-selfcheck.sh && bash scripts/action-selfcheck.sh --plan-only; PROOFSTONE_ACCEPT_EULA=true bash scripts/action-selfcheck.sh`
@@ -702,3 +702,36 @@ _Separate observation, not fixed here: on paper@1.18.2 the `datapacks/list` case
 
 _Separate observation, not fixed here: the conformance `patchConfig` restore builds a new config object that the target plugin never sees, so
 patched config values can leak into later tests. Needs its own card and a test._
+
+
+### T-M6-113 · Hosted `gates` survives a flaky first dependency download
+- tier: sonnet
+- depends: T-M6-14
+- modules: .github/workflows, scripts, docs
+- adrs: 0019
+- specs: none
+- test-first: no
+
+**Goal.** Hosted `gates` failed on the first run in 4 of 5 PRs and passed on rerun. Three failures were `Could not find text-serializer-nbt-0.2.1.jar (org.geysermc.mcprotocollib:text-serializer-nbt:0.2.1)`, searched only at `https://repo.opencollab.dev/main/...`; one (run 44625699816) was `Could not find kotlin-stdlib:2.4.10` and three sibling POMs at `plugins.gradle.org/m2/`. A hosted run must not need a rerun for a dependency download.
+
+**Diagnosis (shown in the run logs).**
+- Every message is Gradle's "Could not find", which Gradle prints for an HTTP 404 answer. A timeout would read "Could not GET ... Read timed out" and a rate limit "Received status code 429". Neither appears. Gradle retries network errors on its own and never a 404, so one spurious 404 failed the run.
+- For text-serializer-nbt the POM resolved and only the jar was missing. The same URL answers 200 from this machine, and a rerun passed. Not on Maven Central (404), so no second repository can serve it.
+- It is not opencollab only: plugins.gradle.org answered the same way in another run. The cause of a repository answering 404 for an existing file is guessed (a cold proxy or CDN node), not shown.
+- Shown: in every hosted run inspected (44544902001, 44567963440, 44625699816, 44709697674, 44711918670) the log says `Gradle User Home cache not found. Will initialize empty.` `setup-gradle` writes its cache only on the default branch, which is `main`, and only releases touch `main`. So no hosted run ever had a warm cache and each downloaded everything, which is what exposed the single 404.
+
+**Do.**
+- `gates.yml`: `setup-gradle` with `cache-read-only: ${{ github.event_name != 'push' }}`. Pushes to `develop` write the cache, pull requests only read it (never write one that others restore).
+- `scripts/ci-prefetch-deps.sh` and `scripts/prefetch-deps.init.gradle.kts`: a step before the gates that downloads the compile and runtime classpaths (`prefetchDependencies`, nothing compiled or tested). Up to 3 attempts with a 20 s and 40 s pause, and only when the output holds a dependency resolution error; any other failure ends the step at once.
+- Docs: `docs/contributing-flow.md` note, ADR-0019 amendment line.
+
+**Don't.**
+- Retry `scripts/gates.sh`, a test or a compile; add a repository, a trigger or an action; relax a pin or a permission.
+
+**Acceptance.**
+- [x] `bash scripts/ci-prefetch-deps.sh` passes locally from an empty `GRADLE_USER_HOME` (attempt 1 of 3).
+- [x] `bash scripts/gates.sh --max-workers=1` is green (2026-11-20, local).
+- [ ] Hosted only (opened PR): the prefetch step is green, and a push to `develop` afterwards logs a restored Gradle cache.
+
+**Verify.**
+`bash scripts/dockerlock.sh bash scripts/ci-prefetch-deps.sh --no-parallel --max-workers=1` then `bash scripts/dockerlock.sh bash scripts/gates.sh --max-workers=1`
