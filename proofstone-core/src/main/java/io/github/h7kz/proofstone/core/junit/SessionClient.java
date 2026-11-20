@@ -8,7 +8,7 @@ import io.github.h7kz.proofstone.api.ResourcePackPush;
 import io.github.h7kz.proofstone.api.Window;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
-import io.github.h7kz.proofstone.core.driver.Face;
+import io.github.h7kz.proofstone.api.Face;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Predicate;
@@ -70,6 +70,16 @@ final class SessionClient implements Client, AutoCloseable {
     public Window openBlock(BlockPos pos) {
         session.useBlock(pos, Face.UP);
         return new SessionWindow(session.awaitWindow(DEFAULT_TIMEOUT));
+    }
+
+    @Override
+    public void placeBlock(BlockPos against, Face face) {
+        session.placeBlock(against, face);
+    }
+
+    @Override
+    public void breakBlock(BlockPos pos) {
+        session.breakBlock(pos);
     }
 
     @Override

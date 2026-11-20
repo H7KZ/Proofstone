@@ -11,7 +11,7 @@ import io.github.h7kz.proofstone.core.driver.ChatMessage;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.ConnectSpec;
-import io.github.h7kz.proofstone.core.driver.Face;
+import io.github.h7kz.proofstone.api.Face;
 import io.github.h7kz.proofstone.core.driver.WindowSession;
 import io.github.h7kz.proofstone.core.driver.WindowView;
 import java.net.URI;

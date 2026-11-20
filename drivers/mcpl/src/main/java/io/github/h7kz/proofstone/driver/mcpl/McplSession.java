@@ -11,7 +11,7 @@ import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import io.github.h7kz.proofstone.api.ResourcePackPush;
-import io.github.h7kz.proofstone.core.driver.Face;
+import io.github.h7kz.proofstone.api.Face;
 import io.github.h7kz.proofstone.core.driver.SlotStack;
 import io.github.h7kz.proofstone.core.driver.WindowSession;
 import io.github.h7kz.proofstone.core.driver.WindowView;
@@ -41,6 +41,7 @@ import org.geysermc.mcprotocollib.network.packet.Packet;
 import org.cloudburstmc.math.vector.Vector3i;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.object.Direction;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerAction;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PositionElement;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ClickItemAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerAction;
@@ -63,6 +64,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.Clientbound
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundStartConfigurationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundBlockChangedAckPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetExperiencePacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetHealthPacket;
@@ -80,6 +82,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.Serverbound
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClosePacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.ServerboundAcceptTeleportationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerRotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerActionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundUseItemOnPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundCustomQueryPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundCustomQueryAnswerPacket;
@@ -107,6 +110,8 @@ final class McplSession implements ClientSession {
     private final WindowModel playerInventory = new WindowModel(0, "minecraft:inventory", "Inventory", registries);
     private final List<WindowModel> opened = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger sequence = new AtomicInteger();
+    /** The highest block-change sequence the server acknowledged: its answer to a place or a dig (T-M11-04). */
+    private final AtomicInteger blockAck = new AtomicInteger();
     private volatile double[] position;
     // The join teleport's acknowledgement, held until the first SetHealth of this login (T-M7-19). Written on the netty
     // thread only; volatile because the joining thread reads it to tell a held join from a finished one.
@@ -241,6 +246,9 @@ final class McplSession implements ClientSession {
             summary += " " + disconnectReason;
         } else if (packet instanceof ClientboundPlayerPositionPacket move) {
             applyPosition(move);
+        } else if (packet instanceof ClientboundBlockChangedAckPacket ack) {
+            blockAck.accumulateAndGet(ack.getSequence(), Math::max);
+            summary += " sequence=" + ack.getSequence();
         } else if (packet instanceof ClientboundSetHealthPacket) {
             onFirstTick();
         } else if (packet instanceof ClientboundRegistryDataPacket registry) {
@@ -457,7 +465,53 @@ final class McplSession implements ClientSession {
 
     @Override
     public void useBlock(BlockPos pos, Face face) {
+        useBlockSequenced(pos, face);
+    }
+
+    @Override
+    public void placeBlock(BlockPos against, Face face) {
+        awaitBlockAck(useBlockSequenced(against, face), "placing against " + against + " " + face);
+    }
+
+    @Override
+    public void breakBlock(BlockPos pos) {
+        requireOpen("cannot break a block");
+        Vector3i at = Vector3i.from(pos.x(), pos.y(), pos.z());
+        lookAt(pos, Face.UP);
+        network.send(new ServerboundPlayerActionPacket(PlayerAction.START_DIGGING, at, Direction.UP,
+                sequence.incrementAndGet()));
+        int finish = sequence.incrementAndGet();
+        network.send(new ServerboundPlayerActionPacket(PlayerAction.FINISH_DIGGING, at, Direction.UP, finish));
+        awaitBlockAck(finish, "breaking " + pos);
+    }
+
+    /** Waits for the server to acknowledge the block change with this sequence (it sends it after handling the action). */
+    private void awaitBlockAck(int awaited, String what) {
+        try {
+            // A disconnect is a value, not an exception, because Await treats a throwing probe as "not yet".
+            Await.until("the server's answer to " + what + " for " + username,
+                    () -> blockAck.get() >= awaited || state == State.DISCONNECTED, done -> done, CLICK_WAIT);
+        } catch (AwaitTimeoutException e) {
+            throw new ClientDriverException("the server did not answer " + what + " within " + CLICK_WAIT
+                    + "; transcript tail: " + tail(), e);
+        }
+        if (blockAck.get() < awaited) {
+            throw new ClientDriverException("disconnected while " + what + ": " + disconnectReason);
+        }
+    }
+
+    private int useBlockSequenced(BlockPos pos, Face face) {
         requireOpen("cannot use a block");
+        double[] hit = lookAt(pos, face);
+        int number = sequence.incrementAndGet();
+        network.send(new ServerboundUseItemOnPacket(Vector3i.from(pos.x(), pos.y(), pos.z()),
+                Direction.valueOf(face.name()), Hand.MAIN_HAND, (float) hit[0], (float) hit[1], (float) hit[2],
+                false, false, number));
+        return number;
+    }
+
+    /** Turns toward the centre of the face (a look packet) and returns the click point inside the block. */
+    private double[] lookAt(BlockPos pos, Face face) {
         double[] at = Await.until("synced position of " + username, () -> position, p -> p != null, POSITION_WAIT);
         double[] hit = faceCentre(face);
         double dx = pos.x() + hit[0] - at[0];
@@ -466,9 +520,7 @@ final class McplSession implements ClientSession {
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
         float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
         network.send(new ServerboundMovePlayerRotPacket(true, false, yaw, pitch));
-        network.send(new ServerboundUseItemOnPacket(Vector3i.from(pos.x(), pos.y(), pos.z()),
-                Direction.valueOf(face.name()), Hand.MAIN_HAND, (float) hit[0], (float) hit[1], (float) hit[2],
-                false, false, sequence.incrementAndGet()));
+        return hit;
     }
 
     /** The click point as an offset inside the block: the centre of the face. */

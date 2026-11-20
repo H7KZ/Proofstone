@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.core.driver;
 
 import io.github.h7kz.proofstone.api.BlockPos;
+import io.github.h7kz.proofstone.api.Face;
 import java.time.Duration;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -33,6 +34,28 @@ public interface ClientSession extends AutoCloseable {
      * @throws ClientDriverException when the session is closed or no position has been synced yet
      */
     void useBlock(BlockPos pos, Face face);
+
+    /**
+     * Looks at the block and uses the held item on {@code face} of it: the block lands on the neighbouring position. Returns
+     * once the server has answered the action (its block-change acknowledgement), so a server read afterwards sees the
+     * result. Additive (T-M11-04); a driver without support fails loudly instead of passing.
+     *
+     * @throws ClientDriverException when the session is closed, no position has been synced, or the server never answers
+     */
+    default void placeBlock(BlockPos against, Face face) {
+        throw new ClientDriverException("this driver cannot place blocks; use a driver that supports it");
+    }
+
+    /**
+     * Looks at the block, starts digging it and finishes at once; returns once the server has answered. The block breaks
+     * when the server's own rules let it break at that instant (creative, or a break time of zero); otherwise the server
+     * rejects the finish and the block stays. Additive (T-M11-04); a driver without support fails loudly.
+     *
+     * @throws ClientDriverException when the session is closed, no position has been synced, or the server never answers
+     */
+    default void breakBlock(BlockPos pos) {
+        throw new ClientDriverException("this driver cannot break blocks; use a driver that supports it");
+    }
 
     /**
      * Waits for the next window the server opened that this call has not returned, with its contents synced.
