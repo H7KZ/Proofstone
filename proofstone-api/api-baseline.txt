@@ -5,6 +5,8 @@ public abstract interface io.github.h7kz.proofstone.api.Agent
   method public abstract java.lang.String io.github.h7kz.proofstone.api.Agent.command(java.lang.String)
   method public abstract java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Agent.capabilities()
   method public default io.github.h7kz.proofstone.api.PlayerHandle io.github.h7kz.proofstone.api.Agent.player(io.github.h7kz.proofstone.api.Client)
+  method public default java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Agent.logLines()
+  method public default java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Agent.logLines(java.util.regex.Pattern,java.time.Duration)
 public final io.github.h7kz.proofstone.api.BlockPos extends java.lang.Record
   constructor public io.github.h7kz.proofstone.api.BlockPos(int,int,int)
   method public final boolean io.github.h7kz.proofstone.api.BlockPos.equals(java.lang.Object)

@@ -20,6 +20,8 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
 - Capabilities (T-M5-01, api-change, test-api spec section 10): `Capability` (an enum), `@Requires` (class or method) and
   `Cell.capabilities()`. A cell without a required capability is skipped with its reason. The baseline gains only these members; no frozen v0 member changed. The fix PR (`fix/m5-capability-api`) made
   `Cell.capabilities()` a default method that throws, and removed `Capability.NMS` and `Capability.DATAPACKS` (no agent token).
+- Server log (T-M11-01, api-change, additions only): `Agent.logLines()` and `Agent.logLines(Pattern, Duration)`, default methods that
+  throw `UnsupportedOperationException`. No protocol change (`GET /v1/log` already exists), no capability.
 - Data packs (T-M8-09, api-change, additions only, ADR-0017): `Proofstone.datapacks()` (globs, default none) and
   `Capability.DATAPACKS_VANILLA` (last constant). Declaring a pack implies the capability.
 - Mods (T-M8-13, api-change, additions only, ADR-0017): `Proofstone.mods()` (globs, one jar each, default none) and

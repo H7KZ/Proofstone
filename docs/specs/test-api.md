@@ -79,7 +79,8 @@ EventProbe e = agent.events().subscribe("com.example.MyEvent"); // reflective, M
 e.awaitOne().getInt("xpCost");                   // getters serialised to JSON
 agent.awaitTicks(2);
 agent.assertNoErrorsLogged();                    // pack patterns + allowlist
-agent.logLines(Pattern.compile("NMS module: (\\S+)"));   // for per-cell expectations
+agent.logLines();                                // lines since the test started, as plain text (T-M11-01)
+agent.logLines(Pattern.compile("NMS module: (\\S+)"), Duration.ofSeconds(10));   // waits for a match, returns the matching lines
 ```
 
 ## 4. `Client` (client oracle and actions)
@@ -176,6 +177,12 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
   `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only).
 - `Client.experienceLevel()` replaces `experience()` (it returns the level only) and throws until the server's first
   experience sync. `Client` has `openBlock` (top face), `inventory`, `position`, `awaitPosition`.
+- `Agent.logLines()` and `Agent.logLines(Pattern, Duration)` (T-M11-01, api-change, additions only, default methods that throw): the server
+  log since the test started, one `LEVEL logger: message` line per record (a multi-line message or stack trace adds a line per
+  line). The window is the log cursor the lifecycle takes before the client joins, so boot lines are not in it. The second form
+  waits (through `Await`) for a line that contains a match of the pattern and returns every matching line. A ring buffer that
+  dropped records since the cursor is an `IllegalStateException`, never a short list. Backed by `GET /v1/log`, so no protocol
+  change and no capability; a proxy `Agent` and every backend `Agent` of a topology read their own container.
 - `Events.subscribe(className)` gives an `EventProbe` (`awaitOne`, `events`, `close`). A `CapturedEvent` has
   `className`, `tick`, `thread`, `fields` and `getInt`; an unknown getter is an error, never a default.
 - `DualAssert.item` offers `inInventory`, `amount`, `enchants`, `storedEnchants`, `name` and `serverOnly(reason).pdc`.
@@ -188,7 +195,7 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 ### 8.4 Not in v0 (post-v0 backlog)
 These appear in the sketches and are **not** part of the contract. Each needs an `api-change` card.
 - `Agent.world()` (`setBlock`, `block`): blocks are placed with `command` today, and the agent has the endpoints.
-- `Agent.plugin(..).reload()`, `Agent.awaitTicks`, `Agent.logLines` and the explicit `Agent.assertNoErrorsLogged()`
+- `Agent.plugin(..).reload()`, `Agent.awaitTicks` and the explicit `Agent.assertNoErrorsLogged()`
   (the per-test log check runs automatically; the explicit call is not exposed).
 - `PlayerHandle.gamemode`, `PlayerState.location`, `PlayerState.openWindow` and a server view of an open window (the
   agent has no `openWindow` endpoint, so the chest contents have no server oracle).

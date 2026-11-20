@@ -11,17 +11,19 @@ import java.util.Set;
  * The API view of a running topology for one test. {@code patched} holds, per container ({@code proxy} or a backend
  * name), the plugins whose config the test changed, so the lifecycle restores each on its own agent.
  */
-record TopologyView(TopologyHost host, Map<String, Set<String>> patched) implements Topology {
+record TopologyView(TopologyHost host, Map<String, Set<String>> patched, Map<String, Long> cursors)
+        implements Topology {
 
     @Override
     public Agent server(String name) {
         // backend() names the backends there are when the name is unknown.
-        return new HostAgent(host.backend(name), patched.get(name));
+        return new HostAgent(host.backend(name), patched.get(name), () -> cursors.get(name));
     }
 
     @Override
     public Agent proxy() {
-        return new ProxyAgent(host.proxy(), patched.get(TopologyHost.PROXY_ALIAS));
+        return new ProxyAgent(host.proxy(), patched.get(TopologyHost.PROXY_ALIAS),
+                () -> cursors.get(TopologyHost.PROXY_ALIAS));
     }
 
     @Override

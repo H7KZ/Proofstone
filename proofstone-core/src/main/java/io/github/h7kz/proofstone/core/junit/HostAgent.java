@@ -5,15 +5,19 @@ import io.github.h7kz.proofstone.api.Events;
 import io.github.h7kz.proofstone.api.PlayerHandle;
 import io.github.h7kz.proofstone.api.PluginHandle;
 import io.github.h7kz.proofstone.core.host.AgentEndpoint;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.function.LongSupplier;
+import java.util.regex.Pattern;
 
 /**
  * The thin {@link Agent} over the host's agent client.
  *
- * @param patched the plugins whose config the current test changed, for the lifecycle to restore
+ * @param patched   the plugins whose config the current test changed, for the lifecycle to restore
+ * @param logCursor the server log cursor taken when the test started: {@link #logLines()} reads from it
  */
-record HostAgent(AgentEndpoint host, Set<String> patched) implements Agent {
+record HostAgent(AgentEndpoint host, Set<String> patched, LongSupplier logCursor) implements Agent {
 
     @Override
     public String command(String command) {
@@ -38,5 +42,15 @@ record HostAgent(AgentEndpoint host, Set<String> patched) implements Agent {
     @Override
     public List<String> capabilities() {
         return host.health().capabilities();
+    }
+
+    @Override
+    public List<String> logLines() {
+        return ServerLogLines.read(host, logCursor.getAsLong());
+    }
+
+    @Override
+    public List<String> logLines(Pattern pattern, Duration timeout) {
+        return ServerLogLines.await(host, logCursor, pattern, timeout);
     }
 }

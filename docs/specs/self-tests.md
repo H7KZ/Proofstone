@@ -22,6 +22,7 @@ Minimum scenarios for Java packs. Each one uses the dual oracle, with vanilla be
 | C10 | Config patch + restore round trip (on a test fixture plugin shipped with the conformance suite) | config snapshots |
 | C11 | Log capture: the fixture plugin logs a SEVERE, `assertNoErrorsLogged` fails, the allowlist works | error oracle |
 | C12 | Reset leaves no residue: state before and after compares equal | isolation |
+| C-L01 | `Agent.logLines` (T-M11-01, `ConformanceLogLinesTest`, Bukkit family): the harness client's join line and a console `say` line are in the lines since the test start; the boot `Done ... For help, type` line is not | server log capture through the public API |
 
 v0 limit for C04: a chest's own contents have no server oracle yet (there is no `openWindow` endpoint on the agent),
 so C04 checks the move through server-answered clicks on the client window and dual-checks only the player inventory
