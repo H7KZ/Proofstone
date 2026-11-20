@@ -189,6 +189,7 @@ public abstract interface io.github.h7kz.proofstone.api.PlayerHandle
   method public abstract java.lang.String io.github.h7kz.proofstone.api.PlayerHandle.name()
 public final io.github.h7kz.proofstone.api.PlayerState extends java.lang.Record
   constructor public io.github.h7kz.proofstone.api.PlayerState(java.lang.String,int,double,java.lang.String,double,java.util.Map<java.lang.Integer, io.github.h7kz.proofstone.api.ItemView>,io.github.h7kz.proofstone.api.ItemView)
+  constructor public io.github.h7kz.proofstone.api.PlayerState(java.lang.String,int,double,java.lang.String,double,java.util.Map<java.lang.Integer, io.github.h7kz.proofstone.api.ItemView>,io.github.h7kz.proofstone.api.ItemView,java.util.Optional<io.github.h7kz.proofstone.api.ServerWindow>)
   method public double io.github.h7kz.proofstone.api.PlayerState.exp()
   method public double io.github.h7kz.proofstone.api.PlayerState.health()
   method public final boolean io.github.h7kz.proofstone.api.PlayerState.equals(java.lang.Object)
@@ -199,6 +200,7 @@ public final io.github.h7kz.proofstone.api.PlayerState extends java.lang.Record
   method public java.lang.String io.github.h7kz.proofstone.api.PlayerState.gamemode()
   method public java.lang.String io.github.h7kz.proofstone.api.PlayerState.name()
   method public java.util.Map<java.lang.Integer, io.github.h7kz.proofstone.api.ItemView> io.github.h7kz.proofstone.api.PlayerState.inventory()
+  method public java.util.Optional<io.github.h7kz.proofstone.api.ServerWindow> io.github.h7kz.proofstone.api.PlayerState.openWindow()
 public abstract interface io.github.h7kz.proofstone.api.PluginHandle
   method public abstract io.github.h7kz.proofstone.api.PluginHandle io.github.h7kz.proofstone.api.PluginHandle.patchConfig(java.lang.String,java.lang.Object)
   method public abstract java.lang.Object io.github.h7kz.proofstone.api.PluginHandle.config(java.lang.String)
@@ -245,6 +247,14 @@ public abstract interface io.github.h7kz.proofstone.api.ServerResourcePack imple
   method public abstract java.lang.String io.github.h7kz.proofstone.api.ServerResourcePack.prompt()
   method public abstract java.lang.String io.github.h7kz.proofstone.api.ServerResourcePack.sha1()
   method public abstract java.lang.String io.github.h7kz.proofstone.api.ServerResourcePack.value()
+public final io.github.h7kz.proofstone.api.ServerWindow extends java.lang.Record
+  constructor public io.github.h7kz.proofstone.api.ServerWindow(java.lang.String,java.lang.String,java.util.List<io.github.h7kz.proofstone.api.ItemView>)
+  method public final boolean io.github.h7kz.proofstone.api.ServerWindow.equals(java.lang.Object)
+  method public final int io.github.h7kz.proofstone.api.ServerWindow.hashCode()
+  method public final java.lang.String io.github.h7kz.proofstone.api.ServerWindow.toString()
+  method public java.lang.String io.github.h7kz.proofstone.api.ServerWindow.title()
+  method public java.lang.String io.github.h7kz.proofstone.api.ServerWindow.type()
+  method public java.util.List<io.github.h7kz.proofstone.api.ItemView> io.github.h7kz.proofstone.api.ServerWindow.slots()
 public abstract interface io.github.h7kz.proofstone.api.Topology
   method public abstract io.github.h7kz.proofstone.api.Agent io.github.h7kz.proofstone.api.Topology.proxy()
   method public abstract io.github.h7kz.proofstone.api.Agent io.github.h7kz.proofstone.api.Topology.server(java.lang.String)

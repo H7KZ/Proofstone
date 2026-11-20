@@ -39,3 +39,39 @@ log-record.json) and the lifecycle already reads it for the per-test error check
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceLogLinesTest' --no-parallel --max-workers=1`
+
+### T-M11-02 · `PlayerState.openWindow()`: the server's view of a player's open container
+- tier: sonnet
+- depends: —
+- modules: proofstone-api, proofstone-core, conformance, docs/specs, docs/user
+- adrs: 0002
+- specs: specs/test-api.md §3, specs/agent-protocol.md §3
+- test-first: yes
+
+**Goal.** A test reads, from the server side, the container window a player has open (its type, its title and its own slots), through
+the public API: to assert a menu a plugin opened (for example a chest menu whose title carries a Bedrock-form prefix) without the
+client's view. Label `api-change`.
+
+**Evidence.** Gap 2 of the Disenchantment E2E suite. `player-state.json` already has `openWindow {type, title, slots[]}`, the
+Bukkit-family agent already fills it and the host's `HostPlayer.state()` already reads the reply, but `PlayerState` drops it.
+
+**Do.**
+- Add `ServerWindow(type, title, List<ItemView> slots)` and an `Optional<ServerWindow> openWindow` last component of the record
+  `PlayerState`. Keep the 7-argument constructor (no window), so no signature is removed.
+- Map the wire `OpenWindow` in `HostPlayer`: a `null` window is empty, a `null` slot is `ItemView.EMPTY` in place, a window with no
+  `slots` is an `IllegalStateException`.
+- Unit tests in core, one real-server conformance scenario (C-W01), docs, a regenerated `api-baseline.txt`.
+
+**Don't.**
+- Change the wire protocol (no schema, golden or version change: the field exists), the agents or add a capability. The Fabric and
+  NeoForge agents still answer `NOT_SUPPORTED` for a player with a window open (they cannot read a title): documented, not changed.
+- Add a sleep or retry; the wait is `PlayerHandle.awaitState`. Include the player's 36 slots (the window is the container's own).
+
+**Acceptance.**
+- [ ] `api-baseline.txt` gains only `ServerWindow`, the `PlayerState` 8-argument constructor and `PlayerState.openWindow()`; `ApiSurfaceTest` is green.
+- [ ] Unit tests: null window, window with an empty slot kept in order, missing slots throw, the v0 constructor.
+- [ ] C-W01 (`ConformanceOpenWindowTest`) green on `paper@26.3` in three separate invocations, XML read, `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green; test-api spec, writing-tests guide, self-tests table, API README and CHANGELOG updated.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceOpenWindowTest' --no-parallel --max-workers=1`

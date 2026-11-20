@@ -88,8 +88,13 @@ List<String> hits = agent.logLines(Pattern.compile("Reloaded"), Duration.ofSecon
   record plus a line per line of a stack trace. It is a snapshot, not a barrier: wait for a line with
   `logLines(Pattern, Duration)`. The per-test check for WARN and worse still runs on its own. A log buffer that overflowed throws
   instead of returning a short list. To assert something was **not** logged, first wait for something that is logged after it.
+- `PlayerState.openWindow()` is what the server says the player has open: an `Optional<ServerWindow>` with `type`, `title` and the
+  container's own `slots` (not the player's 36; empty slots are `ItemView.EMPTY`). Use it to assert a menu a plugin opened, for example
+  `player.awaitState("menu open", s -> s.openWindow().map(w -> w.title().startsWith("X")).orElse(false))`. `type` is the platform's
+  name (`chest` on the Bukkit family), not the client's `minecraft:generic_9x3`. Fabric and NeoForge cannot read a title, so reading a
+  player with a window open fails there.
 - Not in v0: `agent.world()`, `agent.awaitTicks`, `PlayerHandle.gamemode`, `PlayerState.location`,
-  `PlayerState.openWindow`, `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md); mods, data packs and resource packs in [mods-and-packs](mods-and-packs.md).
+  `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md); mods, data packs and resource packs in [mods-and-packs](mods-and-packs.md).
   Use `agent.command(...)` for setup instead of `world()`.
 
 ## The client oracle: `Client` and `Window`

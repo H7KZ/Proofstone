@@ -23,10 +23,11 @@ Minimum scenarios for Java packs. Each one uses the dual oracle, with vanilla be
 | C11 | Log capture: the fixture plugin logs a SEVERE, `assertNoErrorsLogged` fails, the allowlist works | error oracle |
 | C12 | Reset leaves no residue: state before and after compares equal | isolation |
 | C-L01 | `Agent.logLines` (T-M11-01, `ConformanceLogLinesTest`, Bukkit family): the harness client's join line and a console `say` line are in the lines since the test start; the boot `Done ... For help, type` line is not | server log capture through the public API |
+| C-W01 | `PlayerState.openWindow` (T-M11-02, `ConformanceOpenWindowTest`, Bukkit family): empty before a chest is opened; while open, type `chest`, title `Chest`, the 27 own slots with the moved sword in slot 13 and an empty slot kept in place; empty again after the client closes it | server view of an open window |
 
-v0 limit for C04: a chest's own contents have no server oracle yet (there is no `openWindow` endpoint on the agent),
-so C04 checks the move through server-answered clicks on the client window and dual-checks only the player inventory
-(the stack must leave it on both oracles). A server-side chest check arrives with that endpoint.
+v0 limit for C04: it checks the move through server-answered clicks on the client window and dual-checks only the player
+inventory (the stack must leave it on both oracles). The chest's own contents have a server view since T-M11-02 (C-W01), but C04
+has not been changed to use it.
 
 v0 limit for C07: the grindstone arrived in 1.14, so 1.12.2 has no grindstone and cannot cover C07. The scenario
 skips there with that reason (a visible skip, never a pass). Every row from 1.14 on runs it, and it is part of the

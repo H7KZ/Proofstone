@@ -161,8 +161,8 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 - `io.github.h7kz.proofstone.api.spi.OracleWaiter` and its records: a service provider interface for `proofstone-core`, not for
   test authors.
 - `DualAssert.serverOnlyReasons()` and `ServerOnly.reason()`: a stop-gap until reports exist (M4).
-- Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`,
-  `openWindow`). Test authors read them and never construct them. Accessors that exist today are frozen.
+- Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`).
+  Test authors read them and never construct them. Accessors that exist today are frozen.
 - `CapturedEvent.getInt` (accepts `xpCost` and `getXpCost`) and `fields()`: the value types are whatever the agent's
   JSON serialisation gives. Typed accessors may be added; the existing ones stay.
 - `Window.close()` returns after sending the close. It does not yet await the server close or the inventory resync,
@@ -183,6 +183,14 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
   waits (through `Await`) for a line that contains a match of the pattern and returns every matching line. A ring buffer that
   dropped records since the cursor is an `IllegalStateException`, never a short list. Backed by `GET /v1/log`, so no protocol
   change and no capability; a proxy `Agent` and every backend `Agent` of a topology read their own container.
+- `PlayerState.openWindow()` and `ServerWindow` (T-M11-02, api-change, additions only): `Optional<ServerWindow>` as a new last component of
+  `PlayerState` (the 7-argument constructor stays). It is the server's view of the container the player has open, from the
+  `openWindow` field `player-state.json` already has, so no protocol change and no capability. `ServerWindow` has `type` (the
+  platform's name as the agent sends it: the Bukkit family sends the lower-cased `InventoryType`, such as `chest`, not the
+  client's `minecraft:generic_9x3`), `title` (as the server holds it) and `slots` (the container's own slots in server order,
+  without the player's 36; an empty slot is `ItemView.EMPTY`). Empty when only the player's own inventory is open. The
+  Fabric and NeoForge agents cannot read a window title, so reading the state of a player with a window open fails there
+  (`NOT_SUPPORTED`, [fabric](../platforms/fabric.md)). The window is a snapshot: wait with `awaitState`.
 - `Events.subscribe(className)` gives an `EventProbe` (`awaitOne`, `events`, `close`). A `CapturedEvent` has
   `className`, `tick`, `thread`, `fields` and `getInt`; an unknown getter is an error, never a default.
 - `DualAssert.item` offers `inInventory`, `amount`, `enchants`, `storedEnchants`, `name` and `serverOnly(reason).pdc`.
@@ -197,8 +205,7 @@ These appear in the sketches and are **not** part of the contract. Each needs an
 - `Agent.world()` (`setBlock`, `block`): blocks are placed with `command` today, and the agent has the endpoints.
 - `Agent.plugin(..).reload()`, `Agent.awaitTicks` and the explicit `Agent.assertNoErrorsLogged()`
   (the per-test log check runs automatically; the explicit call is not exposed).
-- `PlayerHandle.gamemode`, `PlayerState.location`, `PlayerState.openWindow` and a server view of an open window (the
-  agent has no `openWindow` endpoint, so the chest contents have no server oracle).
+- `PlayerHandle.gamemode` and `PlayerState.location`.
 - Experience points and the progress bar (`PlayerHandle.exp`, `Client.experience`).
 - `Item.repairCost`, `Item.pdc`, and a real `ItemView.repairCost`.
 - `Clients` (multi-player). `Topology` moved out of this list in T-M7-10 (section 12).
