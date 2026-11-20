@@ -573,6 +573,35 @@ it needs, and whether the M9 driver's protocol matches.
 **Verify.**
 Reviewer re-runs one boot under `scripts/dockerlock.sh`.
 
+### T-M10-19 · Spike: NetherNet transport for the Bedrock driver
+- tier: opus
+- depends: T-M10-01, T-M10-13
+- modules: docs/platforms, scripts
+- adrs: 0006, 0007, 0018
+- specs: client-driver.md section 6
+- test-first: no
+
+**Goal.** Decide, with evidence, whether the Bedrock driver should speak NetherNet (the WebRTC transport that BDS 1.26.66.1,
+PowerNukkitX 3.0.6 and Nukkit master accept and that the 1.26.60 client uses), and at what cost.
+
+**Do.**
+- Research from primary sources: signalling for a direct join (no Xbox services), data channels, framing, encryption, the identity
+  and login a server with Xbox auth off accepts.
+- Name the Java library a client would need (version, licence, size, natives, maintenance, Windows and Linux containers).
+- If cheap: a throwaway NetherNet client under `scripts/spike/nethernet/` against the cached PowerNukkitX 3.0.6, run under
+  `scripts/dockerlock.sh`. Any new download is written down (version, URL, sha256, size) first and kept in `/c/pw/nethernet-cache`.
+- Write `docs/platforms/nethernet.md`: evidence, go or no-go, effort (shown vs guessed), dependency and licence impact with a draft
+  ADR text (not filed), and the first implementation cards.
+
+**Don't.**
+- Change `drivers/bedrock`, `versions.yml`, the matrix, the wire protocol or an ADR. Use an account or a secret.
+
+**Acceptance.**
+- [ ] `docs/platforms/nethernet.md` has the recommendation, every run as invocation and result, the draft ADR and the first cards.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; reviewer re-runs one documented join under `scripts/dockerlock.sh`.
+
 ### T-M10-99 · M10 milestone review
 - tier: opus
 - depends: T-M10-05, T-M10-06, T-M10-07, T-M10-08, T-M10-10
