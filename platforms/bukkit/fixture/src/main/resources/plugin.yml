@@ -3,6 +3,8 @@ version: 0.1.0
 main: io.github.h7kz.proofstone.fixture.FixturePlugin
 # Folia refuses a plugin that does not declare it (docs/platforms/folia.md).
 folia-supported: true
+# Loads after the agent, so the agent is first in the plugin order and a probe on FixtureEvent asks it before the owner (T-M6-111).
+softdepend: [ProofstoneAgent]
 commands:
   fixture-reload:
     description: Reload hook named by the agent's reload endpoint (T-M2-03). Does nothing.

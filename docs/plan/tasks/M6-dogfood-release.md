@@ -664,3 +664,41 @@ reds (3 of 61, no reply to the hello) are a different stage and are not this car
 
 _Result 2026-11-19 (diagnosis only, see ROADMAP "T-M6-109 differential runs"): 530 joins on paper@1.8.8, stall shape 2, ViaProxy decode kick 2; 130 on paper@26.1.2, 0. Holder: ViaProxy (shown on the wire and logs for 1.8.8); mechanism guessed. Not met: 30 runs of `:examples:bad-tests:metaTest`, fix, thread dump. Open: report the stage when the disconnect beats the timeout._
 
+
+### T-M6-111 · Third-party event classes load without the cross-plugin WARN
+- tier: sonnet
+- depends: T-M6-14
+- modules: platforms/bukkit/agent, platforms/bukkit/fixture, docs/platforms
+- adrs: 0002
+- specs: specs/agent-protocol.md §2
+- test-first: yes
+
+**Goal.** `POST /v1/events/subscribe` for an event class of another plugin must not make Paper log `ProofstoneAgent: Loaded class <X>
+from <Plugin> vX which is not a depend or softdepend of this plugin` (seen on paper@1.18.2 with
+`com.jankominek.disenchantment.events.PostDisenchantEvent`, Disenchantment PR #80). The conformance `ErrorLogGuard` turns that WARN into
+the first red test of every class that probes such an event (4 of 6 on paper@1.18.2; green on 1.20.4, 1.20.6, 1.21.11, 26.3).
+
+**Do.**
+- Cause: `EventProbes.eventClass` asks each plugin's loader in load order, the agent first. Spigot's `PluginClassLoader` answers a name it
+  does not own through a global lookup in the other plugins' loaders, and warns when the owner is not a depend of the asking plugin.
+- Test first: a unit test of the resolution order (a loader that does not hold the class is never asked), and a real-server case in
+  `AgentContractIT` that probes a class of the fixture plugin (a new `FixtureEvent`) and asserts the server log holds no such WARN.
+- Fix: find the owning plugin first with a resource lookup (`getResource("<name>.class")` is own-jar only, so it never triggers the
+  global lookup), then load through that loader alone. Keep the agent's own loader as the last resort.
+
+**Don't.**
+- Change the wire protocol, add a dependency, add a sleep or retry, or weaken `ErrorLogGuard` or an allowlist.
+- Fix `patchConfig` restore here (see the observation below).
+
+**Acceptance.**
+- [ ] The new unit test fails before the fix and passes after it.
+- [ ] The `AgentContractIT` case "third-party event probe" shows the WARN on paper@1.18.2 before the fix and passes after it, 3 of 3 on paper@1.18.2 and 3 of 3 on paper@26.3.
+- [ ] Agent unit and contract tests and `bash scripts/gates.sh --max-workers=1` are green.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :platforms:bukkit:agent:integrationTest -Dproofstone.cells=paper@1.18.2 --no-parallel --max-workers=1`
+
+_Separate observation, not fixed here: on paper@1.18.2 the `datapacks/list` case of `AgentContractIT` is red (`500 zip file closed`), before and after this fix: the agent's own `Class.forName` of a Paper class takes the same global lookup and reaches the disabled fixture's closed loader after the reload cases. Needs its own card._
+
+_Separate observation, not fixed here: the conformance `patchConfig` restore builds a new config object that the target plugin never sees, so
+patched config values can leak into later tests. Needs its own card and a test._

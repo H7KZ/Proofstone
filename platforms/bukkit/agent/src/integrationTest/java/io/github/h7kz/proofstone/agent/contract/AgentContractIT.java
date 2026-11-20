@@ -238,12 +238,34 @@ class AgentContractIT {
             Stream<DynamicNode> children = Stream.concat(
                     Stream.concat(
                             Stream.of(dynamicTest("boot " + label, () -> bootPaper(cell))),
-                            CASES.stream().map(name -> dynamicTest(name, () -> replay(name)))),
+                            CASES.stream().flatMap(name -> name.equals("plugins/reload")
+                                    // Before the reload cases: they disable the fixture, and Paper closes its classloader.
+                                    ? Stream.of(dynamicTest("third-party event probe", this::thirdPartyEventProbe),
+                                            dynamicTest(name, () -> replay(name)))
+                                    : Stream.of(dynamicTest(name, () -> replay(name))))),
                     Stream.concat(Stream.of(dynamicTest("datapacks/list", this::dataPacksCase)),
                     // Not a golden case: the key of a renamed item is the same on every version (T-M3-06).
                     Stream.concat(Stream.of(dynamicTest("renamed item keys", this::renamedItemKeys)), foliaOnly)));
             return dynamicContainer(label, children.onClose(this::stopPaper));
         });
+    }
+
+    /**
+     * A probe on an event class of another plugin must not make the server log "Loaded class X from Y which is not a depend
+     * or softdepend of this plugin" under the agent's name, which fails the conformance error-log guard (T-M6-111). Not a
+     * golden case: the class is the fixture plugin's own.
+     */
+    private void thirdPartyEventProbe() throws Exception {
+        assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
+        Reply subscribed = send("POST", "/v1/events/subscribe", true,
+                "{\"class\":\"io.github.h7kz.proofstone.fixture.FixtureEvent\"}");
+        assertThat(subscribed.status()).as("subscribe; body was " + subscribed.body()).isEqualTo(200);
+        String probe = JSON.readTree(subscribed.body()).path("data").path("probeId").asText();
+        assertThat(probe).as("probeId in " + subscribed.body()).isNotEmpty();
+        List<String> warnings = host.logs().all().lines()
+                .filter(line -> line.contains("which is not a depend or softdepend of this plugin")).toList();
+        assertThat(warnings).as("cross-plugin class-loading warnings in the server log").isEmpty();
+        assertThat(send("DELETE", "/v1/events/" + probe, true, null).status()).isEqualTo(200);
     }
 
     /**

@@ -21,6 +21,9 @@ public final class FixturePlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // A plugin loads its own event classes when it enables, as a real plugin does. The agent's probe test then asks for
+        // a class that is already in the server's global class cache (T-M6-111).
+        FixtureEvent.getHandlerList();
         // One WARNING with a stack trace per enable, so golden/log/read has a deterministic record to capture. The
         // agent loads at STARTUP and attaches its log handler before this plugin enables. The log case replays before
         // the reload cases, which enable this plugin again.
