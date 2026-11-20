@@ -538,6 +538,14 @@ it needs, and whether the M9 driver's protocol matches.
 **Acceptance.**
 - [ ] The options and a recommendation are in the PR and in this file; `bash scripts/gates.sh --max-workers=1` passes.
 
+**Spike record (2026-11-20, awaiting the maintainer).** Note: [typescript-fabric-gametest.md](../../platforms/typescript-fabric-gametest.md).
+- **TypeScript front end: drop from M10.** Its audience (BDS add-on authors) has no cell after T-M10-01; the wire protocol covers
+  harness to agent only, so a usable front end needs a JVM harness server and a second public API (4 to 6 weeks, guessed).
+  Reopen when a non-JVM server can be a cell and an author asks.
+- **Fabric client gametest: defer.** It is a real client but with an in-process server and no agent (no dual oracle). The real gap
+  is content mods, which kick `mcpl` (fabric.md); the fitting shape is a `fabric-client` driver under Xvfb, first a 2-day spike
+  needing maintainer approval (new image, runtime Mojang client download).
+
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
 
