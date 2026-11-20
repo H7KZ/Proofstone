@@ -107,3 +107,46 @@ Bukkit-family agent already fills it and the host's `HostPlayer.state()` already
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceBootLogLinesTest' --no-parallel --max-workers=1`
+
+### T-M11-04 · `Client.placeBlock` and `Client.breakBlock`: a player's block place and break
+- tier: sonnet
+- depends: —
+- modules: proofstone-api, proofstone-core, drivers/mcpl, conformance, docs/specs, docs/user
+- adrs: 0002, 0004
+- specs: specs/test-api.md §3, specs/client-driver.md §1
+- test-first: yes
+
+**Goal.** A test makes the client place a block against a known block and break a block as a player would, so the server fires its
+real `BlockPlaceEvent` and `BlockBreakEvent` from the held item, and reads the result from the server. Label `api-change`.
+
+**Evidence.** Gap 3 of the Disenchantment E2E suite (a special anvil is marked in chunk PDC when placed and swaps its drop when
+broken). `ClientSession.useBlock` already sends use-item-on and the server answers `ClientboundBlockChangedAck`, but nothing on `Client`
+places or breaks, and no public read of a block exists (`GET /v1/world/block` is agent-only).
+
+**Design.** Additive, smallest set that closes the loop:
+- `Client.placeBlock(BlockPos against, Face face)` and `Client.breakBlock(BlockPos)`, default methods that throw
+  `UnsupportedOperationException`; `Face` becomes a public API enum (moved from core's non-public `driver` package).
+- `ClientSession.placeBlock` / `breakBlock` default to a `ClientDriverException` (a driver without support fails loudly: Bedrock and
+  the reference Mineflayer driver). `McplSession` implements them: look, use-item-on, or look, start-digging, finish-digging, each
+  returning when `ClientboundBlockChangedAck` of its own sequence arrives (`Await`, no sleep).
+- `Agent.blockType(String world, BlockPos)`, a default method that throws, over the existing `GET /v1/world/block`: the server oracle.
+- No protocol change, no version bump, no golden file, no capability.
+
+**Do.**
+- Add `Face` to `proofstone-api`, `Client.placeBlock`, `Client.breakBlock` and `Agent.blockType` as throwing default methods.
+- Add `ClientSession.placeBlock` / `breakBlock` (default throws `ClientDriverException`); implement them in `McplSession` over the
+  block-change acknowledgement; make Bedrock throw naming the edition.
+- Implement `blockType` in `HostAgent` over `GET /v1/world/block`.
+- Unit tests, one real-server scenario (C-B01), docs, CHANGELOG, ROADMAP, a regenerated `api-baseline.txt`.
+
+**Don't.** Change the wire protocol or the agents; add a sleep or retry; predict a result on the client (the server decides: reach,
+protection and cancelled events leave the block unchanged and the test reads that from the server).
+
+**Acceptance.**
+- [ ] `api-baseline.txt` gains only `Face`, `Client.placeBlock`, `Client.breakBlock` and `Agent.blockType`; `ApiSurfaceTest` is green.
+- [ ] Unit tests: api defaults throw, `HostAgent.blockType` request and bad reply, `McplSession` packets and ack wait, Bedrock throws.
+- [ ] C-B01 (`ConformancePlaceBreakBlockTest`) green on `paper@26.3` in three separate invocations, XML read, `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green; docs, self-tests table, API README, CHANGELOG and ROADMAP updated.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformancePlaceBreakBlockTest' --no-parallel --max-workers=1`
