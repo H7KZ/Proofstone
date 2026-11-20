@@ -175,7 +175,11 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 - `Cell` has no `driver()`. `Cell.capabilities()` was added in T-M5-01 (section 10); `Agent.capabilities()` stays the raw
   list the agent reports.
 - `Item` has no `repairCost` or `pdc` setter, and `ItemView.repairCost()` reads 0 from the agent, because the agent's
-  `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only).
+  `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only). Since
+  T-M11-05 the Bukkit agent fills `pdc()` on 1.14 and later: `"namespace:key"` to a `Byte`, `Short`, `Integer`, `Long`, `Float`,
+  `Double`, `String`, `byte[]`, `int[]` or `long[]`; a nested container is a `Map` of the same; a value it cannot read is
+  `Map.of("unsupported", description)`. `pdc()` is `null` for an item with no data and on a cell with no PDC (agent token `pdc`).
+  `DualAssert...serverOnly(reason).pdc(key, expected)` compares arrays by content.
 - `Client.experienceLevel()` replaces `experience()` (it returns the level only) and throws until the server's first
   experience sync. `Client` has `openBlock` (top face), `inventory`, `position`, `awaitPosition`.
 - `Agent.logLines()` and `Agent.logLines(Pattern, Duration)` (T-M11-01, api-change, additions only, default methods that throw): the server
@@ -214,7 +218,7 @@ These appear in the sketches and are **not** part of the contract. Each needs an
   (the per-test log check runs automatically; the explicit call is not exposed).
 - `PlayerHandle.gamemode` and `PlayerState.location`.
 - Experience points and the progress bar (`PlayerHandle.exp`, `Client.experience`).
-- `Item.repairCost`, `Item.pdc`, and a real `ItemView.repairCost`.
+- `Item.repairCost`, `Item.pdc` (the setter; reading `ItemView.pdc()` is served since T-M11-05), and a real `ItemView.repairCost`.
 - `Clients` (multi-player). `Topology` moved out of this list in T-M7-10 (section 12).
 - Test hygiene: the world fixture region reset and the leak detector (T-M2-08 left them out).
 - `Cell.driver()`.

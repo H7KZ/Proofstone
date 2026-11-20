@@ -215,7 +215,7 @@ public final class DualAssert {
                     throw new IllegalStateException("call inInventory first: there is no item selected");
                 }
                 Predicate<List<ItemView>> matches = items -> select(items).map(ItemView::pdc)
-                        .map(pdc -> Objects.equals(pdc.get(key), expected)).orElse(false);
+                        .map(pdc -> Objects.deepEquals(pdc.get(key), expected)).orElse(false);
                 Outcome<List<ItemView>, String> outcome = waiter.untilBoth(selected + " pdc " + key,
                         () -> new ArrayList<>(player.state().inventory().values()), () -> reason,
                         (server, ignored) -> matches.test(server), DEFAULT_TIMEOUT);

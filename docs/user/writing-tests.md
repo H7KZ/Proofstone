@@ -128,7 +128,9 @@ Notes from the frozen API:
 - `Window.close()` returns after sending the close. It does not wait for the server (a later change may add that).
 - `Client.openBlock` opens on the block's top face.
 - `ItemView.isEmpty()`, `is(String)`, `amount()`, `type()`, `name()`, `lore()`, `enchants()`, `storedEnchants()` and
-  `damage()` read an item. `ItemView.pdc()` is server only and `customData()` is client only.
+  `damage()` read an item. `ItemView.pdc()` is server only and `customData()` is client only. The Bukkit agent fills `pdc()` on 1.14 and later, as
+typed Java values (`Byte`, `Short`, `Integer`, `Long`, `Float`, `Double`, `String`, `byte[]`, `int[]`, `long[]`, a nested `Map`; `Map.of("unsupported", ...)`
+for a value it cannot read); it is `null` for an item with no data and on servers before 1.14. Put data on a test item with `give` and `PublicBukkitValues`.
 
 ## Checking both oracles: `DualAssert`
 

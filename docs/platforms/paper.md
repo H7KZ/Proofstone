@@ -134,9 +134,11 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   The anvil rows (0 south, 1 west, 2 north, 3 east) come from the wiki and were not checked against a client. Any other
   state is `UNKNOWN_KEY`. _1.8.8 to 1.12.2 · [PR #42](https://github.com/H7KZ/Proofstone/pull/42),
   [3a427e0](https://github.com/H7KZ/Proofstone/commit/3a427e0)_
-- **PDC is not served at any version.** The agent has no PDC field (`pdc` in an item is `INVALID_REQUEST`), so no version
-  advertises a `pdc` capability. _1.8.8 to 26.3 · [PR #42](https://github.com/H7KZ/Proofstone/pull/42),
-  [3a427e0](https://github.com/H7KZ/Proofstone/commit/3a427e0)_
+- **PDC is read from 1.14, never given.** Until T-M11-05 the agent served no PDC at any version. It now fills `ItemView.pdc()` on
+  item reads and reports the agent token `pdc` where `org.bukkit.persistence.PersistentDataType` exists (1.14 and later; before
+  that the field is absent and there is no token). `pdc` in an item given by a test is still `INVALID_REQUEST`. A container with no
+  entries reads as no `pdc` (`null`), so the token, not the value, says whether PDC is served. Test items get their data with
+  the vanilla `give` command under `PublicBukkitValues` (C-I01). _No PDC before 1.14 · T-M11-05_
 
 #### Enchantments, anvils and grindstones
 - **Mending and other 1.9+ enchantments are absent on 1.8.8.** C03 used mending as its second stored enchantment, so the

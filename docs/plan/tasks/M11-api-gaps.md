@@ -107,3 +107,36 @@ Bukkit-family agent already fills it and the host's `HostPlayer.state()` already
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceBootLogLinesTest' --no-parallel --max-workers=1`
+
+### T-M11-05 · The Bukkit agent fills `ItemView.pdc()`
+- tier: sonnet
+- depends: —
+- modules: platforms/bukkit/agent, proofstone-core, conformance, docs/specs, docs/platforms
+- adrs: 0002
+- specs: specs/agent-protocol.md §3, specs/test-api.md §6
+- test-first: yes
+
+**Goal.** A test reads an item's persistent data container from the server through the public API: to assert that a plugin marked an
+item (for example Disenchantment's `disenchantment:special_anvil` byte) rather than guessing from its name and lore.
+
+**Evidence.** Gap 5 of the Disenchantment E2E suite. `ItemView.pdc()` and the wire field `item.pdc` exist, but the Bukkit agent never
+filled it, so `pdc()` was `null` for every item.
+
+**Do.**
+- Read `ItemMeta.getPersistentDataContainer()` by reflection (the agent is built against 1.8.8; PDC exists from 1.14) and send each
+  key as `{"type", "value"}`: byte, short, int, long, float, double, string, byte[], int[], long[], a nested container, and
+  `unsupported` for a value it cannot read, never dropped. Report the agent token `pdc` where the API exists.
+- Map the wire entries to typed Java values in core (`PdcWire`); an unknown type or shape is an error.
+- Unit tests in the agent (stand-in 1.14 classes) and core, one real-server scenario (C-I01), docs, CHANGELOG.
+
+**Don't.**
+- Change the wire schema, the goldens or the protocol version (`pdc` is already an object; an empty container sends no field), the
+  API surface (no `api-baseline.txt` change), or add a `pdc` setter on `give` (still `INVALID_REQUEST`). Add a sleep or retry.
+
+**Acceptance.**
+- [ ] Unit tests: every type, arrays, nested container, unsupported marker, empty container, unknown wire type fails, capability token.
+- [ ] C-I01 (`ConformanceItemPdcTest`) green on `paper@26.3` in three separate invocations and once on `paper@1.18.2`, XML read, `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green; docs and CHANGELOG updated.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceItemPdcTest' --no-parallel --max-workers=1`

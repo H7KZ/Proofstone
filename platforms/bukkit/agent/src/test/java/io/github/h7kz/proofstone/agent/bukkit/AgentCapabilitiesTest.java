@@ -22,4 +22,12 @@ class AgentCapabilitiesTest {
         assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true, false)).doesNotContain("resource-pack-status");
         assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true)).doesNotContain("resource-pack-status");
     }
+
+    @Test
+    void pdcIsReportedOnlyWhereTheServerHasPersistentData() {
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true, true, true)).contains("pdc");
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true, true, false)).doesNotContain("pdc");
+        assertThat(ProofstoneAgentPlugin.capabilities("paper", true, true, true)).doesNotContain("pdc");
+        assertThat(ProofstoneAgentPlugin.capabilities("folia", true, true, true, true)).endsWith("pdc", "regions");
+    }
 }

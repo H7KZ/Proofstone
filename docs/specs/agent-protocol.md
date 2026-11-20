@@ -105,6 +105,11 @@ A successful `give`, `reset` or `PATCH` with nothing to return replies `{"ok": t
   `vanilla`); the Fabric agent replays it with the lists replaced by its own, as the NeoForge agent does for `mods`. The NeoForge
   agent does not serve it. An agent on a server without the API (1.8.8) reports no token and answers `404 NOT_FOUND`, never an
   empty list.
+- **T-M11-05:** the Bukkit agent fills the existing `item.pdc` object on item reads (Bukkit 1.14 and later, by reflection) and reports the
+  token `pdc`. `pdc` was already `{"type": "object"}`, so there is no schema change, no golden change and no minor bump (the same rule
+  as `floodgate`). Entries are `"ns:key": {"type": T, "value": V}`, `T` one of `byte`, `short`, `int`, `long`, `float`, `double`,
+  `string`, `byte[]` (array of ints), `int[]`, `long[]`, `container` (value: an object of the same shape) or `unsupported` (value: a
+  description). An empty container sends no field. A reader fails on an unknown `T`. Giving an item a `pdc` field stays `INVALID_REQUEST`.
 - **Golden files:** `proofstone-protocol/golden/<endpoint>/*.json` hold request and response pairs.
   Every agent's contract test replays them.
 
