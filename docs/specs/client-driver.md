@@ -19,6 +19,8 @@ public interface ClientSession extends AutoCloseable {
     void command(String commandWithoutSlash);
     ChatMessage awaitMessage(Pattern p, Duration timeout);
     void useBlock(BlockPos pos, Face face);              // look + interact
+    void placeBlock(BlockPos against, Face face);         // default throws; look + use-item-on, returns on the server's block ack (T-M11-04)
+    void breakBlock(BlockPos pos);                        // default throws; look + start + finish digging, returns on the ack (T-M11-04)
     WindowSession awaitWindow(Duration timeout);
     InventoryView inventory();                            // last server-synced view
     ExperienceView experience();
@@ -193,6 +195,6 @@ Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Facts: [geyser
   `SPAWN_STATUS`. A timeout is a `JoinTimeoutException` (message starts `timed out joining`); a server disconnect message is a
   `ClientDriverException` quoting it (for example `Please log into Xbox to join this server.`, which means login validation is on).
 - **v1 surface.** Chat, command (a command request), text and system messages in (`awaitMessage`), inventory and position read,
-  disconnect. `useBlock`, window and click operations, `awaitServerSwitch`, resource packs and forms throw
+  disconnect. `useBlock`, `placeBlock`, `breakBlock`, window and click operations, `awaitServerSwitch`, resource packs and forms throw
   `UnsupportedOperationException` naming the edition. Multiple sessions share one driver host; the Floodgate XUID is per session.
 - **No sleeps, no retries**, and a disconnect is awaited on the agent (the server notices it after about 10 s).

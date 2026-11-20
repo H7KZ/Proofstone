@@ -5,7 +5,7 @@ import io.github.h7kz.proofstone.api.ResourcePackPush;
 import io.github.h7kz.proofstone.core.driver.ChatMessage;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
-import io.github.h7kz.proofstone.core.driver.Face;
+import io.github.h7kz.proofstone.api.Face;
 import io.github.h7kz.proofstone.core.driver.WindowSession;
 import io.github.h7kz.proofstone.core.driver.WindowView;
 import io.github.h7kz.proofstone.core.driver.bedrock.RpcCalls.HostError;
@@ -85,6 +85,16 @@ final class BedrockSession implements ClientSession {
     @Override
     public void useBlock(BlockPos pos, Face face) {
         throw unsupported("useBlock");
+    }
+
+    @Override
+    public void placeBlock(BlockPos against, Face face) {
+        throw unsupported("placeBlock");
+    }
+
+    @Override
+    public void breakBlock(BlockPos pos) {
+        throw unsupported("breakBlock");
     }
 
     @Override

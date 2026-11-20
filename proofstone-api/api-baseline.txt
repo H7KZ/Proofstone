@@ -5,6 +5,7 @@ public abstract interface io.github.h7kz.proofstone.api.Agent
   method public abstract java.lang.String io.github.h7kz.proofstone.api.Agent.command(java.lang.String)
   method public abstract java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Agent.capabilities()
   method public default io.github.h7kz.proofstone.api.PlayerHandle io.github.h7kz.proofstone.api.Agent.player(io.github.h7kz.proofstone.api.Client)
+  method public default java.lang.String io.github.h7kz.proofstone.api.Agent.blockType(java.lang.String,io.github.h7kz.proofstone.api.BlockPos)
   method public default java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Agent.bootLogLines()
   method public default java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Agent.logLines()
   method public default java.util.List<java.lang.String> io.github.h7kz.proofstone.api.Agent.logLines(java.util.regex.Pattern,java.time.Duration)
@@ -80,6 +81,8 @@ public abstract interface io.github.h7kz.proofstone.api.Client
   method public abstract java.util.List<io.github.h7kz.proofstone.api.ItemView> io.github.h7kz.proofstone.api.Client.inventory()
   method public abstract void io.github.h7kz.proofstone.api.Client.command(java.lang.String)
   method public default java.util.List<io.github.h7kz.proofstone.api.ResourcePackPush> io.github.h7kz.proofstone.api.Client.resourcePacks()
+  method public default void io.github.h7kz.proofstone.api.Client.breakBlock(io.github.h7kz.proofstone.api.BlockPos)
+  method public default void io.github.h7kz.proofstone.api.Client.placeBlock(io.github.h7kz.proofstone.api.BlockPos,io.github.h7kz.proofstone.api.Face)
   method public default void io.github.h7kz.proofstone.api.Client.transferTo(java.lang.String)
 public abstract interface io.github.h7kz.proofstone.api.Clients
   method public abstract io.github.h7kz.proofstone.api.Client io.github.h7kz.proofstone.api.Clients.create(java.lang.String)
@@ -121,6 +124,15 @@ public abstract interface io.github.h7kz.proofstone.api.Events
   method public abstract io.github.h7kz.proofstone.api.EventProbe io.github.h7kz.proofstone.api.Events.subscribe(java.lang.String)
 public abstract interface io.github.h7kz.proofstone.api.Expect implements java.lang.annotation.Annotation
   method public abstract java.lang.Class<? extends io.github.h7kz.proofstone.api.CellExpectation> io.github.h7kz.proofstone.api.Expect.value()
+public final io.github.h7kz.proofstone.api.Face extends java.lang.Enum<io.github.h7kz.proofstone.api.Face>
+  field public static final io.github.h7kz.proofstone.api.Face DOWN
+  field public static final io.github.h7kz.proofstone.api.Face EAST
+  field public static final io.github.h7kz.proofstone.api.Face NORTH
+  field public static final io.github.h7kz.proofstone.api.Face SOUTH
+  field public static final io.github.h7kz.proofstone.api.Face UP
+  field public static final io.github.h7kz.proofstone.api.Face WEST
+  method public static io.github.h7kz.proofstone.api.Face io.github.h7kz.proofstone.api.Face.valueOf(java.lang.String)
+  method public static io.github.h7kz.proofstone.api.Face[] io.github.h7kz.proofstone.api.Face.values()
 public abstract interface io.github.h7kz.proofstone.api.Isolation implements java.lang.annotation.Annotation
   method public abstract io.github.h7kz.proofstone.api.Isolation$Mode io.github.h7kz.proofstone.api.Isolation.value()
 public final io.github.h7kz.proofstone.api.Isolation$Mode extends java.lang.Enum<io.github.h7kz.proofstone.api.Isolation$Mode>
