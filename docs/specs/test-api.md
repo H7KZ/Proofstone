@@ -156,7 +156,7 @@ constant: the baseline file plus this status line are the v0 marker. A card that
 - `PlayerHandle` (`name`, `reset`, `level`, `give`, `state`, `awaitState`), `PluginHandle` (`name`, `config`,
   `patchConfig`), `Events` and `EventProbe`.
 - `Window` (`type`, `title`, `slots`, `slot`, `awaitSlot`, `cursor`, `click`, `moveFromInventory`,
-  `dropCursorIntoFirstEmptySlot`, `rename`, `close`), `Click`, `Item` (build), `ItemView` (read), `BlockPos`, `Position`.
+  `dropCursorIntoFirstEmptySlot`, `rename`, `drag`, `close`), `Click`, `DragMode`, `Item` (build), `ItemView` (read), `BlockPos`, `Position`.
 - `DualAssert` (`item`, `level`) and `DisagreeException`.
 
 ### 8.2 Experimental: in the baseline, but allowed to change in a v0.x step
@@ -208,6 +208,15 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
   in survival); a slower block is rejected by the server at the finish and stays. `blockType` is a read of the existing
   `GET /v1/world/block`, so no protocol change, no version bump, no capability. The `mcpl` driver supports the calls; the Bedrock and
   reference Mineflayer drivers throw (the `ClientSession` default), as for `useBlock` windows.
+- `Window.drag(List<Integer> slots, DragMode mode)` and the public enum `DragMode` (`LEFT`, `RIGHT`, `MIDDLE`; T-M11-09, api-change,
+  additions only). `drag` is a default method that throws `UnsupportedOperationException`. The `mcpl` driver sends the vanilla quick-craft
+  sequence (a start, one add per slot in the order given, an end; `ContainerActionType.SPREAD_ITEM`, slot -999 for start and end) with the
+  carried stack the server already holds, and returns once the server's answer to the end is in: the slot changes and the cursor update that
+  follows them. The server distributes the stack (left: even split, remainder stays on the cursor; right: one per slot; middle: full stacks,
+  creative only, and it takes the whole carried stack), so read the slots and `cursor()` afterwards. Empty, repeating or out-of-range
+  slots throw `IllegalArgumentException` before any packet is sent. A server that sends fewer cursor updates than stages makes the call fail
+  after its wait with the transcript tail, never pass. Bedrock and the reference Mineflayer driver throw (the `WindowSession` default). No
+  protocol change, no version bump, no capability.
 - `PlayerState.openWindow()` and `ServerWindow` (T-M11-02, api-change, additions only): `Optional<ServerWindow>` as a new last component of
   `PlayerState` (the 7-argument constructor stays). It is the server's view of the container the player has open, from the
   `openWindow` field `player-state.json` already has, so no protocol change and no capability. `ServerWindow` has `type` (the

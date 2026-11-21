@@ -2441,7 +2441,7 @@ Merged into `develop` since the 2026-11-20 update:
 | T-M11-07 (mcpl late window packet after close) | merged | #205 | Real cause of the folia client-oracle DISAGREE flake. Routes the late packet to window 0. Disenchantment e2e folia@26.3: 5 of 5 green after, 1 of 3 before. |
 
 **Open Proofstone items:**
-- Window drag API (`Window.drag`): not started.
+- Window drag API (`Window.drag`, T-M11-09): done in PR (see the ledger once merged).
 - Fault-injection hook (`Agent.failNextInventoryWrite`): spike T-M11-10 verdict No-go for an agent API (ADR-0002; not generic, not robust). [fault-injection.md](../platforms/fault-injection.md); ADR-0020 Proposed awaits a maintainer decision. Suites use their own test support plugin meanwhile.
 - Follow-up card for the T-M11-04 minor findings: not yet carded.
 - NetherNet ADR: to file.

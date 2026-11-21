@@ -26,6 +26,10 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
+- **A drag is answered in pieces (T-M11-09).** For each quick-craft stage (start, every add) 26.3 sends only a cursor update, because the
+  driver's carried claim never matches. The end sends one `ContainerSetSlot` per changed slot (state id bumps), then the cursor update. `Window.drag`
+  therefore waits for a counted sync and for the cursor update of the last stage, or a test reading `cursor()` on the first slot packet races. A creative
+  middle drag fills each slot to 64 and takes the whole carried stack. _26.3 · C-W02_
 - **Placing against an anvil opens it (T-M11-04).** `Client.placeBlock` sends use-item-on without the sneak flag, so against an anvil, chest or crafting table the server opens the window and fires no `BlockPlaceEvent`, though it still acknowledges the sequence. C-B01 places against plain stone. _26.3_
 - **A Paper cell fails as `Container startup failed` (`HostPortWaitStrategy`) when the boot takes over 60 s, which a busy host
   does** (T-M8-24, `paper@1.21.11` bridged, Testcontainers 2.0.5). `PaperHost` sets no wait strategy, so the default port wait

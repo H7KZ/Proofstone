@@ -281,3 +281,40 @@ the refund) stayed green because no API makes a write fail.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
+### T-M11-09 · `Window.drag`: an inventory drag across slots
+- tier: sonnet
+- depends: -
+- modules: proofstone-api, proofstone-core, drivers/mcpl, conformance, docs/specs, docs/user
+- adrs: 0002, 0004
+- specs: specs/test-api.md §4, specs/client-driver.md §1
+- test-first: yes
+
+**Goal.** A test drags the carried stack across several slots as a player holding a mouse button, and the server distributes it.
+Label `api-change`.
+
+**Evidence.** Gap 4 of the Disenchantment E2E suite (the grindstone result refresh after a drag into the grindstone). `Window.click`
+sends single clicks only; nothing sends the quick-craft sequence.
+
+**Design.** Additive, smallest set:
+- `Window.drag(List<Integer> slots, DragMode mode)`, a default method that throws `UnsupportedOperationException`; `DragMode` (`LEFT`,
+  `RIGHT`, `MIDDLE`) is a new public enum.
+- `WindowSession.drag` defaults to a `ClientDriverException`; `McplSession` sends start (slot -999), one add per slot, end (slot
+  -999) as `SPREAD_ITEM` with the button's header codes, then waits (`Await`, no sleep) for a counted sync and the cursor update of the
+  last stage.
+- No protocol change, no version bump, no capability.
+
+**Do.**
+- Add `DragMode`, `Window.drag`, `WindowSession.drag`, `SessionWindow.drag`, the mcpl implementation and `WindowModel.cursorUpdates`.
+- Unit tests (`McplDragTest`: packet order and headers per button, the wait, bad arguments; `WindowDragDefaultTest`), one real-server
+  scenario (C-W02), docs, CHANGELOG, ROADMAP, a regenerated `api-baseline.txt`.
+
+**Don't.** Change the wire protocol or the agents; add a sleep or retry; predict the result on the client.
+
+**Acceptance.**
+- [ ] `api-baseline.txt` gains only `DragMode` and `Window.drag`; `ApiSurfaceTest` is green.
+- [ ] `McplDragTest` green. C-W02 (`ConformanceWindowDragTest`) green on `paper@26.3` in three separate invocations, XML read,
+  `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green; docs, self-tests table, API README, CHANGELOG and ROADMAP updated.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceWindowDragTest' --no-parallel --max-workers=1`
