@@ -186,10 +186,13 @@ client closed that window. Bugfix, no API change.
 `PreEventCancelE2E.aCancelledPreDisenchantEventChangesNothing`): `DISAGREE ... expected present`, the server oracle saw the book in
 slot 9, the client oracle never did. All three transcripts are the same: the click that places the cursor book in a player slot is sent
 as the plugin's late anvil update arrives (slot 1 at stateId 14 and a resync at 15, two ticks after the result click). The click returns
-on that update, the test closes, and the click's own answer, `ContainerSetContent id=1` holding the book, arrives 16 to 24 ms after the
-close: `(no such window, ignored)`. The server then sends window 0 only slot 45, the hand-back of slot 0 and slot 36, never slot 9: on
-close it took the anvil's remote slots as window 0's (vanilla `transferState`). Same mechanism as the T-M8-23 note in ROADMAP.md, which
-was fixed in the conformance scenarios only. Not a plugin or Folia bug: the server sent the book.
+on that update, the test closes, and a `ContainerSetContent id=1` arrives 16 to 24 ms after the close: `(no such window, ignored)`.
+The server then sends window 0 only slot 45, the hand-back of slot 0 and slot 36, never slot 9. The transcript does not log slot
+contents, so that this content was the click's answer holding the book is **inferred**: the server oracle has the book in slot 9, it
+is the only window 1 packet after the place click, and on close the server takes the anvil's remote slots as window 0's (vanilla
+`transferState`), which explains why slot 9 is never resent. Same mechanism as the T-M8-23 note in ROADMAP.md, which was fixed in the
+conformance scenarios only. On that inference it is a driver bug, not a plugin or Folia one: the server sent the book and the driver
+dropped it.
 
 **Do.**
 - Keep the window this client closed as the target of packets for its id until another window opens, the server closes a window or

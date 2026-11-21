@@ -18,7 +18,9 @@ import org.geysermc.mcprotocollib.network.Session;
 import org.geysermc.mcprotocollib.network.packet.Packet;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerType;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
+import org.geysermc.mcprotocollib.protocol.packet.configuration.clientbound.ClientboundFinishConfigurationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundStartConfigurationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetHealthPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerClosePacket;
@@ -101,10 +103,12 @@ class McplLateWindowPacketTest {
         click.get(5, TimeUnit.SECONDS);
         anvil.close();
 
-        // The click's own answer: the book placed in the first main slot, the cursor empty.
+        // The click's own answer: the book placed in the first main slot. It carries a stack (the recorded one carried
+        // none) so the cursor assertion below can fail: the server returns or drops a carried stack when it reads the
+        // close, so a closed window's carried item must not reach the client cursor.
         ItemStack[] answered = anvilBeforeThePlace();
         answered[FIRST_MAIN] = new ItemStack(BOOK, 1);
-        received(new ClientboundContainerSetContentPacket(1, 16, answered, null));
+        received(new ClientboundContainerSetContentPacket(1, 16, answered, new ItemStack(SWORD, 1)));
         // Then window 0 after the server's close: the offhand, and the input sword handed back to hotbar 0.
         received(new ClientboundContainerSetSlotPacket(0, 107, 45, null));
         received(new ClientboundSetPlayerInventoryPacket(0, new ItemStack(SWORD, 1)));
@@ -188,5 +192,54 @@ class McplLateWindowPacketTest {
         received(new ClientboundContainerSetSlotPacket(1, 16, FIRST_MAIN, new ItemStack(BOOK, 1)));
 
         assertThat(windowZero(9).isEmpty()).isTrue();
+    }
+
+    @Test
+    void openingAnotherWindowEndsTheLateTargetOfTheClosedOne() {
+        join();
+        WindowSession first = openAnvil();
+        first.close();
+
+        // A different id, so only the clear on OpenScreen keeps window 1 from taking the packet below.
+        received(new ClientboundOpenScreenPacket(2, ContainerType.ANVIL, Component.text("Repair & Name")));
+        received(new ClientboundContainerSetContentPacket(2, 1, new ItemStack[ANVIL_SLOTS], null));
+        session.awaitWindow(LONG);
+        received(new ClientboundContainerSetSlotPacket(1, 16, FIRST_MAIN, new ItemStack(BOOK, 1)));
+
+        assertThat(windowZero(9).isEmpty()).as("window 1 stopped being a late target when window 2 opened").isTrue();
+        assertThat(first.slots().get(FIRST_MAIN).isEmpty()).isTrue();
+    }
+
+    @Test
+    void aNewServerJoinEndsTheLateTarget() {
+        join();
+        WindowSession anvil = openAnvil();
+        anvil.close();
+
+        // A proxy switch: configuration again, then the new server's login and window 0 (resetViews).
+        received(new ClientboundStartConfigurationPacket());
+        received(new ClientboundFinishConfigurationPacket());
+        join();
+        received(new ClientboundContainerSetSlotPacket(1, 16, FIRST_MAIN, new ItemStack(BOOK, 1)));
+
+        assertThat(windowZero(9).isEmpty()).as("the previous server's closed window takes nothing on the new one").isTrue();
+    }
+
+    @Test
+    void aLateContentAfterAHandBackTakesAllPlayerSlotsBecauseTheServerSentItLater() {
+        join();
+        WindowSession anvil = openAnvil();
+        anvil.close();
+
+        // Pinned on purpose: packets arrive in the server's send order, and the server sends nothing for the window once
+        // it read the close, so a late content was sent after any hand-back that precedes it and already reflects it.
+        // A content that disagrees with an earlier hand-back is the server's newer word, and it wins.
+        received(new ClientboundSetPlayerInventoryPacket(10, new ItemStack(SWORD, 1)));
+        ItemStack[] content = anvilBeforeThePlace();
+        content[FIRST_MAIN] = new ItemStack(BOOK, 1);
+        received(new ClientboundContainerSetContentPacket(1, 16, content, null));
+
+        assertThat(windowZero(9)).isEqualTo(new SlotStack(BOOK, 1));
+        assertThat(windowZero(10).isEmpty()).as("the later content's slot 10 replaces the earlier hand-back").isTrue();
     }
 }

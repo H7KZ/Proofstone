@@ -382,7 +382,10 @@ final class McplSession implements ClientSession {
             if (late == null) {
                 return " id=" + content.getContainerId() + " (no such window, ignored)";
             }
-            // Not the cursor: the server returns or drops the carried stack when it reads the close.
+            // All 36 player slots, unlike a late slot update: packets arrive in the server's send order and the server
+            // sends nothing for the window once it read the close, so this content was sent after any hand-back
+            // (SetPlayerInventory) that arrived before it and already reflects it. Not the cursor: the server returns or
+            // drops the carried stack when it reads the close.
             late.setContent(content.getStateId(), content.getItems(), content.getCarriedItem());
             playerInventory.adoptPlayerSlots(late.slots(), late.rawSlots());
             return " id=" + late.id() + " stateId=" + content.getStateId() + " slots=" + content.getItems().length

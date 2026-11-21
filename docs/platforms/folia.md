@@ -65,10 +65,11 @@ M5 follow-up_
   it by inventory index (0-8 hotbar, 9-35 main, 36-39 feet to head, 40 offhand) to window 0 and to an open window's player section.
 - **The answer to the last click can arrive after the test closed the window** (T-M11-07, `folia@26.3`, 2 of 3 Disenchantment runs after
   T-M11-06; the driver is shared, so Paper is exposed too, at other timings). A plugin task updates the anvil two ticks after the result
-  click; the next click returns on that update, the close follows, and the click's own `ContainerSetContent` (the book in slot 9) came
-  for a closed window and was dropped. The server never resends slot 9 to window 0 (vanilla `transferState` on close). The driver now
-  hands such a packet's player slots to window 0. The T-M11-06 diagnosis of the same red named the wrong packet: the book was never
-  in a `ClientboundSetPlayerInventoryPacket`.
+  click; the next click returns on that update, the close follows, and a `ContainerSetContent id=1` arrives after the close and was
+  dropped. The transcript does not log slot contents: that this packet held the book in slot 9 is inferred, from the server oracle
+  (book in slot 9) and from the server never sending slot 9 to window 0 afterwards (vanilla `transferState` on close; this is the only
+  window 1 packet after the place click). The driver now hands such a packet's player slots to window 0. By the same inference, the
+  T-M11-06 diagnosis of this red named the wrong packet: the only `ClientboundSetPlayerInventoryPacket` after the close is for slot 0.
 - **Boot used to fail on every row.** `ProofstoneAgent.onEnable` called `Bukkit.getScheduler().scheduleSyncRepeatingTask`
   for the tick counter. Folia's `CraftScheduler` throws `UnsupportedOperationException` (there is no main thread), and
   `onDisable` failed on `cancelTasks` too. Fixed by `FoliaScheduler` (T-M5-02). _1.21.11, 26.1.2, 26.2, 26.3_
