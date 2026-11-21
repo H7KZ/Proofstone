@@ -7,6 +7,6 @@ Third-party components
 - Jackson (jackson-core, jackson-databind, Apache-2.0) is shaded into the Bukkit agent as
   io.github.h7kz.proofstone.shaded.jackson. Its upstream LICENSE and NOTICE texts must travel with that jar.
 - Other dependencies are either test-only or not redistributed. Their licences are listed in
-  docs/adr/0011-licensing.md and docs/release-notes-0.1.0-DRAFT.md.
+  docs/adr/0011-licensing.md and docs/release-notes-0.1.0.md.
 - ViaProxy (GPL-3.0) runs only as a separate, unmodified container image. It is not redistributed.
 - The Paper and Spigot APIs are compile-only and not redistributed.

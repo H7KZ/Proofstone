@@ -197,7 +197,7 @@ class NeoForgeAgentIT {
         mods.add(agentEntry);
         HttpResponse<String> reply = call("GET", "/v1/mods", null, true);
         assertMatches("mods/list", golden, reply);
-        assertThat(data(reply).get("mods").get(0).get("version").asText()).isEqualTo("0.1.0");
+        assertThat(data(reply).get("mods").get(0).get("version").asText()).isEqualTo("0.2.0");
     }
 
     @Test

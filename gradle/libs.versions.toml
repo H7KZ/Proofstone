@@ -18,8 +18,8 @@ cloudburst-protocol = "3.0.0.Beta15-20261116.161745-6"
 cloudburst-netty = "1.1.0.CR4-20261103.123906-3"
 cloudburst-math = "2.0-20220327.162752-1"
 json-schema-validator = "1.5.9"
-# Proofstone's own version, published to mavenLocal only (T-M6-04). Examples depend on it; nothing is published remotely.
-proofstone = "0.1.0"
+# Proofstone's own version. Examples build and read it from mavenLocal (T-M6-04); released versions are also on Maven Central.
+proofstone = "0.2.0"
 # Compile-only API of the example Paper plugin (T-M6-04). Build 244 is the paper@26.3 row of versions.yml. Stable release
 # on repo.papermc.io, not a snapshot. Paper 26.3 classes are Java 25 bytecode.
 paper = "26.3.build.244-stable"

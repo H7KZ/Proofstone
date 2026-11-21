@@ -15,6 +15,9 @@ A test-only Bukkit plugin, `proofstone-fixture`, that the agent's contract tests
 - Plugin name `proofstone-fixture` (the `{id}` in `/v1/plugins/{id}/...`).
 - Config key `greeting`, default `hi`.
 - Command `fixture-reload`, the declared reload hook.
+- Class `FixtureEvent` (T-M6-111): a Bukkit event of this plugin, never fired. The agent contract test subscribes a probe to it, to check
+  that probing another plugin's event logs no cross-plugin class-loading WARN. The plugin loads it on enable and soft-depends on the agent,
+  so the agent is first in the plugin order.
 - Command `fixture-getserver <player>` (T-M7-12): sends `GetServer` on the `BungeeCord` plugin channel for that player and
   logs the proxy's answer as `fixture BungeeCord reply: GetServer <server>`. The topology conformance P04 reads that line from
   the container log. It sends one message and records the reply; it does nothing else.

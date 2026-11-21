@@ -215,7 +215,7 @@ public final class DualAssert {
                     throw new IllegalStateException("call inInventory first: there is no item selected");
                 }
                 Predicate<List<ItemView>> matches = items -> select(items).map(ItemView::pdc)
-                        .map(pdc -> Objects.equals(pdc.get(key), expected)).orElse(false);
+                        .map(pdc -> contentEquals(pdc.get(key), expected)).orElse(false);
                 Outcome<List<ItemView>, String> outcome = waiter.untilBoth(selected + " pdc " + key,
                         () -> new ArrayList<>(player.state().inventory().values()), () -> reason,
                         (server, ignored) -> matches.test(server), DEFAULT_TIMEOUT);
@@ -231,5 +231,58 @@ public final class DualAssert {
                         + " ms\n  server oracle (agent): " + seen);
             }
         }
+    }
+
+    /**
+     * Equality by content, recursively: a {@code Map} or {@code List} compares its entries, a primitive array its elements,
+     * anything else {@code equals}. {@code Objects.deepEquals} stops at the first array nested in a map, which is where a
+     * nested PDC container holds its arrays.
+     */
+    static boolean contentEquals(Object a, Object b) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a instanceof Map && b instanceof Map) {
+            Map<?, ?> x = (Map<?, ?>) a;
+            Map<?, ?> y = (Map<?, ?>) b;
+            if (x.size() != y.size()) {
+                return false;
+            }
+            for (Map.Entry<?, ?> entry : x.entrySet()) {
+                if (!y.containsKey(entry.getKey()) || !contentEquals(entry.getValue(), y.get(entry.getKey()))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (a instanceof List && b instanceof List) {
+            List<?> x = (List<?>) a;
+            List<?> y = (List<?>) b;
+            if (x.size() != y.size()) {
+                return false;
+            }
+            for (int i = 0; i < x.size(); i++) {
+                if (!contentEquals(x.get(i), y.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (a.getClass().isArray() && b.getClass().isArray()) {
+            if (java.lang.reflect.Array.getLength(a) != java.lang.reflect.Array.getLength(b)
+                    || a.getClass() != b.getClass()) {
+                return false;
+            }
+            for (int i = 0; i < java.lang.reflect.Array.getLength(a); i++) {
+                if (!contentEquals(java.lang.reflect.Array.get(a, i), java.lang.reflect.Array.get(b, i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return a.equals(b);
     }
 }

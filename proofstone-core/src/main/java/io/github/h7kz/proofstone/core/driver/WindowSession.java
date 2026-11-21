@@ -1,6 +1,8 @@
 package io.github.h7kz.proofstone.core.driver;
 
 import io.github.h7kz.proofstone.api.Click;
+import io.github.h7kz.proofstone.api.DragMode;
+import java.util.List;
 
 /**
  * An open container window (client-driver spec §1).
@@ -16,6 +18,17 @@ public interface WindowSession extends WindowView {
      * no-op produces no sync and fails with {@link ClientDriverException} after the wait.
      */
     void click(int slot, Click click);
+
+    /**
+     * Drags the carried stack across the slots: a quick-craft start, one add per slot, an end. Returns once the server
+     * answered the end with a sync (as {@link #click}). Additive (T-M11-09); a driver without support fails loudly.
+     *
+     * @throws UnsupportedOperationException when the driver cannot drag (the rule on {@link ClientSession})
+     * @throws ClientDriverException when the window is closed or the server never answers
+     */
+    default void drag(List<Integer> slots, DragMode mode) {
+        throw new UnsupportedOperationException("this driver cannot drag across slots; use a driver that supports it");
+    }
 
     /**
      * Tells the server this client closed the window. The server does not acknowledge a client close, so this

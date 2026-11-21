@@ -79,7 +79,11 @@ EventProbe e = agent.events().subscribe("com.example.MyEvent"); // reflective, M
 e.awaitOne().getInt("xpCost");                   // getters serialised to JSON
 agent.awaitTicks(2);
 agent.assertNoErrorsLogged();                    // pack patterns + allowlist
-agent.logLines(Pattern.compile("NMS module: (\\S+)"));   // for per-cell expectations
+agent.logLines();                                // lines since the test started, as plain text (T-M11-01)
+agent.bootLogLines();                            // lines from the agent's enable up to the test start (T-M11-03)
+client.placeBlock(groundPos, Face.UP);           // a real BlockPlaceEvent from the held item; the server answers (T-M11-04)
+client.breakBlock(pos);                          // a real BlockBreakEvent; agent.blockType(world, pos) is the oracle
+agent.logLines(Pattern.compile("NMS module: (\\S+)"), Duration.ofSeconds(10));   // waits for a match, returns the matching lines
 ```
 
 ## 4. `Client` (client oracle and actions)
@@ -152,7 +156,7 @@ constant: the baseline file plus this status line are the v0 marker. A card that
 - `PlayerHandle` (`name`, `reset`, `level`, `give`, `state`, `awaitState`), `PluginHandle` (`name`, `config`,
   `patchConfig`), `Events` and `EventProbe`.
 - `Window` (`type`, `title`, `slots`, `slot`, `awaitSlot`, `cursor`, `click`, `moveFromInventory`,
-  `dropCursorIntoFirstEmptySlot`, `rename`, `close`), `Click`, `Item` (build), `ItemView` (read), `BlockPos`, `Position`.
+  `dropCursorIntoFirstEmptySlot`, `rename`, `drag`, `awaitCursor`, `close`), `Click`, `DragMode`, `Item` (build), `ItemView` (read), `BlockPos`, `Position`.
 - `DualAssert` (`item`, `level`) and `DisagreeException`.
 
 ### 8.2 Experimental: in the baseline, but allowed to change in a v0.x step
@@ -160,8 +164,8 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 - `io.github.h7kz.proofstone.api.spi.OracleWaiter` and its records: a service provider interface for `proofstone-core`, not for
   test authors.
 - `DualAssert.serverOnlyReasons()` and `ServerOnly.reason()`: a stop-gap until reports exist (M4).
-- Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`,
-  `openWindow`). Test authors read them and never construct them. Accessors that exist today are frozen.
+- Constructors of the records `PlayerState`, `CapturedEvent`, `ItemView`: they will gain components (`location`).
+  Test authors read them and never construct them. Accessors that exist today are frozen.
 - `CapturedEvent.getInt` (accepts `xpCost` and `getXpCost`) and `fields()`: the value types are whatever the agent's
   JSON serialisation gives. Typed accessors may be added; the existing ones stay.
 - `Window.close()` returns after sending the close. It does not yet await the server close or the inventory resync,
@@ -173,9 +177,58 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 - `Cell` has no `driver()`. `Cell.capabilities()` was added in T-M5-01 (section 10); `Agent.capabilities()` stays the raw
   list the agent reports.
 - `Item` has no `repairCost` or `pdc` setter, and `ItemView.repairCost()` reads 0 from the agent, because the agent's
-  `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only).
+  `give` and item read do not carry them yet. `ItemView` has `pdc()` (server only) and `customData()` (client only). Since
+  T-M11-05 the Bukkit agent fills `pdc()` where the server's PDC API has `getKeys`, `has` and `get` (verified on 1.18.2 and 26.3; the PDC API arrived in 1.14 and the agent checks the shape at start-up, so any other server reports no `pdc` token and no field): `"namespace:key"` to a `Byte`, `Short`, `Integer`, `Long`, `Float`,
+  `Double`, `String`, `byte[]`, `int[]` or `long[]`; a nested container is a `Map` of the same; a value it cannot read is
+  `Map.of("unsupported", description)`. `pdc()` is `null` for an item with no data and on a cell with no PDC (agent token `pdc`).
+  `DualAssert...serverOnly(reason).pdc(key, expected)` compares arrays by content.
 - `Client.experienceLevel()` replaces `experience()` (it returns the level only) and throws until the server's first
   experience sync. `Client` has `openBlock` (top face), `inventory`, `position`, `awaitPosition`.
+- `Agent.logLines()` and `Agent.logLines(Pattern, Duration)` (T-M11-01, api-change, additions only, default methods that throw): the server
+  log since the test started, one `LEVEL logger: message` line per record (a multi-line message or stack trace adds a line per
+  line). The window is the log cursor the lifecycle takes before the client joins, so boot lines are not in it. The second form
+  waits (through `Await`) for a line that contains a match of the pattern and returns every matching line. A ring buffer that
+  dropped records since the cursor is an `IllegalStateException`, never a short list. Backed by `GET /v1/log`, so no protocol
+  change and no capability; a proxy `Agent` and every backend `Agent` of a topology read their own container.
+- `Agent.bootLogLines()` (T-M11-03, api-change, addition only, a default method that throws): the lines before the test window,
+  `GET /v1/log?since=0` cut at the lifecycle's log cursor, so it and `logLines()` are disjoint and together are every captured line.
+  Covered: from the agent's own `onEnable` (it loads at STARTUP) on, which holds the enable lines of every ordinary plugin and
+  the `Done` line. Not covered: what the server logged before the agent enabled (banner, libraries, the plugin loading list,
+  and the agent's own "Enabling" line). The agent ring holds 5000 records; a dropped record is an `IllegalStateException`.
+  No protocol change, no version bump, no capability.
+- `Client.placeBlock(BlockPos against, Face face)`, `Client.breakBlock(BlockPos)`, `Agent.blockType(String world, BlockPos)` and the public enum
+  `Face` (T-M11-04, api-change, additions only; `Face` moved from `proofstone-core`'s `driver` package, which is not public API, so no
+  public signature changes). The two `Client` methods and `blockType` are default methods that throw `UnsupportedOperationException`.
+  `placeBlock` looks at the block and sends use-item-on with the main hand's selected hotbar slot, so the server fires its real
+  `BlockPlaceEvent`; `breakBlock` looks at the block and sends start-digging then finish-digging at once, so the server fires its
+  real `BlockBreakEvent`. Both return when the server acknowledges the action's sequence number (the server sends that after handling
+  it), so no sleep is needed and `blockType` read afterwards sees the result. The server's rules decide the outcome: reach, a
+  protection plugin, or a cancelled event leave the block unchanged and are read from the server, not reported by the call; placing against a block with a use action (anvil, chest) opens it, as for a player who is not sneaking. A break
+  completes at once only in creative or with a zero break time (for example `attribute <name> minecraft:block_break_speed base set 1000`
+  in survival); a slower block is rejected by the server at the finish and stays. `blockType` is a read of the existing
+  `GET /v1/world/block`, so no protocol change, no version bump, no capability. The `mcpl` driver supports the calls; the Bedrock and
+  reference Mineflayer drivers throw (the `ClientSession` default), as for `useBlock` windows.
+- `Window.awaitCursor(Predicate<ItemView>)` (T-M11-11, api-change, additions only): waits, for the default timeout, until the client cursor satisfies the predicate and returns it; the
+  failure is an `AwaitTimeoutException` with the last cursor seen. A click returns on the first window sync and the cursor can arrive in a packet just
+  after it (a plugin that delivers a result by `setItemOnCursor` after writing slots; Folia), so a one-shot `cursor()` read right after a click can
+  race. A default method that throws `UnsupportedOperationException`; no protocol change, no capability.
+- `Window.drag(List<Integer> slots, DragMode mode)` and the public enum `DragMode` (`LEFT`, `RIGHT`, `MIDDLE`; T-M11-09, api-change,
+  additions only). `drag` is a default method that throws `UnsupportedOperationException`. The `mcpl` driver sends the vanilla quick-craft
+  sequence (a start, one add per slot in the order given, an end; `ContainerActionType.SPREAD_ITEM`, slot -999 for start and end) with the
+  carried stack the server already holds, and returns once the server's answer to the end is in: the slot changes and the cursor update that
+  follows them. The server distributes the stack (left: even split, remainder stays on the cursor; right: one per slot; middle: full stacks,
+  creative only, and it takes the whole carried stack), so read the slots and `cursor()` afterwards. Empty, repeating or out-of-range
+  slots throw `IllegalArgumentException` before any packet is sent. A server that sends fewer cursor updates than stages makes the call fail
+  after its wait with the transcript tail, never pass. Bedrock and the reference Mineflayer driver throw (the `WindowSession` default). No
+  protocol change, no version bump, no capability.
+- `PlayerState.openWindow()` and `ServerWindow` (T-M11-02, api-change, additions only): `Optional<ServerWindow>` as a new last component of
+  `PlayerState` (the 7-argument constructor stays). It is the server's view of the container the player has open, from the
+  `openWindow` field `player-state.json` already has, so no protocol change and no capability. `ServerWindow` has `type` (the
+  platform's name as the agent sends it: the Bukkit family sends the lower-cased `InventoryType`, such as `chest`, not the
+  client's `minecraft:generic_9x3`), `title` (as the server holds it) and `slots` (the container's own slots in server order,
+  without the player's 36; an empty slot is `ItemView.EMPTY`). Empty when only the player's own inventory is open. The
+  Fabric and NeoForge agents cannot read a window title, so reading the state of a player with a window open fails there
+  (`NOT_SUPPORTED`, [fabric](../platforms/fabric.md)). The window is a snapshot: wait with `awaitState`.
 - `Events.subscribe(className)` gives an `EventProbe` (`awaitOne`, `events`, `close`). A `CapturedEvent` has
   `className`, `tick`, `thread`, `fields` and `getInt`; an unknown getter is an error, never a default.
 - `DualAssert.item` offers `inInventory`, `amount`, `enchants`, `storedEnchants`, `name` and `serverOnly(reason).pdc`.
@@ -187,13 +240,12 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
 
 ### 8.4 Not in v0 (post-v0 backlog)
 These appear in the sketches and are **not** part of the contract. Each needs an `api-change` card.
-- `Agent.world()` (`setBlock`, `block`): blocks are placed with `command` today, and the agent has the endpoints.
-- `Agent.plugin(..).reload()`, `Agent.awaitTicks`, `Agent.logLines` and the explicit `Agent.assertNoErrorsLogged()`
+- `Agent.world()` (`setBlock`, `block`): blocks are placed with `command` today, and the agent has the endpoints. The one read a test needs, `Agent.blockType`, exists since T-M11-04.
+- `Agent.plugin(..).reload()`, `Agent.awaitTicks` and the explicit `Agent.assertNoErrorsLogged()`
   (the per-test log check runs automatically; the explicit call is not exposed).
-- `PlayerHandle.gamemode`, `PlayerState.location`, `PlayerState.openWindow` and a server view of an open window (the
-  agent has no `openWindow` endpoint, so the chest contents have no server oracle).
+- `PlayerHandle.gamemode` and `PlayerState.location`.
 - Experience points and the progress bar (`PlayerHandle.exp`, `Client.experience`).
-- `Item.repairCost`, `Item.pdc`, and a real `ItemView.repairCost`.
+- `Item.repairCost`, `Item.pdc` (the setter; reading `ItemView.pdc()` is served since T-M11-05), and a real `ItemView.repairCost`.
 - `Clients` (multi-player). `Topology` moved out of this list in T-M7-10 (section 12).
 - Test hygiene: the world fixture region reset and the leak detector (T-M2-08 left them out).
 - `Cell.driver()`.

@@ -94,8 +94,8 @@ whether a BDS image may be pulled at all (AGENTS.md section 3: never committed, 
 - Use a Microsoft or Xbox account, a token or any secret. Commit BDS or any part of it.
 
 **Acceptance.**
-- [ ] `bds.md` states the BDS pin, the beta flag, whether the HTTP call works, the measured round trip, and the offline-join verdict.
-- [ ] A plain verdict: feasible (with the transport) or not, with evidence. If not, T-M10-02 and T-M10-03 are closed with a link.
+- [x] `bds.md` states the BDS pin, the beta flag, whether the HTTP call works, the measured round trip, and the offline-join verdict.
+- [x] A plain verdict: feasible (with the transport) or not, with evidence. If not, T-M10-02 and T-M10-03 are closed with a link.
 
 **Verify.**
 Reviewer re-runs the documented boot and one round trip under `scripts/dockerlock.sh`.
@@ -107,6 +107,10 @@ Reviewer re-runs the documented boot and one round trip under `scripts/dockerloc
 - adrs: 0002, 0005, 0006, 0008, 0018
 - specs: agent-protocol.md, versions-yml.md
 - test-first: yes
+
+**Closed: not feasible (T-M10-01, 2026-11-20).** BDS 1.26.66.1 refuses the M9 driver's unsigned login (`Connection Request invalid.`,
+5 of 5 joins) and supports only NetherNet for players; with `online-mode=true` it does not start offline. Evidence and what would reopen
+this card: [bds.md](../../platforms/bds.md). Not started.
 
 **Goal.** A BDS cell boots with the script agent and serves the protocol subset an ADR names, observe-only.
 
@@ -135,6 +139,10 @@ The card's unit tests, then its real-server task under `scripts/dockerlock.sh`.
 - adrs: 0003, 0015, 0018
 - specs: specs/self-tests.md §1
 - test-first: yes
+
+**Closed: not feasible (T-M10-01, 2026-11-20).** BDS 1.26.66.1 refuses the M9 driver's unsigned login (`Connection Request invalid.`,
+5 of 5 joins) and supports only NetherNet for players; with `online-mode=true` it does not start offline. Evidence and what would reopen
+this card: [bds.md](../../platforms/bds.md). Not started.
 
 **Goal.** The BDS row passes the scenarios its protocol subset allows, with the Bedrock driver joining natively.
 
@@ -423,7 +431,7 @@ agent can serve `health` and `players` there.
 - Commit production code or a pin. Use an account.
 
 **Acceptance.**
-- [ ] A verdict with runs and the protocol gap stated (the server's Bedrock protocol vs the driver's 2225).
+- [x] A verdict with runs and the protocol gap stated (the server's Bedrock protocol vs the driver's 2225): [nukkit.md](../../platforms/nukkit.md).
 
 **Verify.**
 Reviewer re-runs one documented join under `scripts/dockerlock.sh`.
@@ -530,6 +538,14 @@ it needs, and whether the M9 driver's protocol matches.
 **Acceptance.**
 - [ ] The options and a recommendation are in the PR and in this file; `bash scripts/gates.sh --max-workers=1` passes.
 
+**Spike record (2026-11-20, awaiting the maintainer).** Note: [typescript-fabric-gametest.md](../../platforms/typescript-fabric-gametest.md).
+- **TypeScript front end: drop from M10.** Its audience (BDS add-on authors) has no cell after T-M10-01; the wire protocol covers
+  harness to agent only, so a usable front end needs a JVM harness server and a second public API (4 to 6 weeks, guessed).
+  Reopen when a non-JVM server can be a cell and an author asks.
+- **Fabric client gametest: defer.** It is a real client but with an in-process server and no agent (no dual oracle). The real gap
+  is content mods, which kick `mcpl` (fabric.md); the fitting shape is a `fabric-client` driver under Xvfb, first a 2-day spike
+  needing maintainer approval (new image, runtime Mojang client download).
+
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`
 
@@ -556,6 +572,35 @@ it needs, and whether the M9 driver's protocol matches.
 
 **Verify.**
 Reviewer re-runs one boot under `scripts/dockerlock.sh`.
+
+### T-M10-19 · Spike: NetherNet transport for the Bedrock driver
+- tier: opus
+- depends: T-M10-01, T-M10-13
+- modules: docs/platforms, scripts
+- adrs: 0006, 0007, 0018
+- specs: client-driver.md section 6
+- test-first: no
+
+**Goal.** Decide, with evidence, whether the Bedrock driver should speak NetherNet (the WebRTC transport that BDS 1.26.66.1,
+PowerNukkitX 3.0.6 and Nukkit master accept and that the 1.26.60 client uses), and at what cost.
+
+**Do.**
+- Research from primary sources: signalling for a direct join (no Xbox services), data channels, framing, encryption, the identity
+  and login a server with Xbox auth off accepts.
+- Name the Java library a client would need (version, licence, size, natives, maintenance, Windows and Linux containers).
+- If cheap: a throwaway NetherNet client under `scripts/spike/nethernet/` against the cached PowerNukkitX 3.0.6, run under
+  `scripts/dockerlock.sh`. Any new download is written down (version, URL, sha256, size) first and kept in `/c/pw/nethernet-cache`.
+- Write `docs/platforms/nethernet.md`: evidence, go or no-go, effort (shown vs guessed), dependency and licence impact with a draft
+  ADR text (not filed), and the first implementation cards.
+
+**Don't.**
+- Change `drivers/bedrock`, `versions.yml`, the matrix, the wire protocol or an ADR. Use an account or a secret.
+
+**Acceptance.**
+- [ ] `docs/platforms/nethernet.md` has the recommendation, every run as invocation and result, the draft ADR and the first cards.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; reviewer re-runs one documented join under `scripts/dockerlock.sh`.
 
 ### T-M10-99 · M10 milestone review
 - tier: opus

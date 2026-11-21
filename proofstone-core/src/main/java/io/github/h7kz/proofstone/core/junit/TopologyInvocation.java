@@ -142,10 +142,11 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
         }
         if (type == Agent.class) {
             // ADR-0016 section 6: the plain Agent is the default backend's, where the client lands.
-            return new HostAgent(state.topology.backend(state.defaultBackend()), state.patched.get(state.defaultBackend()));
+            return new HostAgent(state.topology.backend(state.defaultBackend()), state.patched.get(state.defaultBackend()),
+                    () -> state.cursors.get(state.defaultBackend()));
         }
         if (type == Topology.class) {
-            return new TopologyView(state.topology, state.patched);
+            return new TopologyView(state.topology, state.patched, state.cursors);
         }
         if (type == Clients.class) {
             return state.clients;
@@ -341,7 +342,7 @@ final class TopologyInvocation implements TestTemplateInvocationContext, Paramet
         if (failure == null && !bodyFailed) {
             failure = CellExpectations.check(context.getRequiredTestClass(), context.getRequiredTestMethod(),
                     cellView(state), new HostAgent(topology.backend(state.defaultBackend()),
-                            state.patched.get(state.defaultBackend())));
+                            state.patched.get(state.defaultBackend()), () -> state.cursors.get(state.defaultBackend())));
         }
         Attempt outcome = failure == null && !bodyFailed ? Attempt.pass()
                 : Attempt.fail(CellInvocation.detail(failure != null ? failure : context.getExecutionException().get()));

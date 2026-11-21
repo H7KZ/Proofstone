@@ -110,8 +110,10 @@ timeout family on single-server cells is bounded but unexplained (ROADMAP "M6 re
 - [x] A fix card is proposed, or the card says why none is needed. No code changed. Evidence: none needed for C04 (no red to
   explain). The related join-stall diagnosis is carded as **T-M6-109** in [M6-dogfood-release.md](M6-dogfood-release.md).
 
-**Verify.**
-`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --no-parallel --max-workers=1`
+**Verify.** Corrected by T-M7-22 (2026-11-20): the selector alone also ran the four paper-only classes, which fail
+`initializationError` by design. Add the spigot-capable `--tests` filter (see T-M7-22):
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --tests '*C03GiveRoundTripTest' --tests '*C04ChestMoveTest' --tests '*C05AnvilRenameCostTest' --tests '*C06AnvilCombineTest' --tests '*C07GrindstoneTest' --tests '*C08ShiftClickCraftTest' --tests '*ConformanceSmokeTest' --tests '*ConformanceFoliaEventTest' --tests '*ConformanceFoliaTeleportTest' --tests '*ConformanceBedrockPrefixTest' --no-parallel --max-workers=1`
+Old command (no `--tests`, **red by design** on 2026-11-20, 10 of 10): `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --no-parallel --max-workers=1`
 
 ### T-M7-17 · Boot one server per cell in a PER_CLASS class: key the shared host by the full cell, not the mc version
 - tier: sonnet
@@ -319,3 +321,42 @@ lines in ROADMAP "T-M7-20".
 
 **Verify.**
 `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.8.8 --no-parallel --max-workers=1`
+
+### T-M7-22 · Select the spigot-capable conformance tests in the T-M7-16 Verify command
+- tier: haiku
+- depends: T-M7-16
+- modules: docs
+- adrs: 0007
+- specs: specs/self-tests.md §1
+- test-first: no
+
+**Goal.** Make the T-M7-16 Verify command run only the conformance classes that declare `spigot@26.3`, so it is green or red
+for a real Spigot reason. On 2026-11-20 the old command was red 10 of 10 because `CD01`, `CD02`, `CR01` and `CR02` declare only
+paper, fabric and neoforge and fail `initializationError` "has no cell to run" (ROADMAP "T-M7-16 result"). That loud failure is
+intended (AGENTS.md section 3), so the fix is the selection, not the guard.
+
+**Do.**
+- Select by class with Gradle `--tests` filters on the `:conformance:run` command line. Read the `@Matrix` of each class first:
+  `C03` to `C08`, `ConformanceSmokeTest`, `ConformanceFoliaEventTest`, `ConformanceFoliaTeleportTest` and
+  `ConformanceBedrockPrefixTest` declare `SPIGOT`; `CD01`, `CD02`, `CR01` and `CR02` do not.
+- Write the corrected command into the T-M7-16 card Verify and into the ROADMAP "T-M7-16 result" section. Keep the old command
+  there, marked "red by design".
+- Run the corrected command once under `scripts/dockerlock.sh` with `--no-parallel --max-workers=1`. Read every XML in
+  `conformance/build/test-results/run/`: `failures="0" errors="0"`, and a skip only with a reason (the expected reasoned skips are
+  `SIMULATED_BEDROCK` and `FOLIA_REGIONS`). Record the counts in ROADMAP "T-M7-22 result", red or green.
+
+**Don't.**
+- Edit any test, the `@Matrix` declarations, the `run` task's selector rules, `scripts/`, or the `conformance/build.gradle.kts`
+  filters. Do not add a sleep, a retry, a tag or an allowlist to make it pass.
+- Re-run a red to look for a green. A red stays in the record.
+- Change a tier, edit an ADR, push, merge or tag.
+
+**Acceptance.**
+- [x] T-M7-16 card Verify and ROADMAP "T-M7-16 result" hold the corrected command; the old one is kept and marked red by design. Evidence: ROADMAP "T-M7-16 result" and "T-M7-22 result".
+- [x] One run of the corrected command: the XML counts are recorded (tests, skipped, failures, errors) per suite, with each skip's
+  reason. Evidence: ROADMAP "T-M7-22 result", 11 tests, 3 skips, 0 failures, 0 errors.
+- [x] `failures="0" errors="0"` in every suite. Evidence: all 10 suites, ROADMAP "T-M7-22 result".
+- [ ] `bash scripts/gates.sh --max-workers=1` run under `scripts/dockerlock.sh`, summary recorded.
+
+**Verify.**
+`PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --tests '*C03GiveRoundTripTest' --tests '*C04ChestMoveTest' --tests '*C05AnvilRenameCostTest' --tests '*C06AnvilCombineTest' --tests '*C07GrindstoneTest' --tests '*C08ShiftClickCraftTest' --tests '*ConformanceSmokeTest' --tests '*ConformanceFoliaEventTest' --tests '*ConformanceFoliaTeleportTest' --tests '*ConformanceBedrockPrefixTest' --no-parallel --max-workers=1`

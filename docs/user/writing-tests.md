@@ -77,12 +77,36 @@ String value = (String) agent.plugin("AnvilMechanic").config("some.key"); // rea
 EventProbe e = agent.events().subscribe("org.bukkit.event.player.PlayerJoinEvent");
 CapturedEvent ev = e.awaitOne();
 int xp = ev.getInt("xpCost");                        // an unknown getter is an error, never a default
+
+List<String> log = agent.logLines();                 // server log since the test started: "INFO <logger>: <message>"
+List<String> boot = agent.bootLogLines();             // before the test: a plugin's start-up line
+List<String> hits = agent.logLines(Pattern.compile("Reloaded"), Duration.ofSeconds(10)); // waits, returns the matching lines
 ```
 
 - `Agent.command(String)` returns the raw console reply as a `String`. It is for setup. Never assert on it.
 - Probes are read-only and listen at MONITOR priority.
-- Not in v0: `agent.world()`, `agent.awaitTicks`, `agent.logLines`, `PlayerHandle.gamemode`, `PlayerState.location`,
-  `PlayerState.openWindow`, `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md); mods, data packs and resource packs in [mods-and-packs](mods-and-packs.md).
+- `Agent.logLines()` is the server log since the test started (not the boot, not earlier tests), one `LEVEL logger: message` line per
+  record plus a line per line of a stack trace. It is a snapshot, not a barrier: wait for a line with
+  `logLines(Pattern, Duration)`. The per-test check for WARN and worse still runs on its own. A log buffer that overflowed throws
+  instead of returning a short list. To assert something was **not** logged, first wait for something that is logged after it.
+- `Agent.bootLogLines()` is the complement: every line from the agent's enable up to the test start, so a plugin's start-up line (for example
+  `NMS module: NMS_v1_21_R5`) can be asserted. The agent loads at server STARTUP, so the lines before it are not captured (the server banner,
+  library loading, the plugin loading list); the enable lines of ordinary plugins are. The agent keeps the last 5000 records: a long suite
+  that overflowed it makes `bootLogLines()` throw rather than return a short list.
+- `PlayerState.openWindow()` is what the server says the player has open: an `Optional<ServerWindow>` with `type`, `title` and the
+  container's own `slots` (not the player's 36; empty slots are `ItemView.EMPTY`). Use it to assert a menu a plugin opened, for example
+  `player.awaitState("menu open", s -> s.openWindow().map(w -> w.title().startsWith("X")).orElse(false))`. `type` is the platform's
+  name (`chest` on the Bukkit family), not the client's `minecraft:generic_9x3`. Fabric and NeoForge cannot read a title, so reading a
+  player with a window open fails there.
+- `client.placeBlock(against, Face.UP)` and `client.breakBlock(pos)` act as a player: the server fires its real `BlockPlaceEvent` /
+  `BlockBreakEvent`, and the call returns once the server has answered (no sleep needed). Place uses the held item of the selected
+  hotbar slot (`player.give(...)` puts it in slot 0 after a reset); the new block lands on the neighbouring position of `face`. Assert
+  with the server: `agent.blockType("world", pos)` returns `minecraft:stone`, `minecraft:air` and so on. A break completes at once only in
+  creative (`agent.command("gamemode creative " + client.name())`) or with a zero break time (survival with the
+  `minecraft:block_break_speed` attribute raised); otherwise the server refuses the finish and the block stays. Reach, protection plugins
+  and cancelled events also leave the block unchanged, and a block with a use action (anvil, chest, crafting table) opens instead of being placed against, as for a player who is not sneaking. Only the Java driver (`mcpl`) supports it; Bedrock throws.
+- Not in v0: `agent.world()` (only `blockType`), `agent.awaitTicks`, `PlayerHandle.gamemode`, `PlayerState.location`,
+  `Item.pdc` and `Item.repairCost` setters, `Clients` (several players). Proxies are covered in [topologies](topologies.md); mods, data packs and resource packs in [mods-and-packs](mods-and-packs.md).
   Use `agent.command(...)` for setup instead of `world()`.
 
 ## The client oracle: `Client` and `Window`
@@ -100,8 +124,11 @@ try (Window w = client.openBlock(new BlockPos(0, 64, 2))) {         // awaits th
     ItemView r = w.awaitSlot(2, i -> i.is("enchanted_book"));
     w.click(2, Click.LEFT);                                         // LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT, DROP,
                                                                     // DOUBLE, SWAP_OFFHAND, NUMBER_1..NUMBER_9
-    w.cursor();                                                     // ItemView (empty when nothing is held)
+    w.cursor();                                                     // ItemView (empty when nothing is held), a one-shot read
+    w.awaitCursor(i -> i.is("enchanted_book"));                     // wait for the cursor after a click that delivers on it
     w.dropCursorIntoFirstEmptySlot();
+    w.drag(List.of(27, 28, 29), DragMode.LEFT);                     // drag the carried stack over slots: LEFT splits evenly,
+                                                                    // RIGHT puts one in each, MIDDLE (creative) fills stacks
     w.rename("Blade");                                              // anvil only
 }                                                                   // close() sends the close
 ```
@@ -111,7 +138,9 @@ Notes from the frozen API:
 - `Window.close()` returns after sending the close. It does not wait for the server (a later change may add that).
 - `Client.openBlock` opens on the block's top face.
 - `ItemView.isEmpty()`, `is(String)`, `amount()`, `type()`, `name()`, `lore()`, `enchants()`, `storedEnchants()` and
-  `damage()` read an item. `ItemView.pdc()` is server only and `customData()` is client only.
+  `damage()` read an item. `ItemView.pdc()` is server only and `customData()` is client only. The Bukkit agent fills `pdc()` where the server's PDC API has `getKeys`, `has` and `get` (verified on 1.18.2 and 26.3; the PDC API arrived in 1.14 and the agent checks the shape at start-up, so any other server reports no `pdc` token and no field), as
+typed Java values (`Byte`, `Short`, `Integer`, `Long`, `Float`, `Double`, `String`, `byte[]`, `int[]`, `long[]`, a nested `Map`; `Map.of("unsupported", ...)`
+for a value it cannot read); it is `null` for an item with no data and on servers without the token `pdc`. Put data on a test item with `give` and `PublicBukkitValues`.
 
 ## Checking both oracles: `DualAssert`
 
@@ -139,7 +168,7 @@ DualAssert.level(agent.player(client), client).isEqualTo(17);
 
 ## Rules that the harness enforces
 
-- **No sleeps.** Wait with `awaitState`, `awaitSlot`, `awaitPosition` or `awaitMessage`, which take a description and a
+- **No sleeps.** Wait with `awaitState`, `awaitSlot`, `awaitCursor`, `awaitPosition` or `awaitMessage`, which take a description and a
   predicate. Waiting for a fixed time is wrong.
 - **Never retry a test.** A failing test is reported as failing. A verdict that changes between runs is `FLAKY`.
 - **Fail loudly.** An unknown getter, an unknown selector or an empty reply is an error, never a pass.

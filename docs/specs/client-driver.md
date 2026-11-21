@@ -14,12 +14,18 @@ public interface ClientDriver {
     default ClientSession connect(ConnectSpec spec, Edition endpoint);   // core's call: refuses a driver of the other edition
 }
 
+// One rule: an optional operation a driver does not support throws UnsupportedOperationException (the interface defaults, Bedrock);
+// ClientDriverException is for a supporting driver that failed (closed session, disconnect, timeout). Public Client/Window defaults agree (T-M11-13).
+// breakBlock sends START then FINISH and no ABORT after a rejected finish: a vanilla client never does, the client cannot tell a
+// rejection without reading the world, and Paper raises BlockDamageAbortEvent for an abort, which a real successful break never fires.
 public interface ClientSession extends AutoCloseable {
     void chat(String message);
     void command(String commandWithoutSlash);
     ChatMessage awaitMessage(Pattern p, Duration timeout);
     void useBlock(BlockPos pos, Face face);              // look + interact
-    WindowSession awaitWindow(Duration timeout);
+    void placeBlock(BlockPos against, Face face);         // default throws UnsupportedOperationException (the rule above); look + use-item-on, returns on the server's block ack (T-M11-04)
+    void breakBlock(BlockPos pos);                        // default throws; look + start + finish digging, returns on the ack (T-M11-04)
+    WindowSession awaitWindow(Duration timeout);        // WindowSession.drag(slots, mode): default throws; quick-craft start, adds, end (T-M11-09)
     InventoryView inventory();                            // last server-synced view
     ExperienceView experience();
     PositionView position();
@@ -43,6 +49,11 @@ public interface WindowSession extends AutoCloseable {
 2. Wait until a `ContainerSetContent` or `ContainerSetSlot` arrives with a `stateId` newer than the one
    sent, **or** the spec timeout expires, which is an error.
 3. Expose only server-sent state. The driver never applies local predictions.
+4. A packet for a window the client closed, arriving before another window opens, was sent before the server read the close (the
+   answer to the last click, for example). The server takes that window's player slots as window 0's on close and does not resend
+   them, so the driver hands the packet's player slots to window 0 (all of a `ContainerSetContent`, the one slot of a
+   `ContainerSetSlot`) and leaves the cursor empty (T-M11-07). A vanilla client drops such a packet; it does not need it, because it
+   predicts its clicks.
 
 
 ## 2a. Server switch on a live connection (proxies, T-M7-09)
@@ -193,6 +204,6 @@ Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Facts: [geyser
   `SPAWN_STATUS`. A timeout is a `JoinTimeoutException` (message starts `timed out joining`); a server disconnect message is a
   `ClientDriverException` quoting it (for example `Please log into Xbox to join this server.`, which means login validation is on).
 - **v1 surface.** Chat, command (a command request), text and system messages in (`awaitMessage`), inventory and position read,
-  disconnect. `useBlock`, window and click operations, `awaitServerSwitch`, resource packs and forms throw
+  disconnect. `useBlock`, `placeBlock`, `breakBlock`, window, click and drag operations, `awaitServerSwitch`, resource packs and forms throw
   `UnsupportedOperationException` naming the edition. Multiple sessions share one driver host; the Floodgate XUID is per session.
 - **No sleeps, no retries**, and a disconnect is awaited on the agent (the server notices it after about 10 s).

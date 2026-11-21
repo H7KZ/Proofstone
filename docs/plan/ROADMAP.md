@@ -100,7 +100,7 @@ M5 can run in parallel with M4 once M3 is done.
 - **API v0 freeze** (no code changed in this card). Frozen: the annotations, `Cell`, `Agent`, `Client`, `PlayerHandle`, `PluginHandle`,
   `Events`/`EventProbe`, `Window`, `Click`, `Item`, `ItemView`, `DualAssert`, `DisagreeException`. Experimental inside v0: the `spi`
   package, `serverOnlyReasons()`, record constructors that will gain components, `Window.close()` semantics. Not in v0 (post-v0 backlog):
-  `Agent.world`, `awaitTicks`, `logLines`, an explicit `assertNoErrorsLogged`, `gamemode`, `PlayerState.location` and `openWindow`,
+  `Agent.world` (the block read `blockType` and `Client.placeBlock`/`breakBlock` arrived in T-M11-04), `awaitTicks`, `logLines`, `bootLogLines`, an explicit `assertNoErrorsLogged`, `gamemode`, `PlayerState.location` and `openWindow`,
   experience points, `Item.repairCost`/`pdc`, `Clients`, `Topology`, the world fixture region reset, the leak detector, `@Requires`.
 - **Bugs only real runs found** (each fixed in its card): the agent did not read `storedEnchants`, `lore` or `damage` (a `DISAGREE` in
   `DualOracleE2E`); `Enchantment.getName()` misses newer enchantments (`MENDING`); MCProtocolLib ignores a teleport until it is
@@ -182,7 +182,7 @@ M5 can run in parallel with M4 once M3 is done.
      against the moving tag.
   3. Resolved after this review (PR #46): the zero-cell decision is covered by `ProofstoneExtensionPlanTest`.
   4. Resolved after this review (PR #46, ADR-0015): the 11 Paper rows are `required` on local per-row evidence.
-  5. Folia rows never booted. PDC is not advertised on any version. Paper 1.8.8 reports as `spigot`.
+  5. Folia rows never booted. PDC was not advertised on any version (served from 1.14 since T-M11-05). Paper 1.8.8 reports as `spigot`.
   6. C06 on 1.8.8 failed about 1 run in 4 before PR #39. The one passing run here is not proof it is flake-free.
   7. Anvil block-state rows in `legacy-block-states.csv` come from the wiki and were not checked against a client.
   8. 2026-11-07, independent re-run on `main`: C02 on paper@1.20.4 (bridged) failed once (client join timed out after 30 s)
@@ -2093,9 +2093,33 @@ no BuildTools line in any log, so no rebuild was part of any run. Windows 11, Do
   `FOLIA_REGIONS` twice). So `:conformance:run -Dproofstone.cells=<spigot or purpur row>` cannot be green until those classes
   skip or are excluded; the other 10 classes were green. Not fixed here (no code changes); not carded yet, maintainer call
   (the loud failure follows the "fail loudly on unknowns" rule, so this may be intended and the Verify lines should add `--tests`).
+- **Verify corrected (T-M7-22, 2026-11-20).** The loud failure is intended, so the selection changes, not the guard. Corrected
+  command (the 10 spigot-capable classes, by `--tests`; the four paper-only classes are not selected):
+  `PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=spigot@26.3 --tests '*C03GiveRoundTripTest' --tests '*C04ChestMoveTest' --tests '*C05AnvilRenameCostTest' --tests '*C06AnvilCombineTest' --tests '*C07GrindstoneTest' --tests '*C08ShiftClickCraftTest' --tests '*ConformanceSmokeTest' --tests '*ConformanceFoliaEventTest' --tests '*ConformanceFoliaTeleportTest' --tests '*ConformanceBedrockPrefixTest' --no-parallel --max-workers=1`.
+  The old command (no `--tests`) is **red by design**, 10 of 10.
 - The root-owned `bukkit.yml` line (T-M8-02) is not in any gradle log; a green run keeps no server log, so it could not be
   checked per run. No red, so no log to read.
 - Cleanup: no Proofstone container left, Gradle daemon of this worktree stopped.
+
+## T-M7-22 result (2026-11-20, card T-M7-17 branch `card/T-M7-17-verify-selector`)
+
+Corrected Verify (ROADMAP "T-M7-16 result", card T-M7-16 Verify): `:conformance:run -Dproofstone.cells=spigot@26.3` with ten
+`--tests` class filters (C03 to C08, `ConformanceSmokeTest`, `ConformanceFoliaEventTest`, `ConformanceFoliaTeleportTest`,
+`ConformanceBedrockPrefixTest`), `--no-parallel --max-workers=1`, under `scripts/dockerlock.sh`. One run, no retry. Gradle
+`BUILD SUCCESSFUL in 11m 22s`, exit 0. Windows 11, Docker Desktop, JDK 25 toolchain.
+
+| Suite (XML) | tests | skipped | failures | errors | Skip reason |
+|---|---|---|---|---|---|
+| C03, C04, C05, C06, C07, C08 | 1 each | 0 | 0 | 0 | none |
+| ConformanceSmokeTest | 2 | 0 | 0 | 0 | none |
+| ConformanceFoliaEventTest | 1 | 1 | 0 | 0 | missing `FOLIA_REGIONS` on spigot@26.3 |
+| ConformanceFoliaTeleportTest | 1 | 1 | 0 | 0 | missing `FOLIA_REGIONS` on spigot@26.3 |
+| ConformanceBedrockPrefixTest | 1 | 1 | 0 | 0 | missing `SIMULATED_BEDROCK` on spigot@26.3 |
+| **Total** | **11** | **3** | **0** | **0** | all 3 reasoned (capability absent on Spigot) |
+
+- Green: 0 failures, 0 errors. The 3 skips are the reasoned capability skips; the paper-only classes are not selected, so no
+  `initializationError`. Counted apart from the T-M7-16 numbers (17 tests there included the 6 initialization errors).
+- Single run only: C04 green (C04 result in its XML: `skipped="0" failures="0" errors="0"`). Item stays as in T-M7-16.
 
 ## T-M6-109 join-stall analysis (2026-11-19, no code changed)
 
@@ -2371,3 +2395,56 @@ and the maintainer picks `0.1.1` or `0.2.0`.
 | T-M10-99 | merged | #166 |
 
 Also this session: T-M7-16 diagnosed: not reproduced in 10 runs, kept open as unexplained (#181); T-M6-109 partly done: ViaProxy named for the 1.8.8 stall, mechanism not proven, no code fix (#182).
+
+## Ledger update (2026-11-20, second orchestrator session)
+
+The maintainer approved the remaining work on 2026-11-19 ("do it all"): the Phase C spikes, the Disenchantment PR, GitHub Pages and the ViaProxy experiment. Status of each, replacing the "open" rows above:
+
+| Card | Status | Result |
+|---|---|---|
+| T-M10-01 (BDS add-on spike) | done: not feasible | #188. Pack side works; the unsigned join is refused (MALFORMED_PACKET, 5 of 5), NetherNet is BDS's only player transport. T-M10-02 and T-M10-03 closed by this verdict. |
+| T-M10-11 (Sponge spike) | done: feasible | #191. SpongeVanilla 26.3-21.0.0-RC2792, 23 of 23 joins, plugin agent read `health` and `players`. RC build only; no promotion. |
+| T-M10-12 (Gate spike) | done: fits ADR-0016, agent-less | #189. Oracle gap: no proxy-side players, events or log. |
+| T-M10-13 (Nukkit spike) | done: not feasible today | #194. PowerNukkitX 3.0.6 is NetherNet-only; 3.0.5 is protocol 2193. |
+| T-M10-14 (PocketMine, Endstone scope) | done: not now | #193. |
+| T-M10-17 (TypeScript, Fabric client gametest scope) | done: drop TypeScript, defer Fabric client gametest | #192. |
+| T-M10-16 (docs site) | merged | #186. GitHub Pages enabled; `docs.yml` workflow; ADR-0019 and ADR-0014 amended (three workflows). Site: https://h7kz.github.io/Proofstone/ |
+| T-M9-14 (ViaProxy bump experiment) | done: nothing to bump | #185. No stable release newer than the pin; 3.5.0-SNAPSHOT has a rewritten CLI and no login fix. |
+| T-M6-111 (EventProbes class loading) | merged | #190. Third-party event classes load without the cross-plugin WARN. |
+| T-M6-05 (Disenchantment suite) | draft PR, not merged | H7KZ/Disenchantment#80. paper@26.3 and paper@1.21.11 green 3 of 3; paper@1.18.2 red (deterministic, was the EventProbes bug fixed by #190: re-run needed); grindstone, erase mode and special anvils are skips (not on master). |
+| T-M10-02, T-M10-03 | closed by the BDS verdict | see T-M10-01 |
+| T-M10-04, T-M10-09, T-M10-15, T-M10-18 | open | depend on upstream releases, ADR-0015 and the spike decisions |
+| T-M8-26 | open | opus work, not started in either session |
+
+**Open follow-ups, not yet carded:**
+- `datapacks/list` fails `500 zip file closed` on paper@1.18.2 after the reload cases (DataPackList's `Class.forName` reaches the disabled fixture's closed loader); red under the old code too (T-M6-111 finding).
+- The Bedrock driver speaks RakNet only; BDS, PowerNukkitX 3.0.6, Nukkit master and Geyser's default transport need NetherNet (T-M10-01, T-M10-13): a maintainer decision.
+- The T-M7-16 Verify command is red because six conformance classes declare no spigot cell (T-M7-16 note).
+- Hosted `gates` failed on the first run when `repo.opencollab.dev` did not serve `text-serializer-nbt-0.2.1.jar` (4 of 5 first runs); reruns passed.
+- `patchConfig` restore builds a config object the target plugin never sees (T-M6-111 note).
+- A fast client disconnect hides the join-stall stage in McplDriver (T-M6-109 note); the ViaProxy mechanism for the 1.8.8 stall is unproven.
+- Not done by choice: the `v1` tag of the GitHub Action (a `v*` tag triggers the release workflow) and a Marketplace listing (the action is not at the repository root).
+
+## Ledger update (2026-11-21)
+
+Merged into `develop` since the 2026-11-20 update:
+
+| Card | Status | PR | Result |
+|---|---|---|---|
+| T-M10-19 (NetherNet spike) | done: Go behind an ADR | #198 | Verdict Go. ADR not yet filed. Effort 1-2 weeks for the driver host plus Geyser. PNX is a separate track. BDS acceptance needs a maintainer yes for the binary. |
+| T-M11-01 (`Agent.logLines`) | merged | #199 | |
+| T-M11-02 (`PlayerState.openWindow`, `ServerWindow`) | merged | #200 | |
+| T-M11-03 (`Agent.bootLogLines`) | merged | #201 | Agent attaches at plugin enable. Not covered: the banner, library loading, the plugin loading list and the agent's own Enabling line. |
+| T-M11-04 (`Client.placeBlock`/`breakBlock`, `Agent.blockType`) | merged | #202 | Non-sneaking place against an anvil or chest opens it. Survival break completes only with zero break time. Open follow-ups: exception type differs across drivers (Mineflayer ref throws `ClientDriverException`, others `UnsupportedOperationException`); `McplBlockActionTest` lacks timeout, disconnect and lower-seq-ack cases; survival dig never aborts. |
+| T-M11-05 (`ItemView.pdc`) | merged | #203 | Filled by the Bukkit agent. Verified on paper 1.18.2 and 26.3. `getKeys` availability on 1.14-1.17 unverified. |
+| T-M11-06 (mcpl `ClientboundSetPlayerInventoryPacket`) | merged | #204 | Applied. Harmless, but not the cause of the folia flake. Card text corrected to say so. |
+| T-M11-07 (mcpl late window packet after close) | merged | #205 | Real cause of the folia client-oracle DISAGREE flake. Routes the late packet to window 0. Disenchantment e2e folia@26.3: 5 of 5 green after, 1 of 3 before. |
+
+**Open Proofstone items:**
+- Window drag API (`Window.drag`, T-M11-09): done in PR (see the ledger once merged).
+- Window cursor wait (`Window.awaitCursor`, T-M11-11): done in PR (see the ledger once merged). Replaces the racy one-shot `cursor()` read after a click in plugin suites.
+- Fault-injection hook (`Agent.failNextInventoryWrite`): spike T-M11-10 verdict No-go for an agent API (ADR-0002; not generic, not robust). [fault-injection.md](../platforms/fault-injection.md); ADR-0020 Proposed awaits a maintainer decision. Suites use their own test support plugin meanwhile.
+- Follow-up card for the T-M11-04 minor findings: not yet carded.
+- NetherNet ADR: to file.
+- ViaProxy 1.8.8 stall: mechanism unproven.
+- `datapacks/list` `zip file closed` follow-up (2026-11-20 update): still open.

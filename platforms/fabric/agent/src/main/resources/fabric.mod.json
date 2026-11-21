@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "proofstone-agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "Proofstone Agent",
   "description": "Test harness agent for Proofstone (observe only). Installed by the harness, never by users.",
   "license": "Apache-2.0",

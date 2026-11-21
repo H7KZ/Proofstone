@@ -11,7 +11,7 @@
 
   <groupId>io.github.h7kz.proofstone</groupId>
   <artifactId>maven-paper-plugin</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <packaging>jar</packaging>
   <name>examples:maven-paper-plugin</name>
   <description>Maven example: a Paper plugin with an anvil mechanic, tested on a real server through Proofstone.</description>
@@ -25,7 +25,7 @@
 
     <!-- Proofstone's version, published to mavenLocal only. Same value as the `proofstone` key in
          gradle/libs.versions.toml; bump both together. -->
-    <proofstone.version>0.1.0</proofstone.version>
+    <proofstone.version>0.2.0</proofstone.version>
     <!-- Repository root, relative to this project, for the cell pins in versions.yml and the agent jar (ADR-0008). -->
     <proofstone.repo.root>${project.basedir}/../..</proofstone.repo.root>
     <!-- Built by the Gradle task :platforms:bukkit:agent:shadowJar (README, step 1). Never committed. -->

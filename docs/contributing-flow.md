@@ -19,7 +19,8 @@ deletion are off.
 1. Pick a task card ([docs/plan/tasks](plan/tasks/)) or open an issue. Branch `card/T-Mx-NN-short-name` from `develop`.
 2. Make the change. Keep the diff near 400 changed lines, tests excluded.
 3. Run `bash scripts/gates.sh` and the card's Verify commands. Real-server runs use the Docker lock
-   ([AGENTS.md](../AGENTS.md) section 4).
+   ([AGENTS.md](../AGENTS.md) section 4). Hosted `gates` first runs `scripts/ci-prefetch-deps.sh`, which retries only a failed dependency
+   download (T-M6-113); a failing gate or test is never retried.
 4. Commit with a sign-off (`git commit -s`, [DCO](../CONTRIBUTING.md#licence-and-sign-off-dco)).
 5. Open a PR into **`develop`**. Fill the PR template: the acceptance checklist with evidence and the gate output.
 6. The `gates` workflow runs. A maintainer reviews and merges. Delete the branch.

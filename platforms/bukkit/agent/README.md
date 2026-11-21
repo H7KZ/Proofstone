@@ -64,7 +64,11 @@ setup writes: give, reset and PATCH.
   version. Verified by the golden replay on Paper 1.8.8, 1.12.2 and 26.3 (T-M3-06). Known gaps: items and blocks that
   differ only by data value (wool colours, stone variants), and block states other than `facing`. `plugin.yml` sets
   `api-version: 1.13` so a 1.13+ server does not run the agent in legacy material mode.
-- PDC is not served: an item field `pdc` is `INVALID_REQUEST` on every version.
+- PDC (T-M11-05): an item read carries `pdc` where the server's PDC API has `getKeys`, `has` and `get` (verified on 1.18.2 and 26.3; the PDC API arrived in 1.14 and the agent checks the shape at start-up, so any other server reports no `pdc` token and no field) (`PersistentData`, reflective, because the agent is built against
+  1.8.8) and the agent reports the token `pdc`; elsewhere the field is absent and so is the token. A read failure names the item and fails the call. Each entry is
+  `"ns:key": {"type", "value"}` with type `byte`, `short`, `int`, `long`, `float`, `double`, `string`, `byte[]`, `int[]`, `long[]`,
+  `container` or `unsupported` (a value the agent could not read, with a description, never dropped). An empty container sends no
+  field. Giving an item a `pdc` field is still `INVALID_REQUEST`.
 - `io.github.h7kz.proofstone.agent.scheduler`: `Scheduler` (main-thread hand-off, Folia comes in M5) and `MainThread.call`,
   which waits for a result with the request timeout.
 - Platform detection: `io.github.h7kz.proofstone.agent.platform.PlatformDetector`.

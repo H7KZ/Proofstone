@@ -214,7 +214,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
             return new CellView(cell, bridged, state.capabilities);
         }
         if (type == Agent.class) {
-            return new HostAgent(state.host, state.patchedPlugins);
+            return new HostAgent(state.host, state.patchedPlugins, () -> state.logCursor);
         }
         if (type == Clients.class) {
             return state.clients;
@@ -380,7 +380,7 @@ final class CellInvocation implements TestTemplateInvocationContext, ParameterRe
         // read the server after the test's actions, so they run before the leak detector, and never change anything.
         if (failure == null && context.getExecutionException().isEmpty()) {
             failure = CellExpectations.check(context.getRequiredTestClass(), context.getRequiredTestMethod(),
-                    new CellView(cell, bridged, state.capabilities), new HostAgent(state.host, state.patchedPlugins));
+                    new CellView(cell, bridged, state.capabilities), new HostAgent(state.host, state.patchedPlugins, () -> state.logCursor));
         }
         DifferentialRun.Disagreement disagreement = null;
         if (differential) {

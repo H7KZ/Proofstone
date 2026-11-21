@@ -8,9 +8,12 @@ import io.github.h7kz.proofstone.api.PlayerHandle;
 import io.github.h7kz.proofstone.api.PlayerState;
 import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.host.AgentEndpoint;
+import io.github.h7kz.proofstone.api.ServerWindow;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 /** A {@link PlayerHandle} over the agent's {@code /v1/players} endpoints. */
@@ -78,7 +81,28 @@ final class HostPlayer implements PlayerHandle {
         Map<Integer, ItemView> inventory = new LinkedHashMap<>();
         wire.inventory().forEach((slot, item) -> inventory.put(Integer.valueOf(slot), view(item)));
         return new PlayerState(wire.name(), wire.level(), wire.exp(), wire.gamemode(), wire.health(), inventory,
-                wire.cursor() == null ? ItemView.EMPTY : view(wire.cursor()));
+                wire.cursor() == null ? ItemView.EMPTY : view(wire.cursor()), window(wire.openWindow()));
+    }
+
+    /** Empty when the agent reports no window; a null slot is an empty slot, never skipped (server order is kept). */
+    static Optional<ServerWindow> window(io.github.h7kz.proofstone.protocol.OpenWindow wire) {
+        if (wire == null) {
+            return Optional.empty();
+        }
+        if (wire.type() == null || wire.type().isBlank()) {
+            throw new IllegalStateException("the agent reported an open window with no type");
+        }
+        if (wire.title() == null) {
+            throw new IllegalStateException("the agent reported an open " + wire.type() + " window with no title");
+        }
+        if (wire.slots() == null) {
+            throw new IllegalStateException("the agent reported an open " + wire.type() + " window with no slots");
+        }
+        List<ItemView> slots = new ArrayList<>();
+        for (io.github.h7kz.proofstone.protocol.Item item : wire.slots()) {
+            slots.add(item == null ? ItemView.EMPTY : view(item));
+        }
+        return Optional.of(new ServerWindow(wire.type(), wire.title(), slots));
     }
 
     @Override
@@ -97,6 +121,6 @@ final class HostPlayer implements PlayerHandle {
                 item.storedEnchants() == null ? Map.of() : item.storedEnchants(),
                 item.name(), item.lore() == null ? List.of() : item.lore(),
                 item.damage() == null ? 0 : item.damage(), item.repairCost() == null ? 0 : item.repairCost(),
-                null, item.pdc(), item.raw());
+                null, PdcWire.values(item.pdc()), item.raw());
     }
 }

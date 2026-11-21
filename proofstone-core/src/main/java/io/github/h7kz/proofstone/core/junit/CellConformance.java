@@ -88,7 +88,8 @@ final class CellConformance {
      */
     private static ConformanceResult scenarios(String cell, ServerHost host, CellView view,
             Function<String, SessionClient> join, boolean windowFault) {
-        Agent agent = new HostAgent(host, Set.of());
+        // The scenarios never read the log, and the conformance checks its own window (session), so the cursor is the buffer start.
+        Agent agent = new HostAgent(host, Set.of(), () -> 0L);
         String[] current = {"C03"};
         return session(cell, host, ErrorLogGuard.Patterns.of(view.platform()), LEAVE_WAIT, join, client -> {
             timed(cell, "C03", () -> C03GiveRoundTrip.run(view, agent, client));

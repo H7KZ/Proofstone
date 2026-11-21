@@ -6,12 +6,13 @@ import io.github.h7kz.proofstone.core.await.AwaitTimeoutException;
 import io.github.h7kz.proofstone.api.BlockPos;
 import io.github.h7kz.proofstone.core.driver.ChatMessage;
 import io.github.h7kz.proofstone.api.Click;
+import io.github.h7kz.proofstone.api.DragMode;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
 import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import io.github.h7kz.proofstone.api.ResourcePackPush;
-import io.github.h7kz.proofstone.core.driver.Face;
+import io.github.h7kz.proofstone.api.Face;
 import io.github.h7kz.proofstone.core.driver.SlotStack;
 import io.github.h7kz.proofstone.core.driver.WindowSession;
 import io.github.h7kz.proofstone.core.driver.WindowView;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -41,6 +43,7 @@ import org.geysermc.mcprotocollib.network.packet.Packet;
 import org.cloudburstmc.math.vector.Vector3i;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.object.Direction;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerAction;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PositionElement;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ClickItemAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerAction;
@@ -50,6 +53,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.inventory.DropItemAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.FillStackAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ShiftClickItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.SpreadItemAction;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundDisconnectPacket;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundPingPacket;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundResourcePackPopPacket;
@@ -63,6 +67,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.Clientbound
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundPlayerChatPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundStartConfigurationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSystemChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundBlockChangedAckPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerPositionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetExperiencePacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundSetHealthPacket;
@@ -71,6 +76,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.C
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetSlotPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundOpenScreenPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundSetCursorItemPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.ClientboundSetPlayerInventoryPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundRenameItemPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
@@ -79,6 +85,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.Serverbound
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClosePacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.ServerboundAcceptTeleportationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerRotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerActionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundUseItemOnPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundCustomQueryPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundCustomQueryAnswerPacket;
@@ -100,12 +107,22 @@ final class McplSession implements ClientSession {
     private static final double EYE_HEIGHT = 1.62;
     private static final Duration POSITION_WAIT = Duration.ofSeconds(10);
     private static final Duration CLICK_WAIT = Duration.ofSeconds(10);
+    /** How long a place or break waits for the server's block acknowledgement; a test shortens it to reach the timeout path. */
+    private volatile Duration blockWait = CLICK_WAIT;
 
     /** The player inventory, window id 0. It lives apart from the open windows (client-driver spec §2). */
     private final ItemRegistries registries = ItemRegistries.forProtocol(McplDriver.PROTOCOL_VERSION);
     private final WindowModel playerInventory = new WindowModel(0, "minecraft:inventory", "Inventory", registries);
     private final List<WindowModel> opened = Collections.synchronizedList(new ArrayList<>());
+    // The window this client closed last, until another window opens. The server answers packets in order, so a
+    // packet for it that arrives after the close was sent before the server read the close: the answer to the last
+    // click, for example. On close the server takes the window's remote slots as window 0's (vanilla transferState)
+    // and never resends them, so its player slots must still reach window 0 (T-M11-07). Guarded by opened: a close on
+    // the test thread and a container packet on the netty thread each run whole, so no update falls between them.
+    private WindowModel closedByClient;
     private final AtomicInteger sequence = new AtomicInteger();
+    /** The highest block-change sequence the server acknowledged: its answer to a place or a dig (T-M11-04). */
+    private final AtomicInteger blockAck = new AtomicInteger();
     private volatile double[] position;
     // The join teleport's acknowledgement, held until the first SetHealth of this login (T-M7-19). Written on the netty
     // thread only; volatile because the joining thread reads it to tell a held join from a finished one.
@@ -240,6 +257,9 @@ final class McplSession implements ClientSession {
             summary += " " + disconnectReason;
         } else if (packet instanceof ClientboundPlayerPositionPacket move) {
             applyPosition(move);
+        } else if (packet instanceof ClientboundBlockChangedAckPacket ack) {
+            blockAck.accumulateAndGet(ack.getSequence(), Math::max);
+            summary += " sequence=" + ack.getSequence();
         } else if (packet instanceof ClientboundSetHealthPacket) {
             onFirstTick();
         } else if (packet instanceof ClientboundRegistryDataPacket registry) {
@@ -247,21 +267,31 @@ final class McplSession implements ClientSession {
         } else if (packet instanceof ClientboundOpenScreenPacket open) {
             WindowModel window = new WindowModel(open.getContainerId(), namespaced(open.getType()),
                     flatten(open.getTitle()), registries);
-            opened.add(window);
+            synchronized (opened) {
+                opened.add(window);
+                closedByClient = null;
+            }
             summary += " id=" + window.id() + " " + window.type();
         } else if (packet instanceof ClientboundContainerSetContentPacket content) {
-            summary += applyContent(content);
+            synchronized (opened) {
+                summary += applyContent(content);
+            }
         } else if (packet instanceof ClientboundContainerSetSlotPacket slot) {
-            summary += applySlot(slot);
+            synchronized (opened) {
+                summary += applySlot(slot);
+            }
         } else if (packet instanceof ClientboundContainerClosePacket close) {
             summary += " id=" + close.getContainerId();
             synchronized (opened) {
+                closedByClient = null;
                 for (WindowModel window : opened) {
                     if (window.id() == close.getContainerId()) {
                         retire(window);
                     }
                 }
             }
+        } else if (packet instanceof ClientboundSetPlayerInventoryPacket inventorySlot) {
+            summary += applyPlayerInventory(inventorySlot);
         } else if (packet instanceof ClientboundSetCursorItemPacket cursor) {
             playerInventory.setCursor(cursor.getContents());
             summary += " cursor";
@@ -353,7 +383,18 @@ final class McplSession implements ClientSession {
     private String applyContent(ClientboundContainerSetContentPacket content) {
         WindowModel target = target(content.getContainerId());
         if (target == null) {
-            return " id=" + content.getContainerId() + " (no such window, ignored)";
+            WindowModel late = lateTarget(content.getContainerId());
+            if (late == null) {
+                return " id=" + content.getContainerId() + " (no such window, ignored)";
+            }
+            // All 36 player slots, unlike a late slot update: packets arrive in the server's send order and the server
+            // sends nothing for the window once it read the close, so this content was sent after any hand-back
+            // (SetPlayerInventory) that arrived before it and already reflects it. Not the cursor: the server returns or
+            // drops the carried stack when it reads the close.
+            late.setContent(content.getStateId(), content.getItems(), content.getCarriedItem());
+            playerInventory.adoptPlayerSlots(late.slots(), late.rawSlots());
+            return " id=" + late.id() + " stateId=" + content.getStateId() + " slots=" + content.getItems().length
+                    + " (sent before the close: player slots to window 0)";
         }
         if (target != playerInventory) {
             // The cursor belongs to the player, not to a window. It is set before setContent bumps the stateId a
@@ -371,10 +412,34 @@ final class McplSession implements ClientSession {
             return " cursor";
         }
         WindowModel target = target(slot.getContainerId());
+        WindowModel late = target == null ? lateTarget(slot.getContainerId()) : null;
+        if (late != null && late.setSlot(slot.getStateId(), slot.getSlot(), slot.getItem())) {
+            // Only the named slot: window 0 may hold a newer hand-back for the others.
+            boolean player = playerInventory.adoptPlayerSlot(late.slots().size(), slot.getSlot(), slot.getItem());
+            return " id=" + late.id() + " slot=" + slot.getSlot() + " stateId=" + slot.getStateId()
+                    + " (sent before the close" + (player ? ": to window 0)" : ")");
+        }
         if (target == null || !target.setSlot(slot.getStateId(), slot.getSlot(), slot.getItem())) {
             return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " (not applied: unknown window or slot)";
         }
         return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " stateId=" + slot.getStateId();
+    }
+
+    /**
+     * A stack the server put into one slot of the player's own inventory (1.21.2+), by inventory index. It carries no
+     * window id and no state id: the server uses it for stacks returned on a menu close (T-M11-06). Window 0 takes it,
+     * and so does an open window, whose player section is what a close hands back to window 0 (see retire).
+     */
+    private String applyPlayerInventory(ClientboundSetPlayerInventoryPacket packet) {
+        boolean applied = playerInventory.setPlayerInventorySlot(packet.getSlot(), packet.getContents());
+        synchronized (opened) {
+            for (WindowModel window : opened) {
+                if (!window.isClosed()) {
+                    window.setPlayerInventorySlot(packet.getSlot(), packet.getContents());
+                }
+            }
+        }
+        return " slot=" + packet.getSlot() + (applied ? "" : " (not applied: unknown slot or not synced)");
     }
 
     /** Marks a window closed and hands its player slots back to window 0 (see {@link WindowModel#adoptPlayerSlots}). */
@@ -386,6 +451,12 @@ final class McplSession implements ClientSession {
             playerInventory.setCursor(null);
         }
         window.markClosed();
+    }
+
+    /** The window this client closed, when a packet still addresses it (see {@link #closedByClient}); else null. */
+    private WindowModel lateTarget(int containerId) {
+        WindowModel late = closedByClient;
+        return late != null && containerId != 0 && late.id() == containerId ? late : null;
     }
 
     /** The model a container packet addresses: the player inventory for id 0, else the newest open window. */
@@ -437,7 +508,59 @@ final class McplSession implements ClientSession {
 
     @Override
     public void useBlock(BlockPos pos, Face face) {
+        useBlockSequenced(pos, face);
+    }
+
+    @Override
+    public void placeBlock(BlockPos against, Face face) {
+        awaitBlockAck(useBlockSequenced(against, face), "placing against " + against + " " + face);
+    }
+
+    // The finish is the last packet: a vanilla client never sends abort-digging after one, the client cannot tell a rejected
+    // finish from an accepted one, and Paper raises BlockDamageAbortEvent for an abort that a real break never produces (T-M11-13).
+    @Override
+    public void breakBlock(BlockPos pos) {
+        requireOpen("cannot break a block");
+        Vector3i at = Vector3i.from(pos.x(), pos.y(), pos.z());
+        lookAt(pos, Face.UP);
+        network.send(new ServerboundPlayerActionPacket(PlayerAction.START_DIGGING, at, Direction.UP,
+                sequence.incrementAndGet()));
+        int finish = sequence.incrementAndGet();
+        network.send(new ServerboundPlayerActionPacket(PlayerAction.FINISH_DIGGING, at, Direction.UP, finish));
+        awaitBlockAck(finish, "breaking " + pos);
+    }
+
+    void blockWait(Duration wait) {
+        this.blockWait = wait;
+    }
+
+    /** Waits for the server to acknowledge the block change with this sequence (it sends it after handling the action). */
+    private void awaitBlockAck(int awaited, String what) {
+        try {
+            // A disconnect is a value, not an exception, because Await treats a throwing probe as "not yet".
+            Await.until("the server's answer to " + what + " for " + username,
+                    () -> blockAck.get() >= awaited || state == State.DISCONNECTED, done -> done, blockWait);
+        } catch (AwaitTimeoutException e) {
+            throw new ClientDriverException("the server did not answer " + what + " within " + blockWait
+                    + "; transcript tail: " + tail(), e);
+        }
+        if (blockAck.get() < awaited) {
+            throw new ClientDriverException("disconnected while " + what + ": " + disconnectReason);
+        }
+    }
+
+    private int useBlockSequenced(BlockPos pos, Face face) {
         requireOpen("cannot use a block");
+        double[] hit = lookAt(pos, face);
+        int number = sequence.incrementAndGet();
+        network.send(new ServerboundUseItemOnPacket(Vector3i.from(pos.x(), pos.y(), pos.z()),
+                Direction.valueOf(face.name()), Hand.MAIN_HAND, (float) hit[0], (float) hit[1], (float) hit[2],
+                false, false, number));
+        return number;
+    }
+
+    /** Turns toward the centre of the face (a look packet) and returns the click point inside the block. */
+    private double[] lookAt(BlockPos pos, Face face) {
         double[] at = Await.until("synced position of " + username, () -> position, p -> p != null, POSITION_WAIT);
         double[] hit = faceCentre(face);
         double dx = pos.x() + hit[0] - at[0];
@@ -446,9 +569,7 @@ final class McplSession implements ClientSession {
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
         float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
         network.send(new ServerboundMovePlayerRotPacket(true, false, yaw, pitch));
-        network.send(new ServerboundUseItemOnPacket(Vector3i.from(pos.x(), pos.y(), pos.z()),
-                Direction.valueOf(face.name()), Hand.MAIN_HAND, (float) hit[0], (float) hit[1], (float) hit[2],
-                false, false, sequence.incrementAndGet()));
+        return hit;
     }
 
     /** The click point as an offset inside the block: the centre of the face. */
@@ -520,8 +641,14 @@ final class McplSession implements ClientSession {
         @Override
         public void close() {
             requireOpen("cannot close a window");
+            synchronized (opened) {
+                // A window the server closed gets no more packets, so it never becomes a late target.
+                if (!model.isClosed()) {
+                    retire(model);
+                    closedByClient = model;
+                }
+            }
             network.send(new ServerboundContainerClosePacket(model.id()));
-            retire(model);
         }
 
         @Override
@@ -546,22 +673,60 @@ final class McplSession implements ClientSession {
             int sentSyncs = model.syncs();
             // No predicted changes and no carried item: the server sees a mismatch and resyncs (spec §2).
             network.send(clickPacket(model.id(), sent, slot, click));
+            awaitAnswer(sent, sentSyncs, click + " on slot " + slot, () -> true);
+        }
+
+        @Override
+        public void drag(List<Integer> slots, DragMode mode) {
+            requireOpen("cannot drag");
+            if (model.isClosed()) {
+                throw new ClientDriverException("cannot drag: window " + model.id() + " is closed");
+            }
+            int size = model.slots().size();
+            for (int slot : slots) {
+                if (slot < 0 || slot >= size) {
+                    throw new IllegalArgumentException("drag slot " + slot + " is outside the " + size + " slots of "
+                            + model.type());
+                }
+            }
+            // Nothing to distribute: the server would ignore the drag and no sync would ever come.
+            if (playerInventory.cursor().isEmpty()) {
+                throw new ClientDriverException("cannot drag: the cursor is empty in window " + model.id()
+                        + "; pick a stack up first");
+            }
+            int sent = model.stateId();
+            int sentSyncs = model.syncs();
+            int sentCursors = playerInventory.cursorUpdates();
+            // The server moves items on the end packet only. Each stage gets a cursor update (the carried claim never
+            // matches), and the end's slot changes come before its own cursor update, so the first counted sync is not
+            // the whole answer: it is complete once the cursor update of every stage, the end's last, has arrived
+            // (T-M11-09; vanilla 26.3 sends the stage updates, then the slots, then the cursor).
+            List<ServerboundContainerClickPacket> packets = dragPackets(model.id(), sent, slots, mode);
+            for (ServerboundContainerClickPacket packet : packets) {
+                network.send(packet);
+            }
+            int expectedCursors = sentCursors + packets.size();
+            awaitAnswer(sent, sentSyncs, mode + " drag over slots " + slots,
+                    () -> playerInventory.cursorUpdates() >= expectedCursors);
+        }
+
+        private void awaitAnswer(int sent, int sentSyncs, String what, BooleanSupplier complete) {
             try {
                 // A disconnect or a server-side close is a value, not an exception: Await retries a throwing probe.
-                Await.until("server sync after " + click + " on slot " + slot + " of window " + model.id(),
+                Await.until("server sync after " + what + " of window " + model.id(),
                         () -> state == State.DISCONNECTED || model.isClosed()
-                                || model.stateId() != sent || model.syncs() != sentSyncs,
+                                || ((model.stateId() != sent || model.syncs() != sentSyncs) && complete.getAsBoolean()),
                         done -> done, CLICK_WAIT);
             } catch (AwaitTimeoutException e) {
-                throw new ClientDriverException("server did not answer " + click + " on slot " + slot
+                throw new ClientDriverException("server did not answer " + what
                         + " of window " + model.id() + " within " + CLICK_WAIT + " (a no-op click gets no sync);"
                         + " transcript tail: " + tail(), e);
             }
             if (state == State.DISCONNECTED) {
-                throw new ClientDriverException("disconnected during " + click + ": " + disconnectReason);
+                throw new ClientDriverException("disconnected during " + what + ": " + disconnectReason);
             }
             if (model.isClosed()) {
-                throw new ClientDriverException("the server closed window " + model.id() + " during " + click);
+                throw new ClientDriverException("the server closed window " + model.id() + " during " + what);
             }
         }
 
@@ -601,6 +766,36 @@ final class McplSession implements ClientSession {
             // container's own model.
             return playerInventory.cursorView();
         }
+    }
+
+    /**
+     * The quick-craft packets of a drag: start (slot -999), one add per slot, end (slot -999), the button picking the
+     * header of each stage (T-M11-09). The carried claim is the usual mismatching one: the server holds the real cursor.
+     */
+    static List<ServerboundContainerClickPacket> dragPackets(int windowId, int stateId, List<Integer> slots, DragMode mode) {
+        if (slots.isEmpty()) {
+            throw new IllegalArgumentException("a drag needs at least one slot");
+        }
+        if (slots.size() != Set.copyOf(slots).size()) {
+            throw new IllegalArgumentException("a drag adds each slot once: " + slots);
+        }
+        SpreadItemAction begin;
+        SpreadItemAction add;
+        SpreadItemAction end;
+        switch (mode) {
+            case LEFT -> { begin = SpreadItemAction.LEFT_MOUSE_BEGIN_DRAG; add = SpreadItemAction.LEFT_MOUSE_ADD_SLOT; end = SpreadItemAction.LEFT_MOUSE_END_DRAG; }
+            case RIGHT -> { begin = SpreadItemAction.RIGHT_MOUSE_BEGIN_DRAG; add = SpreadItemAction.RIGHT_MOUSE_ADD_SLOT; end = SpreadItemAction.RIGHT_MOUSE_END_DRAG; }
+            case MIDDLE -> { begin = SpreadItemAction.MIDDLE_MOUSE_BEGIN_DRAG; add = SpreadItemAction.MIDDLE_MOUSE_ADD_SLOT; end = SpreadItemAction.MIDDLE_MOUSE_END_DRAG; }
+            default -> throw new ClientDriverException("unsupported drag mode " + mode);
+        }
+        List<ServerboundContainerClickPacket> packets = new ArrayList<>();
+        int outside = ServerboundContainerClickPacket.CLICK_OUTSIDE_NOT_HOLDING_SLOT;
+        packets.add(new ServerboundContainerClickPacket(windowId, stateId, outside, ContainerActionType.SPREAD_ITEM, begin, UNKNOWN_CARRIED, Map.of()));
+        for (int slot : slots) {
+            packets.add(new ServerboundContainerClickPacket(windowId, stateId, slot, ContainerActionType.SPREAD_ITEM, add, UNKNOWN_CARRIED, Map.of()));
+        }
+        packets.add(new ServerboundContainerClickPacket(windowId, stateId, outside, ContainerActionType.SPREAD_ITEM, end, UNKNOWN_CARRIED, Map.of()));
+        return packets;
     }
 
     static ServerboundContainerClickPacket clickPacket(int windowId, int stateId, int slot, Click click) {
@@ -685,6 +880,7 @@ final class McplSession implements ClientSession {
                 window.markClosed();
             }
             opened.clear();
+            closedByClient = null;
         }
         playerInventory.reset();
         position = null;

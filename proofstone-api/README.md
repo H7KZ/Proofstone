@@ -20,6 +20,16 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
 - Capabilities (T-M5-01, api-change, test-api spec section 10): `Capability` (an enum), `@Requires` (class or method) and
   `Cell.capabilities()`. A cell without a required capability is skipped with its reason. The baseline gains only these members; no frozen v0 member changed. The fix PR (`fix/m5-capability-api`) made
   `Cell.capabilities()` a default method that throws, and removed `Capability.NMS` and `Capability.DATAPACKS` (no agent token).
+- Server log (T-M11-01, api-change, additions only): `Agent.logLines()` and `Agent.logLines(Pattern, Duration)`, default methods that
+  throw `UnsupportedOperationException`. No protocol change (`GET /v1/log` already exists), no capability.
+- Boot log (T-M11-03, api-change, addition only): `Agent.bootLogLines()`, a default method that throws `UnsupportedOperationException`. No
+  protocol change (`GET /v1/log?since=0`), no capability.
+- Block actions (T-M11-04, api-change, additions only): `Client.placeBlock(BlockPos, Face)`, `Client.breakBlock(BlockPos)` and `Agent.blockType(String, BlockPos)`, default methods that throw `UnsupportedOperationException`, and the enum `Face` (moved from core's non-public `driver` package). No protocol change (`GET /v1/world/block` exists), no capability.
+- Window cursor wait (T-M11-11, api-change, additions only): `Window.awaitCursor(Predicate<ItemView>)`, a default method that throws `UnsupportedOperationException`; the `Session` implementation polls the cursor like `awaitSlot` (default timeout, failure shows the last cursor). No protocol change, no capability.
+- Window drag (T-M11-09, api-change, additions only): `Window.drag(List<Integer>, DragMode)`, a default method that throws `UnsupportedOperationException`, and the enum `DragMode` (`LEFT`, `RIGHT`, `MIDDLE`). No protocol change, no capability.
+- Server window (T-M11-02, api-change, additions only): `PlayerState.openWindow()` (an `Optional<ServerWindow>`, a new last record
+  component) and `ServerWindow(type, title, slots)`. The 7-argument `PlayerState` constructor stays. No protocol change (`openWindow` is in
+  `player-state.json` already), no capability.
 - Data packs (T-M8-09, api-change, additions only, ADR-0017): `Proofstone.datapacks()` (globs, default none) and
   `Capability.DATAPACKS_VANILLA` (last constant). Declaring a pack implies the capability.
 - Mods (T-M8-13, api-change, additions only, ADR-0017): `Proofstone.mods()` (globs, one jar each, default none) and
@@ -44,7 +54,7 @@ The test API of [docs/specs/test-api.md](../docs/specs/test-api.md) §1–§2, i
   `./gradlew :proofstone-api:test -Dproofstone.updateApiBaseline=true` and review the diff.
 - **Experimental inside v0**: `io.github.h7kz.proofstone.api.spi.*`, `DualAssert.serverOnlyReasons()`, the record constructors of
   `PlayerState`, `CapturedEvent` and `ItemView`, and the close semantics of `Window.close()`. Not in v0 at all:
-  `Agent.world()`, `awaitTicks`, `logLines`, `gamemode`, `openWindow`, `Clients`, `Topology`, the fixture reset and the
+  `Agent.world()`, `awaitTicks`, `gamemode`, `Clients`, `Topology`, the fixture reset and the
   leak detector. Details are in [docs/specs/test-api.md](../docs/specs/test-api.md) section 8.
 
 The extension that runs them is `proofstone-core`'s `io.github.h7kz.proofstone.core.junit.ProofstoneExtension`, registered by

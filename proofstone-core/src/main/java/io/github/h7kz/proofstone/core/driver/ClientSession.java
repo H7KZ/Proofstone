@@ -1,6 +1,7 @@
 package io.github.h7kz.proofstone.core.driver;
 
 import io.github.h7kz.proofstone.api.BlockPos;
+import io.github.h7kz.proofstone.api.Face;
 import java.time.Duration;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -9,6 +10,11 @@ import java.util.regex.Pattern;
  * One joined player (client-driver spec §1). Everything it exposes is what the server sent; it never predicts.
  *
  * <p>Clicks and the experience level come from the server's syncs (the level is read by the client oracle).
+ *
+ * <p><b>One rule for "this driver cannot":</b> an operation a driver does not support throws
+ * {@link UnsupportedOperationException} naming the driver or edition (the optional defaults below, and Bedrock). The public
+ * {@code Client} and {@code Window} defaults throw the same type, so a test sees one type for "cannot do this" whichever driver
+ * runs. {@link ClientDriverException} is for a supporting driver that failed: a closed session, a disconnect, a timeout.
  */
 public interface ClientSession extends AutoCloseable {
 
@@ -33,6 +39,33 @@ public interface ClientSession extends AutoCloseable {
      * @throws ClientDriverException when the session is closed or no position has been synced yet
      */
     void useBlock(BlockPos pos, Face face);
+
+    /**
+     * Looks at the block and uses the held item on {@code face} of it: the block lands on the neighbouring position. Returns
+     * once the server has answered the action (its block-change acknowledgement), so a server read afterwards sees the
+     * result. Additive (T-M11-04); a driver without support fails loudly instead of passing.
+     *
+     * @throws UnsupportedOperationException when the driver cannot place blocks
+     * @throws ClientDriverException when the session is closed, no position has been synced, or the server never answers
+     */
+    default void placeBlock(BlockPos against, Face face) {
+        throw new UnsupportedOperationException("this driver cannot place blocks; use a driver that supports it");
+    }
+
+    /**
+     * Looks at the block, starts digging it and finishes at once; returns once the server has answered. The block breaks
+     * when the server's own rules let it break at that instant (creative, or a break time of zero); otherwise the server
+     * rejects the finish and the block stays. No abort-digging follows a rejected finish (T-M11-13): a vanilla client never
+     * sends one after a finish, the client cannot tell a rejection without reading the world, and Paper reports an abort as
+     * its own {@code BlockDamageAbortEvent}, which a real player's successful break never fires. Additive (T-M11-04); a driver
+     * without support fails loudly.
+     *
+     * @throws UnsupportedOperationException when the driver cannot break blocks
+     * @throws ClientDriverException when the session is closed, no position has been synced, or the server never answers
+     */
+    default void breakBlock(BlockPos pos) {
+        throw new UnsupportedOperationException("this driver cannot break blocks; use a driver that supports it");
+    }
 
     /**
      * Waits for the next window the server opened that this call has not returned, with its contents synced.
@@ -63,10 +96,11 @@ public interface ClientSession extends AutoCloseable {
      *
      * @throws JoinTimeoutException when the timeout passes first, naming the stalled stage (the switch never began, or
      *     which step of the new join stopped); a backend's reply to the {@code /server} command is quoted
+     * @throws UnsupportedOperationException when the driver has no proxy support
      * @throws ClientDriverException when the server disconnected during or before the switch, with its reason
      */
     default void awaitServerSwitch(Duration timeout) {
-        throw new ClientDriverException("this driver cannot await a proxy server switch; use a driver that supports it");
+        throw new UnsupportedOperationException("this driver cannot await a proxy server switch; use a driver that supports it");
     }
 
     /**
@@ -74,7 +108,7 @@ public interface ClientSession extends AutoCloseable {
      * sent (client-driver spec section 2b). Additive (T-M8-10); a driver without support fails loudly.
      */
     default List<io.github.h7kz.proofstone.api.ResourcePackPush> resourcePacks() {
-        throw new ClientDriverException("this driver does not record resource packs; use a driver that supports them");
+        throw new UnsupportedOperationException("this driver does not record resource packs; use a driver that supports them");
     }
 
     /** Timestamped packet names and summaries, for repro bundles. */

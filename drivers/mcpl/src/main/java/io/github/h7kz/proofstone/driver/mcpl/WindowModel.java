@@ -23,6 +23,8 @@ class WindowModel implements WindowView {
     // either: such a server sends it before the rest of its answer, and the next click must wait for the whole
     // answer, including the ping that ViaProxy turns the server's rejection into (T-M3-03).
     private int syncs;
+    // Counts cursor updates of any kind (SetCursorItem, or the carried stack of a content resync).
+    private int cursorUpdates;
     private SlotStack cursor = SlotStack.EMPTY;
     private boolean synced;
     private boolean consumed;
@@ -60,6 +62,7 @@ class WindowModel implements WindowView {
         stateId = newStateId;
         syncs++;
         cursor = convert(carried);
+        cursorUpdates++;
         synced = true;
     }
 
@@ -74,9 +77,49 @@ class WindowModel implements WindowView {
         return true;
     }
 
+    /**
+     * Applies a ClientboundSetPlayerInventoryPacket slot (inventory index: 0-8 hotbar, 9-35 main, 36-39 feet to head,
+     * 40 offhand) to this model: by window-0 numbering for the player inventory, else to the player section at the tail
+     * of a container (hotbar and main only). Leaves the state id alone, as the packet has none. Returns false when the
+     * slot has no place in this model, so the caller can record it.
+     */
+    synchronized boolean setPlayerInventorySlot(int inventorySlot, ItemStack item) {
+        if (slots == null) {
+            return false;
+        }
+        int target;
+        if (id == 0) {
+            if (inventorySlot >= 0 && inventorySlot < 9) {
+                target = 36 + inventorySlot;
+            } else if (inventorySlot >= 9 && inventorySlot < 36) {
+                target = inventorySlot;
+            } else if (inventorySlot >= 36 && inventorySlot < 40) {
+                target = 8 - (inventorySlot - 36); // feet is window slot 8, head is 5
+            } else if (inventorySlot == 40) {
+                target = 45;
+            } else {
+                return false;
+            }
+        } else {
+            int tail = slots.size() - PLAYER_SLOTS;
+            if (tail < 0 || inventorySlot < 0 || inventorySlot >= PLAYER_SLOTS) {
+                return false;
+            }
+            // The container lists the 27 main slots, then the 9 hotbar slots.
+            target = tail + (inventorySlot < 9 ? 27 + inventorySlot : inventorySlot - 9);
+        }
+        if (target >= slots.size()) {
+            return false;
+        }
+        slots.set(target, convert(item));
+        rawSlots.set(target, item);
+        return true;
+    }
+
     synchronized void setCursor(ItemStack item) {
         cursor = convert(item);
         rawCursor = item;
+        cursorUpdates++;
     }
 
     @Override
@@ -118,6 +161,20 @@ class WindowModel implements WindowView {
             // The ItemView reads come from the raw stacks, so both lists must take the adopted slots.
             rawSlots.set(9 + i, containerRaw.get(first + i));
         }
+        return true;
+    }
+
+    /**
+     * Takes one slot of a closed container's player section into this (window 0) model, as {@link #adoptPlayerSlots}
+     * does for all of them (T-M11-07). Returns false when the slot is the container's own or this model is not synced.
+     */
+    synchronized boolean adoptPlayerSlot(int containerSize, int containerSlot, ItemStack item) {
+        int index = containerSlot - (containerSize - PLAYER_SLOTS);
+        if (slots == null || index < 0 || containerSlot >= containerSize || slots.size() < 9 + PLAYER_SLOTS) {
+            return false;
+        }
+        slots.set(9 + index, convert(item));
+        rawSlots.set(9 + index, item);
         return true;
     }
 
@@ -170,6 +227,11 @@ class WindowModel implements WindowView {
     @Override
     public int id() {
         return id;
+    }
+
+    /** How many times the server has set the cursor. */
+    synchronized int cursorUpdates() {
+        return cursorUpdates;
     }
 
     /** How many full content resyncs the server has sent for this window. */

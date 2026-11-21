@@ -53,7 +53,7 @@ public final class HostLog {
                 pos += len;
             }
             int qtype = ((q[pos + 1] & 0xff) << 8) | (q[pos + 2] & 0xff);
-            record("DNS " + (qtype == 1 ? "A" : qtype == 28 ? "AAAA" : "type" + qtype) + " " + name);
+            record("DNS " + (qtype == 1 ? "A" : qtype == 28 ? "AAAA" : "type" + qtype) + " " + name + " from " + from);
             // Block mode: while /hl/block exists every name gets NXDOMAIN except the stub names and the name suffixes listed in the
             // file (one per line), so a start that needs the network fails the way an offline machine would. The spike script
             // creates the file before the warm start.

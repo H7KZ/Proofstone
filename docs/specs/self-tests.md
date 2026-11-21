@@ -22,10 +22,17 @@ Minimum scenarios for Java packs. Each one uses the dual oracle, with vanilla be
 | C10 | Config patch + restore round trip (on a test fixture plugin shipped with the conformance suite) | config snapshots |
 | C11 | Log capture: the fixture plugin logs a SEVERE, `assertNoErrorsLogged` fails, the allowlist works | error oracle |
 | C12 | Reset leaves no residue: state before and after compares equal | isolation |
+| C-L01 | `Agent.logLines` (T-M11-01, `ConformanceLogLinesTest`, Bukkit family): the harness client's join line and a console `say` line are in the lines since the test start; the boot `Done ... For help, type` line is not | server log capture through the public API |
+| C-L02 | `Agent.bootLogLines` (T-M11-03, `ConformanceBootLogLinesTest`, Paper): the agent's own `Proofstone agent listening on port` line and the `Done ... For help, type` line are in the lines before the test; none of the test's own lines are | boot log through the public API |
+| C-I01 | `ItemView.pdc` (T-M11-05, `ConformanceItemPdcTest`, Bukkit family; run on paper@26.3 and paper@1.18.2): a stick given by `give` with `PublicBukkitValues` reads back every common type as its Java type (byte, short, int, long, float, double, string, byte[], int[], long[]), a nested container as a map and a list tag as the `unsupported` marker; an apple has no pdc | item persistent data |
+| C-W02 | `Window.drag` (T-M11-09, `ConformanceWindowDragTest`, Paper): ten stone on the cursor dragged over three empty main-inventory slots of an open chest window; a left drag leaves 3, 3, 3 and one on the cursor, a right drag 1, 1, 1 and seven, a creative middle drag 64, 64, 64 and an empty cursor, on the client and on the server | client drag through the server oracle |
+| C-W03 | `Window.awaitCursor` (T-M11-11, `ConformanceAwaitCursorTest`, Paper): an enchanted sword picked up from a chest slot; `awaitCursor` returns it with its enchantment and a second call on the satisfied cursor returns at once. Smoke of the call on a real server only: on Paper the cursor is already there, so it cannot detect a late cursor (that is `SessionWindowAwaitCursorTest`) | client read |
+| C-B01 | `Client.placeBlock` and `Client.breakBlock` (T-M11-04, `ConformancePlaceBreakBlockTest`, Paper): a held stone placed against the top face of fixture ground (1,63,0) fires `BlockPlaceEvent` and the server world holds stone above it (air before); breaking it fires `BlockBreakEvent` and the server holds air | client block actions through the server oracle |
+| C-W01 | `PlayerState.openWindow` (T-M11-02, `ConformanceOpenWindowTest`, Bukkit family): empty before a chest is opened; while open, type `chest`, title `Chest`, the 27 own slots with the moved sword in slot 13 and an empty slot kept in place; empty again after the client closes it | server view of an open window |
 
-v0 limit for C04: a chest's own contents have no server oracle yet (there is no `openWindow` endpoint on the agent),
-so C04 checks the move through server-answered clicks on the client window and dual-checks only the player inventory
-(the stack must leave it on both oracles). A server-side chest check arrives with that endpoint.
+v0 limit for C04: it checks the move through server-answered clicks on the client window and dual-checks only the player
+inventory (the stack must leave it on both oracles). The chest's own contents have a server view since T-M11-02 (C-W01), but C04
+has not been changed to use it.
 
 v0 limit for C07: the grindstone arrived in 1.14, so 1.12.2 has no grindstone and cannot cover C07. The scenario
 skips there with that reason (a visible skip, never a pass). Every row from 1.14 on runs it, and it is part of the

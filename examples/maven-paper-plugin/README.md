@@ -22,9 +22,9 @@ The plugin carries two injected bugs, both off by default, so the suite can prov
 ## Boundaries
 
 - Proofstone is consumed from **mavenLocal only**: `io.github.h7kz.proofstone:proofstone-{api,core,drivers-mcpl}` at version
-  `0.1.0`. The version is pinned as `proofstone.version` in `pom.xml`, the same value as the `proofstone` key in
-  `gradle/libs.versions.toml`. Nothing is published to Maven Central, GHCR or any other remote repository. Remote snapshots are
-  never used.
+  `0.2.0`. The version is pinned as `proofstone.version` in `pom.xml`, the same value as the `proofstone` key in
+  `gradle/libs.versions.toml`. The checkout's own version is built and read from mavenLocal, not from Maven Central (released versions are there since 0.1.0; no published
+  snapshot is ever used).
 - The agent jar (`platforms/bukkit/agent/build/libs/agent-all.jar`) is a plugin, not a library. It is built from this
   repository by Gradle, not taken from mavenLocal.
 - Needs a JDK 26 on `JAVA_HOME` for Maven (it compiles the plugin at `release 25`). The e2e test classes are `release 21`, and

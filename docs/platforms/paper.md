@@ -26,6 +26,11 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
+- **A drag is answered in pieces (T-M11-09).** For each quick-craft stage (start, every add) 26.3 sends only a cursor update, because the
+  driver's carried claim never matches. The end sends one `ContainerSetSlot` per changed slot (state id bumps), then the cursor update. `Window.drag`
+  therefore waits for a counted sync and for the cursor update of the last stage, or a test reading `cursor()` on the first slot packet races. A creative
+  middle drag fills each slot to 64 and takes the whole carried stack. _26.3 · C-W02_
+- **Placing against an anvil opens it (T-M11-04).** `Client.placeBlock` sends use-item-on without the sneak flag, so against an anvil, chest or crafting table the server opens the window and fires no `BlockPlaceEvent`, though it still acknowledges the sequence. C-B01 places against plain stone. _26.3_
 - **A Paper cell fails as `Container startup failed` (`HostPortWaitStrategy`) when the boot takes over 60 s, which a busy host
   does** (T-M8-24, `paper@1.21.11` bridged, Testcontainers 2.0.5). `PaperHost` sets no wait strategy, so the default port wait
   with its 60 s `startupTimeout` runs beside the harness's own 3 minute `bootTimeout`, and Paper binds 25565 only 1 to 3 s before
@@ -134,9 +139,10 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   The anvil rows (0 south, 1 west, 2 north, 3 east) come from the wiki and were not checked against a client. Any other
   state is `UNKNOWN_KEY`. _1.8.8 to 1.12.2 · [PR #42](https://github.com/H7KZ/Proofstone/pull/42),
   [3a427e0](https://github.com/H7KZ/Proofstone/commit/3a427e0)_
-- **PDC is not served at any version.** The agent has no PDC field (`pdc` in an item is `INVALID_REQUEST`), so no version
-  advertises a `pdc` capability. _1.8.8 to 26.3 · [PR #42](https://github.com/H7KZ/Proofstone/pull/42),
-  [3a427e0](https://github.com/H7KZ/Proofstone/commit/3a427e0)_
+- **PDC is read where the server has the API, never given.** Until T-M11-05 the agent served no PDC at any version. It now fills `ItemView.pdc()` on
+  item reads and reports the agent token `pdc` where `org.bukkit.persistence.PersistentDataType` exists (the API arrived in 1.14; the agent also checks `getKeys`, `has`, `get` and the primitive type constants at start-up, so a server without them has no field and no token; verified on 1.18.2 and 26.3, not on 1.14 to 1.17). `pdc` in an item given by a test is still `INVALID_REQUEST`. A container with no
+  entries reads as no `pdc` (`null`), so the token, not the value, says whether PDC is served. Test items get their data with
+  the vanilla `give` command under `PublicBukkitValues` (C-I01). The server's meta class (`CraftMetaItem`) is package-private, so the container getter is resolved from the public `ItemMeta` interface: invoking the method found on the class threw `IllegalAccessException` on 1.18.2. _No PDC before 1.14 · T-M11-05_
 
 #### Enchantments, anvils and grindstones
 - **Mending and other 1.9+ enchantments are absent on 1.8.8.** C03 used mending as its second stored enchantment, so the
@@ -231,6 +237,13 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in `setupConfig`). The
   fixture plugin only survived because it loads every class on first enable. A plugin that caches config in `onEnable`
   needs a reload hook. (T-M2-03, changed in T-M2-10.)
+- **A plugin loader asked for a class it does not hold warns.** Paper 1.18.2's `PluginClassLoader` answers through a global lookup in the
+  other plugins' loaders and logs `Loaded class X from Y which is not a depend or softdepend of this plugin` under the asking plugin's
+  name, which fails an error-log guard. The agent's event probe used to try every plugin loader in load order (the agent first), so
+  probing a third-party event (Disenchantment's `PostDisenchantEvent`) logged it on paper@1.18.2 only. It now finds the owner with
+  `ClassLoader#getResource` (own jar and parents only, no global lookup) and loads through that loader alone. (T-M6-111)
+  Open, not fixed: on paper@1.18.2 `GET /v1/datapacks` answers `500 zip file closed` after the reload cases, because the agent's own
+  `Class.forName` of a Paper class falls into the same global lookup and reaches the disabled fixture's closed loader.
 - **`ConfigurationSection.getValues(false)` leaves out jar defaults.** A key the plugin never wrote to `config.yml` reads
   through `get()` but is missing from `getValues`. `GET /v1/snapshot` reads `getKeys(true)` plus the defaults' keys, so
   the fixture's `greeting` shows as `hi`. (T-M4-12)

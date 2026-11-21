@@ -40,7 +40,7 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
             TickCounter ticks = TickCounter.start(scheduler);
             // A live list: Floodgate may enable after this plugin, so the token is added at the first tick (FloodgateProbe).
             List<String> tokens = new CopyOnWriteArrayList<>(capabilities(platform, Bukkit.getOnlineMode(),
-                    DataPackList.supported(), classPresent(RESOURCE_PACK_STATUS_EVENT)));
+                    DataPackList.supported(), classPresent(RESOURCE_PACK_STATUS_EVENT), PersistentData.supported()));
             scheduler.repeatGlobally(new FloodgateProbe(tokens, name -> Bukkit.getPluginManager().isPluginEnabled(name)));
             Health health = new Health(
                     getDescription().getVersion(),
@@ -81,6 +81,12 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
 
     /** {@code resource-pack-status} is reported where the server has {@link #RESOURCE_PACK_STATUS_EVENT}. */
     static List<String> capabilities(String platform, boolean onlineMode, boolean datapacks, boolean resourcePackStatus) {
+        return capabilities(platform, onlineMode, datapacks, resourcePackStatus, false);
+    }
+
+    /** {@code pdc} is reported where item reads carry the persistent data container: Bukkit 1.14 and later (T-M11-05). */
+    static List<String> capabilities(String platform, boolean onlineMode, boolean datapacks, boolean resourcePackStatus,
+            boolean pdc) {
         List<String> tokens = new ArrayList<>(Arrays.asList(
                 "command", "players", "config", "reload", "world", "events", "log", "ticks"));
         if (!onlineMode) {
@@ -91,6 +97,9 @@ public final class ProofstoneAgentPlugin extends JavaPlugin {
         }
         if (resourcePackStatus) {
             tokens.add("resource-pack-status");
+        }
+        if (pdc) {
+            tokens.add("pdc");
         }
         if ("folia".equals(platform)) {
             tokens.add("regions");

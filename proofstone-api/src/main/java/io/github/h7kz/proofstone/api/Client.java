@@ -79,4 +79,38 @@ public interface Client {
         throw new UnsupportedOperationException("this Client implementation does not record resource packs; override "
                 + "resourcePacks");
     }
+
+    /**
+     * Places the held item (the main hand's selected hotbar slot) against {@code face} of the block at {@code against}, as a
+     * player right-clicking it: the server fires the real {@code BlockPlaceEvent} and the new block lands on the
+     * neighbouring position. Returns once the server has answered the action, so a server read afterwards sees the result;
+     * the server may still refuse (reach, protection, a cancelling plugin), which the test reads from the server. A player
+     * who does not sneak opens an anvil, chest or crafting table instead of placing against it, and so does this call: place
+     * against plain blocks.
+     *
+     * <p>Additive (T-M11-04). The default throws, so a custom {@code Client} fails loudly instead of passing. A driver
+     * that cannot place blocks (Bedrock, the reference Mineflayer driver) fails the same way.
+     *
+     * @throws UnsupportedOperationException when this client or its driver cannot place blocks (every driver, one type)
+     * @throws RuntimeException when the server never answers, with the reason
+     */
+    default void placeBlock(BlockPos against, Face face) {
+        throw new UnsupportedOperationException("this Client implementation cannot place blocks; override placeBlock");
+    }
+
+    /**
+     * Breaks the block at {@code pos} as a player digging it: start, then finish at once, so the server fires the real
+     * {@code BlockBreakEvent}. The server's own rules decide: the block breaks at that instant only in creative or when its
+     * break time is zero (for example with the {@code minecraft:block_break_speed} attribute raised); otherwise the server
+     * rejects the finish and the block stays. Returns once the server has answered.
+     *
+     * <p>Additive (T-M11-04). The default throws, so a custom {@code Client} fails loudly instead of passing. No abort-digging
+     * follows a rejected finish (T-M11-13): a vanilla client never sends one after a finish.
+     *
+     * @throws UnsupportedOperationException when this client or its driver cannot break blocks (every driver, one type)
+     * @throws RuntimeException when the server never answers, with the reason
+     */
+    default void breakBlock(BlockPos pos) {
+        throw new UnsupportedOperationException("this Client implementation cannot break blocks; override breakBlock");
+    }
 }

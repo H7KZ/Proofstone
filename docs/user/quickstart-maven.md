@@ -2,7 +2,7 @@
 
 **Status: the verified path is the Maven example inside this repository.** Steps 2 to 6 were run as written on the maintainer's
 Windows machine (Git Bash) on 2026-11-09 at commit `4df12c8` (T-M6-13). Step 1 was not re-run. Running your own Maven project outside the repository is not
-verified (see [Limits](#limits-not-verified)). Nothing is published yet, so Proofstone is used from `mavenLocal`.
+verified (see [Limits](#limits-not-verified)). The libraries are on Maven Central (since 0.1.0), but this path builds the checkout and uses it from `mavenLocal`.
 
 The example is [`examples/maven-paper-plugin`](../../examples/maven-paper-plugin/README.md): the same anvil plugin as the
 Gradle example (one iron ingot and one gold ingot on an anvil make one diamond), with an `AnvilMechanicE2E` test that failsafe
@@ -31,7 +31,7 @@ cd Proofstone
 
 ## 2. Build the agent jar and publish Proofstone's libraries to mavenLocal
 
-The example consumes Proofstone version `0.1.0` from `mavenLocal` (`proofstone.version` in the example's `pom.xml`, the
+The example consumes Proofstone version `0.2.0` from `mavenLocal` (`proofstone.version` in the example's `pom.xml`, the
 same value as `gradle/libs.versions.toml`). Maven does not build the agent jar, so Gradle builds it here.
 
 ```bash
