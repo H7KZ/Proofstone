@@ -3,7 +3,7 @@
 **Real-server end-to-end testing for Minecraft plugins, mods and add-ons.**
 Real servers, real clients, and every result checked twice.
 
-> Status: **pre-1.0, not yet released** (`0.1.0` is being prepared). The harness, the Paper family, proxies, Fabric, NeoForge and
+> Status: **pre-1.0** (`0.1.0` is on Maven Central, `0.2.0` is being prepared). The harness, the Paper family, proxies, Fabric, NeoForge and
 > an experimental Bedrock path run against real servers. What is and is not supported: [platforms](docs/platforms.md) and
 > [limits](docs/limits.md). How versions and breaking changes work: [compatibility](docs/compatibility.md).
 

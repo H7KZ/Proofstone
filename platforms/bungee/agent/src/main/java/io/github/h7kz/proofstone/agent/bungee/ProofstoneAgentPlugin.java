@@ -11,7 +11,7 @@ import net.md_5.bungee.api.plugin.Plugin;
 public final class ProofstoneAgentPlugin extends Plugin {
 
     /** Kept in step with {@code bungee.yml}, which a test compares. */
-    static final String VERSION = "0.1.0";
+    static final String VERSION = "0.2.0";
 
     private BungeeAgent agent;
 

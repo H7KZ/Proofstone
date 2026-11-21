@@ -296,7 +296,7 @@ class BungeeCordAgentIT {
     @Test
     void theAgentLoadedWithoutAWarningFromBungeeCord() {
         String log = container.getLogs();
-        assertThat(log).contains("Enabled plugin ProofstoneAgent version 0.1.0");
+        assertThat(log).contains("Enabled plugin ProofstoneAgent version 0.2.0");
         assertThat(log).contains("Proofstone agent listening on port " + AGENT_PORT);
         assertThat(log).as("no error or warning names the agent")
                 .doesNotContainPattern("(?i)(SEVERE|WARN|ERROR)[^\\n]*(proofstone|ProofstoneAgent)");

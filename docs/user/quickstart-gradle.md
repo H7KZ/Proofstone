@@ -1,7 +1,7 @@
 # Quickstart: Gradle
 
 **Status: the verified path is the Gradle example inside this repository.** Running your own project outside the repository
-is not verified (see [Limits](#limits-not-verified)). Nothing is published yet, so Proofstone is used from `mavenLocal`.
+is not verified (see [Limits](#limits-not-verified)). The libraries are on Maven Central (since 0.1.0), but this path builds the checkout and uses it from `mavenLocal`.
 The 15-minute run-through of this page has **not been timed yet**.
 
 The example is [`examples/gradle-paper-plugin`](../../examples/gradle-paper-plugin/README.md): a minimal Paper plugin (one
@@ -33,7 +33,7 @@ cd Proofstone
 
 ## 2. Publish Proofstone's libraries to mavenLocal
 
-Nothing is published to Maven Central or GHCR yet. The example consumes Proofstone version `0.1.0` from `mavenLocal`
+The libraries are on Maven Central, but the example builds the checkout and consumes Proofstone version `0.2.0` from `mavenLocal`
 (`gradle/libs.versions.toml`, key `proofstone`).
 
 ```bash
