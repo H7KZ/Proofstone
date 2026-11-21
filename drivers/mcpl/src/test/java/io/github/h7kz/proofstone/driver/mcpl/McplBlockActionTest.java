@@ -9,12 +9,15 @@ import io.github.h7kz.proofstone.api.ResourcePackAnswer.Answer;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ResourcePackPolicy;
 import java.lang.reflect.Proxy;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
 import org.cloudburstmc.math.vector.Vector3d;
 import org.cloudburstmc.math.vector.Vector3i;
 import org.geysermc.mcprotocollib.network.Session;
+import org.geysermc.mcprotocollib.network.event.session.DisconnectedEvent;
 import org.geysermc.mcprotocollib.network.packet.Packet;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.object.Direction;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerAction;
@@ -32,14 +35,29 @@ import org.junit.jupiter.api.Test;
  */
 class McplBlockActionTest {
 
+    private static final Duration WAIT = Duration.ofMillis(300);
+
     private final List<Packet> sent = new ArrayList<>();
+    // The scripted server: silent never answers, acksStartOnly answers a start but not the finish, disconnectOnSend kicks.
+    private boolean silent;
+    private boolean acksStartOnly;
+    private boolean disconnectOnSend;
     private McplSession bot;
     private final Session network = (Session) Proxy.newProxyInstance(Session.class.getClassLoader(),
             new Class<?>[] {Session.class}, (proxy, method, args) -> {
                 if (method.getName().equals("send")) {
                     Packet packet = (Packet) args[0];
                     sent.add(packet);
-                    if (packet instanceof ServerboundUseItemOnPacket use) {
+                    if (disconnectOnSend && (packet instanceof ServerboundUseItemOnPacket
+                            || packet instanceof ServerboundPlayerActionPacket)) {
+                        bot.listener().disconnected(
+                                new DisconnectedEvent((Session) proxy, Component.text("Kicked: flying"), null));
+                    } else if (acksStartOnly && packet instanceof ServerboundPlayerActionPacket action
+                            && action.getAction() == PlayerAction.START_DIGGING) {
+                        ack(action.getSequence());
+                    } else if (silent || acksStartOnly) {
+                        return null;
+                    } else if (packet instanceof ServerboundUseItemOnPacket use) {
                         bot.listener().packetReceived(null, new ClientboundBlockChangedAckPacket(use.getSequence()));
                     } else if (packet instanceof ServerboundPlayerActionPacket action
                             && action.getAction() == PlayerAction.FINISH_DIGGING) {
@@ -48,6 +66,10 @@ class McplBlockActionTest {
                 }
                 return null;
             });
+
+    private void ack(int sequence) {
+        bot.listener().packetReceived(null, new ClientboundBlockChangedAckPacket(sequence));
+    }
 
     private void join() {
         bot = new McplSession(network, "Bot", new ResourcePackPolicy(Answer.DECLINE, "http://127.0.0.1:40000/"),
@@ -87,6 +109,84 @@ class McplBlockActionTest {
         assertThat(finish.getAction()).isEqualTo(PlayerAction.FINISH_DIGGING);
         assertThat(start.getPosition()).isEqualTo(Vector3i.from(0, 64, 1)).isEqualTo(finish.getPosition());
         assertThat(finish.getSequence()).isGreaterThan(start.getSequence());
+    }
+
+    @Test
+    void aStaleAckOfAnEarlierPlaceDoesNotReleaseALaterOne() {
+        join();
+        silent = true;
+        bot.blockWait(WAIT);
+
+        assertThatThrownBy(() -> bot.placeBlock(new BlockPos(0, 63, 0), Face.UP)).isInstanceOf(ClientDriverException.class)
+                .hasMessageContaining("did not answer placing against");
+        ServerboundUseItemOnPacket use = (ServerboundUseItemOnPacket) sent.get(sent.size() - 1);
+        ack(use.getSequence());
+        assertThatThrownBy(() -> bot.placeBlock(new BlockPos(0, 63, 0), Face.UP)).isInstanceOf(ClientDriverException.class)
+                .hasMessageContaining("did not answer placing against");
+    }
+
+    @Test
+    void aStaleAckOfAnEarlierBreakDoesNotReleaseALaterOne() {
+        join();
+        silent = true;
+        bot.blockWait(WAIT);
+
+        assertThatThrownBy(() -> bot.breakBlock(new BlockPos(0, 64, 1))).isInstanceOf(ClientDriverException.class);
+        ServerboundPlayerActionPacket finish = (ServerboundPlayerActionPacket) sent.get(sent.size() - 1);
+        ack(finish.getSequence());
+        assertThatThrownBy(() -> bot.breakBlock(new BlockPos(0, 64, 1))).isInstanceOf(ClientDriverException.class)
+                .hasMessageContaining("did not answer breaking");
+    }
+
+    @Test
+    void breakBlockWaitsForTheFinishAckAndNotTheStartAck() {
+        join();
+        acksStartOnly = true;
+        bot.blockWait(WAIT);
+
+        assertThatThrownBy(() -> bot.breakBlock(new BlockPos(0, 64, 1))).isInstanceOf(ClientDriverException.class)
+                .hasMessageContaining("did not answer breaking");
+        assertThat(sent).as("look, start and finish were all sent; only the start was acked").hasSize(3);
+    }
+
+    @Test
+    void placeBlockTimesOutNamingTheActionWhenTheServerNeverAnswers() {
+        join();
+        silent = true;
+        bot.blockWait(WAIT);
+
+        assertThatThrownBy(() -> bot.placeBlock(new BlockPos(0, 63, 0), Face.UP)).isInstanceOf(ClientDriverException.class)
+                .hasMessageContaining("did not answer placing against " + new BlockPos(0, 63, 0))
+                .hasMessageContaining("within " + WAIT).hasMessageContaining("transcript tail");
+    }
+
+    @Test
+    void aDisconnectDuringThePlaceFailsWithItsReasonInsteadOfWaiting() {
+        join();
+        disconnectOnSend = true;
+
+        assertThatThrownBy(() -> bot.placeBlock(new BlockPos(0, 63, 0), Face.UP)).isInstanceOf(ClientDriverException.class)
+                .hasMessageContaining("disconnected while placing against").hasMessageContaining("Kicked: flying");
+    }
+
+    @Test
+    void aDisconnectDuringTheBreakFailsWithItsReason() {
+        join();
+        disconnectOnSend = true;
+
+        assertThatThrownBy(() -> bot.breakBlock(new BlockPos(0, 64, 1))).isInstanceOf(ClientDriverException.class)
+                .hasMessageContaining("disconnected while breaking").hasMessageContaining("Kicked: flying");
+    }
+
+    @Test
+    void aRejectedFinishIsNeverFollowedByAbortDigging() {
+        join();
+
+        bot.breakBlock(new BlockPos(0, 64, 1));
+
+        assertThat(sent).filteredOn(p -> p instanceof ServerboundPlayerActionPacket)
+                .extracting(p -> ((ServerboundPlayerActionPacket) p).getAction())
+                .containsExactly(PlayerAction.START_DIGGING, PlayerAction.FINISH_DIGGING);
     }
 
     @Test

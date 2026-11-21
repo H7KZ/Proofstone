@@ -14,12 +14,16 @@ public interface ClientDriver {
     default ClientSession connect(ConnectSpec spec, Edition endpoint);   // core's call: refuses a driver of the other edition
 }
 
+// One rule: an optional operation a driver does not support throws UnsupportedOperationException (the interface defaults, Bedrock);
+// ClientDriverException is for a supporting driver that failed (closed session, disconnect, timeout). Public Client/Window defaults agree (T-M11-13).
+// breakBlock sends START then FINISH and no ABORT after a rejected finish: a vanilla client never does, the client cannot tell a
+// rejection without reading the world, and Paper raises BlockDamageAbortEvent for an abort, which a real successful break never fires.
 public interface ClientSession extends AutoCloseable {
     void chat(String message);
     void command(String commandWithoutSlash);
     ChatMessage awaitMessage(Pattern p, Duration timeout);
     void useBlock(BlockPos pos, Face face);              // look + interact
-    void placeBlock(BlockPos against, Face face);         // default throws; look + use-item-on, returns on the server's block ack (T-M11-04)
+    void placeBlock(BlockPos against, Face face);         // default throws UnsupportedOperationException (the rule above); look + use-item-on, returns on the server's block ack (T-M11-04)
     void breakBlock(BlockPos pos);                        // default throws; look + start + finish digging, returns on the ack (T-M11-04)
     WindowSession awaitWindow(Duration timeout);        // WindowSession.drag(slots, mode): default throws; quick-craft start, adds, end (T-M11-09)
     InventoryView inventory();                            // last server-synced view
