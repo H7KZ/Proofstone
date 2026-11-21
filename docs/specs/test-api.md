@@ -156,7 +156,7 @@ constant: the baseline file plus this status line are the v0 marker. A card that
 - `PlayerHandle` (`name`, `reset`, `level`, `give`, `state`, `awaitState`), `PluginHandle` (`name`, `config`,
   `patchConfig`), `Events` and `EventProbe`.
 - `Window` (`type`, `title`, `slots`, `slot`, `awaitSlot`, `cursor`, `click`, `moveFromInventory`,
-  `dropCursorIntoFirstEmptySlot`, `rename`, `drag`, `close`), `Click`, `DragMode`, `Item` (build), `ItemView` (read), `BlockPos`, `Position`.
+  `dropCursorIntoFirstEmptySlot`, `rename`, `drag`, `awaitCursor`, `close`), `Click`, `DragMode`, `Item` (build), `ItemView` (read), `BlockPos`, `Position`.
 - `DualAssert` (`item`, `level`) and `DisagreeException`.
 
 ### 8.2 Experimental: in the baseline, but allowed to change in a v0.x step
@@ -208,6 +208,10 @@ Every item here is marked in the Javadoc or this list, and a change still needs 
   in survival); a slower block is rejected by the server at the finish and stays. `blockType` is a read of the existing
   `GET /v1/world/block`, so no protocol change, no version bump, no capability. The `mcpl` driver supports the calls; the Bedrock and
   reference Mineflayer drivers throw (the `ClientSession` default), as for `useBlock` windows.
+- `Window.awaitCursor(Predicate<ItemView>)` (T-M11-11, api-change, additions only): waits, for the default timeout, until the client cursor satisfies the predicate and returns it; the
+  failure is an `AwaitTimeoutException` with the last cursor seen. A click returns on the first window sync and the cursor can arrive in a packet just
+  after it (a plugin that delivers a result by `setItemOnCursor` after writing slots; Folia), so a one-shot `cursor()` read right after a click can
+  race. A default method that throws `UnsupportedOperationException`; no protocol change, no capability.
 - `Window.drag(List<Integer> slots, DragMode mode)` and the public enum `DragMode` (`LEFT`, `RIGHT`, `MIDDLE`; T-M11-09, api-change,
   additions only). `drag` is a default method that throws `UnsupportedOperationException`. The `mcpl` driver sends the vanilla quick-craft
   sequence (a start, one add per slot in the order given, an end; `ContainerActionType.SPREAD_ITEM`, slot -999 for start and end) with the

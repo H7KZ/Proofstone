@@ -124,7 +124,8 @@ try (Window w = client.openBlock(new BlockPos(0, 64, 2))) {         // awaits th
     ItemView r = w.awaitSlot(2, i -> i.is("enchanted_book"));
     w.click(2, Click.LEFT);                                         // LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT, DROP,
                                                                     // DOUBLE, SWAP_OFFHAND, NUMBER_1..NUMBER_9
-    w.cursor();                                                     // ItemView (empty when nothing is held)
+    w.cursor();                                                     // ItemView (empty when nothing is held), a one-shot read
+    w.awaitCursor(i -> i.is("enchanted_book"));                     // wait for the cursor after a click that delivers on it
     w.dropCursorIntoFirstEmptySlot();
     w.drag(List.of(27, 28, 29), DragMode.LEFT);                     // drag the carried stack over slots: LEFT splits evenly,
                                                                     // RIGHT puts one in each, MIDDLE (creative) fills stacks
@@ -167,7 +168,7 @@ DualAssert.level(agent.player(client), client).isEqualTo(17);
 
 ## Rules that the harness enforces
 
-- **No sleeps.** Wait with `awaitState`, `awaitSlot`, `awaitPosition` or `awaitMessage`, which take a description and a
+- **No sleeps.** Wait with `awaitState`, `awaitSlot`, `awaitCursor`, `awaitPosition` or `awaitMessage`, which take a description and a
   predicate. Waiting for a fixed time is wrong.
 - **Never retry a test.** A failing test is reported as failing. A verdict that changes between runs is `FLAKY`.
 - **Fail loudly.** An unknown getter, an unknown selector or an empty reply is an error, never a pass.

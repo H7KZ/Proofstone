@@ -114,3 +114,5 @@ M5 follow-up_
 - Cross-region teleports are not covered; reset and patch teleports are tested at the fixture spot only.
 - The exact Folia region-thread name is not recorded (C-F02 logs it per run).
 - Folia `SIMULATED_BEDROCK` is not declared and not run.
+
+- **The cursor can trail a click (T-M11-11).** A plugin that writes slots and then calls `setItemOnCursor` makes the server send the window content (empty carried stack) first and `SetCursorItem` about 1 ms later. `Window.click` returns on the first state-id change, so a one-shot `cursor()` read right after it races; use `Window.awaitCursor`. Seen with Disenchantment on Folia; Paper has the same packet order and only the timing differs.

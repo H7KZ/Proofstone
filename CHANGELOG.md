@@ -6,6 +6,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 ## [Unreleased]
 
 ### Added
+- `Window.awaitCursor(Predicate<ItemView>)`: waits for the client cursor to match, like `awaitSlot` (a default method that throws `UnsupportedOperationException`; API addition, T-M11-11; no protocol change). A click returns on the first window sync and the cursor can arrive just after it, so a one-shot `cursor()` read right after a click can race.
 - `Window.drag(List<Integer>, DragMode)` and the public enum `DragMode`: an inventory drag across slots with the left, right or middle button, answered by the server, through the Java driver (API addition, T-M11-09; no protocol change). Needed to test a plugin that reacts to a drag, such as a grindstone result refresh.
 - Spike note `docs/platforms/fault-injection.md` and ADR-0020 (Proposed): making a server-side inventory write fail from the agent is a No-go under ADR-0002; no API or protocol change (T-M11-10).
 - The Bukkit agent fills `ItemView.pdc()` on servers with the PDC API (agent token `pdc`, verified on 1.18.2 and 26.3): typed values for byte, short, int, long, float, double, string and the three arrays, a nested container as a map, and an `unsupported` marker for the rest; reports the agent token `pdc` (T-M11-05; no API or protocol change).
