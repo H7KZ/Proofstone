@@ -118,6 +118,45 @@ class DualAssertTest {
                 .hasMessageContaining("expected other").hasMessageContaining("{myplugin:key=v}");
     }
 
+    @Test
+    void serverOnlyPdcComparesArraysInsideANestedContainerByContent() {
+        ItemView tagged = new ItemView("minecraft:stick", 1, Map.of(), Map.of(), null, List.of(), 0, 0, null,
+                Map.of("p:c", Map.of("q:b", new byte[] {1, 2}, "q:i", new int[] {3}, "q:l", new long[] {4L}),
+                        "p:a", new byte[] {9}), null);
+        ItemView plain = new ItemView("minecraft:stick", 1, Map.of(), Map.of(), null, List.of(), 0, 0, null);
+        DualAssert.item(server(tagged), client(plain), ONCE).inInventory(i -> i.is("stick")).serverOnly("PDC")
+                .pdc("p:c", Map.of("q:b", new byte[] {1, 2}, "q:i", new int[] {3}, "q:l", new long[] {4L}))
+                .pdc("p:a", new byte[] {9});
+
+        assertThatThrownBy(() -> DualAssert.item(server(tagged), client(plain), ONCE).inInventory(i -> i.is("stick"))
+                .serverOnly("PDC").pdc("p:c", Map.of("q:b", new byte[] {1, 3}, "q:i", new int[] {3},
+                        "q:l", new long[] {4L})))
+                .isInstanceOf(AssertionError.class);
+    }
+
+    @Test
+    void contentEqualsIsRecursiveAndNullSafe() {
+        Map<String, Object> withNull = new java.util.HashMap<>();
+        withNull.put("k", null);
+        Map<String, Object> otherNull = new java.util.HashMap<>();
+        otherNull.put("k", null);
+
+        assertThat(DualAssert.contentEquals(null, null)).isTrue();
+        assertThat(DualAssert.contentEquals(null, "x")).isFalse();
+        assertThat(DualAssert.contentEquals("x", null)).isFalse();
+        assertThat(DualAssert.contentEquals(withNull, otherNull)).isTrue();
+        assertThat(DualAssert.contentEquals(withNull, Map.of("k", "v"))).isFalse();
+        assertThat(DualAssert.contentEquals(Map.of("a", Map.of("b", new long[] {1L})),
+                Map.of("a", Map.of("b", new long[] {1L})))).isTrue();
+        assertThat(DualAssert.contentEquals(Map.of("a", Map.of("b", new long[] {1L})),
+                Map.of("a", Map.of("b", new long[] {2L})))).isFalse();
+        assertThat(DualAssert.contentEquals(List.of(new int[] {1}), List.of(new int[] {1}))).isTrue();
+        assertThat(DualAssert.contentEquals(new int[] {1}, new long[] {1L})).isFalse();
+        assertThat(DualAssert.contentEquals(new byte[] {1}, new byte[] {1, 2})).isFalse();
+        assertThat(DualAssert.contentEquals(Map.of("a", 1), Map.of("a", 1, "b", 2))).isFalse();
+        assertThat(DualAssert.contentEquals((byte) 1, 1)).as("a Byte is not an Integer").isFalse();
+    }
+
     private static DualAssert.ItemAssert item(PlayerHandle server, Client client) {
         return DualAssert.item(server, client, ONCE).inInventory(i -> i.is("enchanted_book"));
     }

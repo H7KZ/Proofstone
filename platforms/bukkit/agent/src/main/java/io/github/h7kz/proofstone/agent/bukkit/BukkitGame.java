@@ -492,6 +492,11 @@ public final class BukkitGame implements Game {
             }
         }
         out.put("enchants", enchants(stack.getEnchantments()));
+        // 1.14+ only; null (omitted) where the server has no PDC or the container is empty (T-M11-05).
+        Map<String, Object> pdc = PersistentData.read(meta, () -> stack.getType() + " x" + stack.getAmount());
+        if (pdc != null) {
+            out.put("pdc", pdc);
+        }
         out.put("raw", String.valueOf(stack.serialize()));
         return out;
     }

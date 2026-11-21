@@ -182,7 +182,7 @@ M5 can run in parallel with M4 once M3 is done.
      against the moving tag.
   3. Resolved after this review (PR #46): the zero-cell decision is covered by `ProofstoneExtensionPlanTest`.
   4. Resolved after this review (PR #46, ADR-0015): the 11 Paper rows are `required` on local per-row evidence.
-  5. Folia rows never booted. PDC is not advertised on any version. Paper 1.8.8 reports as `spigot`.
+  5. Folia rows never booted. PDC was not advertised on any version (served from 1.14 since T-M11-05). Paper 1.8.8 reports as `spigot`.
   6. C06 on 1.8.8 failed about 1 run in 4 before PR #39. The one passing run here is not proof it is flake-free.
   7. Anvil block-state rows in `legacy-block-states.csv` come from the wiki and were not checked against a client.
   8. 2026-11-07, independent re-run on `main`: C02 on paper@1.20.4 (bridged) failed once (client join timed out after 30 s)

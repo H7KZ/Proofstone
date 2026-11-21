@@ -121,6 +121,6 @@ final class HostPlayer implements PlayerHandle {
                 item.storedEnchants() == null ? Map.of() : item.storedEnchants(),
                 item.name(), item.lore() == null ? List.of() : item.lore(),
                 item.damage() == null ? 0 : item.damage(), item.repairCost() == null ? 0 : item.repairCost(),
-                null, item.pdc(), item.raw());
+                null, PdcWire.values(item.pdc()), item.raw());
     }
 }
