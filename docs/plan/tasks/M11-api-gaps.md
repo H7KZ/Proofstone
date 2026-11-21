@@ -170,6 +170,47 @@ The other suspect, `Window.click` racing the resync, is not the cause: click ret
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceOpenWindowTest' --no-parallel --max-workers=1`
 
+### T-M11-07 · mcpl driver: a window packet that arrives after the client's close still reaches window 0
+- tier: sonnet
+- depends: T-M11-06
+- modules: drivers/mcpl, docs/specs, docs/platforms
+- adrs: 0002
+- specs: specs/client-driver.md §2
+- test-first: yes
+
+**Goal.** The client oracle sees every player-inventory stack the server sent for a window, even when the packet arrives after the
+client closed that window. Bugfix, no API change.
+
+**Evidence.** After T-M11-06, Disenchantment e2e on `folia@26.3` still failed 2 of 3 full runs, 1 test each
+(`RestrictionsE2E.aDeletedEnchantmentIsDestroyed`, `DisenchantE2E.tooLittleExperienceDeliversNothingUntilThePlayerCanPay`; earlier
+`PreEventCancelE2E.aCancelledPreDisenchantEventChangesNothing`): `DISAGREE ... expected present`, the server oracle saw the book in
+slot 9, the client oracle never did. All three transcripts are the same: the click that places the cursor book in a player slot is sent
+as the plugin's late anvil update arrives (slot 1 at stateId 14 and a resync at 15, two ticks after the result click). The click returns
+on that update, the test closes, and a `ContainerSetContent id=1` arrives 16 to 24 ms after the close: `(no such window, ignored)`.
+The server then sends window 0 only slot 45, the hand-back of slot 0 and slot 36, never slot 9. The transcript does not log slot
+contents, so that this content was the click's answer holding the book is **inferred**: the server oracle has the book in slot 9, it
+is the only window 1 packet after the place click, and on close the server takes the anvil's remote slots as window 0's (vanilla
+`transferState`), which explains why slot 9 is never resent. Same mechanism as the T-M8-23 note in ROADMAP.md, which was fixed in the
+conformance scenarios only. On that inference it is a driver bug, not a plugin or Folia one: the server sent the book and the driver
+dropped it.
+
+**Do.**
+- Keep the window this client closed as the target of packets for its id until another window opens, the server closes a window or
+  the session resets. A late `ContainerSetContent` hands all its player slots to window 0, a late `ContainerSetSlot` only its own slot;
+  neither sets the cursor.
+- Unit tests with the recorded packet order (`McplLateWindowPacketTest`), red before the fix.
+
+**Don't.** Change the wire protocol, the public API or the click release condition, or add a sleep or retry.
+
+**Acceptance.**
+- [ ] `McplLateWindowPacketTest` fails without the fix and passes with it.
+- [ ] C04 to C08 and `ConformanceOpenWindowTest` green on `paper@26.3` and `folia@26.3`, three separate invocations each, XML read,
+  `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=folia@26.3 --tests '*ConformanceOpenWindowTest' --tests '*C0[4-8]*' --no-parallel --max-workers=1`
+
 ### T-M11-04 · `Client.placeBlock` and `Client.breakBlock`: a player's block place and break
 - tier: sonnet
 - depends: —

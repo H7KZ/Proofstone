@@ -160,6 +160,20 @@ class WindowModel implements WindowView {
         return true;
     }
 
+    /**
+     * Takes one slot of a closed container's player section into this (window 0) model, as {@link #adoptPlayerSlots}
+     * does for all of them (T-M11-07). Returns false when the slot is the container's own or this model is not synced.
+     */
+    synchronized boolean adoptPlayerSlot(int containerSize, int containerSlot, ItemStack item) {
+        int index = containerSlot - (containerSize - PLAYER_SLOTS);
+        if (slots == null || index < 0 || containerSlot >= containerSize || slots.size() < 9 + PLAYER_SLOTS) {
+            return false;
+        }
+        slots.set(9 + index, convert(item));
+        rawSlots.set(9 + index, item);
+        return true;
+    }
+
     /** The raw stacks as the server sent them, for another model to adopt. Null entries are empty slots. */
     synchronized List<ItemStack> rawSlots() {
         return java.util.Collections.unmodifiableList(new ArrayList<>(rawSlots));
