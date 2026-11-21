@@ -17,9 +17,15 @@ final class SessionWindow implements Window {
     private static final int PLAYER_SLOTS = 36;
 
     private final WindowSession window;
+    private final Duration timeout;
 
     SessionWindow(WindowSession window) {
+        this(window, DEFAULT_TIMEOUT);
+    }
+
+    SessionWindow(WindowSession window, Duration timeout) {
         this.window = window;
+        this.timeout = timeout;
     }
 
     @Override
@@ -50,7 +56,12 @@ final class SessionWindow implements Window {
     @Override
     public ItemView awaitSlot(int index, Predicate<ItemView> predicate) {
         return Await.until("slot " + index + " of " + type() + " to match", () -> slot(index), predicate,
-                DEFAULT_TIMEOUT);
+                timeout);
+    }
+
+    @Override
+    public ItemView awaitCursor(Predicate<ItemView> predicate) {
+        return Await.until("the cursor of " + type() + " to match", this::cursor, predicate, timeout);
     }
 
     @Override

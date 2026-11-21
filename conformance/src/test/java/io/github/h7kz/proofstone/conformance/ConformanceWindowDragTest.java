@@ -15,9 +15,7 @@ import io.github.h7kz.proofstone.api.PlayerHandle;
 import io.github.h7kz.proofstone.api.PlayerState;
 import io.github.h7kz.proofstone.api.Proofstone;
 import io.github.h7kz.proofstone.api.Window;
-import io.github.h7kz.proofstone.core.await.Await;
 import io.github.h7kz.proofstone.core.conformance.ConformanceFixture;
-import java.time.Duration;
 import java.util.List;
 
 /**
@@ -62,7 +60,7 @@ class ConformanceWindowDragTest {
         try (Window chest = client.openBlock(ConformanceFixture.CHEST)) {
             int from = ConformanceFixture.playerSlot(chest, item -> item.is("stone"));
             chest.click(from, Click.LEFT);
-            Await.until("the ten stone on the cursor", chest::cursor, cursor -> cursor.amount() == 10, Duration.ofSeconds(10));
+            chest.awaitCursor(cursor -> cursor.amount() == 10);
 
             chest.drag(DRAG_SLOTS, mode);
 

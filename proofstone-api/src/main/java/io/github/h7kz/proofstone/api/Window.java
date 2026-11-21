@@ -47,8 +47,22 @@ public interface Window extends AutoCloseable {
         throw new UnsupportedOperationException("this Window implementation cannot drag; override drag");
     }
 
-    /** The item on the cursor, or {@link ItemView#EMPTY}. */
+    /** The item on the cursor, or {@link ItemView#EMPTY}, as last synced: a one-shot read, see {@link #awaitCursor}. */
     ItemView cursor();
+
+    /**
+     * Waits for the cursor to hold an item the predicate accepts, for the default timeout, and returns it. Use it
+     * after a click whose result the server delivers on the cursor: the click returns on the first window sync, and the
+     * cursor can arrive in a packet just after it, so a one-shot {@link #cursor()} may still read the old value.
+     * Mirrors {@link #awaitSlot}.
+     *
+     * <p>Additive (T-M11-11). The default throws, so a custom {@code Window} fails loudly instead of passing.
+     *
+     * @throws RuntimeException on timeout, with the cursor's last contents
+     */
+    default ItemView awaitCursor(Predicate<ItemView> predicate) {
+        throw new UnsupportedOperationException("this Window implementation cannot await the cursor; override awaitCursor");
+    }
 
     /**
      * Picks up the first player-inventory item the predicate accepts and places it in {@code toSlot}: two clicks, each

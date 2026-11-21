@@ -318,3 +318,39 @@ sends single clicks only; nothing sends the quick-craft sequence.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceWindowDragTest' --no-parallel --max-workers=1`
+
+### T-M11-11 · `Window.awaitCursor`: wait for the client cursor
+- tier: sonnet
+- depends: -
+- modules: proofstone-api, proofstone-core, conformance, docs/specs, docs/user
+- adrs: 0002, 0007
+- specs: specs/test-api.md §4
+- test-first: yes
+
+**Goal.** A test waits for the client cursor of an open window to match, as it waits for a slot, so it does not race the cursor packet
+that trails a click. Label `api-change`.
+
+**Evidence.** The Disenchantment E2E suite read `Window.cursor()` once right after `click()`. The click returns on the first state-id
+change, the plugin delivers its result with `setItemOnCursor` after writing slots, and the server's `SetCursorItem` arrives about 1 ms
+later: a race that showed on Folia (`C:\pw\dis-ev-drag\folia-cursor-diagnosis.md`). Only the internal `ConformanceFixture.awaitCursor` existed.
+
+**Design.** Additive, smallest set: `Window.awaitCursor(Predicate<ItemView>)`, a default method that throws
+`UnsupportedOperationException` (as `drag`). `SessionWindow` implements it over `Await.until` with the default timeout, exactly as
+`awaitSlot`; the failure is an `AwaitTimeoutException` with the last cursor observed. All drivers go through `SessionWindow`, so none
+changes. No protocol change, no version bump, no capability.
+
+**Do.**
+- Add `Window.awaitCursor` and the `SessionWindow` implementation; unit tests (cursor arrives late, never arrives, already satisfied,
+  the default throws); one real-server scenario (C-W03); docs, CHANGELOG, ROADMAP, a regenerated `api-baseline.txt`.
+
+**Don't.** Change the wire protocol or the agents; add a sleep or retry; raise a timeout; touch the internal `ConformanceFixture.awaitCursor`
+(the conformance fakes do not implement the new method).
+
+**Acceptance.**
+- [ ] `api-baseline.txt` gains only `Window.awaitCursor`; `ApiSurfaceTest` is green.
+- [ ] `SessionWindowAwaitCursorTest` green. C-W03 (`ConformanceAwaitCursorTest`) green on `paper@26.3` in three separate invocations, XML
+  read, `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green; docs, self-tests table, API README, CHANGELOG and ROADMAP updated.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceAwaitCursorTest' --no-parallel --max-workers=1`

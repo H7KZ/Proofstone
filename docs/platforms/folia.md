@@ -98,6 +98,7 @@ M5 follow-up_
   harness refuses a server whose agent reports another platform than the cell. Full smoke runs before T-M7-17 did not run this
   row on Folia. After the fix `folia@26.3` booted its own server (`Resolving type given FOLIA`) in the full smoke and alone, 0
   `PSConf` WARN (ROADMAP "T-M7-17"). _26.3_
+- **The cursor can trail a click (T-M11-11).** A plugin that writes slots and then calls `setItemOnCursor` makes the server send the window content (empty carried stack) first and `SetCursorItem` about 1 ms later. `Window.click` returns on the first state-id change, so a one-shot `cursor()` read right after it can race; use `Window.awaitCursor`. Evidence: the folia@26.3 driver transcript in `C:\pw\dis-ev-drag\folia-cursor-diagnosis.md` (Disenchantment e2e). Paper runs of the same test were green, which shows only that the race was won there, not that the packet order differs.
 
 ### Prototype notes (1.21.11, RCON only)
 - `/data` does **not exist** on Folia; the server replies "Unknown or incomplete command".
