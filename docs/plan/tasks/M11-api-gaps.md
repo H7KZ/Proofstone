@@ -254,6 +254,33 @@ protection and cancelled events leave the block unchanged and the test reads tha
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformancePlaceBreakBlockTest' --no-parallel --max-workers=1`
 
+### T-M11-10 · Spike: fault injection for "the next inventory write fails"
+- tier: opus
+- depends: —
+- modules: docs/platforms, docs/adr
+- adrs: 0002
+- specs: specs/agent-protocol.md §1
+- test-first: no
+
+**Goal.** Decide whether an agent can make "the next inventory write for player X fail" without being specific to one plugin, so a
+suite can reach a plugin's "the write failed, refund" path. Spike: a verdict with evidence, API only if a generic, robust design exists.
+
+**Evidence.** Gap 3 of the Disenchantment E2E suite: commit `4352679` refunds when writing the result fails, and mutation M9 (remove
+the refund) stayed green because no API makes a write fail.
+
+**Do.**
+- Find what the plugin's write calls do on the server (`javap` on the cell's server jar) and try each candidate design.
+- Write the verdict and evidence in `docs/platforms/fault-injection.md`; draft an ADR if a design needs one.
+
+**Don't.** Add API, change the protocol or the agents on a No-go; re-decide ADR-0002; add a sleep or retry.
+
+**Acceptance.**
+- [ ] `docs/platforms/fault-injection.md` states the verdict, what was tried and what happened; evidence in `C:\pw\T-M11-10-evidence`.
+- [ ] ADR-0020 drafted as Proposed and indexed; no API, protocol or agent change.
+- [ ] `bash scripts/gates.sh --max-workers=1` green.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`
 ### T-M11-09 · `Window.drag`: an inventory drag across slots
 - tier: sonnet
 - depends: -

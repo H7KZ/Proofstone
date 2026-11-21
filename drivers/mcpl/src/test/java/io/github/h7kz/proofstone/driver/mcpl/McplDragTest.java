@@ -143,6 +143,18 @@ class McplDragTest {
     }
 
     @Test
+    void anEmptyCursorIsRefusedAtOnceNotAfterTheWait() {
+        WindowSession chest = openChest();
+        received(new ClientboundSetCursorItemPacket((ItemStack) null));
+        sent.clear();
+
+        assertThatThrownBy(() -> chest.drag(List.of(1, 2), DragMode.LEFT))
+                .isInstanceOf(io.github.h7kz.proofstone.core.driver.ClientDriverException.class)
+                .hasMessageContaining("cursor is empty");
+        assertThat(sent).as("no packet for a drag with nothing to drag").isEmpty();
+    }
+
+    @Test
     void aClosedWindowCannotDrag() {
         WindowSession chest = openChest();
         chest.close();

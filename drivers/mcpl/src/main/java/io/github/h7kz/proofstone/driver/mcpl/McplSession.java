@@ -681,6 +681,11 @@ final class McplSession implements ClientSession {
                             + model.type());
                 }
             }
+            // Nothing to distribute: the server would ignore the drag and no sync would ever come.
+            if (playerInventory.cursor().isEmpty()) {
+                throw new ClientDriverException("cannot drag: the cursor is empty in window " + model.id()
+                        + "; pick a stack up first");
+            }
             int sent = model.stateId();
             int sentSyncs = model.syncs();
             int sentCursors = playerInventory.cursorUpdates();
