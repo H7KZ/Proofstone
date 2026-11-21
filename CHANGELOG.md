@@ -44,15 +44,20 @@ those interfaces keeps compiling.
   Folia cause, but the packet was ignored before.
 - Bukkit agent: third-party event classes load through their owning plugin only, which removes the cross-plugin `WARN` Paper 1.18.2
   printed at start-up (T-M6-111, #190).
+- One exception type for "this driver cannot": the `ClientSession.placeBlock`/`breakBlock`/`awaitServerSwitch`/`resourcePacks` and
+  `WindowSession.drag` defaults threw `ClientDriverException` in `0.1.0` and now throw `UnsupportedOperationException` on non-supporting
+  drivers, such as the Mineflayer reference driver, as the public `Client` and `Window` defaults already did. Both are `RuntimeException`s,
+  and drivers carry no compatibility guarantee ([compatibility](docs/compatibility.md)). Internal driver SPI only, `api-baseline.txt`
+  unchanged. `McplSession.breakBlock` documents why it sends no abort-digging after a rejected finish, and the block ack waits gained
+  timeout, disconnect and lower-sequence-ack tests (T-M11-13, #211).
 - A test class for which the cell selector leaves no row now fails naming each unselected row, instead of vanishing (T-M4-13, #180).
 
 ### Known limits
 - `Client.breakBlock` completes a survival break only for a block with zero break time (instant break, or creative); a slower block is
   rejected by the server and stays. A survival dig is never aborted. There is no sneak input: `placeBlock` against a block with a use
   action (anvil, chest) opens it, as for a player who is not sneaking.
-- `placeBlock`, `breakBlock` and `drag` are built for the Java driver (`awaitCursor` works with every driver). The Bedrock driver and the reference
-  Mineflayer driver refuse these calls, and the exception type differs (`ClientDriverException` for Mineflayer,
-  `UnsupportedOperationException` elsewhere). `McplBlockActionTest` has no timeout, disconnect or lower-sequence-ack case yet.
+- `placeBlock`, `breakBlock` and `drag` are built for the Java driver (`awaitCursor` works with every driver). The Bedrock driver and the
+  reference Mineflayer driver refuse these calls with `UnsupportedOperationException`.
 - `ItemView.pdc`: whether `getKeys` exists on 1.14 to 1.17 is unverified (verified on 1.18.2 and 26.3). Where the PDC API is missing the
   agent reports no `pdc` token and the field stays empty.
 - `bootLogLines` coverage is as listed above.

@@ -91,7 +91,8 @@ public interface Client {
      * <p>Additive (T-M11-04). The default throws, so a custom {@code Client} fails loudly instead of passing. A driver
      * that cannot place blocks (Bedrock, the reference Mineflayer driver) fails the same way.
      *
-     * @throws RuntimeException when the driver cannot place blocks or the server never answers, with the reason
+     * @throws UnsupportedOperationException when this client or its driver cannot place blocks (every driver, one type)
+     * @throws RuntimeException when the server never answers, with the reason
      */
     default void placeBlock(BlockPos against, Face face) {
         throw new UnsupportedOperationException("this Client implementation cannot place blocks; override placeBlock");
@@ -103,9 +104,11 @@ public interface Client {
      * break time is zero (for example with the {@code minecraft:block_break_speed} attribute raised); otherwise the server
      * rejects the finish and the block stays. Returns once the server has answered.
      *
-     * <p>Additive (T-M11-04). The default throws, so a custom {@code Client} fails loudly instead of passing.
+     * <p>Additive (T-M11-04). The default throws, so a custom {@code Client} fails loudly instead of passing. No abort-digging
+     * follows a rejected finish (T-M11-13): a vanilla client never sends one after a finish.
      *
-     * @throws RuntimeException when the driver cannot break blocks or the server never answers, with the reason
+     * @throws UnsupportedOperationException when this client or its driver cannot break blocks (every driver, one type)
+     * @throws RuntimeException when the server never answers, with the reason
      */
     default void breakBlock(BlockPos pos) {
         throw new UnsupportedOperationException("this Client implementation cannot break blocks; override breakBlock");

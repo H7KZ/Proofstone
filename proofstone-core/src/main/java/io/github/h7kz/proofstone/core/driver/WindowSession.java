@@ -23,10 +23,11 @@ public interface WindowSession extends WindowView {
      * Drags the carried stack across the slots: a quick-craft start, one add per slot, an end. Returns once the server
      * answered the end with a sync (as {@link #click}). Additive (T-M11-09); a driver without support fails loudly.
      *
-     * @throws ClientDriverException when the driver cannot drag, the window is closed or the server never answers
+     * @throws UnsupportedOperationException when the driver cannot drag (the rule on {@link ClientSession})
+     * @throws ClientDriverException when the window is closed or the server never answers
      */
     default void drag(List<Integer> slots, DragMode mode) {
-        throw new ClientDriverException("this driver cannot drag across slots; use a driver that supports it");
+        throw new UnsupportedOperationException("this driver cannot drag across slots; use a driver that supports it");
     }
 
     /**

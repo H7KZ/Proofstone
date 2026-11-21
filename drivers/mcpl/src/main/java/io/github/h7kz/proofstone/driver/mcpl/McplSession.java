@@ -107,6 +107,8 @@ final class McplSession implements ClientSession {
     private static final double EYE_HEIGHT = 1.62;
     private static final Duration POSITION_WAIT = Duration.ofSeconds(10);
     private static final Duration CLICK_WAIT = Duration.ofSeconds(10);
+    /** How long a place or break waits for the server's block acknowledgement; a test shortens it to reach the timeout path. */
+    private volatile Duration blockWait = CLICK_WAIT;
 
     /** The player inventory, window id 0. It lives apart from the open windows (client-driver spec §2). */
     private final ItemRegistries registries = ItemRegistries.forProtocol(McplDriver.PROTOCOL_VERSION);
@@ -514,6 +516,8 @@ final class McplSession implements ClientSession {
         awaitBlockAck(useBlockSequenced(against, face), "placing against " + against + " " + face);
     }
 
+    // The finish is the last packet: a vanilla client never sends abort-digging after one, the client cannot tell a rejected
+    // finish from an accepted one, and Paper raises BlockDamageAbortEvent for an abort that a real break never produces (T-M11-13).
     @Override
     public void breakBlock(BlockPos pos) {
         requireOpen("cannot break a block");
@@ -526,14 +530,18 @@ final class McplSession implements ClientSession {
         awaitBlockAck(finish, "breaking " + pos);
     }
 
+    void blockWait(Duration wait) {
+        this.blockWait = wait;
+    }
+
     /** Waits for the server to acknowledge the block change with this sequence (it sends it after handling the action). */
     private void awaitBlockAck(int awaited, String what) {
         try {
             // A disconnect is a value, not an exception, because Await treats a throwing probe as "not yet".
             Await.until("the server's answer to " + what + " for " + username,
-                    () -> blockAck.get() >= awaited || state == State.DISCONNECTED, done -> done, CLICK_WAIT);
+                    () -> blockAck.get() >= awaited || state == State.DISCONNECTED, done -> done, blockWait);
         } catch (AwaitTimeoutException e) {
-            throw new ClientDriverException("the server did not answer " + what + " within " + CLICK_WAIT
+            throw new ClientDriverException("the server did not answer " + what + " within " + blockWait
                     + "; transcript tail: " + tail(), e);
         }
         if (blockAck.get() < awaited) {

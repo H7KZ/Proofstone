@@ -391,3 +391,32 @@ environment, change the protocol version, change a workflow, or edit an old `doc
 - [ ] The runbook names every maintainer-only step.
 
 **Verify.** See the PR body.
+
+### T-M11-13 · Block place/break follow-ups: one "cannot" exception type, ack-wait tests, no abort after a rejected finish
+- tier: sonnet
+- depends: T-M11-04
+- modules: proofstone-core, drivers/mcpl, docs/specs
+- adrs: 0002, 0004
+- specs: specs/client-driver.md §1
+- test-first: no
+
+**Goal.** Close the minor findings of the independent review of T-M11-04 (PR #202). No public API change.
+
+**Evidence.** The reference Mineflayer driver has no `placeBlock` override, so it fell through to the `ClientSession` default, which threw `ClientDriverException`, while Bedrock and the public `Client`/`Window` defaults throw `UnsupportedOperationException`. `McplBlockActionTest` had no timeout, disconnect, stale-ack or start-only-ack case.
+
+**Design.** One rule: an optional operation a driver does not support throws `UnsupportedOperationException` (the `ClientSession` and `WindowSession` defaults, Bedrock); `ClientDriverException` is for a supporting driver that failed (closed session, disconnect, timeout). `breakBlock` sends no abort-digging after a rejected finish: a vanilla client never does, the client cannot tell a rejection without reading the world, and Paper raises `BlockDamageAbortEvent` for an abort, which a real successful break never fires.
+
+**Do.**
+- Switch the `ClientSession` defaults (`placeBlock`, `breakBlock`, `awaitServerSwitch`, `resourcePacks`) and `WindowSession.drag` to `UnsupportedOperationException`; document the rule in the Javadoc and `specs/client-driver.md`.
+- `McplBlockActionTest`: timeout, disconnect, stale-ack, start-only-ack and no-abort cases (a package-private wait override reaches the timeout without a 10 s test).
+
+**Don't.** Change the public API, the wire protocol or the agents; add a sleep or retry; weaken a test.
+
+**Acceptance.**
+- [ ] `api-baseline.txt` unchanged; `ApiSurfaceTest` green.
+- [ ] `McplBlockActionTest` and `DriverUnsupportedRuleTest` green, XML read.
+- [ ] C-B01 green on `paper@26.3` in three separate invocations, plus `ConformanceWindowDragTest` and `ConformanceAwaitCursorTest`, XML read, `skipped="0" failures="0" errors="0"`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green; CHANGELOG updated.
+
+**Verify.**
+`bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformancePlaceBreakBlockTest' --no-parallel --max-workers=1`
