@@ -2424,3 +2424,26 @@ The maintainer approved the remaining work on 2026-11-19 ("do it all"): the Phas
 - `patchConfig` restore builds a config object the target plugin never sees (T-M6-111 note).
 - A fast client disconnect hides the join-stall stage in McplDriver (T-M6-109 note); the ViaProxy mechanism for the 1.8.8 stall is unproven.
 - Not done by choice: the `v1` tag of the GitHub Action (a `v*` tag triggers the release workflow) and a Marketplace listing (the action is not at the repository root).
+
+## Ledger update (2026-11-21)
+
+Merged into `develop` since the 2026-11-20 update:
+
+| Card | Status | PR | Result |
+|---|---|---|---|
+| T-M10-19 (NetherNet spike) | done: Go behind an ADR | #198 | Verdict Go. ADR not yet filed. Effort 1-2 weeks for the driver host plus Geyser. PNX is a separate track. BDS acceptance needs a maintainer yes for the binary. |
+| T-M11-01 (`Agent.logLines`) | merged | #199 | |
+| T-M11-02 (`PlayerState.openWindow`, `ServerWindow`) | merged | #200 | |
+| T-M11-03 (`Agent.bootLogLines`) | merged | #201 | Agent attaches at plugin enable. Not covered: the banner, library loading, the plugin loading list and the agent's own Enabling line. |
+| T-M11-04 (`Client.placeBlock`/`breakBlock`, `Agent.blockType`) | merged | #202 | Non-sneaking place against an anvil or chest opens it. Survival break completes only with zero break time. Open follow-ups: exception type differs across drivers (Mineflayer ref throws `ClientDriverException`, others `UnsupportedOperationException`); `McplBlockActionTest` lacks timeout, disconnect and lower-seq-ack cases; survival dig never aborts. |
+| T-M11-05 (`ItemView.pdc`) | merged | #203 | Filled by the Bukkit agent. Verified on paper 1.18.2 and 26.3. `getKeys` availability on 1.14-1.17 unverified. |
+| T-M11-06 (mcpl `ClientboundSetPlayerInventoryPacket`) | merged | #204 | Applied. Harmless, but not the cause of the folia flake. Card text corrected to say so. |
+| T-M11-07 (mcpl late window packet after close) | merged | #205 | Real cause of the folia client-oracle DISAGREE flake. Routes the late packet to window 0. Disenchantment e2e folia@26.3: 5 of 5 green after, 1 of 3 before. |
+
+**Open Proofstone items:**
+- Window drag API (`Window.drag`): not started.
+- Fault-injection hook (`Agent.failNextInventoryWrite`): not started.
+- Follow-up card for the T-M11-04 minor findings: not yet carded.
+- NetherNet ADR: to file.
+- ViaProxy 1.8.8 stall: mechanism unproven.
+- `datapacks/list` `zip file closed` follow-up (2026-11-20 update): still open.
