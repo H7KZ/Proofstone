@@ -2442,7 +2442,7 @@ Merged into `develop` since the 2026-11-20 update:
 
 **Open Proofstone items:**
 - Window drag API (`Window.drag`): not started.
-- Fault-injection hook (`Agent.failNextInventoryWrite`): not started.
+- Fault-injection hook (`Agent.failNextInventoryWrite`): spike T-M11-10 verdict No-go for an agent API (ADR-0002; not generic, not robust). [fault-injection.md](../platforms/fault-injection.md); ADR-0020 Proposed awaits a maintainer decision. Suites use their own test support plugin meanwhile.
 - Follow-up card for the T-M11-04 minor findings: not yet carded.
 - NetherNet ADR: to file.
 - ViaProxy 1.8.8 stall: mechanism unproven.
