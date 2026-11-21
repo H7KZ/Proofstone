@@ -11,37 +11,56 @@ import io.github.h7kz.proofstone.core.driver.WindowSession;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * T-M11-11: {@code Window.awaitCursor} polls the client's cursor like {@code awaitSlot} polls a slot. No sleeps: the
- * fake window shows its cursor only from the Nth read on, which models a cursor packet that trails the click.
+ * T-M11-11: {@code Window.awaitCursor} polls the client's cursor like {@code awaitSlot} polls a slot. No Docker: the late
+ * case delivers the cursor from another thread {@value #LATE_MS} ms after the click returned. The delay models the
+ * network, it is not a wait of the code under test.
  */
 class SessionWindowAwaitCursorTest {
 
     private static final Duration SHORT = Duration.ofMillis(300);
+    private static final int LATE_MS = 250;
+
+    private final ScheduledExecutorService network = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "fake-network");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    @AfterEach
+    void stopNetwork() {
+        network.shutdownNow();
+    }
 
     private static ItemView stack(String type) {
         return new ItemView("minecraft:" + type, 1, Map.of(), Map.of(), null, List.of(), 0, 0, null);
     }
 
     @Test
-    void waitsForACursorThatArrivesAfterTheFirstReads() {
+    void waitsForACursorThatArrivesAfterTheClickReturned() {
         ItemView sword = stack("diamond_sword");
-        FakeSession session = new FakeSession(sword, 4);
+        FakeSession session = new FakeSession(sword, 0);
         SessionWindow window = new SessionWindow(session, Duration.ofSeconds(10));
 
+        // The click has returned; the cursor packet lands LATE_MS later, on the network thread.
+        network.schedule(session::deliverCursor, LATE_MS, TimeUnit.MILLISECONDS);
         assertThat(window.cursor()).as("a one-shot read right after the click").isEqualTo(ItemView.EMPTY);
         ItemView got = window.awaitCursor(c -> c.is("diamond_sword"));
 
         assertThat(got).isEqualTo(sword);
-        assertThat(session.reads.get()).as("it polled until the cursor showed").isGreaterThan(2);
     }
 
     @Test
     void anAlreadySatisfiedCursorReturnsAtOnce() {
         FakeSession session = new FakeSession(stack("diamond_sword"), 0);
+        session.deliverCursor();
         SessionWindow window = new SessionWindow(session, SHORT);
 
         assertThat(window.awaitCursor(c -> c.is("diamond_sword")).type()).isEqualTo("minecraft:diamond_sword");
@@ -51,6 +70,7 @@ class SessionWindowAwaitCursorTest {
     @Test
     void aCursorThatNeverMatchesTimesOutLoudlyWithTheLastObservedCursor() {
         FakeSession session = new FakeSession(stack("dirt"), 0);
+        session.deliverCursor();
         SessionWindow window = new SessionWindow(session, SHORT);
 
         assertThatThrownBy(() -> window.awaitCursor(c -> c.is("diamond_sword")))
@@ -61,7 +81,7 @@ class SessionWindowAwaitCursorTest {
 
     @Test
     void aCursorThatNeverArrivesTimesOutShowingEmpty() {
-        FakeSession session = new FakeSession(stack("diamond_sword"), Integer.MAX_VALUE);
+        FakeSession session = new FakeSession(stack("diamond_sword"), 0);
         SessionWindow window = new SessionWindow(session, SHORT);
 
         assertThatThrownBy(() -> window.awaitCursor(c -> c.is("diamond_sword")))
@@ -71,16 +91,21 @@ class SessionWindowAwaitCursorTest {
 
     private static final class FakeSession implements WindowSession {
         final AtomicInteger reads = new AtomicInteger();
-        private final ItemView cursor;
-        private final int emptyReads;
+        private final ItemView arriving;
+        private volatile ItemView cursor = ItemView.EMPTY;
 
-        FakeSession(ItemView cursor, int emptyReads) {
-            this.cursor = cursor;
-            this.emptyReads = emptyReads;
+        FakeSession(ItemView arriving, int unused) {
+            this.arriving = arriving;
+        }
+
+        /** The cursor packet: from now on the client reads the item. */
+        void deliverCursor() {
+            cursor = arriving;
         }
 
         @Override public ItemView cursorView() {
-            return reads.incrementAndGet() > emptyReads ? cursor : ItemView.EMPTY;
+            reads.incrementAndGet();
+            return cursor;
         }
         @Override public List<ItemView> itemViews() { return List.of(); }
         @Override public String type() { return "minecraft:anvil"; }

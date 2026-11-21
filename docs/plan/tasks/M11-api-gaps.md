@@ -332,7 +332,7 @@ that trails a click. Label `api-change`.
 
 **Evidence.** The Disenchantment E2E suite read `Window.cursor()` once right after `click()`. The click returns on the first state-id
 change, the plugin delivers its result with `setItemOnCursor` after writing slots, and the server's `SetCursorItem` arrives about 1 ms
-later: a race that showed on Folia (`C:\pw\dis-ev-dragolia-cursor-diagnosis.md`). Only the internal `ConformanceFixture.awaitCursor` existed.
+later: a race that showed on Folia (`C:\pw\dis-ev-drag\folia-cursor-diagnosis.md`). Only the internal `ConformanceFixture.awaitCursor` existed.
 
 **Design.** Additive, smallest set: `Window.awaitCursor(Predicate<ItemView>)`, a default method that throws
 `UnsupportedOperationException` (as `drag`). `SessionWindow` implements it over `Await.until` with the default timeout, exactly as
