@@ -31,6 +31,22 @@ public interface Window extends AutoCloseable {
     /** Clicks the slot and returns once the server answered. */
     void click(int slot, Click click);
 
+    /**
+     * Drags the carried stack across the slots as a player holding a mouse button: a start, one add per slot in the
+     * order given, and an end, then returns once the server answered the end. The server distributes the stack (a left
+     * drag splits it evenly, a right drag puts one in each slot), so read the slots and the cursor afterwards.
+     *
+     * <p>Additive (T-M11-09). The default throws, so a custom {@code Window} fails loudly instead of passing. A driver
+     * that cannot drag (Bedrock, the reference Mineflayer driver) fails the same way.
+     *
+     * @param slots window slot indexes, at least one, each once
+     * @throws IllegalArgumentException when {@code slots} is empty, repeats a slot or names one outside the window
+     * @throws RuntimeException when the driver cannot drag or the server never answers, with the reason
+     */
+    default void drag(List<Integer> slots, DragMode mode) {
+        throw new UnsupportedOperationException("this Window implementation cannot drag; override drag");
+    }
+
     /** The item on the cursor, or {@link ItemView#EMPTY}. */
     ItemView cursor();
 

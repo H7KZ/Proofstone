@@ -6,6 +6,7 @@ import io.github.h7kz.proofstone.core.await.AwaitTimeoutException;
 import io.github.h7kz.proofstone.api.BlockPos;
 import io.github.h7kz.proofstone.core.driver.ChatMessage;
 import io.github.h7kz.proofstone.api.Click;
+import io.github.h7kz.proofstone.api.DragMode;
 import io.github.h7kz.proofstone.core.driver.ClientDriverException;
 import io.github.h7kz.proofstone.core.driver.ClientSession;
 import io.github.h7kz.proofstone.core.driver.JoinTimeoutException;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -51,6 +53,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.inventory.DropItemAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.FillStackAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarAction;
 import org.geysermc.mcprotocollib.protocol.data.game.inventory.ShiftClickItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.SpreadItemAction;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundDisconnectPacket;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundPingPacket;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundResourcePackPopPacket;
@@ -662,22 +665,55 @@ final class McplSession implements ClientSession {
             int sentSyncs = model.syncs();
             // No predicted changes and no carried item: the server sees a mismatch and resyncs (spec §2).
             network.send(clickPacket(model.id(), sent, slot, click));
+            awaitAnswer(sent, sentSyncs, click + " on slot " + slot, () -> true);
+        }
+
+        @Override
+        public void drag(List<Integer> slots, DragMode mode) {
+            requireOpen("cannot drag");
+            if (model.isClosed()) {
+                throw new ClientDriverException("cannot drag: window " + model.id() + " is closed");
+            }
+            int size = model.slots().size();
+            for (int slot : slots) {
+                if (slot < 0 || slot >= size) {
+                    throw new IllegalArgumentException("drag slot " + slot + " is outside the " + size + " slots of "
+                            + model.type());
+                }
+            }
+            int sent = model.stateId();
+            int sentSyncs = model.syncs();
+            int sentCursors = playerInventory.cursorUpdates();
+            // The server moves items on the end packet only. Each stage gets a cursor update (the carried claim never
+            // matches), and the end's slot changes come before its own cursor update, so the first counted sync is not
+            // the whole answer: it is complete once the cursor update of every stage, the end's last, has arrived
+            // (T-M11-09; vanilla 26.3 sends the stage updates, then the slots, then the cursor).
+            List<ServerboundContainerClickPacket> packets = dragPackets(model.id(), sent, slots, mode);
+            for (ServerboundContainerClickPacket packet : packets) {
+                network.send(packet);
+            }
+            int expectedCursors = sentCursors + packets.size();
+            awaitAnswer(sent, sentSyncs, mode + " drag over slots " + slots,
+                    () -> playerInventory.cursorUpdates() >= expectedCursors);
+        }
+
+        private void awaitAnswer(int sent, int sentSyncs, String what, BooleanSupplier complete) {
             try {
                 // A disconnect or a server-side close is a value, not an exception: Await retries a throwing probe.
-                Await.until("server sync after " + click + " on slot " + slot + " of window " + model.id(),
+                Await.until("server sync after " + what + " of window " + model.id(),
                         () -> state == State.DISCONNECTED || model.isClosed()
-                                || model.stateId() != sent || model.syncs() != sentSyncs,
+                                || ((model.stateId() != sent || model.syncs() != sentSyncs) && complete.getAsBoolean()),
                         done -> done, CLICK_WAIT);
             } catch (AwaitTimeoutException e) {
-                throw new ClientDriverException("server did not answer " + click + " on slot " + slot
+                throw new ClientDriverException("server did not answer " + what
                         + " of window " + model.id() + " within " + CLICK_WAIT + " (a no-op click gets no sync);"
                         + " transcript tail: " + tail(), e);
             }
             if (state == State.DISCONNECTED) {
-                throw new ClientDriverException("disconnected during " + click + ": " + disconnectReason);
+                throw new ClientDriverException("disconnected during " + what + ": " + disconnectReason);
             }
             if (model.isClosed()) {
-                throw new ClientDriverException("the server closed window " + model.id() + " during " + click);
+                throw new ClientDriverException("the server closed window " + model.id() + " during " + what);
             }
         }
 
@@ -717,6 +753,36 @@ final class McplSession implements ClientSession {
             // container's own model.
             return playerInventory.cursorView();
         }
+    }
+
+    /**
+     * The quick-craft packets of a drag: start (slot -999), one add per slot, end (slot -999), the button picking the
+     * header of each stage (T-M11-09). The carried claim is the usual mismatching one: the server holds the real cursor.
+     */
+    static List<ServerboundContainerClickPacket> dragPackets(int windowId, int stateId, List<Integer> slots, DragMode mode) {
+        if (slots.isEmpty()) {
+            throw new IllegalArgumentException("a drag needs at least one slot");
+        }
+        if (slots.size() != Set.copyOf(slots).size()) {
+            throw new IllegalArgumentException("a drag adds each slot once: " + slots);
+        }
+        SpreadItemAction begin;
+        SpreadItemAction add;
+        SpreadItemAction end;
+        switch (mode) {
+            case LEFT -> { begin = SpreadItemAction.LEFT_MOUSE_BEGIN_DRAG; add = SpreadItemAction.LEFT_MOUSE_ADD_SLOT; end = SpreadItemAction.LEFT_MOUSE_END_DRAG; }
+            case RIGHT -> { begin = SpreadItemAction.RIGHT_MOUSE_BEGIN_DRAG; add = SpreadItemAction.RIGHT_MOUSE_ADD_SLOT; end = SpreadItemAction.RIGHT_MOUSE_END_DRAG; }
+            case MIDDLE -> { begin = SpreadItemAction.MIDDLE_MOUSE_BEGIN_DRAG; add = SpreadItemAction.MIDDLE_MOUSE_ADD_SLOT; end = SpreadItemAction.MIDDLE_MOUSE_END_DRAG; }
+            default -> throw new ClientDriverException("unsupported drag mode " + mode);
+        }
+        List<ServerboundContainerClickPacket> packets = new ArrayList<>();
+        int outside = ServerboundContainerClickPacket.CLICK_OUTSIDE_NOT_HOLDING_SLOT;
+        packets.add(new ServerboundContainerClickPacket(windowId, stateId, outside, ContainerActionType.SPREAD_ITEM, begin, UNKNOWN_CARRIED, Map.of()));
+        for (int slot : slots) {
+            packets.add(new ServerboundContainerClickPacket(windowId, stateId, slot, ContainerActionType.SPREAD_ITEM, add, UNKNOWN_CARRIED, Map.of()));
+        }
+        packets.add(new ServerboundContainerClickPacket(windowId, stateId, outside, ContainerActionType.SPREAD_ITEM, end, UNKNOWN_CARRIED, Map.of()));
+        return packets;
     }
 
     static ServerboundContainerClickPacket clickPacket(int windowId, int stateId, int slot, Click click) {

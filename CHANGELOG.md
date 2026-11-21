@@ -6,6 +6,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 ## [Unreleased]
 
 ### Added
+- `Window.drag(List<Integer>, DragMode)` and the public enum `DragMode`: an inventory drag across slots with the left, right or middle button, answered by the server, through the Java driver (API addition, T-M11-09; no protocol change). Needed to test a plugin that reacts to a drag, such as a grindstone result refresh.
 - The Bukkit agent fills `ItemView.pdc()` on servers with the PDC API (agent token `pdc`, verified on 1.18.2 and 26.3): typed values for byte, short, int, long, float, double, string and the three arrays, a nested container as a map, and an `unsupported` marker for the rest; reports the agent token `pdc` (T-M11-05; no API or protocol change).
 - `Agent.logLines()` and `Agent.logLines(Pattern, Duration)`: the server log since the test started, as plain text (API addition, T-M11-01).
 - `Agent.bootLogLines()`: the server log lines from the agent's enable up to the test start, so a plugin's start-up line is readable (API addition, T-M11-03; no protocol change).

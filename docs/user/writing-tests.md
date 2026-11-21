@@ -126,6 +126,8 @@ try (Window w = client.openBlock(new BlockPos(0, 64, 2))) {         // awaits th
                                                                     // DOUBLE, SWAP_OFFHAND, NUMBER_1..NUMBER_9
     w.cursor();                                                     // ItemView (empty when nothing is held)
     w.dropCursorIntoFirstEmptySlot();
+    w.drag(List.of(27, 28, 29), DragMode.LEFT);                     // drag the carried stack over slots: LEFT splits evenly,
+                                                                    // RIGHT puts one in each, MIDDLE (creative) fills stacks
     w.rename("Blade");                                              // anvil only
 }                                                                   // close() sends the close
 ```

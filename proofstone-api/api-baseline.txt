@@ -98,6 +98,12 @@ public final io.github.h7kz.proofstone.api.DisagreeException extends java.lang.A
   constructor public io.github.h7kz.proofstone.api.DisagreeException(java.lang.String,java.lang.String,java.lang.String)
   method public java.lang.String io.github.h7kz.proofstone.api.DisagreeException.clientObserved()
   method public java.lang.String io.github.h7kz.proofstone.api.DisagreeException.serverObserved()
+public final io.github.h7kz.proofstone.api.DragMode extends java.lang.Enum<io.github.h7kz.proofstone.api.DragMode>
+  field public static final io.github.h7kz.proofstone.api.DragMode LEFT
+  field public static final io.github.h7kz.proofstone.api.DragMode MIDDLE
+  field public static final io.github.h7kz.proofstone.api.DragMode RIGHT
+  method public static io.github.h7kz.proofstone.api.DragMode io.github.h7kz.proofstone.api.DragMode.valueOf(java.lang.String)
+  method public static io.github.h7kz.proofstone.api.DragMode[] io.github.h7kz.proofstone.api.DragMode.values()
 public final io.github.h7kz.proofstone.api.DualAssert
   field public static final java.time.Duration DEFAULT_TIMEOUT
   method public static io.github.h7kz.proofstone.api.DualAssert$ItemAssert io.github.h7kz.proofstone.api.DualAssert.item(io.github.h7kz.proofstone.api.PlayerHandle,io.github.h7kz.proofstone.api.Client)
@@ -286,6 +292,7 @@ public abstract interface io.github.h7kz.proofstone.api.Window implements java.l
   method public abstract void io.github.h7kz.proofstone.api.Window.dropCursorIntoFirstEmptySlot()
   method public abstract void io.github.h7kz.proofstone.api.Window.moveFromInventory(java.util.function.Predicate<io.github.h7kz.proofstone.api.ItemView>,int)
   method public abstract void io.github.h7kz.proofstone.api.Window.rename(java.lang.String)
+  method public default void io.github.h7kz.proofstone.api.Window.drag(java.util.List<java.lang.Integer>,io.github.h7kz.proofstone.api.DragMode)
 public abstract interface io.github.h7kz.proofstone.api.spi.OracleWaiter
   method public abstract <S,C> io.github.h7kz.proofstone.api.spi.OracleWaiter$Outcome<S, C> io.github.h7kz.proofstone.api.spi.OracleWaiter.untilBoth(java.lang.String,java.util.function.Supplier<S>,java.util.function.Supplier<C>,java.util.function.BiPredicate<S, C>,java.time.Duration)
 public final io.github.h7kz.proofstone.api.spi.OracleWaiter$Outcome extends java.lang.Record

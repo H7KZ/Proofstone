@@ -23,6 +23,8 @@ class WindowModel implements WindowView {
     // either: such a server sends it before the rest of its answer, and the next click must wait for the whole
     // answer, including the ping that ViaProxy turns the server's rejection into (T-M3-03).
     private int syncs;
+    // Counts cursor updates of any kind (SetCursorItem, or the carried stack of a content resync).
+    private int cursorUpdates;
     private SlotStack cursor = SlotStack.EMPTY;
     private boolean synced;
     private boolean consumed;
@@ -60,6 +62,7 @@ class WindowModel implements WindowView {
         stateId = newStateId;
         syncs++;
         cursor = convert(carried);
+        cursorUpdates++;
         synced = true;
     }
 
@@ -116,6 +119,7 @@ class WindowModel implements WindowView {
     synchronized void setCursor(ItemStack item) {
         cursor = convert(item);
         rawCursor = item;
+        cursorUpdates++;
     }
 
     @Override
@@ -223,6 +227,11 @@ class WindowModel implements WindowView {
     @Override
     public int id() {
         return id;
+    }
+
+    /** How many times the server has set the cursor. */
+    synchronized int cursorUpdates() {
+        return cursorUpdates;
     }
 
     /** How many full content resyncs the server has sent for this window. */
