@@ -20,11 +20,14 @@ those interfaces keeps compiling.
   throws when the 5000-record buffer dropped records.
 - `PlayerState.openWindow()` and `ServerWindow`: the server's view of the container a player has open (type, title, the container's own
   slots), read from the agent state that already carried it (T-M11-02, #200).
+  `PlayerState` gains an `openWindow` record component: the old 7-argument constructor is kept, so code that constructs a `PlayerState`
+  compiles unchanged, but a record pattern or deconstruction of `PlayerState` sees a new component.
 - `Client.placeBlock(BlockPos, Face)`, `Client.breakBlock(BlockPos)`, `Agent.blockType(String, BlockPos)` and the public enum `Face`: a
   player's block place and break through the Java driver, read back from the server (T-M11-04, #202).
 - `ItemView.pdc()` is filled by the Bukkit agent on servers with the PDC API: typed values for byte, short, int, long, float, double,
   string and the three arrays, a nested container as a map and an `unsupported` marker for the rest; agent token `pdc`; verified on
   1.18.2 and 26.3 (T-M11-05, #203).
+  `DualAssert` now compares a nested `pdc` map or array by content (it used `Objects.equals`, which fails for arrays).
 - `Window.drag(List<Integer>, DragMode)` and the public enum `DragMode`: an inventory drag across slots with the left, right or middle
   button, answered by the server, through the Java driver (T-M11-09, #208).
 - `Window.awaitCursor(Predicate<ItemView>)`: waits for the client cursor to match, like `awaitSlot`. A click returns on the first window
@@ -57,6 +60,8 @@ those interfaces keeps compiling.
   experimental, and the GitHub Action is documented but not yet verified on a hosted runner.
 
 ### Changed (tooling and docs, not part of the artefacts)
+- The Maven example declares Maven Central before the Paper repository, so Proofstone resolves from Central first (T-M6-107, #179).
+- The GitHub Action README documents the action as a product and its self-check is hardened (T-M6-108, #178).
 - `scripts/consumer-cleanroom.sh` reads the version under test from `gradle/libs.versions.toml`.
 - Docs site on GitHub Pages and its `docs` workflow (T-M10-16), assertion lint for negative-only test classes (T-M4-14), a hosted
   `gates` dependency prefetch that retries only a failed download (T-M6-113), and spike notes for BDS, Sponge, Gate, Nukkit,
