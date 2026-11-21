@@ -41,7 +41,8 @@ public interface Window extends AutoCloseable {
      *
      * @param slots window slot indexes, at least one, each once
      * @throws IllegalArgumentException when {@code slots} is empty, repeats a slot or names one outside the window
-     * @throws RuntimeException when the driver cannot drag or the server never answers, with the reason
+     * @throws UnsupportedOperationException when this window or its driver cannot drag (every driver, one type)
+     * @throws RuntimeException when the server never answers, with the reason
      */
     default void drag(List<Integer> slots, DragMode mode) {
         throw new UnsupportedOperationException("this Window implementation cannot drag; override drag");
