@@ -1,7 +1,7 @@
 {
   "id": "proofstone-agent",
   "name": "Proofstone Agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Test harness agent for Proofstone (observe only). Installed by the harness, never by users.",
   "authors": ["Proofstone"],
   "dependencies": [],

@@ -33,7 +33,7 @@ cd Proofstone
 
 ## 2. Publish Proofstone's libraries to mavenLocal
 
-Nothing is published to Maven Central or GHCR yet. The example consumes Proofstone version `0.1.0` from `mavenLocal`
+The libraries are on Maven Central, but the example builds the checkout and consumes Proofstone version `0.2.0` from `mavenLocal`
 (`gradle/libs.versions.toml`, key `proofstone`).
 
 ```bash

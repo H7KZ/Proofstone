@@ -23,6 +23,10 @@ CELL="${PROOFSTONE_CELLS:-paper@26.3}"
 MVN="${MVN:-/c/Users/honzi/tools/apache-maven-3.9.9/bin/mvn}"
 JDK21="${PROOFSTONE_JDK21:-/c/Program Files/Java/jdk-21}"
 JDK26="${PROOFSTONE_JDK26:-/c/Program Files/Java/jdk-26}"
+# The version under test is the checkout's own (gradle/libs.versions.toml), never a literal here: a release bumps it in one place.
+VERSION="$(sed -n 's/^proofstone = "\(.*\)"$/\1/p' "$REPO/gradle/libs.versions.toml")"
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "consumer-cleanroom: not a release version in gradle/libs.versions.toml: '$VERSION'" >&2; exit 1; }
+VERSION_RE="${VERSION//./\\.}"
 ARTIFACTS="proofstone-api proofstone-core proofstone-protocol proofstone-drivers-mcpl"
 CENTRAL_RE='^https://(repo\.maven\.apache\.org|repo1\.maven\.org)/maven2/'
 
@@ -57,8 +61,8 @@ check_central() {
     done <<< "$urls"
   fi
   for a in $ARTIFACTS; do
-    if ! grep -qE "/io/github/h7kz/proofstone/$a/0\.1\.0/$a-0\.1\.0\.jar" "$list"; then
-      echo "MISSING from Central log: $a 0.1.0 jar"; bad=1
+    if ! grep -qE "/io/github/h7kz/proofstone/$a/$VERSION_RE/$a-$VERSION_RE\.jar" "$list"; then
+      echo "MISSING from Central log: $a $VERSION jar"; bad=1
     fi
   done
   return $bad

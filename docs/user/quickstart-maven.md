@@ -31,7 +31,7 @@ cd Proofstone
 
 ## 2. Build the agent jar and publish Proofstone's libraries to mavenLocal
 
-The example consumes Proofstone version `0.1.0` from `mavenLocal` (`proofstone.version` in the example's `pom.xml`, the
+The example consumes Proofstone version `0.2.0` from `mavenLocal` (`proofstone.version` in the example's `pom.xml`, the
 same value as `gradle/libs.versions.toml`). Maven does not build the agent jar, so Gradle builds it here.
 
 ```bash

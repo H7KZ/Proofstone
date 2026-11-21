@@ -354,3 +354,40 @@ changes. No protocol change, no version bump, no capability.
 
 **Verify.**
 `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --tests '*ConformanceAwaitCursorTest' --no-parallel --max-workers=1`
+
+### T-M11-12 · Prepare the 0.2.0 release (preparation only)
+- tier: sonnet
+- depends: T-M11-01, T-M11-02, T-M11-03, T-M11-04, T-M11-05, T-M11-06, T-M11-07, T-M11-09, T-M11-10, T-M11-11
+- modules: gradle, examples, platforms (agent descriptors), scripts, docs, CHANGELOG
+- adrs: 0011, 0012, 0019
+- specs: -
+- test-first: no
+
+**Goal.** Everything for `v0.2.0` is prepared and verified except what only the maintainer can do: the `develop → main` PR, the tag
+push, the `release` environment approval and the Central **Publish** click. Nothing is tagged, pushed to `main`, uploaded or published
+by this card.
+
+**Evidence.** `v0.1.0` was cut by [T-M6-102](M6-dogfood-release.md) (version bump, notes, changelog) and the tag-triggered `release`
+workflow. Since then #198 to #209 added API (additive: `Agent.logLines`, `bootLogLines`, `blockType`, `PlayerState.openWindow`,
+`Client.placeBlock`/`breakBlock`, `Window.drag`, `Window.awaitCursor`, `ItemView.pdc` filled by the Bukkit agent) and two driver fixes.
+`api-baseline.txt` gained 33 lines and lost none; `proofstone-protocol/src/main` did not change (protocol stays `1.3`; the Bukkit agent
+reports one new capability token, `pdc`, as `floodgate` was added: no schema, golden or protocol bump).
+
+**Do.**
+- Set `proofstone = "0.2.0"` and every place that repeats it: the Maven example `pom.xml` (`scripts/gates.sh` compares it), its README,
+  both quickstarts, the bug template placeholder, the agent descriptors (`plugin.yml`, `bungee.yml`, `fabric.mod.json`,
+  `velocity-plugin.json`, `neoforge.mods.toml`, the two `VERSION` constants and the two integration tests that assert them). Mock data
+  in unit tests that merely needs *a* version string stays.
+- `scripts/consumer-cleanroom.sh` read `0.1.0` as a literal; it now reads the version from `gradle/libs.versions.toml`.
+- CHANGELOG `[0.2.0]` with the known limits; the maintainer runbook in [release.md](../../release.md) ("Releasing 0.2.0").
+- Run the pre-flight checks that need no secrets and record them in the PR.
+
+**Don't.** Tag, push to `main`, run `release-maven.sh --publish` or `release-images.sh --push`, press Publish, approve the `release`
+environment, change the protocol version, change a workflow, or edit an old `docs/platforms/*` observation that names `0.1.0`.
+
+**Acceptance.**
+- [ ] `bash scripts/gates.sh --max-workers=1` green.
+- [ ] `release-maven.sh --dry-run` green; a consumer build of both examples against the locally published `0.2.0` is green.
+- [ ] The runbook names every maintainer-only step.
+
+**Verify.** See the PR body.

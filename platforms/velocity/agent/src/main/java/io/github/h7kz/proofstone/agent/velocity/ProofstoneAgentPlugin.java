@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 public final class ProofstoneAgentPlugin {
 
     /** Kept in step with {@code velocity-plugin.json}, which a test compares. */
-    static final String VERSION = "0.1.0";
+    static final String VERSION = "0.2.0";
 
     private final ProxyServer proxy;
     private final Logger logger;
