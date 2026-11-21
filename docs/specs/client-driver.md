@@ -45,6 +45,11 @@ public interface WindowSession extends AutoCloseable {
 2. Wait until a `ContainerSetContent` or `ContainerSetSlot` arrives with a `stateId` newer than the one
    sent, **or** the spec timeout expires, which is an error.
 3. Expose only server-sent state. The driver never applies local predictions.
+4. A packet for a window the client closed, arriving before another window opens, was sent before the server read the close (the
+   answer to the last click, for example). The server takes that window's player slots as window 0's on close and does not resend
+   them, so the driver hands the packet's player slots to window 0 (all of a `ContainerSetContent`, the one slot of a
+   `ContainerSetSlot`) and leaves the cursor empty (T-M11-07). A vanilla client drops such a packet; it does not need it, because it
+   predicts its clicks.
 
 
 ## 2a. Server switch on a live connection (proxies, T-M7-09)

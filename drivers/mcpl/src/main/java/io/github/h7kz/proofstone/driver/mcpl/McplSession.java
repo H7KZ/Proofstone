@@ -109,6 +109,12 @@ final class McplSession implements ClientSession {
     private final ItemRegistries registries = ItemRegistries.forProtocol(McplDriver.PROTOCOL_VERSION);
     private final WindowModel playerInventory = new WindowModel(0, "minecraft:inventory", "Inventory", registries);
     private final List<WindowModel> opened = Collections.synchronizedList(new ArrayList<>());
+    // The window this client closed last, until another window opens. The server answers packets in order, so a
+    // packet for it that arrives after the close was sent before the server read the close: the answer to the last
+    // click, for example. On close the server takes the window's remote slots as window 0's (vanilla transferState)
+    // and never resends them, so its player slots must still reach window 0 (T-M11-07). Guarded by opened: a close on
+    // the test thread and a container packet on the netty thread each run whole, so no update falls between them.
+    private WindowModel closedByClient;
     private final AtomicInteger sequence = new AtomicInteger();
     /** The highest block-change sequence the server acknowledged: its answer to a place or a dig (T-M11-04). */
     private final AtomicInteger blockAck = new AtomicInteger();
@@ -256,15 +262,23 @@ final class McplSession implements ClientSession {
         } else if (packet instanceof ClientboundOpenScreenPacket open) {
             WindowModel window = new WindowModel(open.getContainerId(), namespaced(open.getType()),
                     flatten(open.getTitle()), registries);
-            opened.add(window);
+            synchronized (opened) {
+                opened.add(window);
+                closedByClient = null;
+            }
             summary += " id=" + window.id() + " " + window.type();
         } else if (packet instanceof ClientboundContainerSetContentPacket content) {
-            summary += applyContent(content);
+            synchronized (opened) {
+                summary += applyContent(content);
+            }
         } else if (packet instanceof ClientboundContainerSetSlotPacket slot) {
-            summary += applySlot(slot);
+            synchronized (opened) {
+                summary += applySlot(slot);
+            }
         } else if (packet instanceof ClientboundContainerClosePacket close) {
             summary += " id=" + close.getContainerId();
             synchronized (opened) {
+                closedByClient = null;
                 for (WindowModel window : opened) {
                     if (window.id() == close.getContainerId()) {
                         retire(window);
@@ -364,7 +378,15 @@ final class McplSession implements ClientSession {
     private String applyContent(ClientboundContainerSetContentPacket content) {
         WindowModel target = target(content.getContainerId());
         if (target == null) {
-            return " id=" + content.getContainerId() + " (no such window, ignored)";
+            WindowModel late = lateTarget(content.getContainerId());
+            if (late == null) {
+                return " id=" + content.getContainerId() + " (no such window, ignored)";
+            }
+            // Not the cursor: the server returns or drops the carried stack when it reads the close.
+            late.setContent(content.getStateId(), content.getItems(), content.getCarriedItem());
+            playerInventory.adoptPlayerSlots(late.slots(), late.rawSlots());
+            return " id=" + late.id() + " stateId=" + content.getStateId() + " slots=" + content.getItems().length
+                    + " (sent before the close: player slots to window 0)";
         }
         if (target != playerInventory) {
             // The cursor belongs to the player, not to a window. It is set before setContent bumps the stateId a
@@ -382,6 +404,13 @@ final class McplSession implements ClientSession {
             return " cursor";
         }
         WindowModel target = target(slot.getContainerId());
+        WindowModel late = target == null ? lateTarget(slot.getContainerId()) : null;
+        if (late != null && late.setSlot(slot.getStateId(), slot.getSlot(), slot.getItem())) {
+            // Only the named slot: window 0 may hold a newer hand-back for the others.
+            boolean player = playerInventory.adoptPlayerSlot(late.slots().size(), slot.getSlot(), slot.getItem());
+            return " id=" + late.id() + " slot=" + slot.getSlot() + " stateId=" + slot.getStateId()
+                    + " (sent before the close" + (player ? ": to window 0)" : ")");
+        }
         if (target == null || !target.setSlot(slot.getStateId(), slot.getSlot(), slot.getItem())) {
             return " id=" + slot.getContainerId() + " slot=" + slot.getSlot() + " (not applied: unknown window or slot)";
         }
@@ -414,6 +443,12 @@ final class McplSession implements ClientSession {
             playerInventory.setCursor(null);
         }
         window.markClosed();
+    }
+
+    /** The window this client closed, when a packet still addresses it (see {@link #closedByClient}); else null. */
+    private WindowModel lateTarget(int containerId) {
+        WindowModel late = closedByClient;
+        return late != null && containerId != 0 && late.id() == containerId ? late : null;
     }
 
     /** The model a container packet addresses: the player inventory for id 0, else the newest open window. */
@@ -592,8 +627,14 @@ final class McplSession implements ClientSession {
         @Override
         public void close() {
             requireOpen("cannot close a window");
+            synchronized (opened) {
+                // A window the server closed gets no more packets, so it never becomes a late target.
+                if (!model.isClosed()) {
+                    retire(model);
+                    closedByClient = model;
+                }
+            }
             network.send(new ServerboundContainerClosePacket(model.id()));
-            retire(model);
         }
 
         @Override
@@ -757,6 +798,7 @@ final class McplSession implements ClientSession {
                 window.markClosed();
             }
             opened.clear();
+            closedByClient = null;
         }
         playerInventory.reset();
         position = null;

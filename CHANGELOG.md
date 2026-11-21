@@ -12,6 +12,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 - `PlayerState.openWindow()` and `ServerWindow`: the server's view of the container a player has open (type, title, the container's own slots), read from the agent state that already carried it (API addition, T-M11-02).
 - `Client.placeBlock(BlockPos, Face)`, `Client.breakBlock(BlockPos)`, `Agent.blockType(String, BlockPos)` and the public enum `Face`: a player's block place and break through the Java driver, read back from the server (API addition, T-M11-04; no protocol change).
 
+### Fixed
+- The Java driver hands the player slots of a window packet that arrives after the client closed that window to the client inventory, so the client oracle no longer misses a stack the server placed just before it read the close (T-M11-07, seen on `folia@26.3`).
+
 ## [0.1.0] - 2026-11-18
 
 First public release. It is `0.x`: a minor release may break the public API ([compatibility](docs/compatibility.md)). Scope, evidence
