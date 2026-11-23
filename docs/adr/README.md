@@ -25,6 +25,7 @@ that were rejected. **Accepted ADRs are not re-decided inside a task.** To chall
 | [0017](0017-mod-platform-packs.md) | Mod platform packs, artefact types and loader rows (Fabric, NeoForge, data packs, resource packs) | Accepted (2026-11-14), amended 2026-11-16 |
 | [0018](0018-bedrock-driver-geyser-cells.md) | Bedrock driver, Geyser cells and an offline login stand-in | Accepted (2026-11-17) |
 | [0019](0019-public-repo-workflows.md) | Public-repo workflows and a develop → main flow (amends 0014) | Accepted (2026-11-18) |
-| [0020](0020-agent-fault-injection.md) | Agent fault injection for "a write fails" scenarios (would amend 0002) | Proposed (2026-11-21) |
+| [0020](0020-agent-fault-injection.md) | Agent fault injection for "a write fails" scenarios (would amend 0002) | Accepted (2026-11-23) |
+| [0021](0021-nethernet-bedrock-driver.md) | NetherNet transport for the Bedrock driver (adds to 0018) | Accepted (2026-11-23) |
 
 Template: [0000-template.md](0000-template.md).

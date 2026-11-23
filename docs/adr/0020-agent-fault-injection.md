@@ -1,6 +1,6 @@
 # ADR-0020: Agent fault injection for "a write fails" scenarios
 
-- Status: Proposed
+- Status: Accepted (2026-11-23, maintainer delegated the decision: "decide yourself")
 - Date: 2026-11-21
 - Deciders: maintainer
 
@@ -16,7 +16,7 @@ refund) stayed green. Spike T-M11-10 ([fault-injection.md](../platforms/fault-in
 - [ADR-0002](0002-server-truth-via-agent.md) says agents observe and never interfere and are not called during act.
 
 ## Decision
-Proposed, not taken: **keep ADR-0002 as is. Agents do not inject faults.** Suites that need a failing write use a test support
+**Keep ADR-0002 as is. Agents do not inject faults.** Suites that need a failing write use a test support
 plugin of their own (as Disenchantment's `*-hooks.jar`), and Proofstone only reads the outcome (log lines, balance, levels, items).
 
 If the maintainer instead wants fault injection in Proofstone, this ADR becomes an amendment of ADR-0002 with these limits:
@@ -24,7 +24,7 @@ one-shot guards armed in *arrange*, scoped to one player and one raw slot of the
 whatever happens, reported through a capability token so unsupported cells skip with a reason, and never used by the server oracle.
 
 ## Consequences
-- Rejected amendment (the proposal): no agent change; the gap stays closed by suite-side plugins; Proofstone docs point there.
+- Rejected amendment (accepted: ADR-0002 stays): no agent change; the gap stays closed by suite-side plugins; Proofstone docs point there.
 - Accepted amendment: a protocol message and version bump, an `api-change` card, per-version reflection in the Bukkit agent that
   has to be re-verified on every new Java tag, and a lifecycle obligation to disarm.
 

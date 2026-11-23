@@ -2448,3 +2448,24 @@ Merged into `develop` since the 2026-11-20 update:
 - NetherNet ADR: to file.
 - ViaProxy 1.8.8 stall: mechanism unproven.
 - `datapacks/list` `zip file closed` follow-up (2026-11-20 update): still open.
+
+## Ledger update (2026-11-23)
+
+**0.2.0 is on Maven Central.** Verified by HTTP: pom, jar, sources and javadoc return 200 for `proofstone-api`, `proofstone-core`,
+`proofstone-protocol` and `proofstone-drivers-mcpl` (16 of 16). GitHub Release `v0.2.0` is still a draft (maintainer publishes it).
+
+| Check | Result |
+|---|---|
+| `scripts/consumer-cleanroom.sh all 1` against Central | GREEN: gradle-run-1 and maven-run-1, each 2 tests, 0 skipped, 0 failures, 0 errors; every `io.github.h7kz.proofstone` file (api, core, protocol, drivers-mcpl: jar, module, pom) resolved from `repo.maven.apache.org`; one run per suite |
+
+**Decisions taken (maintainer delegated them: "decide yourself", 2026-11-23):**
+- ADR-0020 **Accepted**: ADR-0002 stays, no agent-side fault injection; suites use a test-owned support plugin.
+- ADR-0021 **Accepted**: NetherNet transport for the Bedrock driver (driver host and Geyser cell; BDS and PNX not in scope, BDS still needs
+  the maintainer's yes for the binary). Cards are not started.
+- Sponge stays unpromoted (RC only). No `v1` tag and no Marketplace listing before the GitHub Action moves to its own repository.
+
+**Still open:** McplDriver fast disconnect hides the join-stall stage; ViaProxy 1.8.8 stall mechanism unproven; `datapacks/list`
+`zip file closed` on paper@1.18.2; `patchConfig` restore; T-M8-26; join-stall flake class T-M6-109 (one `CONFIGURATION_STALLED` on
+paper@1.20.6, not reproduced in 2 reruns); `release.yml` dependency prefetch; `bootLogLines` coverage gap; `getKeys` on Bukkit 1.14-1.17;
+NetherNet cards; the T-M11-04 minor findings. Maintainer-only: publish the GitHub Release, delete scratch folders, set
+`PROOFSTONE_ACCEPT_EULA` on Disenchantment.
