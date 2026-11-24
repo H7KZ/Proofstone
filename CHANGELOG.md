@@ -5,6 +5,10 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 
 ## [Unreleased]
 
+### Fixed
+- Bukkit agent: `patchConfig` restore loads the snapshot into the plugin's existing config object instead of calling `reloadConfig()`, so a
+  plugin that holds `getConfig()` since `onEnable` sees patches made after a restore (T-M12-04, C-C03).
+
 ## [0.2.0] - 2026-11-21
 
 API additions found by the Disenchantment plugin end-to-end suite, two Java-driver fixes and spike notes. It is `0.x`, but the public API

@@ -34,7 +34,7 @@ and `log`. They do not serve game-state endpoints (world, give, ticks). A backen
 | `GET/PUT /v1/world/block` | `{world, x, y, z}`, and `{type, state}` for PUT | — |
 | `POST /v1/world/reset` | restore the fixture region | per-pack definition |
 | `GET/PATCH /v1/plugins/{id}/config` | read and patch config by path | the agent snapshots on the first patch |
-| `POST /v1/plugins/{id}/config/restore` | restore the snapshot bytes and reload the config (not the plugin; use `reload`) | core calls this after every test |
+| `POST /v1/plugins/{id}/config/restore` | restore the snapshot bytes into the plugin's existing config object (not the plugin; use `reload`) | core calls this after every test |
 | `POST /v1/plugins/{id}/reload` | reload | disable/enable, or a declared hook |
 | `POST /v1/events/subscribe` | `{class}`, returns `{probeId}` | reflective listener, MONITOR, read-only |
 | `GET /v1/events/{probeId}?since=` | captured events, with getters serialised | — |

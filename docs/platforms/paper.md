@@ -231,12 +231,14 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   container, so tests can join one client per test.
 - **`saveConfig()` rewrites `config.yml`.** Bukkit drops comments and key order on a patch, so the agent snapshots the
   original bytes on the first patch and restore writes those bytes back. It does not re-save. (T-M2-03)
-- **Restore reloads the config, not the plugin.** `getConfig()` keeps the old in-memory values until `reloadConfig()`, so
-  restore writes the snapshot bytes and calls it. It no longer calls `disablePlugin`/`enablePlugin`: Paper closes a
-  disabled plugin's classloader, and a real plugin that loads classes lazily then fails to enable again (Disenchantment
-  6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in `setupConfig`). The
-  fixture plugin only survived because it loads every class on first enable. A plugin that caches config in `onEnable`
-  needs a reload hook. (T-M2-03, changed in T-M2-10.)
+- **Restore reloads the config in place, not the plugin.** `getConfig()` keeps the old in-memory values until the snapshot is loaded
+  back, so restore writes the snapshot bytes and loads them into the *same* config object. It must not call `reloadConfig()`, which
+  swaps in a new object: a plugin that holds `getConfig()` since `onEnable` (Disenchantment's static `config`) then never sees a later
+  patch. That showed as `DisabledWorldE2E` red in repeats 2 to 5 on every cell (T-M12-04, C-C03). It also no longer calls
+  `disablePlugin`/`enablePlugin`: Paper closes a disabled plugin's classloader, and a real plugin that loads classes lazily then fails
+  to enable again (Disenchantment 6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in
+  `setupConfig`). A plugin that copies config values into its own fields in `onEnable` needs a reload hook. (T-M2-03, changed in
+  T-M2-10 and T-M12-04.)
 - **A plugin loader asked for a class it does not hold warns.** Paper 1.18.2's `PluginClassLoader` answers through a global lookup in the
   other plugins' loaders and logs `Loaded class X from Y which is not a depend or softdepend of this plugin` under the asking plugin's
   name, which fails an error-log guard. The agent's event probe used to try every plugin loader in load order (the agent first), so
