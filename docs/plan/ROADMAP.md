@@ -2469,3 +2469,24 @@ Merged into `develop` since the 2026-11-20 update:
 paper@1.20.6, not reproduced in 2 reruns); `release.yml` dependency prefetch; `bootLogLines` coverage gap; `getKeys` on Bukkit 1.14-1.17;
 NetherNet cards; the T-M11-04 minor findings. Maintainer-only: publish the GitHub Release, delete scratch folders, set
 `PROOFSTONE_ACCEPT_EULA` on Disenchantment.
+
+## Ledger update (2026-11-24)
+
+**Proofstone:** #214 added experimental rows `paper@1.21.4` (build 232, protocol 769) and `paper@1.21.7` (build 32, protocol 772). Both stay
+`experimental`: ADR-0015 needs a per-row conformance run. #215 moved the `gates` job to GitHub-hosted runners (the 2 vCPU self-hosted runner
+cancelled it after about 19 minutes) and added JDK 25 to its setup. GitHub Release `v0.2.0` is published.
+
+**Disenchantment (consumer evidence):**
+- paper@1.20.6 red on `SpecialAnvilPlacementE2E` was a test race (the result slot was read before its packet arrived; the window had closed).
+  Fixed in Disenchantment#93 (`awaitSlot` for the expected book); unfixed local runs were 3 of 3 green, so the race needs host load.
+  All six hosted cells green after the fix.
+- paper@1.21.4: 3 of 3 clean (52 tests, 1 reasoned skip). paper@1.21.7: 2 of 3 clean; run 2 had one `CONFIGURATION_STALLED` join stall in
+  `RestrictionsE2E` (join-stall flake class, T-M6-109; a finding, not retried). Disenchantment#95 adds both cells and pins `7a684e9`.
+- Mutation check on Disenchantment (`mutation-check.py all`): M1 to M11 all RED.
+- Self-hosted Hetzner runners (2 vCPU) have no Maven and no `gh`, and the e2e cells hung to the 45 minute timeout on them; the e2e cells now
+  run hosted, Build and Verify stay self-hosted with a pinned Maven install.
+
+**Still open:** counted repeat runs (k of n) on all Disenchantment cells before the next release; McplDriver fast disconnect hides the join-stall
+stage; ViaProxy 1.8.8 stall mechanism; `datapacks/list` `zip file closed` on paper@1.18.2; `patchConfig` restore; T-M8-26; T-M6-109;
+`release.yml` dependency prefetch; `bootLogLines` coverage gap; `getKeys` on Bukkit 1.14-1.17; NetherNet cards (ADR-0021); T-M11-04 minor
+findings. None of these is carded yet. Maintainer-only: delete the scratch folders.
