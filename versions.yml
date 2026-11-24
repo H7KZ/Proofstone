@@ -39,6 +39,8 @@ platforms:
       - { mc: "1.18.2",  build: 388, sha256: "0578f18f4d632b494b468ec56b3b414b5b56fea087ee7d39cf6dcdf4c9d01f05", protocol: 758, status: required, observed: "prototype 8/8" }
       - { mc: "1.20.4", build: 499, sha256: "cabed3ae77cf55deba7c7d8722bc9cfd5e991201c211665f9265616d9fe5c77b", protocol: 765, status: required, observed: "T-M3-02 2026-11-07: C01 on java17" }
       - { mc: "1.20.6", build: 151, sha256: "4b011f5adb5f6c72007686a223174fce82f31aeb4b34faf4652abc840b47e640", protocol: 766, status: required, observed: "T-M3-02 2026-11-07: C01 on java21" }
+      - { mc: "1.21.4", build: 232, sha256: "5ee4f542f628a14c644410b08c94ea42e772ef4d29fe92973636b6813d4eaffc", protocol: 769, status: experimental, observed: "2026-11-24 Disenchantment e2e (52 tests, 1 reasoned skip): 3 of 3 clean; no conformance run yet (ADR-0015), stays experimental" }
+      - { mc: "1.21.7", build: 32, sha256: "83838188699cb2837e55b890fb1a1d39ad0710285ed633fbf9fc14e9f47ce078", protocol: 772, status: experimental, observed: "2026-11-24 Disenchantment e2e (52 tests, 1 reasoned skip): 2 of 3 clean, 1 CONFIGURATION_STALLED join stall (harness, not plugin); stays experimental" }
       - { mc: "1.21.11", build: 132, sha256: "5ffef465eeeb5f2a3c23a24419d97c51afd7dbb4923ff42df9a3f58bba1ccfba", protocol: 774, status: required, observed: "prototype 8/8" }
       - { mc: "26.1.2",  build: 74,  sha256: "1d70b1dab9cf4a6de615209a536f3a45a2186240253c428213ce2188ab95e5f7", protocol: 775, status: required, observed: "prototype 8/8 (mineflayer 26.1)" }
       - { mc: "26.2", build: 135, sha256: "ef3dbc68b013deafdbbee3bebf1ba351671ebcda94a8f136809b7532d5ba2fe1", protocol: 776, status: required, observed: "T-M3-02 2026-11-07: C01 on java25" }
