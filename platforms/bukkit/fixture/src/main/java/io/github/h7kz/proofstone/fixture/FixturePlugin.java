@@ -7,6 +7,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.logging.Level;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -19,8 +20,12 @@ public final class FixturePlugin extends JavaPlugin {
     /** The proxy plugin messaging channel every backend plugin uses; Paper maps this legacy name for modern servers. */
     static final String BUNGEE_CHANNEL = "BungeeCord";
 
+    /** Held from onEnable like Disenchantment does (T-M12-04): the agent's restore must change this very object. */
+    private FileConfiguration cachedConfig;
+
     @Override
     public void onEnable() {
+        cachedConfig = getConfig();
         // A plugin loads its own event classes when it enables, as a real plugin does. The agent's probe test then asks for
         // a class that is already in the server's global class cache (T-M6-111).
         FixtureEvent.getHandlerList();
@@ -36,6 +41,11 @@ public final class FixturePlugin extends JavaPlugin {
         getCommand("fixture-error").setExecutor((sender, command, label, args) -> {
             getLogger().log(Level.SEVERE, "fixture provoked error: " + String.join(" ", args),
                     new IllegalStateException("fixture error"));
+            return true;
+        });
+        // T-M12-04: logs the greeting from the config object held since onEnable, so a test sees whether a patch reached it.
+        getCommand("fixture-cached-greeting").setExecutor((sender, command, label, args) -> {
+            getLogger().info("fixture cached greeting=" + cachedConfig.getString("greeting"));
             return true;
         });
         // Topology conformance P04 (T-M7-12): ask the proxy which server a player is on, and record the answer. It only

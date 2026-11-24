@@ -16,3 +16,5 @@ commands:
     description: Pushes a resource pack (url, sha1, required) to the named player in play (T-M8-10, C-R01 and C-R02).
   fixture-getserver:
     description: Sends GetServer on the BungeeCord channel for the named player; the reply is logged (T-M7-12, topology P04).
+  fixture-cached-greeting:
+    description: Logs the greeting read from the config object held since onEnable (T-M12-04).

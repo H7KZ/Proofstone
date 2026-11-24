@@ -3,6 +3,7 @@ package io.github.h7kz.proofstone.agent.bukkit;
 import io.github.h7kz.proofstone.agent.protocol.AgentException;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +15,8 @@ import java.util.regex.Pattern;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandException;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 
@@ -21,10 +24,11 @@ import org.bukkit.plugin.PluginManager;
  * Config read, patch, snapshot, restore and reload for a plugin under test (spec §2, ADR-0002). Callers run these on
  * the main thread, through {@link BukkitGame}.
  *
- * <p>The snapshot is the {@code config.yml} bytes, taken before the first patch. Restore writes them back and then
- * calls {@code reloadConfig()}, which rebuilds the in-memory config from the file, so a separate copy of
- * {@code getConfig()} would add nothing. The whole-server {@code /reload} is never used: one plugin is reloaded by its
- * declared hook, or by disabling and enabling it.
+ * <p>The snapshot is the {@code config.yml} bytes, taken before the first patch. Restore writes them back and loads
+ * them into the plugin's existing config object. {@code reloadConfig()} would replace that object, and a plugin that
+ * holds {@code getConfig()} since {@code onEnable} (Disenchantment does) would never see a later patch (T-M12-04). The
+ * whole-server {@code /reload} is never used: one plugin is reloaded by its declared hook, or by disabling and
+ * enabling it.
  */
 final class PluginConfigs {
 
@@ -58,8 +62,8 @@ final class PluginConfigs {
     }
 
     /**
-     * Writes the snapshot back, reloads the config and forgets the snapshot. No-op without one. It does not disable
-     * and enable the plugin: Paper closes a disabled plugin's classloader, so a real plugin that loads classes lazily
+     * Writes the snapshot back, loads it into the existing config object and forgets the snapshot. No-op without one.
+     * It does not disable and enable the plugin: Paper closes a disabled plugin's classloader, so a real plugin that loads classes lazily
      * (Disenchantment, T-M2-10) fails to enable again. A patch never reloads the plugin either, so the two stay
      * symmetric. A plugin that caches config in {@code onEnable} needs a reload hook (spec §2, reload).
      */
@@ -71,7 +75,25 @@ final class PluginConfigs {
         }
         writeSnapshot(plugin, snapshot);
         snapshots.remove(plugin.getName());
-        plugin.reloadConfig();
+        loadInPlace(plugin.getConfig(), snapshot);
+    }
+
+    /**
+     * Replaces the values of {@code live} with the snapshot's, keeping the object. A snapshot of no file empties it. The
+     * keys are cleared first because {@code loadFromString} does not clear on every server this agent supports.
+     */
+    private static void loadInPlace(FileConfiguration live, Snapshot snapshot) {
+        for (String key : new ArrayList<>(live.getKeys(false))) {
+            live.set(key, null);
+        }
+        if (snapshot.bytes == null) {
+            return;
+        }
+        try {
+            live.loadFromString(new String(snapshot.bytes, StandardCharsets.UTF_8));
+        } catch (InvalidConfigurationException e) {
+            throw new AgentException(500, "INTERNAL", "cannot load the restored config: " + e, null);
+        }
     }
 
     /** Runs the declared hook when one is given (an unknown command is an error), else disables and enables. */
