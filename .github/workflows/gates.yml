@@ -36,7 +36,8 @@ jobs:
 
   gates:
     needs: runner
-    runs-on: ${{ fromJSON(needs.runner.outputs.labels) }}
+    # The gates run was cancelled after ~19 min on the 2 vCPU self-hosted runner (2026-11-24); hosted until that is sized up.
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
