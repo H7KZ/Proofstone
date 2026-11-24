@@ -2490,3 +2490,35 @@ cancelled it after about 19 minutes) and added JDK 25 to its setup. GitHub Relea
 stage; ViaProxy 1.8.8 stall mechanism; `datapacks/list` `zip file closed` on paper@1.18.2; `patchConfig` restore; T-M8-26; T-M6-109;
 `release.yml` dependency prefetch; `bootLogLines` coverage gap; `getKeys` on Bukkit 1.14-1.17; NetherNet cards (ADR-0021); T-M11-04 minor
 findings. None of these is carded yet. Maintainer-only: delete the scratch folders.
+
+## Ledger update (2026-11-24, later): counted repeat runs and follow-up cards
+
+Disenchantment master `e2e.yml` flake report, `-Dproofstone.repeat=5` per cell, hosted runners, one cell at a time, pin `7a684e9`
+(Disenchantment#96 and #97 merged first: Verify and the e2e Build job run hosted; master runs write the Gradle cache). Logs are local in
+`C:\pw\dis-ev-repeat`. Every cell is red; reds are findings, nothing was retried or weakened.
+
+| cell | run | result (5 repeats of the 51-test suite) |
+|---|---|---|
+| paper@1.18.2 | 45422784274 | 252 of 256 green; `DisabledWorldE2E` red in repeats 2 to 5; 6 reasoned skips |
+| paper@1.20.4 | 45452573168 | same; 6 reasoned skips |
+| paper@1.20.6 | 45411790684 | 252 of 256; repeat 1 `CONFIGURATION_STALLED` (join stall), `DisabledWorldE2E` red in repeats 3 to 5 |
+| paper@1.21.4 | 45411809166 | 252 of 256; `DisabledWorldE2E` red in repeats 2 to 5; no stall |
+| paper@1.21.7 | 45444989586 | `DisabledWorldE2E` red in repeats 2 to 5; `BedrockMenuE2E` repeat 3 join stall (`CONFIGURATION_STALLED`), repeat 5 red (cause not read) |
+| paper@1.21.11 | 45428008518 | 252 of 256; `DisabledWorldE2E` red in repeats 2 to 5 |
+| paper@26.3 | 45458720890 | 252 of 256; `DisabledWorldE2E` red in repeats 2 to 5 |
+| folia@26.3 | 45436347893 | 252 of 256; `DisabledWorldE2E` red in repeats 2 to 5 |
+
+- Reading: `DisabledWorldE2E` is green in single invocations and in repeat 1, and red from repeat 2 on, on all 8 cells. Not a version issue; a
+  repeat-mode leak, or a negative read that cannot be awaited. Hypothesis only; carded as T-M12-04 with this evidence. No repeat count
+  can be called clean until it is understood.
+- Join stalls (T-M6-109 class): paper@1.20.6 (repeat 1) and paper@1.21.7 (repeat 3) in this series, paper@1.18.2 and 1.20.6 once each on the
+  #96 PR run. Stage `CONFIGURATION_STALLED` every time.
+- Infra: repo.opencollab.dev did not serve `text-serializer-nbt-0.2.1.jar` to hosted runners in 5 of 12 builds (runs 45407182143 e2e Build and
+  1.20.4 cell, 45417893251, 45427392783, 45435524730). Not a test result; those cells were re-run after the Gradle cache write.
+
+Follow-up cards: [M12-followups.md](tasks/M12-followups.md), T-M12-01 to T-M12-11 (McplDriver stall stage, ViaProxy 1.8.8 mechanism,
+`datapacks/list`, `patchConfig` restore, `release.yml` prefetch, `bootLogLines`, `ItemView.pdc` `getKeys`, five NetherNet cards). T-M8-26,
+T-M6-109 and T-M11-13 already exist. None started.
+
+Maintainer-only: delete the scratch folders and worktrees (`C:\pw\t05`, `t06`, `t07`, `t99`, `.claude\worktrees\agent-a73c3f12ea3a78e02`, old
+`C:\pw\dis-ev-*`, `T-M11-*`, `gradle-home-*`, `m2-dis-*`, `cleanroom-*`, and this session's `dis-mut`, `trash`, `old-jars`, `m12-cards`, `led`).
