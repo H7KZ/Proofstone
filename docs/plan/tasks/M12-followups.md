@@ -92,6 +92,11 @@ what was ruled out.
 file.
 
 **Evidence.** Disenchantment suite: a restore wrote the original file but the plugin kept the patched values until reload.
+Hosted flake report on master (2026-11-24, `-Dproofstone.repeat=5`, one server per cell): on every cell that ran the whole suite
+(paper 1.18.2, 1.20.4, 1.20.6, 1.21.4, 1.21.7, 1.21.11, 26.3 and folia 26.3) `DisabledWorldE2E` was green in repeat 1 and red in repeats 2 to 5
+("vanilla offers nothing for a sword and a blank book", line 65; on 1.20.6 repeat 2 was green and repeat 1 was a join stall). Single
+invocations of the same test are green. Cause not proven; leaked patched or restored config, or a result that arrives after the empty read
+(a negative read cannot be awaited), between repeats are the working hypotheses.
 
 **Do.**
 - Conformance case: patch, run the test, check the next test sees the original values through the plugin.
