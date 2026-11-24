@@ -11,18 +11,45 @@ concurrency:
   group: gates-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  runner:
+    name: Pick runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      labels: ${{ steps.pick.outputs.labels }}
+    steps:
+      - id: pick
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_TOKEN }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork == true }}
+        run: |
+          # self-hosted if an idle runner is online (and not a fork PR), else GitHub-hosted
+          labels='["ubuntu-latest"]'
+          if [ -n "$GH_TOKEN" ] && [ "$IS_FORK" != "true" ]; then
+            n=$(gh api "repos/$GITHUB_REPOSITORY/actions/runners?per_page=100"               --jq '[.runners[] | select(.status == "online" and .busy == false and ([.labels[].name] | index("self-hosted")))] | length' 2>/dev/null || echo 0)
+            if [ "${n:-0}" -gt 0 ]; then
+              labels='["self-hosted","Linux","X64","hetzner"]'
+            fi
+          fi
+          echo "labels=$labels" >> "$GITHUB_OUTPUT"
+          echo "Runner: $labels"
+
   gates:
+    needs: runner
+    # The gates run was cancelled after ~19 min on the 2 vCPU self-hosted runner (2026-11-24); hosted until that is sized up.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # scripts/gates.sh diffs renovate.json against origin/main
+      # 25 is the Gradle toolchain of vanilla-view; the self-hosted runners do not preinstall it.
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: |
             26
+            25
             17
             21
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
