@@ -28,27 +28,30 @@ class ConformanceConfigRestoreTest {
 
     private static final Duration WAIT = Duration.ofSeconds(10);
 
+    /** Set by test one. Test two fails loudly without it: run alone it would pass on the old restore too. */
+    private static boolean testOneRan;
+
     @CellTest
     @Order(1)
     void aPatchReachesTheHeldConfigObject(Agent agent) {
         agent.plugin("proofstone-fixture").patchConfig("greeting", "one");
-        assertThat(cachedGreeting(agent)).isEqualTo("fixture cached greeting=one");
+        awaitGreeting(agent, "one");
+        testOneRan = true;
     }
 
     @CellTest
     @Order(2)
     void aPatchAfterARestoreStillReachesTheHeldConfigObject(Agent agent) {
-        assertThat(cachedGreeting(agent)).as("the restore put the original back in the held object")
-                .isEqualTo("fixture cached greeting=hi");
+        assertThat(testOneRan).as("test one ran first on this server, so a restore has happened").isTrue();
+        awaitGreeting(agent, "hi");
         agent.plugin("proofstone-fixture").patchConfig("greeting", "two");
-        assertThat(cachedGreeting(agent)).isEqualTo("fixture cached greeting=two");
+        awaitGreeting(agent, "two");
     }
 
-    private static String cachedGreeting(Agent agent) {
+    /** Asks the fixture for the greeting in its held config object and waits for the log line with {@code expected}. */
+    private static void awaitGreeting(Agent agent, String expected) {
         agent.command("fixture-cached-greeting");
-        List<String> lines = agent.logLines(Pattern.compile("fixture cached greeting=\\S+$"), WAIT);
-        assertThat(lines).isNotEmpty();
-        String last = lines.get(lines.size() - 1);
-        return last.substring(last.indexOf("fixture cached greeting="));
+        List<String> lines = agent.logLines(Pattern.compile("fixture cached greeting=" + Pattern.quote(expected) + "$"), WAIT);
+        assertThat(lines).as("the held config object reads greeting=" + expected).isNotEmpty();
     }
 }

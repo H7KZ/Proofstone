@@ -237,7 +237,8 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   patch. That showed as `DisabledWorldE2E` red in repeats 2 to 5 on every cell (T-M12-04, C-C03). It also no longer calls
   `disablePlugin`/`enablePlugin`: Paper closes a disabled plugin's classloader, and a real plugin that loads classes lazily then fails
   to enable again (Disenchantment 6.5.12: `The plugin classloader ... has thrown a zip file error`, then `NullPointerException` in
-  `setupConfig`). A plugin that copies config values into its own fields in `onEnable` needs a reload hook. (T-M2-03, changed in
+  `setupConfig`). A plugin that copies config values into its own fields, or holds a `ConfigurationSection` taken in `onEnable`,
+  needs a reload hook: only the root object is kept, restored sections are new objects. (T-M2-03, changed in
   T-M2-10 and T-M12-04.)
 - **A plugin loader asked for a class it does not hold warns.** Paper 1.18.2's `PluginClassLoader` answers through a global lookup in the
   other plugins' loaders and logs `Loaded class X from Y which is not a depend or softdepend of this plugin` under the asking plugin's
