@@ -199,10 +199,13 @@ Enabling line.
 
 **Do.** Move the draft from `docs/platforms/nethernet.md` into the ADR index after the maintainer's yes.
 
+**Result (2026-11-25).** The decision was already filed as [ADR-0021](../../adr/0021-nethernet-bedrock-driver.md) (Accepted 2026-11-23), which amends nothing. What was missing was the licence: ADR-0011 did not list MPL-2.0, which `libdatachannel-java` and `libdatachannel` carry. The maintainer approved, and ADR-0011 now has an amendment (MPL-2.0 for unmodified shaded binaries, with the licence-text and source-pointer duties). The `NOTICE` entry lands with the dependency in T-M12-09.
+
 **Don't.** Start T-M12-09 before this is accepted.
 
 **Acceptance.**
-- [ ] Maintainer approval recorded; `docs/adr/README.md` index updated; `bash scripts/gates.sh` green.
+- [x] Maintainer approval recorded (2026-11-25); ADR-0011 amended; `docs/adr/README.md` index row updated.
+- [ ] `bash scripts/gates.sh` green.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`
 
