@@ -2522,3 +2522,31 @@ T-M6-109 and T-M11-13 already exist. None started.
 
 Maintainer-only: delete the scratch folders and worktrees (`C:\pw\t05`, `t06`, `t07`, `t99`, `.claude\worktrees\agent-a73c3f12ea3a78e02`, old
 `C:\pw\dis-ev-*`, `T-M11-*`, `gradle-home-*`, `m2-dis-*`, `cleanroom-*`, and this session's `dis-mut`, `trash`, `old-jars`, `m12-cards`, `led`).
+
+## Ledger update (2026-11-25): repeat runs after the T-M12-04 fix
+
+T-M12-04 merged as #218 (`677b6d2`): Bukkit agent restore loads the snapshot into the plugin's existing config object. C-C03
+(`ConformanceConfigRestoreTest`) was red before (held object kept `one` after the restore) and is green after, 3 of 3 separate invocations on
+paper@26.3 and 3 of 3 on paper@1.18.2, XML `skipped="0" failures="0" errors="0"`; an independent sonnet review ran, and its test findings were
+fixed. Disenchantment#98 pins `677b6d2`; all 8 cells green (paper@1.21.4 after one re-run of a failed dependency download).
+
+Hosted flake report on master, `-Dproofstone.repeat=5`, one cell at a time:
+
+| cell | run | result |
+|---|---|---|
+| paper@26.3 | 45486841310 | 5 of 5 clean |
+| paper@1.21.4 | 45492940403 | 5 of 5 clean |
+| paper@1.20.6 | 45496607795 | 5 of 5 clean |
+| paper@1.18.2 | 45500309177 | RED: repeat 1 `CONFIGURATION_STALLED` join stall in `EconomyE2E.grindstoneExtractChargesItsOwnPrice`; the other 4 repeats passed; the flake gate then reported the differing verdicts (FAIL, PASS) |
+| paper@1.20.4 | 45505160327 | 5 of 5 clean |
+| paper@1.21.7 | 45508521243 | 5 of 5 clean |
+| paper@1.21.11 | 45514106025 | 5 of 5 clean |
+| folia@26.3 | 45519342244 | 5 of 5 clean |
+
+So 7 of 8 cells are 5 of 5 clean and one is a join stall of the T-M6-109 class (cards T-M12-01 and T-M12-02). `DisabledWorldE2E` is green in every
+repeat on every cell. The earlier series (all 8 red) is in the 2026-11-24 addendum above.
+
+**Still open:** T-M12-01 to T-M12-03 and T-M12-05 to T-M12-11 (none started); T-M8-26; T-M6-109. The repeat count on paper@1.18.2 stays red until a
+clean 5 of 5; it is a flake finding, not a test defect. Rows paper@1.21.4 and 1.21.7 stay `experimental` until their per-row conformance
+evidence (ADR-0015). Maintainer-only: delete the scratch folders (list in the 2026-11-24 addendum, plus `C:\pw\led2`, `C:\pw\ev-m1204`,
+`C:\pw\dis-ev-repeat2`).
