@@ -35,6 +35,10 @@ and C-F02 skip on spigot with `missing capability FOLIA_REGIONS on cell spigot@<
   runs (a changed class, resource or entry changes it) and does not break on the build time. The two builds above, and the
   earlier `c7552585...` jar, share one digest. 1.21.11 and 26.3 use the same rule, so every row is strict, none is exempt.
   Decision: ADR-0005 (pin everything) is kept, not relaxed; only what is hashed changed. _1.8.8 · T-M5-05_
+- **A row can go stale when upstream moves (T-M12-13, 2026-11-25).** BuildTools builds the rev's current branch head, so a pin of the
+  digest can stop matching without any build problem: the 26.3 row's 2026-11-08 digest `22b5f5b3...` no longer built, and three fresh builds
+  gave one digest, `38d584f9...`. The cell failed loudly (`BuildTools built spigot@26.3 with content digest ...`), as designed. The check before
+  a re-pin is at least two fresh builds with equal digests, then the smoke run on the new pin; spigot@1.21.11 still built its pin.
 - **C06 on 1.21.11 flake measured.** `-Dproofstone.repeat=5 --tests '*C06AnvilCombineTest*'`: 5 of 5 PASSED, no FLAKY
   verdict. With the full row run (PASSED) that is 6 of 6 passes. The author's single failure is not reproduced; the rate
   stays unknown below 1 in 6. _1.21.11 · T-M5-05 verify_

@@ -291,3 +291,28 @@ written down first (version, URL, sha256, size).
 - [ ] `bash scripts/gates.sh --max-workers=1` green.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke -Dproofstone.cells=paper@1.16.5 --no-parallel --max-workers=1`
+
+### T-M12-13 · Re-pin spigot@26.3: BuildTools no longer builds the 2026-11-08 digest
+- tier: haiku
+- depends: —
+- modules: versions.yml, docs/platforms
+- adrs: 0005, 0013
+- specs: specs/versions-yml.md
+- test-first: no
+
+**Goal.** `:conformance:smoke` boots spigot@26.3 again.
+
+**Evidence.** T-M12-01 (2026-11-25): spigot@26.3 FAILED C01 and C02 in 3 of 3 invocations with `BuildTools built spigot@26.3 with content digest 38d584f9..., but versions.yml pins 22b5f5b3...`. The three fresh builds gave the same digest, so the build is reproducible and the upstream branch for the 26.3 rev moved since the pin of 2026-11-08. spigot@1.21.11 built its pin unchanged.
+
+**Do.**
+- Re-pin the 26.3 row to `38d584f9...` (the digest all three builds produced) and say why in `observed`.
+- Note in `docs/platforms/spigot.md` that a BuildTools row can go stale when upstream moves, and what the check is (3 equal fresh builds, then smoke).
+
+**Don't.** Relax the digest rule (ADR-0005); re-pin without equal digests from at least two fresh builds.
+
+**Acceptance.**
+- [x] `:conformance:smoke` green (spigot@26.3 C01 and C02 included) in three separate invocations, XML read.
+- [x] spigot@1.21.11 smoke green on its unchanged pin.
+- [ ] `bash scripts/gates.sh --max-workers=1` green.
+
+**Verify.** `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke --no-parallel --max-workers=1`

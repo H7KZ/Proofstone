@@ -99,7 +99,7 @@ platforms:
       # jar's byte hash. A cache miss that builds a different digest fails loudly (docs/platforms/spigot.md).
       - { mc: "1.8.8", sha256: "34091112f3f9f8c0e17cb79c88bf3c244801648e395eb4f0cb95eb8c27781c9b", protocol: 47, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java8, 3m31s" }
       - { mc: "1.21.11", sha256: "4aae5835adcd683c9ed7b7a78851dec718173b6dff854f09e1c10f654c0d5ca0", protocol: 774, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java21 (manual build of the pinned rev, then cell run)" }
-      - { mc: "26.3", sha256: "22b5f5b31d000eed1dfbf21995a168ec93352a79842c34526b8b543cf086e78d", protocol: 777, status: required, observed: "T-M5-05 2026-11-08: BuildTools 201 on java25 (manual build of the pinned rev, then cell run)" }
+      - { mc: "26.3", sha256: "38d584f90a98d569b76cb85e2cabd4c36b717e162bc6940bfcd07e1babb657da", protocol: 777, status: required, observed: "T-M12-13 2026-11-25: re-pinned; three fresh BuildTools 201 builds on java25 gave this one content digest, the 2026-11-08 pin (22b5f5b3...) no longer builds (upstream branch moved); smoke C01 and C02 on the new pin in three invocations" }
 
 # Schema 3 (ADR-0016): proxies and the backend rows they are paired with. A topology cell is one proxy row plus a backend
 # row set; its identity is <proxy>@<version>+<platform>@<mc>. Hand-pinned, as the first rows were: `updateVersions` does not
