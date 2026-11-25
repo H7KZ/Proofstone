@@ -15,6 +15,20 @@
 - Not changed by this decision: no binaries are redistributed, ViaProxy stays a separate container, and the Minecraft
   EULA is accepted only by explicit opt-in.
 
+## Amendment (T-M12-08, 2026-11-25, maintainer approved)
+
+[ADR-0021](0021-nethernet-bedrock-driver.md) adds `dev.opencollab:libdatachannel-java` and its native `libdatachannel` to the Bedrock driver
+host. Both are **MPL-2.0**, which this ADR did not list. Decision: **MPL-2.0 is accepted for unmodified binaries that are shaded or
+bundled into a Proofstone artefact or image.** MPL-2.0 is file-level copyleft, so shipping the unmodified library inside an Apache-2.0
+jar or image is allowed. The duties that come with it:
+- Keep the MPL-2.0 licence text with the shipped binary (in the shaded jar's `META-INF` and in `NOTICE`), and say where the source is
+  (the upstream repository and the pinned version).
+- Never modify an MPL-covered file. A change to one would oblige Proofstone to publish that file; a fix goes upstream, or the card
+  stops and asks the maintainer.
+- `NOTICE` gains the entry in the card that adds the dependency (T-M12-09), not before: nothing is shipped until then.
+
+Nothing else here changes: Apache-2.0 for Proofstone code, DCO, no redistributed server or client binaries.
+
 ## Context
 - Dependencies:
   - MCProtocolLib: MIT.
