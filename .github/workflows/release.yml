@@ -14,8 +14,14 @@ concurrency:
   group: release
   cancel-in-progress: false
 jobs:
+  runner:
+    name: Pick runner
+    uses: ./.github/workflows/_runner.yml
+    secrets: inherit
+
   verify:
-    runs-on: ubuntu-latest
+    needs: [runner]
+    runs-on: ${{ fromJSON(needs.runner.outputs.labels) }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,8 +61,8 @@ jobs:
           name: mutation-check
           path: build/release/
   maven:
-    needs: verify
-    runs-on: ubuntu-latest
+    needs: [runner, verify]
+    runs-on: ${{ fromJSON(needs.runner.outputs.labels) }}
     timeout-minutes: 90
     environment: release
     steps:
@@ -90,8 +96,8 @@ jobs:
           CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
         run: bash scripts/release-maven.sh --publish
   images:
-    needs: verify
-    runs-on: ubuntu-latest
+    needs: [runner, verify]
+    runs-on: ${{ fromJSON(needs.runner.outputs.labels) }}
     timeout-minutes: 90
     environment: release
     permissions:
@@ -112,8 +118,8 @@ jobs:
           name: pushed-digests
           path: build/release-images/
   github-release:
-    needs: [maven, images]
-    runs-on: ubuntu-latest
+    needs: [runner, maven, images]
+    runs-on: ${{ fromJSON(needs.runner.outputs.labels) }}
     timeout-minutes: 10
     permissions:
       contents: write
