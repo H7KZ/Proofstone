@@ -133,6 +133,9 @@ public final class LogBuffer {
         }
         try {
             String message = source.text(event);
+            if (message != null && message.startsWith(Log4jTap.CAPTURE_END_PREFIX)) {
+                return; // a console capture's marker, not a server record
+            }
             // An unknown level is kept as WARN, so it is never silently below a reader's floor.
             String level = ORDER.contains(source.level(event)) ? source.level(event) : "WARN";
             acceptLog4j(source.millis(event), level, source.logger(event), message == null ? "" : message,

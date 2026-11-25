@@ -282,6 +282,8 @@ written down first (version, URL, sha256, size).
 - Reproduce with `:conformance:smoke -Dproofstone.cells=paper@1.16.5`, read the agent's reply to `list` and the server log (does the 1.16.5 console print the player list through a path the agent's command capture misses?).
 - Fix in the agent's command capture if it is there; if it is the bridge, record the mechanism in `docs/platforms/paper.md`. Update the row's `observed` text with the result.
 
+**Result (2026-11-25).** Cause: Paper 1.16.5 on Java 8 runs Log4j `AsyncLogger`, so events reach an appender after the logging call returns, and the capture detached first (`seen=0`; same logger context and root, so not a context problem). Fix: the capture logs an end marker behind the command's events and waits for it (`Log4jTap.emit`, `LogCapture.close`). See `docs/platforms/paper.md`.
+
 **Don't.** Weaken or skip the console check; change the row status without per-row evidence (ADR-0015).
 
 **Acceptance.**

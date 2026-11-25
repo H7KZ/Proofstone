@@ -12,6 +12,9 @@ import java.util.function.Consumer;
  */
 public final class Log4jTap {
 
+    /** Starts the marker line a capture logs behind a command's events (see {@link #emit}); buffers do not keep it. */
+    public static final String CAPTURE_END_PREFIX = "proofstone-capture-end-";
+
     private final String name;
     private final Object root;
     private final Method threadName;
@@ -71,6 +74,19 @@ public final class Log4jTap {
         Class<?> levelType = Class.forName("org.apache.logging.log4j.Level");
         root.getClass().getMethod("addAppender", appender, levelType, filter).invoke(root, proxy, null, null);
         return new Log4jTap(name, root, event);
+    }
+
+    /**
+     * Logs {@code message} at INFO through Log4j's own logger on the calling thread, so it takes the same route as every
+     * event the server logs. With Log4j's async loggers (Paper 1.16.5 on Java 8) events reach an appender on a background
+     * thread after the call that logged them has returned; the queue is first in, first out, so seeing this message in the
+     * appender means every earlier event of this thread was delivered first (T-M12-12).
+     */
+    public void emit(String message) throws ReflectiveOperationException {
+        Class<?> manager = Class.forName("org.apache.logging.log4j.LogManager");
+        Class<?> loggerType = Class.forName("org.apache.logging.log4j.Logger");
+        Object logger = manager.getMethod("getLogger", String.class).invoke(null, "ProofstoneAgent");
+        loggerType.getMethod("info", String.class).invoke(logger, message);
     }
 
     /** Best effort: the appender only ever records events into buffers that are discarded with it. */

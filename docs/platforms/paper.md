@@ -249,10 +249,18 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   server loader)`), not the agent's plugin loader, and reads a pack's name through a public interface it implements (1.18.2 has no
   `DiscoveredDatapack`). Other one-argument `Class.forName` calls in the agent (`Keys`, `WorldAccess`, `FoliaScheduler`) use the same
   loader path and were not changed; none has failed.
-- **`ItemView.pdc` is verified from Bukkit 1.17.1 up (T-M12-07, 2026-11-25).** C-I01 passes on paper@1.17.1 in 3 of 3 separate invocations
-  (`getKeys`, `has` and `get` all resolve, every type reads back), besides 1.18.2 and 26.3. paper@1.16.5 could not be tried: the bridged cell fails
-  its own conformance before the test (`INVALID ... cell conformance failed: `list` gave a blank reply, so the console path is unverified`, 3 of 3;
-  T-M12-12). 1.14 and 1.15 are not matrix rows. The agent checks the API shape at start-up, so a server without `getKeys` reports no `pdc` token
+- **Paper 1.16.5 logs asynchronously, so a console command's reply used to come back blank (T-M12-12, 2026-11-25).** Its Log4j runs
+  `AsyncLogger` (Java 8), so an event reaches an appender on a background thread after the logging call has returned. The agent's
+  command capture removed its appender right after `dispatchCommand` and saw nothing (`seen=0`; the logger context and root were the
+  same, so it was not a wrong-context problem). The capture now logs a marker line (`proofstone-capture-end-<uuid>`, hidden from the
+  agent's log buffers) behind the command's events and waits up to 2 s for the appender to see it; the queue is first in, first out, so
+  everything the command logged is there by then. A synchronous logger delivers the marker before `emit` returns, so the wait costs
+  nothing there. If the marker never arrives (a root level above INFO), the capture warns in the server log and the error-log guard
+  fails the test, instead of a blank reply passing for "no output". The bridged paper@1.16.5 cell had been INVALID in conformance
+  (`list` gave a blank reply) until then.
+- **`ItemView.pdc` is verified from Bukkit 1.16.5 up (T-M12-07 and T-M12-12, 2026-11-25).** C-I01 passes on paper@1.17.1 and paper@1.16.5 in 3 of 3 separate invocations each
+  (`getKeys`, `has` and `get` all resolve, every type reads back), besides 1.18.2 and 26.3. paper@1.16.5 was INVALID until the async-logger fix
+  above (its own conformance failed before the test). 1.14 and 1.15 are not matrix rows. The agent checks the API shape at start-up, so a server without `getKeys` reports no `pdc` token
   rather than an empty read.
 - **`ConfigurationSection.getValues(false)` leaves out jar defaults.** A key the plugin never wrote to `config.yml` reads
   through `get()` but is missing from `getValues`. `GET /v1/snapshot` reads `getKeys(true)` plus the defaults' keys, so
