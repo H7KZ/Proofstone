@@ -26,7 +26,7 @@ while the driver is still waiting at the 30 s limit. A server that kicks first l
 **Acceptance.**
 - [ ] The new unit test fails before the change and passes after; XML read.
 - [ ] C02 join loop green on `paper@26.3` in three separate invocations, `skipped="0" failures="0" errors="0"`.
-- [ ] `bash scripts/gates.sh --max-workers=1` green.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --no-parallel --max-workers=1`
 
@@ -51,7 +51,7 @@ what was ruled out.
 
 **Acceptance.**
 - [ ] `docs/platforms/viaproxy.md` has every run as invocation, count k of n and result.
-- [ ] `bash scripts/gates.sh --max-workers=1` green.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; reviewer re-runs one documented loop under `scripts/dockerlock.sh`.
 
@@ -76,7 +76,7 @@ what was ruled out.
 
 **Acceptance.**
 - [ ] The new case is red before and green after on `paper@1.18.2`, three separate invocations, XML read.
-- [ ] `bash scripts/gates.sh --max-workers=1` green; independent sonnet review of the agent change.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck). independent sonnet review of the agent change.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@1.18.2 --no-parallel --max-workers=1`
 
@@ -106,7 +106,7 @@ invocations of the same test are green. Cause not proven; leaked patched or rest
 
 **Acceptance.**
 - [ ] New case green on `paper@26.3` and `paper@1.18.2`, three separate invocations each, XML read.
-- [ ] `bash scripts/gates.sh --max-workers=1` green; independent sonnet review.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck). independent sonnet review.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --no-parallel --max-workers=1`
 
@@ -158,7 +158,7 @@ Enabling line.
 
 **Acceptance.**
 - [ ] Conformance case green on `paper@26.3`, three separate invocations, XML read.
-- [ ] `bash scripts/gates.sh --max-workers=1` green; independent sonnet review.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck). independent sonnet review.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run -Dproofstone.cells=paper@26.3 --no-parallel --max-workers=1`
 
@@ -181,7 +181,7 @@ Enabling line.
 
 **Acceptance.**
 - [ ] Conformance on one cell per range (1.14, 1.16, 1.17), three separate invocations each, XML read.
-- [ ] `bash scripts/gates.sh --max-workers=1` green; independent sonnet review.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck). independent sonnet review.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run --no-parallel --max-workers=1`
 
@@ -222,7 +222,7 @@ handshake attempt (see `docs/platforms/nethernet.md`). Natives are vendored in t
 **Acceptance.**
 - [ ] Frame codec and stage-name unit tests green, XML read.
 - [ ] The spike's PowerNukkitX join through the driver host RPC, three separate invocations green.
-- [ ] `bash scripts/gates.sh --max-workers=1` green; independent sonnet review.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck). independent sonnet review.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run --no-parallel --max-workers=1`
 
@@ -242,7 +242,7 @@ handshake attempt (see `docs/platforms/nethernet.md`). Natives are vendored in t
 
 **Acceptance.**
 - [ ] C-G01 to C-G04 green in three separate invocations, XML read.
-- [ ] `bash scripts/gates.sh --max-workers=1` green.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run --no-parallel --max-workers=1`
 
@@ -288,7 +288,7 @@ written down first (version, URL, sha256, size).
 
 **Acceptance.**
 - [ ] The cause is named with evidence, and `paper@1.16.5` passes C01 and C02 in three separate invocations, or the row is demoted with the reason in `versions.yml`.
-- [ ] `bash scripts/gates.sh --max-workers=1` green.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke -Dproofstone.cells=paper@1.16.5 --no-parallel --max-workers=1`
 
@@ -313,6 +313,6 @@ written down first (version, URL, sha256, size).
 **Acceptance.**
 - [x] `:conformance:smoke` green (spigot@26.3 C01 and C02 included) in three separate invocations, XML read.
 - [x] spigot@1.21.11 smoke green on its unchanged pin.
-- [ ] `bash scripts/gates.sh --max-workers=1` green.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
 
 **Verify.** `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke --no-parallel --max-workers=1`
