@@ -42,7 +42,13 @@ final class ClientPackets implements BedrockPacketHandler {
 
     /** Bedrock sends the eye position; the Java side reports the feet. */
     static final double EYE_HEIGHT = 1.62;
-    private static final int CHUNK_RADIUS = 4;
+    /** The radius Geyser is verified with (T-M9-06). */
+    static final int CHUNK_RADIUS = 4;
+    /**
+     * PowerNukkitX 3.0.6 sends the spawn status only after 56 chunks (chunks.spawnThreshold); radius 4 never gets there and the join
+     * stalls at SPAWN_STATUS (nethernet.md r6; T-M12-09 run r3). Used on NetherNet, where PowerNukkitX is the server under test.
+     */
+    static final int NETHERNET_CHUNK_RADIUS = 8;
 
     private final SessionState state;
     private final Wire wire;
@@ -50,10 +56,17 @@ final class ClientPackets implements BedrockPacketHandler {
     private final String serverAddress;
     private final int protocol;
     private final String gameVersion;
+    private final int chunkRadius;
     private long runtimeId = -1;
 
     ClientPackets(SessionState state, Wire wire, Identity identity, String serverAddress, int protocol,
             String gameVersion) {
+        this(state, wire, identity, serverAddress, protocol, gameVersion, CHUNK_RADIUS);
+    }
+
+    ClientPackets(SessionState state, Wire wire, Identity identity, String serverAddress, int protocol,
+            String gameVersion, int chunkRadius) {
+        this.chunkRadius = chunkRadius;
         this.state = state;
         this.wire = wire;
         this.identity = identity;
@@ -146,8 +159,8 @@ final class ClientPackets implements BedrockPacketHandler {
                 packet.getPlayerPosition().getZ()));
         state.stage(JoinStage.SPAWN_STATUS);
         RequestChunkRadiusPacket radius = new RequestChunkRadiusPacket();
-        radius.setRadius(CHUNK_RADIUS);
-        radius.setMaxRadius(CHUNK_RADIUS);
+        radius.setRadius(chunkRadius);
+        radius.setMaxRadius(chunkRadius);
         wire.send(radius);
         return PacketSignal.HANDLED;
     }

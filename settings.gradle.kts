@@ -66,6 +66,8 @@ dependencyResolutionManagement {
                 for (group in listOf("org.cloudburstmc.protocol", "org.cloudburstmc.netty", "org.cloudburstmc.math")) {
                     includeVersionByRegex(group, ".*", ".*-[0-9]{8}[.][0-9]{6}-[0-9]{1,4}")
                 }
+                // NetherNet's WebRTC binding (T-M12-09, ADR-0021): snapshot-only, timestamped builds only.
+                includeVersionByRegex("dev.opencollab", "libdatachannel-java", ".*-[0-9]{8}[.][0-9]{6}-[0-9]{1,4}")
             }
         }
         // MCProtocolLib is published only here (ADR-0004).

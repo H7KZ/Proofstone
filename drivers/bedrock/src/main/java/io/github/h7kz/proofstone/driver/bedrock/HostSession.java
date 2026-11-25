@@ -17,6 +17,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
@@ -55,6 +56,7 @@ final class HostSession implements Wire, RpcServer.Connection {
     private final SessionState state = new SessionState();
     private volatile BedrockClientSession session;
     private volatile Channel channel;
+    private final CountDownLatch sessionUp = new CountDownLatch(1);
 
     private HostSession(Identity identity) {
         this.identity = identity;
@@ -80,51 +82,91 @@ final class HostSession implements Wire, RpcServer.Connection {
      * connection is closed and the exception names the stage or the server's own text.
      */
     static HostSession join(String id, ConnectRequest request, EventLoopGroup group) {
+        boolean nethernet = BedrockRpc.TRANSPORT_NETHERNET.equals(BedrockRpc.requireTransport(request.transport()));
         Identity identity = new Identity(request.name(), request.xuid(), Clock.systemUTC());
         // Only the T-M10-05 negative control changes the protocol number (ProtocolOverride); read before any connection opens.
         int protocol = ProtocolOverride.fromSystemProperties(CODEC.getProtocolVersion());
         HostSession host = new HostSession(identity);
         ClientPackets packets = new ClientPackets(host.state, host, identity, request.host() + ":" + request.port(),
-                CODEC.getProtocolVersion(), CODEC.getMinecraftVersion());
+                CODEC.getProtocolVersion(), CODEC.getMinecraftVersion(),
+                nethernet ? ClientPackets.NETHERNET_CHUNK_RADIUS : ClientPackets.CHUNK_RADIUS);
         Duration timeout = Duration.ofMillis(request.joinTimeoutMillis());
         long deadline = System.nanoTime() + timeout.toNanos();
         try {
-            Bootstrap bootstrap = new Bootstrap()
-                    .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
-                    .group(group)
-                    .option(RakChannelOption.RAK_PROTOCOL_VERSION, CODEC.getRaknetProtocolVersion())
-                    .option(RakChannelOption.RAK_GUID, ThreadLocalRandom.current().nextLong())
-                    .handler(new BedrockClientInitializer() {
-                        @Override
-                        protected void initSession(BedrockClientSession created) {
-                            host.session = created;
-                            created.setCodec(CODEC);
-                            created.getPeer().getCodecHelper().setEncodingSettings(LIMITS);
-                            created.getPeer().getCodecHelper().setBlockDefinitions(new RuntimeIdBlocks());
-                            created.setPacketHandler(packets);
-                        }
+            NetherNetTransport.SessionInitializer sessionSetup = new NetherNetTransport.SessionInitializer() {
+                @Override
+                public void init(BedrockClientSession created) {
+                    host.session = created;
+                    created.setCodec(CODEC);
+                    created.getPeer().getCodecHelper().setEncodingSettings(LIMITS);
+                    created.getPeer().getCodecHelper().setBlockDefinitions(new RuntimeIdBlocks());
+                    created.setPacketHandler(packets);
+                    host.sessionUp.countDown();
+                }
 
+                @Override
+                public void postInit(Channel channel) {
+                    // A packet that does not decode surfaces here; the driver never skips it (AGENTS.md section 3).
+                    channel.pipeline().addLast(new ChannelInboundHandlerAdapter() {
                         @Override
-                        protected void postInitChannel(Channel channel) throws Exception {
-                            super.postInitChannel(channel);
-                            // A packet that does not decode surfaces here; the driver never skips it (AGENTS.md section 3).
-                            channel.pipeline().addLast(new ChannelInboundHandlerAdapter() {
-                                @Override
-                                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-                                    host.state.fail(BedrockRpc.PROTOCOL_ERROR, "a packet could not be decoded: " + cause + rootCause(cause));
-                                }
-                            });
+                        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+                            host.state.fail(BedrockRpc.PROTOCOL_ERROR, "a packet could not be decoded: " + cause + rootCause(cause));
                         }
                     });
-            ChannelFuture connected = bootstrap.connect(new InetSocketAddress(request.host(), request.port()));
+                }
+            };
+            InetSocketAddress target = new InetSocketAddress(request.host(), request.port());
+            Bootstrap bootstrap = new Bootstrap().group(group);
+            JoinStage connectStage;
+            if (nethernet) {
+                connectStage = JoinStage.NETHERNET_CONNECT;
+                host.state.stage(JoinStage.SIGNALLING);
+                try {
+                    NetherNetTransport.loadNative();
+                    host.state.packet("nethernet probe " + NetherNetTransport.probe(target, remainingMillis(deadline)));
+                    NetherNetTransport.configure(bootstrap, request.xuid(), request.name(), sessionSetup);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    host.close();
+                    throw new HostError(BedrockRpc.INTERNAL, "interrupted while joining", null, null);
+                } catch (Exception | LinkageError e) {
+                    // LinkageError: the native library did not load (wrong architecture or libc); it names the stage, never escapes unclosed
+                    host.close();
+                    throw new HostError(BedrockRpc.DISCONNECTED, "NetherNet signalling at " + request.host() + ":" + request.port()
+                            + " failed: " + e + rootCause(e), JoinStage.SIGNALLING.name(), null);
+                }
+                host.state.stage(JoinStage.NETHERNET_CONNECT);
+            } else {
+                connectStage = JoinStage.RAKNET_CONNECT;
+                bootstrap.channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
+                        .option(RakChannelOption.RAK_PROTOCOL_VERSION, CODEC.getRaknetProtocolVersion())
+                        .option(RakChannelOption.RAK_GUID, ThreadLocalRandom.current().nextLong())
+                        .handler(new BedrockClientInitializer() {
+                            @Override
+                            protected void initSession(BedrockClientSession created) {
+                                sessionSetup.init(created);
+                            }
+
+                            @Override
+                            protected void postInitChannel(Channel channel) throws Exception {
+                                super.postInitChannel(channel);
+                                sessionSetup.postInit(channel);
+                            }
+                        });
+            }
+            ChannelFuture connected = bootstrap.connect(target);
             host.channel = connected.channel();
-            if (!connected.await(timeout.toNanos(), TimeUnit.NANOSECONDS)) {
+            if (!connected.await(remainingMillis(deadline), TimeUnit.MILLISECONDS)) {
                 throw host.timeout(BedrockRpc.JOIN_TIMEOUT);
             }
             if (!connected.isSuccess()) {
                 host.close();
-                throw new HostError(BedrockRpc.DISCONNECTED, "RakNet connect to " + request.host() + ":" + request.port()
-                        + " failed: " + connected.cause(), JoinStage.RAKNET_CONNECT.name(), null);
+                throw new HostError(BedrockRpc.DISCONNECTED, (nethernet ? "NetherNet" : "RakNet") + " connect to " + request.host() + ":"
+                        + request.port() + " failed: " + connected.cause() + rootCause(connected.cause()), connectStage.name(), null);
+            }
+            // On NetherNet the session is made when the data channel is active, after connect() returns (nethernet.md r1).
+            if (!host.sessionUp.await(remainingMillis(deadline), TimeUnit.MILLISECONDS)) {
+                throw host.timeout(BedrockRpc.JOIN_TIMEOUT);
             }
             host.state.stage(JoinStage.NETWORK_SETTINGS);
             RequestNetworkSettingsPacket settings = new RequestNetworkSettingsPacket();
@@ -145,6 +187,11 @@ final class HostSession implements Wire, RpcServer.Connection {
             host.close();
             throw new HostError(BedrockRpc.INTERNAL, "interrupted while joining", null, null);
         }
+    }
+
+    /** Milliseconds left until the deadline, never negative; every wait of a join is bounded by it. */
+    private static long remainingMillis(long deadlineNanos) {
+        return Math.max(0, TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime()));
     }
 
     private HostError timeout(String code) {

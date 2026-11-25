@@ -222,11 +222,19 @@ Enabling line.
 **Do.** Pins and sha256 list for the two dependency groups, Netty 4.1.130, transport switch, frame codec, identity, stages, one
 handshake attempt (see `docs/platforms/nethernet.md`). Natives are vendored in the image build, not downloaded at runtime.
 
+**Result (2026-11-25).** The driver host joins over NetherNet: `BedrockDriver(transport, "nethernet")` sends `transport` in the session request (absent means RakNet, byte for
+byte the old request), the host does the HTTP probe (`SIGNALLING`), then the library's offer and answer and the data channels (`NETHERNET_CONNECT`), one handshake attempt.
+Pins moved to the Cloudburst netty line 2.0.0.CR6 (raknet, common and nethernet), Netty 4.1.130, slf4j 2.0.18, plus libdatachannel-java with the glibc x86_64 and aarch64 natives,
+Bouncy Castle 1.85 and gson 2.13.2, each sha256 from a fresh download (a pin line may end in `:classifier`). The natives sit in the shaded jar per architecture and are checked as ELF;
+`tel.schich.libdatachannel` stays unrelocated (JNI). The 1.26.60 client claims are sent on every transport; NetherNet asks for chunk radius 8 (PowerNukkitX needs 56 chunks).
+Real server: 3 of 3 separate invocations green on the final code after four red findings (r1 to r3, see [nethernet.md](../../platforms/nethernet.md)); unit XML read, `skipped="0" failures="0" errors="0"` for
+`NetherNetFrameCodecTest` (6), `ClientPacketsTest` (16), `IdentityAndLimitsTest` (8), `RpcServerTest` (12), `BedrockDriverTest` (19), `ArtefactPinsTest` (12). Independent sonnet review: no blocker, findings applied. Not covered: Geyser cell (T-M12-10).
+
 **Don't.** Change the wire protocol, or use `latest` or a range.
 
 **Acceptance.**
-- [ ] Frame codec and stage-name unit tests green, XML read.
-- [ ] The spike's PowerNukkitX join through the driver host RPC, three separate invocations green.
+- [x] Frame codec and stage-name unit tests green, XML read.
+- [x] The spike's PowerNukkitX join through the driver host RPC, three separate invocations green (a1 to a3).
 - [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck). independent sonnet review.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run --no-parallel --max-workers=1`

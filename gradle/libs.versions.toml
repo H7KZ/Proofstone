@@ -15,8 +15,11 @@ shadow = "9.6.1"
 # The three Beta15 modules are one build; the netty and math modules are what that build's POM names, pinned to the builds the
 # repository served on 2026-11-17 instead of the floating snapshot the POM says. drivers/bedrock checks every resolved jar's sha256.
 cloudburst-protocol = "3.0.0.Beta15-20261116.161745-6"
-cloudburst-netty = "1.1.0.CR4-20261103.123906-3"
+cloudburst-netty = "2.0.0.CR6-20261115.174122-26"
 cloudburst-math = "2.0-20220327.162752-1"
+# NetherNet (T-M12-09, ADR-0021): the nethernet module is the same build as the raknet and common modules above. libdatachannel-java is
+# a snapshot-only OpenCollab build (MPL-2.0 for the native library, ADR-0011 amendment); its natives are separate classifier jars.
+libdatachannel = "0.24.6.0-20261105.085043-11"
 json-schema-validator = "1.5.9"
 # Proofstone's own version. Examples build and read it from mavenLocal (T-M6-04); released versions are also on Maven Central.
 proofstone = "0.2.0"
@@ -103,6 +106,8 @@ cloudburst-bedrock-codec = { module = "org.cloudburstmc.protocol:bedrock-codec",
 cloudburst-protocol-common = { module = "org.cloudburstmc.protocol:common", version.ref = "cloudburst-protocol" }
 cloudburst-netty-raknet = { module = "org.cloudburstmc.netty:netty-transport-raknet", version.ref = "cloudburst-netty" }
 cloudburst-netty-common = { module = "org.cloudburstmc.netty:netty-transport-common", version.ref = "cloudburst-netty" }
+cloudburst-netty-nethernet = { module = "org.cloudburstmc.netty:netty-transport-nethernet", version.ref = "cloudburst-netty" }
+libdatachannel-java = { module = "dev.opencollab:libdatachannel-java", version.ref = "libdatachannel" }
 cloudburst-math-immutable = { module = "org.cloudburstmc.math:immutable", version.ref = "cloudburst-math" }
 spigot-api = { module = "org.spigotmc:spigot-api", version.ref = "spigot" }
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }

@@ -6,6 +6,16 @@ Licensed under the Apache License, Version 2.0 (see the LICENSE file). Decision:
 Third-party components
 - Jackson (jackson-core, jackson-databind, Apache-2.0) is shaded into the Bukkit agent as
   io.github.h7kz.proofstone.shaded.jackson. Its upstream LICENSE and NOTICE texts must travel with that jar.
+- Bedrock driver host jar (drivers/bedrock, ADR-0018 and ADR-0021), shaded and relocated, never in a user's dependency graph:
+  - CloudburstMC Protocol and Netty transports (org.cloudburstmc.*, Apache-2.0), including netty-transport-nethernet.
+  - Netty (Apache-2.0), Gson (Apache-2.0), Jackson (Apache-2.0), Bouncy Castle (MIT-style licence), jose4j (Apache-2.0).
+  - libdatachannel-java (the Java binding, MIT per its POM) and the native libraries inside it, libdatachannel and libjuice,
+    which are MPL-2.0 (ADR-0011 amendment, T-M12-08). They are shipped unmodified, as the OpenCollab build
+    dev.opencollab:libdatachannel-java:0.24.6.0-20261105.085043-11 made them (linux-glibc-x86_64 and linux-glibc-aarch64), from
+    libdatachannel revision 2e2d86acc27a4734db2f28f95d09c1ab7a83836f and libjuice revision 67bfe8903b8d6a5dcf8d731271aec68257cb2872
+    (read from the jar's MANIFEST). The binding's classes stay under their own package name because the native code is bound to it.
+    MPL-2.0 text: https://www.mozilla.org/MPL/2.0/. Source of libdatachannel: https://github.com/paullouisageneau/libdatachannel,
+    of libjuice: https://github.com/paullouisageneau/libjuice, of the binding and the build: https://github.com/opencollab-incubator/libdatachannel-java.
 - Other dependencies are either test-only or not redistributed. Their licences are listed in
   docs/adr/0011-licensing.md and docs/release-notes-0.1.0.md.
 - ViaProxy (GPL-3.0) runs only as a separate, unmodified container image. It is not redistributed.

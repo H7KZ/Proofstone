@@ -64,6 +64,16 @@ class IdentityAndLimitsTest {
     }
 
     @Test
+    void theClientDataCarriesTheClaimsOfA1_26_60ClientAndNeverTheEducationMarker() throws Exception {
+        JsonNode payload = verified(new Identity("Alex", "2535400000000007", CLOCK).clientJwt("server:19132", "1.26.60"));
+        for (String claim : new String[] {"CompatibleWithClientSideChunkGen", "GraphicsMode", "ClientIsEditorCapable", "MaxViewDistance",
+                "MemoryTier", "PartyId", "PlatformType", "ClientEditorConnectionIntent"}) {
+            assertThat(payload.has(claim)).as(claim).isTrue();
+        }
+        assertThat(payload.has("IsEduMode")).as("a server reads the mere presence as an Education client").isFalse();
+    }
+
+    @Test
     void everyJoinMakesItsOwnKeyPair() {
         Identity a = new Identity("Alex", "2535400000000007", CLOCK);
         Identity b = new Identity("Alex", "2535400000000008", CLOCK);

@@ -163,6 +163,35 @@ Microsoft discovery names, by the server at the first login, answered by the sta
 | r7 | `JOINS=2` | **rc 0 twice**: `PLAYER_SPAWN` at 2,705 ms and 1,308 ms, hook `{"players":["PsNether1"]}` and `["PsNether2"]`, server log "logged in", agent lists nobody after each leave | |
 | r8 | `XBOX_AUTH=true`, `JOINS=1` | rc 3 as expected: probe shows `onlineAuth:true, selfSignedAuth:false`, the NetherNet connect with the self-made identity still succeeds (token trust `ANY`), then `DISCONNECT NOT_AUTHENTICATED` at login: the refusal is at the login chain, as on RakNet | |
 
+## T-M12-09: the driver host joins over NetherNet (2026-11-25)
+
+The driver host (`drivers/bedrock`, shaded jar) joined PowerNukkitX 3.0.6 through its RPC with `"transport":"nethernet"`. Invocation (Git Bash, repo
+root, driver jar built by `:drivers:bedrock:shadowJar`; same server side, jar cache and sha256 check as the spike runs above):
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true MSYS_NO_PATHCONV=1   bash scripts/dockerlock.sh bash scripts/spike/nethernet/driver-host-join.sh build/spike/nethernet/<run>
+```
+
+The script joins, asks the agent for the player list, leaves through the RPC and asks again. All runs: `EGRESS=closed`, one join.
+
+| Run | Result | Cause and change |
+|---|---|---|
+| r1 | red, `DISCONNECTED` at `NETHERNET_CONNECT` (`StacklessClosedChannelException`) | `BedrockChannelInitializer.initPacketCodec` reads the RakNet protocol option, which a NetherNet channel does not have (NullPointerException in the host log). The initialiser now adds the packet codec itself |
+| r2 | red, `invalidSkin` at `LOGIN_SENT` | the client data lacked the claims of a 1.26.60 client (r3, r4 above); added on every transport, `IsEduMode` stays out |
+| r3 | red, `JOIN_TIMEOUT` at `SPAWN_STATUS` (last packet `MoveEntityDeltaPacket`) | chunk radius 4 never reaches PowerNukkitX's 56 chunks (r6 above); NetherNet asks for 8, RakNet stays at 4 |
+| r4 | join green (2.7 s); the script's leave failed | script fault (a `` in the session id), not the host |
+| r5 to r7 | invalid | script faults (`set -e` on the failing leave, then a mangled edit of the script); no driver result |
+| r8 | green: joined in 2.5 s, agent lists `PsNether1`, leave `{"ok":true}`, agent empty | |
+| review | the sonnet review's findings applied (interrupt and `LinkageError` handling, ELF machine and stray-native checks in `checkShadedJar`, pin-line shape, an RPC test for an unknown transport) | |
+| a1, a2, a3 | **green, three separate invocations on the final code**: joined in 2,587 / 2,553 / 2,620 ms, agent lists `PsNether1`, leave OK, agent empty | |
+
+Facts the runs showed:
+- The probe (`GET /v1/join`) runs in `SIGNALLING`; the offer and answer exchange is inside the library's `connect`, so a failure there reports `NETHERNET_CONNECT`.
+- The native library loaded from the shaded jar by the classpath property `libdatachannel.native.datachannel-java.classpath` (one `.so` per architecture, because
+  both classifier jars use the same path). `tel.schich.libdatachannel` cannot be relocated: its `static native` methods are bound by JNI to that class name.
+- No Docker image change was needed: the pinned `java25` image has the OpenSSL 3 the native needs, and the natives travel in the jar. Not run: aarch64 (the library for it is in the jar, checked as ELF machine 183).
+- Still not run: Geyser over NetherNet (T-M12-10), BDS (T-M12-11).
+
 ## Gotchas
 
 - PowerNukkitX 3.0.6 serves signalling on **TCP** 19132 and Query on UDP 19132, so NetherNet media gets an ephemeral UDP port per

@@ -204,7 +204,7 @@ Decision: [ADR-0018](../adr/0018-bedrock-driver-geyser-cells.md). Facts: [geyser
   encryption handshake, resource-pack answers (have-all then completed), `START_GAME`, chunk radius, `SetLocalPlayerAsInitialized`
   at the spawn status. Item definitions come from the start-game and item-registry data with a raised read limit (the spike's two
   decode errors). An unknown field or packet the driver reads is an error naming it.
-- **Stages.** `RAKNET_CONNECT`, `NETWORK_SETTINGS`, `LOGIN_SENT`, `ENCRYPTION_HANDSHAKE`, `RESOURCE_PACKS`, `START_GAME`,
+- **Stages.** `RAKNET_CONNECT` (or, on NetherNet, `SIGNALLING` and `NETHERNET_CONNECT`), `NETWORK_SETTINGS`, `LOGIN_SENT`, `ENCRYPTION_HANDSHAKE`, `RESOURCE_PACKS`, `START_GAME`,
   `SPAWN_STATUS`. A timeout is a `JoinTimeoutException` (message starts `timed out joining`); a server disconnect message is a
   `ClientDriverException` quoting it (for example `Please log into Xbox to join this server.`, which means login validation is on).
 - **v1 surface.** Chat, command (a command request), text and system messages in (`awaitMessage`), inventory and position read,
