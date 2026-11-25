@@ -78,6 +78,22 @@ class BedrockDriverTest {
     }
 
     @Test
+    void aRakNetRequestCarriesNoTransportFieldAndANetherNetOneNamesIt() {
+        Script raknet = new Script();
+        joined(raknet);
+        assertThat(raknet.calls.get(raknet.calls.size() - 1)).doesNotContain("transport");
+        Script nethernet = new Script().reply(HEALTH, ok("{\"sessionId\":\"s1\",\"name\":\".Alex\"}"));
+        new BedrockDriver(nethernet, BedrockRpc.TRANSPORT_NETHERNET).connect(SPEC);
+        assertThat(nethernet.calls.get(nethernet.calls.size() - 1)).contains("\"transport\":\"nethernet\"");
+    }
+
+    @Test
+    void anUnknownTransportIsRefusedAtConstruction() {
+        assertThatThrownBy(() -> new BedrockDriver(new Script(), "webtransport"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("webtransport");
+    }
+
+    @Test
     void refusesAJavaEndpointBeforeAnyCall() {
         Script script = new Script();
         assertThatThrownBy(() -> new BedrockDriver(script).connect(SPEC, Edition.JAVA))
@@ -140,7 +156,7 @@ class BedrockDriverTest {
     @Test
     void everyStageOfTheAdrIsAKnownStageInOrder() {
         assertThat(BedrockRpc.JoinStage.values()).extracting(Enum::name).containsExactly("RAKNET_CONNECT",
-                "NETWORK_SETTINGS", "LOGIN_SENT", "ENCRYPTION_HANDSHAKE", "RESOURCE_PACKS", "START_GAME", "SPAWN_STATUS");
+                "SIGNALLING", "NETHERNET_CONNECT", "NETWORK_SETTINGS", "LOGIN_SENT", "ENCRYPTION_HANDSHAKE", "RESOURCE_PACKS", "START_GAME", "SPAWN_STATUS");
     }
 
     @Test

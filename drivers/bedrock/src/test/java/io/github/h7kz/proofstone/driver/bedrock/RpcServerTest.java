@@ -190,6 +190,13 @@ class RpcServerTest {
     }
 
     @Test
+    void anUnknownTransportIsABadRequestAndNetherNetIsAccepted() throws Exception {
+        String body = "{\"host\":\"server\",\"port\":19132,\"name\":\"Alex\",\"xuid\":\"2535400000000999\",\"joinTimeoutMillis\":5000,\"transport\":\"%s\"}";
+        assertThat(raw("POST", BedrockRpc.SESSIONS, body.formatted("quic"), TOKEN)).startsWith("400 ").contains("BAD_REQUEST").contains("quic");
+        assertThat(raw("POST", BedrockRpc.SESSIONS, body.formatted("nethernet"), TOKEN)).startsWith("200 ");
+    }
+
+    @Test
     void aJoinStallIsAJoinTimeoutNamingTheStage() {
         assertThatThrownBy(() -> join("Stall")).isInstanceOf(JoinTimeoutException.class)
                 .hasMessageStartingWith("timed out joining").hasMessageContaining("at stage LOGIN_SENT")

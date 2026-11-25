@@ -193,6 +193,7 @@ final class RpcServer implements AutoCloseable {
         try {
             BedrockRpc.requireName(request.name());
             BedrockRpc.requireXuid(request.xuid());
+            BedrockRpc.requireTransport(request.transport());
         } catch (IllegalArgumentException e) {
             throw badRequest(e.getMessage());
         }

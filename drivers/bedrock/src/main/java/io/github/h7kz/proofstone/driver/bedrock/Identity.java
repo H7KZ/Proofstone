@@ -97,6 +97,10 @@ final class Identity {
         p.put("CapeData", "").put("CapeId", "").put("CapeImageHeight", 0).put("CapeImageWidth", 0);
         p.put("CapeOnClassicSkin", false).put("PersonaSkin", false).put("PremiumSkin", false).put("TrustedSkin", true);
         p.put("OverrideSkin", false).put("ThirdPartyName", name).put("ThirdPartyNameOnly", false).put("UIProfile", 0);
+        // The claims a 1.26.60 client sends. PowerNukkitX 3.0.6 refuses a login without any of them as invalidSkin (nethernet.md r3,
+        // r4; T-M12-09 run r2). IsEduMode is deliberately absent: a server reads its mere presence as an Education client (r5).
+        p.put("CompatibleWithClientSideChunkGen", false).put("GraphicsMode", 1).put("ClientIsEditorCapable", false);
+        p.put("MaxViewDistance", 16).put("MemoryTier", 0).put("PartyId", "").put("PlatformType", 0).put("ClientEditorConnectionIntent", 0);
         for (String empty : new String[] {"AnimatedImageData", "PersonaPieces", "PieceTintColors"}) {
             p.putArray(empty);
         }

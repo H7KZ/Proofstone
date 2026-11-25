@@ -15,7 +15,7 @@ import java.util.Set;
 
 /**
  * Checks a resolved dependency graph against a checksum list (ADR-0018 section 2, as the NeoForge jars are checked).
- * A pin line is {@code <sha256>  <group>:<name>:<version>}; {@code #} starts a comment. The check fails when the graph
+ * A pin line is {@code <sha256>  <group>:<name>:<version>[:<classifier>]}; {@code #} starts a comment. The check fails when the graph
  * holds a snapshot or a dynamic version, when a resolved artefact has no pin or a different sha256, and when a pin no
  * artefact used is left over, so the list is the authority and the Gradle cache is not.
  */
@@ -34,7 +34,8 @@ public final class ArtefactPins {
         Map<String, String> pins = read(pinFile, violations);
         Set<String> used = new HashSet<>();
         for (Resolved artefact : resolved) {
-            String version = artefact.module().substring(artefact.module().lastIndexOf(':') + 1);
+            // group:name:version, with an optional :classifier (a native jar of the NetherNet binding, T-M12-09).
+            String version = artefact.module().split(":")[2];
             if (isFloating(version)) {
                 violations.add(artefact.module() + ": a snapshot or dynamic version is not a pin");
             }
@@ -69,7 +70,8 @@ public final class ArtefactPins {
                 continue;
             }
             String[] parts = text.split("\\s+");
-            if (parts.length != 2 || !parts[0].matches("[0-9a-f]{64}")) {
+            if (parts.length != 2 || !parts[0].matches("[0-9a-f]{64}")
+                    || !parts[1].matches("[^:\\s]+:[^:\\s]+:[^:\\s]+(:[^:\\s]+)?")) {
                 violations.add(pinFile.getFileName() + ": not a line of sha256 then group:name:version: " + text);
             } else if (pins.put(parts[1], parts[0]) != null) {
                 violations.add(pinFile.getFileName() + ": " + parts[1] + " is pinned twice");

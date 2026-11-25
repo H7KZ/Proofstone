@@ -5,6 +5,12 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 
 ## [Unreleased]
 
+### Added
+- Bedrock driver host: a NetherNet transport (`transport: "nethernet"` in a session request; RakNet stays the default and a RakNet request is
+  unchanged). HTTP signalling, WebRTC data channels through libdatachannel (natives for Linux glibc x86_64 and aarch64 inside the shaded jar), a
+  self-made offer identity, one handshake attempt, stages `SIGNALLING` and `NETHERNET_CONNECT`. `BedrockDriver(transport, "nethernet")` selects it.
+  Joined PowerNukkitX 3.0.6 through the driver host RPC (T-M12-09, ADR-0021). The login claims of a 1.26.60 client are now sent on every transport.
+
 ### Fixed
 - Bukkit agent: a console command's reply is captured on servers that log asynchronously (Paper 1.16.5, Log4j `AsyncLogger`): the capture waits
   for its own end marker before it detaches, so `list` no longer comes back blank and the paper@1.16.5 cell passes its conformance (T-M12-12).

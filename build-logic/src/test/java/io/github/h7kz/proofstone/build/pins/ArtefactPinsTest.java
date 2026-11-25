@@ -69,6 +69,26 @@ class ArtefactPinsTest {
     }
 
     @Test
+    void aClassifierJarIsItsOwnPinAndItsVersionIsStillChecked() throws IOException {
+        String module = "g:a:1.0-20261105.085043-11:linux-x86_64";
+        assertThat(ArtefactPins.check(List.of(new Resolved(module, jarFile())), pins(ABC + "  " + module))).isEmpty();
+        // the same file without its classifier is another pin, so the plain jar's line does not cover the native one
+        assertThat(ArtefactPins.check(List.of(new Resolved(module, jarFile())), pins(ABC + "  g:a:1.0-20261105.085043-11")))
+                .anyMatch(v -> v.contains("no pin")).anyMatch(v -> v.contains("not in the resolved graph"));
+        String floating = "g:a:1.0-SNAPSHOT:linux-x86_64";
+        assertThat(ArtefactPins.check(List.of(new Resolved(floating, jarFile())), pins(ABC + "  " + floating)))
+                .singleElement().asString().contains("not a pin");
+    }
+
+    @Test
+    void theJniPackageOfTheNativeBindingMayStayUnrelocatedButNothingElseMay() throws IOException {
+        assertThat(ShadedJarCheck.check(zip("io/github/h7kz/proofstone/Host.class", "tel/schich/libdatachannel/PeerConnection.class")))
+                .isEmpty();
+        assertThat(ShadedJarCheck.check(zip("io/github/h7kz/proofstone/Host.class", "tel/schich/other/X.class")))
+                .singleElement().asString().contains("unrelocated class tel/schich/other/X.class");
+    }
+
+    @Test
     void timestampedSnapshotBuildIsAPin() {
         assertThat(ArtefactPins.isFloating("3.0.0.Beta15-20261116.161745-6")).isFalse();
     }

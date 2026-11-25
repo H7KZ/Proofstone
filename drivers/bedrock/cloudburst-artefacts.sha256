@@ -3,28 +3,23 @@
 # .sha1 the value matches it. The three Beta15 and the two netty and the math lines are timestamped snapshot builds from
 # repo.opencollab.dev/maven-snapshots (no release of CloudburstMC Protocol exists); the rest are releases. A change to any
 # version in gradle/libs.versions.toml fails checkCloudburstPins until these lines are re-derived from a real download.
+# T-M12-09 (2026-11-25, ADR-0021): the netty line moved to 2.0.0.CR6-20261115.174122-26 (raknet, common and nethernet are one build), Netty to 4.1.130,
+# slf4j to 2.0.18, and NetherNet added: libdatachannel-java (snapshot 0.24.6.0-20261105.085043-11) with the linux-glibc-x86_64 and linux-glibc-aarch64
+# native jars (a pin line may end in :classifier), Bouncy Castle 1.85, gson 2.13.2. Each value was computed from a fresh download from repo.opencollab.dev
+# or Maven Central on 2026-11-25 and equals what Gradle resolved.
 d4cbf8947087f305869826801913abdc50735a1fab2074a1993e7bc67ca974a3  com.fasterxml.jackson.core:jackson-databind:2.22.4
 2d30c375cddea9657a1e1ef97547a2694b663b355facb4de53a097782b312d1a  com.fasterxml.jackson.core:jackson-core:2.22.4
 24483f9417251168d6b4fe578b1c90159af27276f54ce47f5baeb9b25ca05d71  org.cloudburstmc.protocol:bedrock-connection:3.0.0.Beta15-20261116.161745-6
 767b3b485edb09b6106a08bc06d872dba8c9834e0ac026066c60943bfb2dcf1e  org.cloudburstmc.protocol:bedrock-codec:3.0.0.Beta15-20261116.161745-6
 d1062135f48d2939edf91448859e845d6928f0c5b0ddd06eafd5370f74a07fd5  org.cloudburstmc.protocol:common:3.0.0.Beta15-20261116.161745-6
-030026c50a7796f29486e0c94719f8bd6737fe45589c2f2b68dabcf7f7c8ef49  org.cloudburstmc.netty:netty-transport-raknet:1.1.0.CR4-20261103.123906-3
-ee5d228d675a2aa9c792b02a7f3e92888b5f50436df5e0891b40b73a7c2fb7e5  org.cloudburstmc.netty:netty-transport-common:1.1.0.CR4-20261103.123906-3
 7ba952e43a003dbfc6cc3da8d826d22f2798e8c03e20c0274a23825b57265bbc  org.cloudburstmc.math:immutable:2.0-20220327.162752-1
 21ddb598807d3a51a876704eb979d9296e1c6a6f47ab1826ff88c6d6a127a2d0  com.fasterxml.jackson.core:jackson-annotations:2.22
 b86bb66f610079e0bf790d62e2ff68853eb0dc4748a6d68ae28bce92b68094aa  io.airlift:aircompressor:2.0.3
-c1cf61a69bf2e32ce9a67cbb06f61b731b76f4abcf3d13b4f1443ee650fe3d46  io.netty:netty-codec-haproxy:4.1.101.Final
-982ebe55d12e5ba1a9f37a0d16d30a0baed22b9f67268fbeead3c23093864c81  io.netty:netty-codec:4.1.101.Final
-d2165ec2544411d451a57e0dc269692deec2a56bd7f57a38705dbf276b3a6752  io.netty:netty-transport-native-unix-common:4.1.101.Final
-5bf8f47b3d4612dbb1e94bcabcad92d7b37b8be64bfe744cddc790a1f7278c74  io.netty:netty-transport:4.1.101.Final
-d8fb397501ed59b046f69123c6d12a656066c534c564f7ba8fc3389497521c93  io.netty:netty-buffer:4.1.101.Final
 778e354b463167986897140ffa49892eebbbc171e93810028da2f5d0ce7cba26  org.cloudburstmc.fastutil.maps:long-object-maps:8.5.15
 0d352d02875f40610b943f64456276975cd3e7a89746772f279a0887dec58370  org.cloudburstmc.fastutil.sets:long-sets:8.5.15
 0655ec4614d991ef55a023ad7a85de3a6b037d85386c297fc385caa59dca5986  org.cloudburstmc.fastutil.commons:long-common:8.5.15
 7314af50cde9c99e8eaf43eee617a23edcc6bb43036221064355094999d837ef  org.bitbucket.b_c:jose4j:0.9.6
 0c5a2be402bd09ab2a246ee478e3100027bacf7e948812378f291e81c6e48f6d  org.cloudburstmc:nbt:3.1.0.Final
-75af5bfa8d582962d66dabbc2e71abfa0cb1d3e7a3b06e252bbe560d4f2ec063  io.netty:netty-resolver:4.1.101.Final
-aa8d1d5187d17cfbe1b668a3f3f9f6740c6fa5c96ae3bbabced4ca16b1ca14eb  io.netty:netty-common:4.1.101.Final
 24c47d056e6c29ceb591cb6f54187668951ab695a0e14e19ab25ac1d9308f194  net.jodah:expiringmap:0.5.10
 64465da2514b1eb7b19bbd7b03b1c72774f86a6b2e4f0cf39838d1d8041f16f1  org.cloudburstmc.fastutil.maps:int-object-maps:8.5.15
 d646613c2cfe972f227873d1168fe9f8ada42bac1743ec0e7355ed683153267f  org.cloudburstmc.fastutil.maps:object-int-maps:8.5.15
@@ -33,5 +28,25 @@ f25a0b237e8335441748ac6783d949954a62fd0be7924106c6be7bda2c249431  org.cloudburst
 ec39b2c9aa76fddf856da1aef800b03cb1540b17c3f2c0cd28cdf520bed90da7  org.cloudburstmc.fastutil.sets:int-sets:8.5.15
 c4ad0f7723e886022029de4702336a3b41618b946d6194e8fa63790cbc2204fc  org.cloudburstmc.fastutil.commons:int-common:8.5.15
 daf6276eb4c0667fc5b5f6070ae08e9e48cc90a1c59d91fc76ebf726ff7970b3  org.cloudburstmc.fastutil:core:8.5.15
-d3ef575e3e4979678dc01bf1dcce51021493b4d11fb7f1be8ad982877c16a1c0  org.slf4j:slf4j-api:1.7.36
 bb86e95520a7877e602797f74ecbe9318228500d4f5ee380ecba43f54df888e2  com.nukkitx:natives:1.0.3
+dd0ce1b55a3ed2080cb70f9c655850cda86c206862310009dcb5e5c95265a5e0  com.google.code.gson:gson:2.13.2
+a56e782b5b50811ac204073a355a21d915a2107fce13ec711331ad036f660fcc  com.google.errorprone:error_prone_annotations:2.41.0
+69dca773236e0f40eebb0028434b5930ee0d68560ce6c40d361dafd5bf1c0aa9  dev.opencollab:libdatachannel-java:0.24.6.0-20261105.085043-11
+241bc0cc63fb6c338d25932ccee526496f31b51edea01dbfd4854b6c60fe0715  dev.opencollab:libdatachannel-java:0.24.6.0-20261105.085043-11:linux-glibc-aarch64
+ab2be821b6c4b38d95d02395b2a85409a2c10c97076f88121ab7308b5f233cf0  dev.opencollab:libdatachannel-java:0.24.6.0-20261105.085043-11:linux-glibc-x86_64
+00a522b67ea35cb7b4dd9cf27f85c6c58f5e306785aa045302e5f6b2d4944a87  io.netty:netty-buffer:4.1.130.Final
+7195ce9d4fb0c466173fe7fb9562c6c3e380e3511a22355d15c16da349c6aa33  io.netty:netty-codec-haproxy:4.1.130.Final
+5b6addc1df7b3397a193bd6544a8bfdb18ecac99fd13bee4ec75b1781a664e5e  io.netty:netty-codec-http:4.1.130.Final
+52636bc29bd62120b97bbe5d1d21eab9b1cb2bef8efbb54d2221c5f3fa08d8cd  io.netty:netty-codec:4.1.130.Final
+53921f28dd5a352b1bed0e1cbcc54d013dc60ffebeae9b2b1e53eabef317e581  io.netty:netty-common:4.1.130.Final
+98c78ec187ca30a4b9775bf6f632f5c9929db6bf06a60e6971f945813880ca0f  io.netty:netty-handler:4.1.130.Final
+48c5b218a89d184e1b601d46433957f515fcefdb4464182b1348bce4f5a18f35  io.netty:netty-resolver:4.1.130.Final
+cf5efc4168597d7cd14695b469418cac2a1134533f9a0c82ef0538d796fd39e1  io.netty:netty-transport-native-unix-common:4.1.130.Final
+1bf573266d271f856705a9984d25449c56a1d73c02a16af12033ceccfe555dbb  io.netty:netty-transport:4.1.130.Final
+c9f82b2d4e99c4bbdfccf684e52cc06ea06a0b567bfd0d08f9c5a3f417055996  org.bouncycastle:bcpkix-jdk18on:1.85
+20af26bf6060bb8005cc2389916812c1e0e998dc48d2ced7131b89461b54cff7  org.bouncycastle:bcprov-jdk18on:1.85
+590f55ed5d68529239898a4a5c4f730b6e37f45d1cfa3fbe51f8485abe32c42d  org.bouncycastle:bcutil-jdk18on:1.85
+d8de2ccfb2c6d1bcfa3d397803e3e8bcd92e392b88d5d952e6f28e0884c673e4  org.cloudburstmc.netty:netty-transport-common:2.0.0.CR6-20261115.174122-26
+f7f0edc8a1839b23476751fb1d71b67f8eab5124c5bd1e344fbe359fd33c3263  org.cloudburstmc.netty:netty-transport-nethernet:2.0.0.CR6-20261115.174122-26
+002d48f54b3dfacfa52ad77f1de3103813ad5d2d8c43026194aaaa31f1ad6d16  org.cloudburstmc.netty:netty-transport-raknet:2.0.0.CR6-20261115.174122-26
+44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55  org.slf4j:slf4j-api:2.0.18

@@ -80,6 +80,16 @@ class ClientPacketsTest {
     private final SessionState state = new SessionState();
     private final Recorder wire = new Recorder();
     private final Identity identity = new Identity("Alex", "2535400000000007", Clock.systemUTC());
+    @org.junit.jupiter.api.Test
+    void aNetherNetJoinAsksForTheLargerChunkRadiusPowerNukkitXNeedsToSpawnUs() {
+        Recorder other = new Recorder();
+        ClientPackets nn = new ClientPackets(new SessionState(), other, identity, "server:19132", 2225, "1.26.60",
+                ClientPackets.NETHERNET_CHUNK_RADIUS);
+        nn.handle(startGame(65.62f));
+        assertThat(other.last(RequestChunkRadiusPacket.class).getRadius()).isEqualTo(8);
+        assertThat(ClientPackets.CHUNK_RADIUS).as("the verified Geyser value is untouched").isEqualTo(4);
+    }
+
     private final ClientPackets client = new ClientPackets(state, wire, identity, "server:19132", 2225, "1.26.60");
     private final ItemDefinition diamond = new SimpleItemDefinition("minecraft:diamond", 318, false);
 

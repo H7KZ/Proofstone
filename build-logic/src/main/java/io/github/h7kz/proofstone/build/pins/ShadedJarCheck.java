@@ -16,6 +16,12 @@ public final class ShadedJarCheck {
 
     private static final String OWN = "io/github/h7kz/proofstone/";
 
+    /**
+     * Packages that stay at their own name because a native library is bound to them by JNI (ADR-0021: libdatachannel-java's
+     * {@code static native} methods). Only these, each an unmodified binary of an MPL-2.0 or MIT library named in NOTICE.
+     */
+    static final List<String> JNI_PACKAGES = List.of("tel/schich/libdatachannel/");
+
     private ShadedJarCheck() {
     }
 
@@ -29,7 +35,7 @@ public final class ShadedJarCheck {
                 String name = entry.replaceFirst("^META-INF/versions/[0-9]+/", "");
                 if (name.endsWith(".class") && !name.equals("module-info.class")) {
                     ours |= name.startsWith(OWN);
-                    if (!name.startsWith(OWN)) {
+                    if (!name.startsWith(OWN) && JNI_PACKAGES.stream().noneMatch(name::startsWith)) {
                         violations.add("unrelocated class " + entry);
                     }
                 }

@@ -55,6 +55,10 @@ public final class BedrockRpc {
     public enum JoinStage {
         /** Connecting over RakNet (protocol 11). */
         RAKNET_CONNECT,
+        /** NetherNet: loading the native library and the HTTP probe of the server's signalling endpoint (ADR-0021). */
+        SIGNALLING,
+        /** NetherNet: the probe answered; the offer and answer exchange and the WebRTC data channels (DTLS and SCTP) are opening (ADR-0021). */
+        NETHERNET_CONNECT,
         /** RakNet is up; waiting for the server's network settings. */
         NETWORK_SETTINGS,
         /** The unsigned login is sent; waiting for the server's encryption handshake. */
@@ -67,6 +71,22 @@ public final class BedrockRpc {
         START_GAME,
         /** Start game is in; waiting for the spawn status. */
         SPAWN_STATUS
+    }
+
+    /** The default transport: RakNet, protocol 11. A request without a {@code transport} field means this one. */
+    public static final String TRANSPORT_RAKNET = "raknet";
+    /** NetherNet over HTTP signalling and WebRTC data channels (ADR-0021). */
+    public static final String TRANSPORT_NETHERNET = "nethernet";
+
+    /** The transport a request names; absent means RakNet, any other word is an error (never a silent default). */
+    public static String requireTransport(String transport) {
+        if (transport == null || TRANSPORT_RAKNET.equals(transport)) {
+            return TRANSPORT_RAKNET;
+        }
+        if (TRANSPORT_NETHERNET.equals(transport)) {
+            return TRANSPORT_NETHERNET;
+        }
+        throw new IllegalArgumentException("unknown Bedrock transport '" + transport + "': raknet or nethernet");
     }
 
     /** The player name rule: 1 to 15 characters from {@code A-Za-z0-9_} (Floodgate prepends one {@code .}). */
@@ -104,7 +124,14 @@ public final class BedrockRpc {
     }
 
     /** @param joinTimeoutMillis how long the host may take to reach the spawn status */
-    public record ConnectRequest(String host, int port, String name, String xuid, long joinTimeoutMillis) {
+    /**
+     * {@code transport} is {@code raknet} or {@code nethernet}; absent (null, left out of the JSON) means RakNet, so a RakNet request is
+     * byte for byte what it was before NetherNet (ADR-0021).
+     */
+    public record ConnectRequest(String host, int port, String name, String xuid, long joinTimeoutMillis, String transport) {
+        public ConnectRequest(String host, int port, String name, String xuid, long joinTimeoutMillis) {
+            this(host, port, name, xuid, joinTimeoutMillis, null);
+        }
     }
 
     public record Connected(String sessionId, String name) {

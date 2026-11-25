@@ -18,7 +18,7 @@ container on the cell network, never in the harness JVM. `BedrockDriver implemen
 - **v1 surface only:** join, chat, command, `awaitMessage`, inventory and position read, disconnect. Window clicks, `useBlock`, forms,
   resource packs (answered "have all" without downloading) and `awaitServerSwitch` are out: they throw `UnsupportedOperationException`.
 - No sleeps and no retries (ADR-0007): waits are on a condition with the remaining time. A join that stalls is a `JoinTimeoutException` naming the stage.
-- No dependency beyond Jackson and the Cloudburst graph, all shaded and relocated into one jar. Nothing here may reach a user's Gradle or Maven graph.
+- No dependency beyond Jackson, the Cloudburst graph and, for NetherNet, libdatachannel-java with its Linux natives (ADR-0021), all shaded into one jar and relocated, except `tel.schich.libdatachannel`, which JNI binds to its own name (`ShadedJarCheck.JNI_PACKAGES`). Nothing here may reach a user's Gradle or Maven graph.
 - Core classes in the host jar are the `rpc` package only (`BoundaryTest`).
 
 ## Public surface
@@ -30,7 +30,7 @@ container on the cell network, never in the harness JVM. `BedrockDriver implemen
   `/rpc/v1/sessions/{id}`: `POST chat`, `POST command`, `POST await-message` (regex, timeout), `GET messages?since=`, `GET inventory`,
   `GET position`, `GET transcript`, `DELETE`. Errors: `BAD_REQUEST`, `UNAUTHORIZED`, `NOT_FOUND`, `JOIN_TIMEOUT` (with the stage),
   `DISCONNECTED` (the server's own text), `TIMEOUT` (never a partial result), `PROTOCOL_ERROR`, `INTERNAL`.
-- Join stages, each entered at its event: `RAKNET_CONNECT`, `NETWORK_SETTINGS` (RakNet is up), `LOGIN_SENT` (network settings in, login sent),
+- Join stages, each entered at its event: `RAKNET_CONNECT` (RakNet) or `SIGNALLING` then `NETHERNET_CONNECT` (NetherNet, ADR-0021), `NETWORK_SETTINGS` (the transport is up), `LOGIN_SENT` (network settings in, login sent),
   `ENCRYPTION_HANDSHAKE` (handshake answered), `RESOURCE_PACKS` (login success), `START_GAME` (packs answered), `SPAWN_STATUS` (start game in).
 - Reads: the player inventory (container 0) as identifier, runtime id and count per slot; the position as the feet (Bedrock sends the eye, 1.62 higher).
 - Raised read limit: the connection uses the library's client limit profile (the default list limit, 1536, is below the server's 2088 item
@@ -50,7 +50,9 @@ container on the cell network, never in the harness JVM. `BedrockDriver implemen
 `test` runs `checkCloudburstPins` first: every resolved runtime artefact must match its line in `cloudburst-artefacts.sha256`, no resolved version may be a
 snapshot or dynamic, and a stale line fails. To change a version, re-derive the lines from a fresh download of each jar, never from the Gradle cache.
 
-There is no real-server test in this module: the real join runs in `:proofstone-core:geyserTest` (T-M9-06, `GeyserCellIT`), where it passed 3 of 3 on
+NetherNet (T-M12-09, ADR-0021): `scripts/spike/nethernet/driver-host-join.sh` boots PowerNukkitX 3.0.6 (jar cached under `/c/pw/nukkit-cache/`, sha256 checked) and the shaded host jar on a closed cell network, joins through the RPC with `"transport":"nethernet"`, asks the agent for the player list, leaves and asks again (run it under `scripts/dockerlock.sh` with `PROOFSTONE_ACCEPT_EULA=true`; runs are recorded in [nethernet.md](../../docs/platforms/nethernet.md)). The two natives in the shaded jar are checked by `checkShadedJar` (right ELF machine, no other native code).
+
+There is no other real-server test in this module: the real join runs in `:proofstone-core:geyserTest` (T-M9-06, `GeyserCellIT`), where it passed 3 of 3 on
 `geyser@2.12.1+paper@26.3`: the exec-curl transport in a container, the encryption handshake against the stand-in and the spawn status. That run found
 two decode bugs (the item definitions come in `ItemComponentPacket`; the creative content needs a block registry, `RuntimeIdBlocks`), fixed here. Still
 **unverified**: chat, command and window round trips, two clients at once.

@@ -28,9 +28,17 @@ public final class BedrockDriver implements ClientDriver {
             + new SecureRandom().nextInt(1_000_000_000));
 
     private final RpcCalls rpc;
+    private final String bedrockTransport;
 
+    /** A driver that joins over RakNet, the default. */
     public BedrockDriver(HostTransport transport) {
+        this(transport, BedrockRpc.TRANSPORT_RAKNET);
+    }
+
+    /** A driver that joins over the named Bedrock transport ({@link BedrockRpc#TRANSPORT_RAKNET} or {@link BedrockRpc#TRANSPORT_NETHERNET}, ADR-0021). */
+    public BedrockDriver(HostTransport transport, String bedrockTransport) {
         this.rpc = new RpcCalls(transport);
+        this.bedrockTransport = BedrockRpc.requireTransport(bedrockTransport);
     }
 
     @Override
@@ -67,7 +75,8 @@ public final class BedrockDriver implements ClientDriver {
                     + BedrockRpc.PROTOCOL);
         }
         ConnectRequest request = new ConnectRequest(spec.host(), spec.port(), spec.username(), nextXuid(),
-                spec.connectTimeout().toMillis());
+                spec.connectTimeout().toMillis(),
+                BedrockRpc.TRANSPORT_RAKNET.equals(bedrockTransport) ? null : bedrockTransport);
         try {
             Connected connected = rpc.call("POST", BedrockRpc.SESSIONS, request, Connected.class, spec.connectTimeout());
             return new BedrockSession(rpc, connected.sessionId(), connected.name());
