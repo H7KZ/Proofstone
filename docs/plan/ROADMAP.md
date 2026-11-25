@@ -2550,3 +2550,41 @@ repeat on every cell. The earlier series (all 8 red) is in the 2026-11-24 addend
 clean 5 of 5; it is a flake finding, not a test defect. Rows paper@1.21.4 and 1.21.7 stay `experimental` until their per-row conformance
 evidence (ADR-0015). Maintainer-only: delete the scratch folders (list in the 2026-11-24 addendum, plus `C:\pw\led2`, `C:\pw\ev-m1204`,
 `C:\pw\dis-ev-repeat2`).
+
+## Ledger update (2026-11-25, later): T-M12 cards merged, final repeat series
+
+Merged on develop (all `gates` green, real-server evidence in each PR): T-M12-04 #218 (patchConfig restore keeps the config object), T-M12-03 #220
+(`datapacks/list` on paper@1.18.2), T-M12-07 #221 (`ItemView.pdc` verified on paper@1.17.1 and, after T-M12-12, paper@1.16.5), T-M12-06 #222
+(bootLogLines boundary pinned), T-M12-01 #223 (a disconnect names the join stage), T-M12-13 #225 (spigot@26.3 re-pinned: three fresh builds
+agreed, the old digest no longer built), T-M12-12 #224 (a console reply is captured on async loggers: Paper 1.16.5 on Java 8 logs through
+Log4j `AsyncLogger`, and the capture detached before the reply arrived, so the bridged 1.16.5 cell was INVALID in conformance 3 of 3). Four
+independent sonnet reviews ran (T-M12-04, -03, -01, -12); their findings were applied. Two fixes started from a wrong first guess and were
+corrected by evidence (T-M12-12: not a wrong logger context; T-M12-03: a second missing class on 1.18.2).
+
+Disenchantment pins Proofstone `d073d4c` (#99); all 8 e2e cells green. Hosted flake report, `-Dproofstone.repeat=5`, one cell at a time:
+
+| cell | run | result |
+|---|---|---|
+| paper@26.3 | 45612788429 | 5 of 5 clean |
+| paper@1.21.4 | 45618026411 | 5 of 5 clean |
+| paper@1.18.2 | 45628661557 | 5 of 5 clean |
+| paper@1.20.4 | 45632844467 | 5 of 5 clean |
+| paper@1.21.7 | 45636578418 | 5 of 5 clean |
+| folia@26.3 | 45649997660 | 5 of 5 clean |
+| paper@1.21.11 | 45643810824 | RED: one `CONFIGURATION_STALLED` join stall (`EraseModeE2E`, repeat 3); the other 4 repeats passed |
+| paper@1.20.6 | 45624862028 | INVALID: one test class's server never booted (`Network is unreachable` while Paper downloaded `mojang_1.20.6.jar`); not a plugin or harness result |
+| paper@1.20.6 (re-run) | 45656217998 | RED: one `CONFIGURATION_STALLED` join stall (`SpecialAnvilE2E`, repeat 1); the other 4 repeats passed |
+
+Reading: 6 of 8 cells are 5 of 5 clean. The only reds left are single join stalls, `CONFIGURATION_STALLED` (login acknowledged, configuration never
+finished), the T-M6-109 class, on 2 of 8 cells; no repeat failed for any other reason. That flake class is still unexplained, and a release
+claim cannot pass 5 of 5 on every cell while it exists. T-M12-01 now makes a disconnect-shaped stall name its stage, which narrows the next
+look. Disenchantment's `DisabledWorldE2E` has been green in every repeat on every cell since T-M12-04.
+
+Infra seen today, not results: repo.opencollab.dev did not serve `text-serializer-nbt-0.2.1.jar` to hosted runners (worked around with a Gradle
+cache write on master runs, Disenchantment#97); GitHub's workflow-dispatch API answered HTTP 500 during an Actions degradation.
+
+**Still open:** T-M12-02 (ViaProxy 1.8.8 stall mechanism, a counted-loop spike); T-M6-109 (the native `CONFIGURATION_STALLED` class); T-M12-05
+(`release.yml` dependency prefetch: needs the maintainer's approval to change a workflow, AGENTS.md section 4); T-M12-08 to T-M12-11 (NetherNet: the ADR
+needs the maintainer's yes, then driver, Geyser cell, BDS spike needs a yes for the BDS binary); T-M8-26. Rows paper@1.21.4 and 1.21.7 stay
+`experimental` until their per-row conformance runs (ADR-0015). Maintainer-only as before: tags, Central, release approvals, deleting the
+scratch folders and worktrees (`C:\pw\T-M12-*`, `m12-cards`, `led`, `led2`, `led3`, `ev-m12*`, `dis-ev-repeat*` and the earlier list).
