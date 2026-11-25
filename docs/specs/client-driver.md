@@ -114,6 +114,10 @@ What ran first (T-M8-01, Fabric 26.3, [fabric.md](../platforms/fabric.md) Capabi
     `FAILED_DOWNLOAD` after a wrong hash on a required pack still reached play. `FAIL_DOWNLOAD` itself was run in unit tests
     only.
 - **A join that fails** says why the pack was not taken: the `could not join` message adds `resource packs: <url>: <problem>`.
+- **A join the server ends early** (a kick or a close before the first health packet) names how far the client got: the `could not join`
+  message adds `the join ended at <stage> (<summary>)` from the same transcript as a timeout, and always `last packet received: <packet>`
+  (T-M12-01). A kick is not a stall: the stage is where the client stopped, not why the server ended the join. A join that already
+  reached the first health packet adds no stage.
 - **Source rule: never the internet.** The driver downloads only from under the source base URL, with one GET that follows
   no redirect. A push with any other URL is recorded; `DECLINE` and `FAIL_DOWNLOAD` are sent as declared, and `ACCEPT` on it
   disconnects with a `ClientDriverException` naming the URL and this rule. Nothing is unpacked or rendered.

@@ -83,9 +83,24 @@ public final class McplDriver implements ClientDriver {
             // A pack the client could not take is part of why: the server's kick alone would hide it (T-M8-10).
             String packs = session.resourcePacks().stream().filter(push -> push.problem() != null)
                     .map(push -> push.url() + ": " + push.problem()).collect(Collectors.joining("; "));
-            throw new ClientDriverException("could not join " + where + ": " + session.disconnectReason()
-                    + (packs.isEmpty() ? "" : "; resource packs: " + packs));
+            throw new ClientDriverException(disconnectMessage(where, session.disconnectReason(), packs, session.transcript()));
         }
         return session;
+    }
+
+    /**
+     * The failure for a join the server ended before it finished. The server's reason alone hides where the join stopped:
+     * a fast close after the login acknowledgement (the join-stall class, T-M6-109) read as a plain kick. The stage comes
+     * from what the client saw, as for a timeout, and the message still starts {@code could not join}, which the flake
+     * scripts classify on (T-M12-01).
+     */
+    static String disconnectMessage(String where, String reason, String packs, List<String> transcript) {
+        JoinDiagnosis diagnosis = JoinDiagnosis.classify(transcript);
+        // A kick is not a stall: the stage names how far the client got, not why the server ended the join. UNKNOWN (a join
+        // that already reached the first health packet) adds no stage, only the last packet.
+        String reached = diagnosis.stage() == JoinStage.UNKNOWN ? ""
+                : "; the join ended at " + diagnosis.stage() + " (" + diagnosis.stage().summary() + ")";
+        return "could not join " + where + ": " + reason + reached + "; last packet received: " + diagnosis.lastReceived()
+                + (packs.isEmpty() ? "" : "; resource packs: " + packs);
     }
 }
