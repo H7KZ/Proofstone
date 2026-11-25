@@ -298,8 +298,31 @@ class AgentContractIT {
     private void dataPacksCase() throws Exception {
         assertThat(host).as("the server of this cell did not boot, see its boot test").isNotNull();
         boolean reported = host.health().capabilities().contains("datapacks");
+        // Asserted, not copied: a lookup that fails on a server that has the API must not look like "no data packs" (T-M12-03).
+        String mc = host.health().mcVersion();
+        if (platform.equals("paper") && (mc.equals("1.18.2") || mc.startsWith("26."))) {
+            assertThat(reported).as("a Paper " + mc + " server lists data packs, so the agent must report datapacks").isTrue();
+        }
         if (reported) {
-            replay("datapacks/list");
+            // The golden holds the pack ids of the newest server (Paper's own "paper" pack and the experimental ones); older
+            // servers list other packs. So every cell is checked for the shape, and only the cell the golden came from is
+            // compared to it exactly (T-M12-03: paper@1.18.2 answered 500 "zip file closed", then differed from the golden).
+            Reply reply = send("GET", "/v1/datapacks", true, null);
+            assertThat(reply.status()).as("datapacks/list status; body was " + reply.body()).isEqualTo(200);
+            JsonNode data = JSON.readTree(reply.body()).path("data");
+            List<String> enabled = new ArrayList<>();
+            data.path("enabled").forEach(id -> enabled.add(id.asText()));
+            List<String> available = new ArrayList<>();
+            data.path("available").forEach(id -> available.add(id.asText()));
+            assertThat(enabled).as("enabled packs: " + reply.body()).contains("vanilla").doesNotHaveDuplicates();
+            assertThat(available).as("available packs: " + reply.body()).isNotEmpty().doesNotHaveDuplicates()
+                    .containsAll(enabled);
+            if (platform.equals("paper") && mc.startsWith("26.")) {
+                assertThat(available).as("Paper 26.x ships its own pack").contains("paper");
+            }
+            if (mc.equals("26.3")) {
+                replay("datapacks/list");
+            }
         } else {
             Reply reply = send("GET", "/v1/datapacks", true, null);
             assertThat(reply.status()).as("a server without a data-pack API answers 404: " + reply.body()).isEqualTo(404);
@@ -347,11 +370,25 @@ class AgentContractIT {
         }
         // Reported where PlayerResourcePackStatusEvent exists (T-M8-10); asserted, not copied: run on paper@26.3, the default cell.
         ((ArrayNode) data.get("capabilities")).add("resource-pack-status");
+        // Reported from Bukkit 1.14, where PersistentDataContainer exists (T-M11-05). The golden predates it, so every cell from 1.14 up
+        // was red on this case until the token was added here (T-M12-03 found it on paper@1.18.2). It follows resource-pack-status.
+        if (bukkitMinorAtLeast(host.health().mcVersion(), 14)) {
+            ((ArrayNode) data.get("capabilities")).add("pdc");
+        }
         if (platform.equals("folia")) {
             data.put("platform", "folia");
             ((ArrayNode) data.get("capabilities")).add("regions");
         }
         return copy;
+    }
+
+    /** Bukkit 1.N and the 26.x line (which is newer than every 1.N): whether the Minecraft version is at least 1.{@code minor}. */
+    private static boolean bukkitMinorAtLeast(String mcVersion, int minor) {
+        if (!mcVersion.startsWith("1.")) {
+            return true;
+        }
+        String[] parts = mcVersion.split("\\.");
+        return Integer.parseInt(parts[1]) >= minor;
     }
 
     /** ticks.json carries {@code regions} on Folia only; the golden {@code ticks/*} cases hold the global counter. */
