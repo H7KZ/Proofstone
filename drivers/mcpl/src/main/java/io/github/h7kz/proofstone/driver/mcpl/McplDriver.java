@@ -96,10 +96,11 @@ public final class McplDriver implements ClientDriver {
      */
     static String disconnectMessage(String where, String reason, String packs, List<String> transcript) {
         JoinDiagnosis diagnosis = JoinDiagnosis.classify(transcript);
-        String stopped = diagnosis.stage() == JoinStage.UNKNOWN ? ""
-                : "; join stopped at " + diagnosis.stage() + " (" + diagnosis.stage().summary() + "); last packet received: "
-                        + diagnosis.lastReceived();
-        return "could not join " + where + ": " + reason + stopped
+        // A kick is not a stall: the stage names how far the client got, not why the server ended the join. UNKNOWN (a join
+        // that already reached the first health packet) adds no stage, only the last packet.
+        String reached = diagnosis.stage() == JoinStage.UNKNOWN ? ""
+                : "; the join ended at " + diagnosis.stage() + " (" + diagnosis.stage().summary() + ")";
+        return "could not join " + where + ": " + reason + reached + "; last packet received: " + diagnosis.lastReceived()
                 + (packs.isEmpty() ? "" : "; resource packs: " + packs);
     }
 }
