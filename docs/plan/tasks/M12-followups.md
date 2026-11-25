@@ -265,3 +265,27 @@ written down first (version, URL, sha256, size).
 - [ ] `docs/platforms/nethernet.md` has every run as invocation and result.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`
+
+### T-M12-12 · Bridged paper@1.16.5: the cell's console check reads `list` as blank
+- tier: sonnet
+- depends: —
+- modules: proofstone-core, docs/platforms
+- adrs: 0006
+- specs: specs/self-tests.md §1
+- test-first: no
+
+**Goal.** Find out why the bridged `paper@1.16.5` cell fails its own conformance with ``cell conformance failed: `list` gave a blank reply, so the console path is unverified``, and fix the cause or document it.
+
+**Evidence.** T-M12-07 (2026-11-25): C-I01 on paper@1.16.5 was INVALID in 3 of 3 separate invocations, before the test body ran; the same test is green on paper@1.17.1 (3 of 3). The matrix row is `required`, observed only for C01 ("T-M3-02", `java8`).
+
+**Do.**
+- Reproduce with `:conformance:smoke -Dproofstone.cells=paper@1.16.5`, read the agent's reply to `list` and the server log (does the 1.16.5 console print the player list through a path the agent's command capture misses?).
+- Fix in the agent's command capture if it is there; if it is the bridge, record the mechanism in `docs/platforms/paper.md`. Update the row's `observed` text with the result.
+
+**Don't.** Weaken or skip the console check; change the row status without per-row evidence (ADR-0015).
+
+**Acceptance.**
+- [ ] The cause is named with evidence, and `paper@1.16.5` passes C01 and C02 in three separate invocations, or the row is demoted with the reason in `versions.yml`.
+- [ ] `bash scripts/gates.sh --max-workers=1` green.
+
+**Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke -Dproofstone.cells=paper@1.16.5 --no-parallel --max-workers=1`
