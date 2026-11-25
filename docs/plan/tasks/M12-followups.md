@@ -128,6 +128,8 @@ from opencollab; the same artifact resolved on the rerun. Needs maintainer appro
 - Propose a dependency-prefetch step with the failure reported as a failure (no retry loop that hides red): resolve once, fail loudly.
 - Evaluate a pinned mirror of the one artifact set; write the options in the PR.
 
+**Result (2026-11-25, maintainer approved the workflow change).** `scripts/ci-prefetch-deps.sh` already existed (T-M6-113, ADR-0019 amendment): it retries only the dependency download, only when its own output names a dependency resolution error, and never the gates. `release.yml` now runs it before the gates (job `verify`) and before the publish build (job `maven`), so a repository that answers "not found" for an artefact that exists fails there, named. A pinned mirror was not added: it would be a new runtime dependency (AGENTS.md section 3).
+
 **Don't.** Change a workflow without the maintainer's approval; add retries that turn red into green.
 
 **Acceptance.**
