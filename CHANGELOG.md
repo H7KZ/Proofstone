@@ -6,6 +6,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 ## [Unreleased]
 
 ### Fixed
+- Bukkit agent: a console command's reply is captured on servers that log asynchronously (Paper 1.16.5, Log4j `AsyncLogger`): the capture waits
+  for its own end marker before it detaches, so `list` no longer comes back blank and the paper@1.16.5 cell passes its conformance (T-M12-12).
 - Bukkit agent: `GET /v1/datapacks` no longer fails with `zip file closed` on paper@1.18.2; it loads Paper classes through the server's class
   loader and finds the pack name on a public interface (T-M12-03).
 - Bukkit agent: `patchConfig` restore loads the snapshot into the plugin's existing config object instead of calling `reloadConfig()`, so a

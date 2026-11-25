@@ -4,6 +4,8 @@ import io.github.h7kz.proofstone.agent.log.Log4jTap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -23,6 +25,11 @@ final class LogCapture implements AutoCloseable {
     private final List<String> lines = new ArrayList<>();
     private final String thread = Thread.currentThread().getName();
     private final String name = "ProofstoneCapture-" + UUID.randomUUID();
+    /** Logged by {@link #close()} behind the command's own events; seeing it means they were all delivered (async loggers). */
+    private final String sentinel = Log4jTap.CAPTURE_END_PREFIX + UUID.randomUUID();
+    private final CountDownLatch drained = new CountDownLatch(1);
+    /** How long {@link #close()} waits for the sentinel; a synchronous logger delivers it before emit returns. */
+    private static final long DRAIN_MILLIS = 2000;
     /** Set right after the appender is installed; events from other threads can arrive before that. */
     private volatile Log4jTap tap;
 
@@ -51,6 +58,10 @@ final class LogCapture implements AutoCloseable {
                 return;
             }
             String text = source.text(logEvent);
+            if (text != null && text.contains(sentinel)) {
+                drained.countDown();
+                return;
+            }
             if (text != null) {
                 synchronized (lines) {
                     lines.add(ANSI.matcher(text).replaceAll(""));
@@ -70,8 +81,26 @@ final class LogCapture implements AutoCloseable {
 
     @Override
     public void close() {
-        if (tap != null) {
-            tap.remove();
+        Log4jTap source = tap;
+        if (source == null) {
+            return;
+        }
+        try {
+            source.emit(sentinel);
+            if (!drained.await(DRAIN_MILLIS, TimeUnit.MILLISECONDS)) {
+                // Best-effort capture (spec section 2): what arrived is returned. The wait is the pipeline draining, not a
+                // retry; an event still queued after it is not part of this command's output.
+                org.bukkit.Bukkit.getLogger().warning("log capture: the command's log events were not all delivered in "
+                        + DRAIN_MILLIS + " ms");
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            // Best effort (spec section 2), but not silent: a reply that may be incomplete is named in the server log.
+            org.bukkit.Bukkit.getLogger().warning("log capture: could not log the end marker, the command's reply may be "
+                    + "incomplete: " + e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            source.remove();
         }
     }
 }
