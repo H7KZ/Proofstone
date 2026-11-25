@@ -23,11 +23,20 @@ final class DataPackList {
     private DataPackList() {
     }
 
+    /**
+     * A Paper API class, loaded through the server's own class loader. {@code Class.forName(name)} would use the agent's
+     * plugin loader, and on paper@1.18.2 that falls into the global lookup over every plugin loader, which reaches a
+     * disabled plugin's closed jar and fails with {@code zip file closed} (T-M12-03, T-M6-111).
+     */
+    private static Class<?> serverClass(String name) throws ClassNotFoundException {
+        return Class.forName(name, false, Bukkit.getServer().getClass().getClassLoader());
+    }
+
     /** Whether this server's API lists data packs. */
     static boolean supported() {
         try {
             find(Bukkit.getServer().getClass(), "getDatapackManager");
-            Class<?> type = Class.forName(MANAGER_CLASS);
+            Class<?> type = serverClass(MANAGER_CLASS);
             find(type, "getPacks");
             find(type, "getEnabledPacks");
             return true;
@@ -53,7 +62,7 @@ final class DataPackList {
         try {
             Object manager = find(Bukkit.getServer().getClass(), "getDatapackManager")
                     .invoke(Bukkit.getServer());
-            Class<?> type = Class.forName(MANAGER_CLASS);
+            Class<?> type = serverClass(MANAGER_CLASS);
             Method available = find(type, "getPacks");
             Method enabled = find(type, "getEnabledPacks");
             Map<String, Object> out = new LinkedHashMap<String, Object>();
@@ -71,10 +80,43 @@ final class DataPackList {
         List<String> ids = new ArrayList<String>();
         for (Object pack : packs) {
             // The pack's name is the id the server names it by: vanilla, file/x.zip.
-            ids.add(String.valueOf(Class.forName("io.papermc.paper.datapack.DiscoveredDatapack").getMethod("getName")
-                    .invoke(pack)));
+            ids.add(String.valueOf(nameMethod(pack.getClass()).invoke(pack)));
         }
         return ids;
+    }
+
+    /**
+     * {@code getName()} as a public {@code String} method of a public interface the pack implements. The pack's own class
+     * is a server internal that reflection may not call, and the public type's name differs between Paper versions (1.18.2
+     * has no {@code DiscoveredDatapack}), so it is found by walking the interfaces, not by name. Interfaces come before
+     * the classes so an unrelated public {@code getName()} on an implementation class cannot win.
+     */
+    private static Method nameMethod(Class<?> type) throws NoSuchMethodException {
+        for (Class<?> c = type; c != null; c = c.getSuperclass()) {
+            for (Class<?> iface : c.getInterfaces()) {
+                Method found = publicName(iface);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        Method own = publicName(type);
+        if (own != null) {
+            return own;
+        }
+        throw new NoSuchMethodException(type.getName() + " has no public String getName() on a public type");
+    }
+
+    private static Method publicName(Class<?> type) {
+        if (!java.lang.reflect.Modifier.isPublic(type.getModifiers())) {
+            return null;
+        }
+        try {
+            Method method = type.getMethod("getName");
+            return method.getReturnType() == String.class ? method : null;
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
     }
 
     private static AgentException failed(Throwable cause) {

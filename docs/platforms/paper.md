@@ -245,8 +245,10 @@ Dates are 2026-11-07 unless stated. Each entry gives the version(s) it was obser
   name, which fails an error-log guard. The agent's event probe used to try every plugin loader in load order (the agent first), so
   probing a third-party event (Disenchantment's `PostDisenchantEvent`) logged it on paper@1.18.2 only. It now finds the owner with
   `ClassLoader#getResource` (own jar and parents only, no global lookup) and loads through that loader alone. (T-M6-111)
-  Open, not fixed: on paper@1.18.2 `GET /v1/datapacks` answers `500 zip file closed` after the reload cases, because the agent's own
-  `Class.forName` of a Paper class falls into the same global lookup and reaches the disabled fixture's closed loader.
+  Fixed in T-M12-03: `DataPackList` loads Paper classes through the server's own class loader (`Class.forName(name, false,
+  server loader)`), not the agent's plugin loader, and reads a pack's name through a public interface it implements (1.18.2 has no
+  `DiscoveredDatapack`). Other one-argument `Class.forName` calls in the agent (`Keys`, `WorldAccess`, `FoliaScheduler`) use the same
+  loader path and were not changed; none has failed.
 - **`ConfigurationSection.getValues(false)` leaves out jar defaults.** A key the plugin never wrote to `config.yml` reads
   through `get()` but is missing from `getValues`. `GET /v1/snapshot` reads `getKeys(true)` plus the defaults' keys, so
   the fixture's `greeting` shows as `hi`. (T-M4-12)

@@ -6,6 +6,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
 ## [Unreleased]
 
 ### Fixed
+- Bukkit agent: `GET /v1/datapacks` no longer fails with `zip file closed` on paper@1.18.2; it loads Paper classes through the server's class
+  loader and finds the pack name on a public interface (T-M12-03).
 - Bukkit agent: `patchConfig` restore loads the snapshot into the plugin's existing config object instead of calling `reloadConfig()`, so a
   plugin that holds `getConfig()` since `onEnable` sees patches made after a restore (T-M12-04, C-C03).
 
