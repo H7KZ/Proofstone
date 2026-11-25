@@ -151,7 +151,7 @@ command environment only.
 
 ```bash
 bash scripts/dockerlock.sh bash scripts/gates.sh --no-parallel --max-workers=1       # check, docsCheck, release-gate tests, version match
-bash scripts/dockerlock.sh bash scripts/ci-prefetch-deps.sh --no-parallel --max-workers=1   # what hosted gates runs first
+bash scripts/dockerlock.sh bash scripts/ci-prefetch-deps.sh --no-parallel --max-workers=1   # what hosted gates and release.yml (verify, maven) run first
 bash scripts/dockerlock.sh bash scripts/release-maven.sh --dry-run                    # stages 4 artefacts + mavenLocal 0.2.0
 # consumers of the local 0.2.0 (mavenLocal is where both examples read it):
 PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :examples:gradle-paper-plugin:e2eTest -Dproofstone.cells=paper@26.3 --no-parallel --max-workers=1
