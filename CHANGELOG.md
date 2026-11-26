@@ -17,6 +17,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
   Geyser requires to match the login (T-M12-10).
 
 ### Fixed
+- Paper-family and loader cells set `allow-flight=true`: the vanilla anti-fly check kicked a test client with `was kicked for floating too long!`, which the
+  error-log guard turned into a red test (folia@26.3, Disenchantment's `BedrockMenuE2E`, 2 of 5 repeats, seen in a slow first repeat; why the client floated was not reproduced; T-M12-14).
 - Bukkit agent: a console command's reply is captured on servers that log asynchronously (Paper 1.16.5, Log4j `AsyncLogger`): the capture waits
   for its own end marker before it detaches, so `list` no longer comes back blank and the paper@1.16.5 cell passes its conformance (T-M12-12).
 - Bukkit agent: `GET /v1/datapacks` no longer fails with `zip file closed` on paper@1.18.2; it loads Paper classes through the server's class

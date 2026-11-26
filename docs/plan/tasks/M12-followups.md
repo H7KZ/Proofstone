@@ -326,6 +326,32 @@ and nothing committed. `scripts/spike/bds/bds-spike.sh` gained `TRANSPORT`, and 
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke -Dproofstone.cells=paper@1.16.5 --no-parallel --max-workers=1`
 
+### T-M12-14 · Cells allow flight: no anti-fly kick for a client waiting for its chunk
+- tier: haiku
+- depends: —
+- modules: proofstone-core, docs/platforms
+- adrs: 0006
+- specs: specs/self-tests.md §1
+- test-first: yes
+
+**Goal.** No cell kicks a test client with `was kicked for floating too long!`.
+
+**Evidence.** Disenchantment's final repeat series on `42c0732` (run 45772976805): folia@26.3 RED, `BedrockMenuE2E.aPrefixDetectedPlayerGetsTheChestMenuAndOthersDoNot` failed in 2 of 5 repeats with `WARN ServerCommonPacketListenerImpl: <player> was kicked for floating too long!`. Nothing in Proofstone set `allow-flight`.
+
+**Do.**
+- `ALLOW_FLIGHT=TRUE` in `PaperHost.configure` and `LoaderEnvironment.env`; a unit test per platform family; read `allow-flight` from a booted cell.
+
+**Don't.** Touch a test, the error-log guard or any other server property.
+
+**Result (2026-11-26).** Done. `AllowFlightTest` (paper, folia, spigot, purpur) and `LoaderEnvironmentTest` assert the variable; a booted folia@26.3 cell has `allow-flight=true` in `/data/server.properties` (read with `docker exec` during the smoke run); `:conformance:smoke` green on folia@26.3 (3 separate invocations, 2 tests, 0 failures each), and on spigot@1.8.8 and paper@1.8.8 (bridged) once each; the loader cells were not booted (their environment is covered by `LoaderEnvironmentTest` only). The long float itself was not reproduced.
+
+**Acceptance.**
+- [x] Unit tests green, XML read.
+- [x] `:conformance:smoke` green in separate invocations (see the PR), XML read.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
+
+**Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke -Dproofstone.cells=folia@26.3 --no-parallel --max-workers=1`
+
 ### T-M12-13 · Re-pin spigot@26.3: BuildTools no longer builds the 2026-11-08 digest
 - tier: haiku
 - depends: —

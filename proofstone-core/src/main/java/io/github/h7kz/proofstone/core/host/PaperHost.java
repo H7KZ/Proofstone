@@ -156,6 +156,10 @@ public final class PaperHost implements ServerHost, AutoCloseable {
                 .withEnv("VERSION", cell.mc())
                 .withEnv("ONLINE_MODE", "FALSE")
                 .withEnv("ENFORCE_SECURE_PROFILE", "FALSE")
+                // A client that is in the air for 80 ticks is kicked by the vanilla anti-fly check ("was kicked for floating too long!",
+                // seen on folia@26.3 in a slow first repeat, T-M12-14; why it floated was not reproduced). The kick is skipped when the
+                // server allows flight; no test is about it, and the error-log guard would turn it into a failure.
+                .withEnv("ALLOW_FLIGHT", "TRUE")
                 .withEnv("LEVEL_TYPE", levelType(cell.mc()))
                 .withEnv("SEED", SEED)
                 .withEnv("SPAWN_PROTECTION", "0")

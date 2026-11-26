@@ -26,6 +26,11 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
+- **A client held in the air is kicked for floating after 80 ticks unless the server allows flight (T-M12-14).** Vanilla's anti-fly check kicks with `<name> was kicked for floating too long!` (a WARN, so the
+  error-log guard fails the test). It was seen on folia@26.3 in Disenchantment's `BedrockMenuE2E`, 2 of 5 repeats, the slow first repeat (58 s, `BedrockMenuE2E` repeat 1 in run 45772976805). Every Paper-family cell now sets `ALLOW_FLIGHT=TRUE`
+  (the image writes `allow-flight=true` into `server.properties`, read from a booted folia@26.3 cell); loader cells do the same. The cause of the long float (a chunk still being generated for the first join) was
+  not reproduced, so this removes the kick, not the slow join. _folia@26.3 · T-M12-14_
+
 - **The `CONFIGURATION_STALLED` join stall of the bridged cells stalls at the ViaProxy hop, with Paper idle and silent (T-M12-02).** `paper@1.21.11` and every older row are bridged (client 777 through ViaProxy to the server); the counted loops, both sides and what was excluded are in [viaproxy.md](viaproxy.md) "The join stall after `LoginFinished`". An earlier version of this note called the cell native: it was not. The native cells (26.3) were not looped.
 
 - **A drag is answered in pieces (T-M11-09).** For each quick-craft stage (start, every add) 26.3 sends only a cursor update, because the
