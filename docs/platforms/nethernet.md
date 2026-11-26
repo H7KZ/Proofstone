@@ -190,7 +190,7 @@ Facts the runs showed:
 - The native library loaded from the shaded jar by the classpath property `libdatachannel.native.datachannel-java.classpath` (one `.so` per architecture, because
   both classifier jars use the same path). `tel.schich.libdatachannel` cannot be relocated: its `static native` methods are bound by JNI to that class name.
 - No Docker image change was needed: the pinned `java25` image has the OpenSSL 3 the native needs, and the natives travel in the jar. Not run: aarch64 (the library for it is in the jar, checked as ELF machine 183).
-- Still not run: Geyser over NetherNet (T-M12-10), BDS (T-M12-11).
+- Still not run: BDS with a login it accepts (T-M12-11 below: it does not accept the unsigned one).
 
 ## T-M12-10: the Geyser cell over NetherNet (2026-11-26)
 
@@ -210,6 +210,30 @@ PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:ru
 
 Facts: Geyser with `transport: nethernet` logs `Built-in signaling started on http://0.0.0.0:19132, with NetherNet on UDP port 19133` and no RakNet line;
 the join against Geyser needs the offer key to equal the login key (against PowerNukkitX it does not matter).
+
+## T-M12-11: BDS 1.26.66.1 over NetherNet (2026-11-26)
+
+**Result: BDS accepts the NetherNet transport and the self-made offer identity, and refuses the unsigned login all the same. T-M10-02 stays closed.**
+
+The binary is the one of [bds.md](bds.md) (written down before use, no new download): `https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.66.1.zip`,
+98,095,547 bytes, sha256 `e87bcd95bec5cc34b065ca956825c6abb7a0c356ae79408302845069cecaa6bf`, checked again on 2026-11-26 from `/c/pw/bds-cache` (outside every repository, never
+committed); the links API still named that file for `serverBedrockLinux`. No account, token or secret; `online-mode=false`, `transport=nethernet`, `EGRESS=closed` (the stand-in answers every name).
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true MSYS_NO_PATHCONV=1 SERVER_VERSION=2.11.0 NET_VERSION=1.0.0-beta JOIN2=1 \
+  bash scripts/dockerlock.sh bash scripts/spike/bds/bds-spike.sh build/spike/bds/<run>
+```
+
+| Run | Client | Result |
+|---|---|---|
+| b1 | the driver host RPC (`"transport":"nethernet"`) | `PROTOCOL_ERROR` at `LOGIN_SENT`, last packet `NetworkSettingsPacket`: BDS answered with a `PacketViolationWarningPacket`, which the library registers server-bound only, so the driver cannot decode it (as in T-M10-01 r3 to r5) |
+| b2 | the driver host, and `BdsJoinNn` (the T-M10-01 client with the violation packet decodable, over the driver host's own `NetherNetTransport`) | the driver host as b1. `BdsJoinNn`: probe `GET /v1/join` answered over HTTP (`motd=null`), NetherNet connected 859 ms in, `NetworkSettings` at 882 ms, login sent, then `VIOLATION type=MALFORMED_PACKET severity=TERMINATING_CONNECTION causeId=1 context=Connection Request invalid.` at 906 ms, `session closed: disconnect.closed` |
+
+What this shows:
+- BDS serves NetherNet signalling over plain HTTP on its game port, accepts the offer with an offer identity signed by a key made per run (no Xbox token), and carries the Bedrock batches: the transport is not what stops a join.
+- The refusal is the same text over NetherNet as over RakNet ([bds.md](bds.md) r4, r5): BDS checks the login chain, not the transport. With `online-mode=false` it still wants a chain it can verify. Nothing here can make one without an account.
+- Not run: BDS with a modified chain or client data (a guess without a hint in the text would be a fishing trip), `online-mode=true` (documented in bds.md: with no route out BDS stops itself after 60 s).
+- Verdict for the roadmap: BDS stays out of reach for an offline client; no BDS row, no BDS cell. Reopen only if a BDS build accepts an unsigned chain.
 
 ## Gotchas
 
