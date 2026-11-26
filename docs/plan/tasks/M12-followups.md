@@ -49,9 +49,9 @@ what was ruled out.
 
 **Result (2026-11-26).** Reproduced in counted loops and read from both sides; the mechanism is partly shown. **Bridged paper@1.8.8:** 7 stalls in 500 joins, two shapes: quiet (4; where the watcher worked, 2 of 2 show
 ViaProxy's receive queue from Paper growing unread for the whole stall: ViaProxy stopped reading its server socket) and a ViaProxy `IndexOutOfBoundsException` on the proxy to server leg (3; Paper sees a reset, the
-client is told nothing). **Native paper@1.21.11 (the stall of Disenchantment's hosted runs):** 13 stalls in 1400 joins; the client gets exactly the 50 login bytes and flushes its acknowledgement, Paper sends nothing more, every
-Paper thread is idle; all stalls at join 61 to 98 of a 100-join server, 0 of 500 in 50-join loops; holding the acknowledgement 10 ms did not prevent it (1 of 500). Not shown: why Paper (or ViaProxy) stops there. Details,
-counts and the next experiments are in [viaproxy.md](../../platforms/viaproxy.md) and [paper.md](../../platforms/paper.md); the tooling is `scripts/spike/join-stall/`. No `versions.yml`, pin, core flag or driver change (the
+client is told nothing). **Bridged paper@1.21.11 (client 777 through ViaProxy to Paper 774; the stall of Disenchantment's hosted runs, which bridge every cell below 26.3; an earlier note called it native, it was not):** 13 stalls in 1400 joins; the client gets exactly the 50 login bytes and flushes its acknowledgement, Paper sends nothing more, every
+Paper thread is idle; all stalls at join 61 to 98 of a 100-join server, 0 of 500 in 50-join loops; holding the acknowledgement 10 ms did not prevent it (1 of 500). Not shown: why the ViaProxy hop stops there (ViaProxy's own state was not measured on 1.21.11). Details,
+counts and the next experiments are in [viaproxy.md](../../platforms/viaproxy.md); the tooling is `scripts/spike/join-stall/`. No `versions.yml`, pin, core flag or driver change (the
 driver diagnostic is only a patch file).
 
 **Don't.** Change `versions.yml`, a pin, core flags or the driver in this card.

@@ -81,9 +81,9 @@ It runs `:conformance:run -Dproofstone.repeat=<n>` on smoke c02 (one cell boot, 
 | Loops | Cell | Joins | Stalls (k of n) | Where |
 |---|---|---|---|---|
 | L1 to L5 (100 each) | paper@1.8.8, bridged | 500 | 7 of 500: L1 runs 92, 97; L2 36, 87; L4 40; L5 9, 100 (L3 none) | below |
-| N1 to N14 (100 each) | paper@1.21.11, native | 1400 | 13 of 1400: runs 62, 74, 78 (N1); 74, 98 (N3); 94 (N4); 61, 64 (N7); 67 (N8); 76 (N9); 87 (N11); 74, 85 (N14) | [paper.md](paper.md) |
-| D1 to D5 (100 each, login acknowledgement held 10 ms) | paper@1.21.11, native | 500 | 1 of 500 (D2 run 74, ack written 19 ms after `LoginFinished`) | [paper.md](paper.md) |
-| S1 to S10 (50 each) | paper@1.21.11, native | 500 | 0 of 500 | [paper.md](paper.md) |
+| N1 to N14 (100 each) | paper@1.21.11, **bridged** (client 777, server 774) | 1400 | 13 of 1400: runs 62, 74, 78 (N1); 74, 98 (N3); 94 (N4); 61, 64 (N7); 67 (N8); 76 (N9); 87 (N11); 74, 85 (N14) | below |
+| D1 to D5 (100 each, login acknowledgement held 10 ms) | paper@1.21.11, bridged | 500 | 1 of 500 (D2 run 74, ack written 19 ms after `LoginFinished`) | below |
+| S1 to S10 (50 each) | paper@1.21.11, bridged | 500 | 0 of 500 | below |
 
 **Bridged paper@1.8.8, 7 stalls, two shapes (both: ViaProxy logs `Connected successfully! Switching to CONFIGURATION state` and never `Configuration finished!`, Paper has the player in):**
 - **Shape Q, quiet, 4 of 7 (L1 runs 92, 97; L5 runs 9, 100).** No error in ViaProxy's log; Paper logs `lost connection: Timed out` about 29 s later. In L5, where the watcher worked
@@ -95,6 +95,22 @@ It runs `:conformance:run -Dproofstone.repeat=<n>` on smoke c02 (one cell boot, 
   leg (the `S2CLoginCompressionPacket.read` shape of T-M6-109), and Paper logs `Connection reset by peer` in the same second. The proxy closes its server channel and says nothing to the client, which waits.
 - Clean controls: 493 of 500 joins. The client's own transcript is empty on a failed repeat (an evidence gap of the harness, not fixed here).
 - The watcher of L1 was broken (IPv4 only, the container match truncated); L1 is counted for the stalls, not for the queue evidence.
+
+**Bridged paper@1.21.11 (client protocol 777 through ViaProxy to Paper 774), 13 of 1400 joins: after `LoginFinished` the server sends nothing more.** The client logs `CONFIGURATION_STALLED` (login
+  acknowledged, configuration never finished), the harness shows `could not join ... disconnect.endOfStream` at +30 s. This is the stall of Disenchantment's hosted runs (its cells below 26.3 are all bridged). Counted loops, both sides, of one stalled join:
+  - **Client** (raw reads and writes at the head of the Netty pipeline, `client-raw-io-diagnostic.patch`): writes 17 B (intention) and 28 B (hello) at +1 ms, **reads exactly 50 B** (login compression and
+    `LoginFinished`) at +42 ms, **writes the 3 B `LoginAcknowledged` and the write completes** (+42 ms), then nothing for 29.6 s until the connection closes. The reads were recorded in 11 stalls: all 11 are exactly 50 B (in two reads of 4 B and 46 B in 5 of them); the writes in the last 3 (N14 twice, D2): all 3 show the acknowledgement written and flushed.
+  - **Server:** the log has `UUID of player X is ...` and no `logged in`; 29 s later `lost connection: Timed out`. Paper's `eth0` sends about 800 B for the join and then only 77 B background pulses, where a clean join
+    puts 36 to 70 KB on the wire. Socket queues are empty both ways. **A thread dump 19 s into the stall shows every thread idle**: the server thread parked between ticks, all four Netty IO threads in `epollWait`,
+    the login thread pool idle. No deadlock, no busy thread. Paper is waiting and the client is waiting.
+  - **Count and timing.** All 13 stalls fall at join 61 to 98 of a 100-join server (71 to 148 s after boot, so it is the join count, not the uptime). Ten loops of 50 joins gave **0 stalls in 500** (about 4.6 expected
+    if the count did not matter, p about 0.01). One identity repeats beyond chance: repeat 74 (`Tc8a136e9`) stalled in 4 of 14 loops.
+  - **Where it holds:** ViaProxy logs `Connected successfully! Switching to CONFIGURATION state` for the stalled join and never `Configuration finished!`, as for 1.8.8. The three hops are client, ViaProxy, Paper: the bytes
+    the client got and what Paper sent were measured, ViaProxy's own state was not. A Paper that is idle and silent is what a server waiting for a `LoginAcknowledged` that ViaProxy never forwarded looks like; so is a stalled ViaProxy.
+  - **Excluded:** the driver not sending the acknowledgement (it is written and flushed); the client not reading (the bytes never arrive); a busy or blocked server (idle threads, empty queues); load (the loops ran idle, and
+    a stressor gave the same rate in T-M6-109); an acknowledgement that arrives too early (holding it 10 ms gave 1 stall in 500, with the ack written 19 ms after `LoginFinished`: not prevented).
+  - **Not shown:** why the hop between the client's acknowledgement and Paper stops there, and why it needs about 60 earlier joins on one ViaProxy. Next experiments: ViaProxy's debug log for the stalled join (`-Dviaproxy...` or the CLI debug flag, not tried), a loop with a fresh ViaProxy every 40 joins (the count is per proxy or per server?), a native 26.3 loop for the control.
+    _paper@1.21.11 (bridged) · T-M12-02_
 
 ### Bridged login stall (M5 follow-up, 2026-11-08)
 - **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,
