@@ -26,8 +26,10 @@ Conditions:
    functionality "will not work" when it is off. With the flag off Floodgate worked in the runs (names, UUIDs, agent); the one Floodgate failure was an empty XUID (see
    Gotchas). With the flag on, nothing could be joined offline, so Floodgate with validation on is only known to refuse.
 2. **`bedrock.transport: both`.** Geyser 2.12.1's default is `nethernet`; its only other value is `both`, which adds RakNet
-   (UDP 19132). Both drivers speak RakNet. Without `both` no RakNet listener exists (not run: the drivers have no NetherNet
-   support, so there was nothing to join with).
+   (UDP 19132). The cell sets `both` by default and the driver joins over RakNet. With `bedrock.transport: nethernet`
+   (`-Dproofstone.geyser.transport=nethernet`, T-M12-10) no RakNet listener exists and the driver joins over NetherNet: signalling on TCP 19132
+   (`Built-in signaling started on http://0.0.0.0:19132`, the cell's ready line), media on UDP 19133. C-G01 to C-G05 are green that way
+   ([nethernet.md](nethernet.md)).
 3. **A stand-in for two Microsoft discovery names.** CloudburstMC Protocol's `EncryptionUtils` static initialiser fetches
    `https://client.discovery.minecraft-services.net/api/v1.0/discovery/MinecraftPE/builds/1.0.0.0`, then the OpenID
    configuration (and, with login validation on, the JWKS) of `authorization.franchise.minecraft-services.net`. Geyser (the

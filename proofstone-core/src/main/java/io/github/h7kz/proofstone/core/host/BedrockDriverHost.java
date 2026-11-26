@@ -78,8 +78,8 @@ final class BedrockDriverHost implements AutoCloseable {
         return new ExecCurlTransport(container, token);
     }
 
-    BedrockDriver driver() {
-        return new BedrockDriver(transport());
+    BedrockDriver driver(String bedrockTransport) {
+        return new BedrockDriver(transport(), bedrockTransport);
     }
 
     /** The RPC bearer token; harness code only, redacted from every bundle. */

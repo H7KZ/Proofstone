@@ -124,7 +124,7 @@ final class HostSession implements Wire, RpcServer.Connection {
                 try {
                     NetherNetTransport.loadNative();
                     host.state.packet("nethernet probe " + NetherNetTransport.probe(target, remainingMillis(deadline)));
-                    NetherNetTransport.configure(bootstrap, request.xuid(), request.name(), sessionSetup);
+                    NetherNetTransport.configure(bootstrap, identity.keys(), request.xuid(), request.name(), sessionSetup);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     host.close();

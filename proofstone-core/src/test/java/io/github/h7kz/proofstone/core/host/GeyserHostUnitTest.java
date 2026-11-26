@@ -42,7 +42,7 @@ class GeyserHostUnitTest {
     void renderChangesExactlyTheFiveKeysOfThePinnedDefault() throws IOException {
         String template = new String(GeyserConfig.class.getResourceAsStream("geyser-2.12.1-b1303-config.yml").readAllBytes());
         List<String> before = template.lines().toList();
-        List<String> after = GeyserConfig.render("2.12.1", 1303).lines().toList();
+        List<String> after = GeyserConfig.render("2.12.1", 1303, GeyserTransport.BOTH).lines().toList();
         assertThat(after).hasSameSizeAs(before);
         List<String> changed = new ArrayList<>();
         for (int i = 0; i < before.size(); i++) {
@@ -55,17 +55,59 @@ class GeyserHostUnitTest {
     }
 
     @Test
+    void theNetherNetCellChangesOnlyTheTransportValueAndTheDriverFollowsIt() throws IOException {
+        List<String> both = GeyserConfig.render("2.12.1", 1303, GeyserTransport.BOTH).lines().toList();
+        List<String> nethernet = GeyserConfig.render("2.12.1", 1303, GeyserTransport.NETHERNET).lines().toList();
+        assertThat(nethernet).hasSameSizeAs(both);
+        List<String> differing = new ArrayList<>();
+        for (int i = 0; i < both.size(); i++) {
+            if (!both.get(i).equals(nethernet.get(i))) {
+                differing.add(both.get(i).strip() + " -> " + nethernet.get(i).strip());
+            }
+        }
+        assertThat(differing).containsExactly("transport: both -> transport: nethernet");
+        assertThat(GeyserTransport.BOTH.driverTransport()).isEqualTo(io.github.h7kz.proofstone.core.driver.bedrock.rpc.BedrockRpc.TRANSPORT_RAKNET);
+        assertThat(GeyserTransport.NETHERNET.driverTransport()).isEqualTo(io.github.h7kz.proofstone.core.driver.bedrock.rpc.BedrockRpc.TRANSPORT_NETHERNET);
+        assertThat(GeyserHostOptions.of(java.nio.file.Path.of("x.jar")).withTransport(GeyserTransport.NETHERNET).transport())
+                .isEqualTo(GeyserTransport.NETHERNET);
+        assertThat(GeyserTransport.NETHERNET.readyLine()).contains("Built-in signaling started").doesNotContain("UDP port 19132");
+    }
+
+    @Test
+    void theTransportPropertyIsBothByDefaultAndAnyOtherWordIsAnError() {
+        String old = System.getProperty("proofstone.geyser.transport");
+        try {
+            System.clearProperty("proofstone.geyser.transport");
+            assertThat(GeyserTransport.fromSystemProperty()).isEqualTo(GeyserTransport.BOTH);
+            System.setProperty("proofstone.geyser.transport", "nethernet");
+            assertThat(GeyserTransport.fromSystemProperty()).isEqualTo(GeyserTransport.NETHERNET);
+            System.setProperty("proofstone.geyser.transport", "raknet");
+            assertThatThrownBy(GeyserTransport::fromSystemProperty).isInstanceOf(PaperHostException.class)
+                    .hasMessageContaining("raknet");
+            System.setProperty("proofstone.geyser.transport", "");
+            assertThatThrownBy(GeyserTransport::fromSystemProperty).as("a set but empty value is an error, not a default")
+                    .isInstanceOf(PaperHostException.class);
+        } finally {
+            if (old == null) {
+                System.clearProperty("proofstone.geyser.transport");
+            } else {
+                System.setProperty("proofstone.geyser.transport", old);
+            }
+        }
+    }
+
+    @Test
     void aTemplateWithoutAKeyOrWithAKeyTwiceFailsNamingIt() {
-        assertThatThrownBy(() -> GeyserConfig.render("bedrock:\n  transport: x\n", "9", 1))
+        assertThatThrownBy(() -> GeyserConfig.render("bedrock:\n  transport: x\n", "9", 1, GeyserTransport.BOTH))
                 .isInstanceOf(PaperHostException.class).hasMessageContaining("bedrock.webrtc-port");
         String twice = "bedrock:\n  transport: a\n  transport: b\n  webrtc-port: 0\n  signaling:\n    stun-discovery: true\n"
                 + "java:\n  auth-type: online\nadvanced:\n  bedrock:\n    validate-bedrock-login: true\n";
-        assertThatThrownBy(() -> GeyserConfig.render(twice, "9", 1)).hasMessageContaining("twice");
+        assertThatThrownBy(() -> GeyserConfig.render(twice, "9", 1, GeyserTransport.BOTH)).hasMessageContaining("twice");
     }
 
     @Test
     void aBuildWithoutATemplateFailsLoudly() {
-        assertThatThrownBy(() -> GeyserConfig.render("2.12.1", 9999)).isInstanceOf(PaperHostException.class)
+        assertThatThrownBy(() -> GeyserConfig.render("2.12.1", 9999, GeyserTransport.BOTH)).isInstanceOf(PaperHostException.class)
                 .hasMessageContaining("geyser-2.12.1-b9999-config.yml");
     }
 
@@ -135,7 +177,7 @@ class GeyserHostUnitTest {
         host.configure(List.of(), null);
         GenericContainer<?> container = host.container();
         GeyserHost.prepareServer(container, new GeyserHost.ServerInputs(geyser, floodgate,
-                GeyserConfig.render("2.12.1", 1303), FloodgateKey.generate(), null, null, new byte[] {4}, "172.18.0.2"));
+                GeyserConfig.render("2.12.1", 1303, GeyserTransport.BOTH), FloodgateKey.generate(), null, null, new byte[] {4}, "172.18.0.2"));
 
         List<String> copied = new ArrayList<>(container.getCopyToFileContainerPathMap().values());
         var method = GenericContainer.class.getDeclaredMethod("getCopyToTransferableContainerPathMap");
@@ -162,7 +204,7 @@ class GeyserHostUnitTest {
         FloodgateKey key = FloodgateKey.generate();
         FloodgateKey decoy = FloodgateKey.generate();
         String config = FloodgateConfig.withKeyFile(jar, GeyserHost.DECOY_KEY_FILE);
-        GeyserHost.prepareServer(container, new GeyserHost.ServerInputs(jar, jar, GeyserConfig.render("2.12.1", 1303), key, decoy,
+        GeyserHost.prepareServer(container, new GeyserHost.ServerInputs(jar, jar, GeyserConfig.render("2.12.1", 1303, GeyserTransport.BOTH), key, decoy,
                 config, new byte[] {4}, "172.18.0.2"));
 
         var method = GenericContainer.class.getDeclaredMethod("getCopyToTransferableContainerPathMap");
