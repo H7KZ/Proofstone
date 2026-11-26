@@ -1,0 +1,48 @@
+diff --git a/src/main/java/net/raphimc/viaproxy/proxy/packethandler/ConfigurationPacketHandler.java b/src/main/java/net/raphimc/viaproxy/proxy/packethandler/ConfigurationPacketHandler.java
+index 98352d8..5a2d36a 100644
+--- a/src/main/java/net/raphimc/viaproxy/proxy/packethandler/ConfigurationPacketHandler.java
++++ b/src/main/java/net/raphimc/viaproxy/proxy/packethandler/ConfigurationPacketHandler.java
+@@ -41,10 +41,12 @@ public class ConfigurationPacketHandler extends PacketHandler {
+     public boolean handleC2P(Packet packet, List<ChannelFutureListener> listeners) {
+         if (packet instanceof C2SLoginAcknowledgedPacket) {
+             this.proxyConnection.setC2pConnectionState(ConnectionState.CONFIGURATION);
++            System.out.println("[PSDIAG] "+System.currentTimeMillis()+" C2S LoginAcknowledged forwarded, listener armed ch="+this.proxyConnection.getChannel().id().asShortText());
+             listeners.add(f -> {
++                System.out.println("[PSDIAG] "+System.currentTimeMillis()+" ack write listener success="+f.isSuccess()+" cause="+f.cause());
+                 if (f.isSuccess()) {
+                     this.proxyConnection.setP2sConnectionState(ConnectionState.CONFIGURATION);
+-                    ChannelUtil.restoreAutoRead(this.proxyConnection.getChannel());
++                    try { ChannelUtil.restoreAutoRead(this.proxyConnection.getChannel()); } catch (Throwable t) { System.out.println("[PSDIAG] restore threw "+t); throw t; }
+                 }
+             });
+         } else if (packet instanceof C2SConfigFinishConfigurationPacket) {
+diff --git a/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java b/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java
+index 017a74c..1503a40 100644
+--- a/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java
++++ b/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java
+@@ -31,18 +31,24 @@ public class ChannelUtil {
+             channel.attr(LAST_AUTO_READ).set(new Stack<>());
+         }
+ 
++        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" disableAutoRead ch="+channel.id().asShortText()+" was="+channel.config().isAutoRead()+" thr="+Thread.currentThread().getName());
+         channel.attr(LAST_AUTO_READ).get().push(channel.config().isAutoRead());
+         channel.config().setAutoRead(false);
+     }
+ 
+     public static void restoreAutoRead(final Channel channel) {
+         if (channel.attr(LAST_AUTO_READ).get() == null) {
++            System.out.println("[PSDIAG] restore-without-disable ch="+channel.id().asShortText());
+             throw new IllegalStateException("Tried to restore auto read, but it was never disabled");
+         }
+         if (channel.config().isAutoRead()) {
++            System.out.println("[PSDIAG] restore-race ch="+channel.id().asShortText());
+             throw new IllegalStateException("Race condition detected: Auto read has been enabled somewhere else");
+         }
+-        channel.config().setAutoRead(channel.attr(LAST_AUTO_READ).get().pop());
++        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" restoreAutoRead ch="+channel.id().asShortText()+" thr="+Thread.currentThread().getName());
++        final boolean popped = channel.attr(LAST_AUTO_READ).get().pop();
++        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" restore ch="+channel.id().asShortText()+" popped="+popped+" stackLeft="+channel.attr(LAST_AUTO_READ).get().size()+" thr="+Thread.currentThread().getName());
++        channel.config().setAutoRead(popped);
+     }
+ 
+ }

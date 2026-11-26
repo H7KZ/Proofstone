@@ -326,6 +326,32 @@ and nothing committed. `scripts/spike/bds/bds-spike.sh` gained `TRANSPORT`, and 
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:smoke -Dproofstone.cells=paper@1.16.5 --no-parallel --max-workers=1`
 
+### T-M12-15 · The ViaProxy join stall: find the mechanism
+- tier: sonnet
+- depends: T-M12-02
+- modules: docs/platforms, scripts/spike
+- adrs: 0004, 0008
+- specs: -
+- test-first: no
+
+**Goal.** Say why a bridged join stalls after `LoginFinished` in about 1 of 100 joins, with evidence from the proxy side.
+
+**Evidence.** T-M12-02: 7 stalls in 500 joins (bridged paper@1.8.8), 13 in 1400 (bridged paper@1.21.11), client and Paper both idle, ViaProxy's receive queue from Paper unread. Source read: ViaProxy disables auto-read on the server channel and restores it from write listeners.
+
+**Do.** A local diagnostic build (log lines only) of the pinned ViaProxy, loops of 100 joins on bridged paper@1.21.11, one stall read in full; a stress test of the unmodified `ChannelUtil`.
+
+**Don't.** Change `versions.yml`, a pin or the driver for a diagnostic; commit the patches into a runtime path; retry a join.
+
+**Result (2026-11-26).** Mechanism found: a data race in ViaProxy's `ChannelUtil` between the compression pair and the login pair of disable and restore on the server channel; the wrong interleaving leaves auto-read off for good (`docs/platforms/viaproxy.md`, "The mechanism"). A caught stall shows the swapped restore and disable; 14 harmless occurrences of the race in 700 joins; the unmodified class ended with auto-read false in 8 of 600000 stress iterations. Not shown: the flag value of the stalled join after its last restore. Upstream `master` has the same code. Nothing in Proofstone changed.
+
+**Upstream report (for the maintainer to file; not filed).** ViaProxy 3.4.15-SNAPSHOT (`3e81750`) and `master`: `ChannelUtil.disableAutoRead` and `restoreAutoRead` are not atomic, and the server channel gets two overlapping disable/restore pairs during login (`CompressionPacketHandler` and `LoginPacketHandler`, restored from write listeners on the client channel's event loop). One interleaving leaves `autoRead=false` with the stack `[false]`; the proxy then never reads the server again and the client hangs after `LoginFinished`. A stress test with the pinned jar's class left auto-read false in 8 of 600000 runs. A lock around both methods, or running the restore on the channel's own event loop, removes it.
+
+**Acceptance.**
+- [x] A stalled join read from the proxy side, and a stress test of the unmodified class that reaches the same final state.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
+
+**Verify.** `bash scripts/gates.sh --max-workers=1`
+
 ### T-M12-14 · Cells allow flight: no anti-fly kick for a client waiting for its chunk
 - tier: haiku
 - depends: —

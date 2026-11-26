@@ -1,0 +1,13 @@
+diff --git a/proofstone-core/src/main/java/io/github/h7kz/proofstone/core/host/ViaProxyHost.java b/proofstone-core/src/main/java/io/github/h7kz/proofstone/core/host/ViaProxyHost.java
+index a99096dd..9f02e223 100644
+--- a/proofstone-core/src/main/java/io/github/h7kz/proofstone/core/host/ViaProxyHost.java
++++ b/proofstone-core/src/main/java/io/github/h7kz/proofstone/core/host/ViaProxyHost.java
+@@ -30,7 +30,7 @@ public final class ViaProxyHost implements AutoCloseable {
+ 
+     ViaProxyHost(Cell cell, ImagePin image, Network network) {
+         this.cell = cell;
+-        this.container = new GenericContainer<>(DockerImageName.parse(image.reference()))
++        this.container = new GenericContainer<>(DockerImageName.parse(System.getenv("PS_VIAPROXY_IMAGE") != null ? System.getenv("PS_VIAPROXY_IMAGE") : image.reference()))
+                 .withNetwork(network)
+                 .withNetworkAliases("viaproxy")
+                 .withExposedPorts(PROXY_PORT)
