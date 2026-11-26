@@ -2588,3 +2588,44 @@ cache write on master runs, Disenchantment#97); GitHub's workflow-dispatch API a
 needs the maintainer's yes, then driver, Geyser cell, BDS spike needs a yes for the BDS binary); T-M8-26. Rows paper@1.21.4 and 1.21.7 stay
 `experimental` until their per-row conformance runs (ADR-0015). Maintainer-only as before: tags, Central, release approvals, deleting the
 scratch folders and worktrees (`C:\pw\T-M12-*`, `m12-cards`, `led`, `led2`, `led3`, `ev-m12*`, `dis-ev-repeat*` and the earlier list).
+
+## Ledger update (2026-11-26): the T-M12 follow-ups, the join stall read from both sides, the final series
+
+**Merged (Proofstone develop `42c0732` plus the correction #233):** T-M12-05 `release.yml` dependency prefetch (#227); T-M12-08 the MPL-2.0 amendment to ADR-0011 (#228; ADR-0021 was already
+accepted); T-M12-09 the NetherNet transport in the Bedrock driver host (#229); T-M12-10 the Geyser cell over NetherNet, `-Dproofstone.geyser.transport=nethernet` (#230);
+T-M12-11 the BDS spike (#231); T-M12-02 the join-stall analysis (#232, corrected in #233). Disenchantment #100 pins `42c0732` in both places and sets `proofstone.version` to `0.2.0`.
+
+| Card | Result |
+|---|---|
+| T-M12-09 | PowerNukkitX 3.0.6 joined through the driver host RPC with `"transport":"nethernet"`, 3 of 3 separate invocations on the final code (a1 to a3, about 2.6 s each). Four reds on the way, each a named cause (see [nethernet.md](../platforms/nethernet.md)) |
+| T-M12-10 | Geyser cell over NetherNet: `ConformanceGeyserTest` 8 tests, 3 reasoned skips, 0 failures, 3 of 3 invocations (acc 1 to 3). Run 1 red: Geyser binds the offer identity's key to the login key. The default stays `both` (RakNet); the choice is a run option, not a `versions.yml` field (the row schema forbids extra keys and belongs to `proofstone-protocol`) |
+| T-M12-11 | BDS 1.26.66.1 accepts the NetherNet transport and a self-made offer identity and still refuses the unsigned login: `MALFORMED_PACKET`, `Connection Request invalid.` (2 of 2). T-M10-02 stays closed |
+| T-M12-02 | Reproduced and read from both sides; see below |
+| T-M12-05, -08 | as above |
+
+**The join stall (`CONFIGURATION_STALLED`).** It is a stall of the **ViaProxy-bridged** cells: every cell below 26.3 is bridged (an earlier note of mine called paper@1.21.11 native; it is not). Counted loops, 2,900 joins on paper@1.8.8 and paper@1.21.11 (500 and 2,400, the latter with the acknowledgement-delay and 50-join control loops): 7 of 500 on 1.8.8
+(4 quiet, where ViaProxy's receive queue from Paper grows unread, 2 of 2 measured; 3 with a ViaProxy `IndexOutOfBoundsException` on the proxy to server leg) and 13 of 1400 on 1.21.11, all of them at join 61 to 98 of a 100-join server,
+none in 500 joins of 50-join loops. On 1.21.11 the client reads exactly the 50 login bytes and flushes its acknowledgement, Paper sends about 800 B and then nothing, every Paper thread is idle. Holding the acknowledgement 10 ms did not prevent it (1 of 500).
+Not shown: why the ViaProxy hop stops. Details and counts: [viaproxy.md](../platforms/viaproxy.md).
+
+**Disenchantment on the final pin.** PR run on `42c0732`: the first run failed to compile on the self-hosted runner (the pom asked for `proofstone` `0.1.0`, the source build publishes `0.2.0`; the previous hosted run's artifact held both versions, so hosted runners were apparently compiling against a cached
+older 0.1.0), fixed in #100; then 7 of 8 cells green and `paper@1.20.6` RED with a `CONFIGURATION_STALLED` stall (`CostFormulaE2E`); its job re-run was green and #100 was merged on that.
+
+| Cell (final series, repeat=5, `42c0732`) | Run | Result |
+|---|---|---|
+| paper@26.3 | 45751664778 | **5 of 5 clean** (256 tests, 0 failures, 1 reasoned skip) |
+| folia@26.3 | 45772976805 | RED: `BedrockMenuE2E.aPrefixDetectedPlayerGetsTheChestMenuAndOthersDoNot` failed in 2 of 5 repeats: `WARN ServerCommonPacketListenerImpl: <player> was kicked for floating too long!` (vanilla anti-fly kick; the error-log guard turns it into a failure). Nothing in Proofstone sets `allow-flight`; not a stall |
+| paper@1.21.11, 1.21.7, 1.21.4, 1.20.6, 1.20.4, 1.18.2 | 45755417541, 45758203083, 45761194803, 45764183745, 45767465556, 45770079495 | **INVALID, no result**: 255 of 256 tests errored in setup, `ViaProxy ... failed to start: Can't get Docker image ghcr.io/viaversion/viaproxy@sha256:46eef05d...: Status 403: error from registry: denied` on the self-hosted runner (`nbg1-cx23-1-Disenchantment-1`). A re-dispatch of paper@1.21.11 (45781335879) gave the same 403. The same cells pulled the image in the PR run an hour earlier |
+
+**Can the project claim "every cell 5 of 5 clean"? No.** Of 8 cells only paper@26.3 is clean in the final series; folia@26.3 has a new, separate red (the floating kick); six bridged cells have no result at all because the runner cannot pull
+the ViaProxy image; and the join-stall class (bridged cells, about 1 per 100 joins late in a long server) is explained only to the ViaProxy hop, not fixed.
+
+**For the maintainer.**
+- The runner's pull of `ghcr.io/viaversion/viaproxy` is refused (403 `denied`): look at its Docker credentials for `ghcr.io` (a stale login makes a public image fail); then re-dispatch the six bridged cells one at a time.
+- `_runner.yml`, `release.yml`, `docs.yml` and `gates.yml` now choose `runs-on` from a runner lookup with `secrets.RUNNER_TOKEN`; an automated security review flagged that the secrets-bearing release jobs (`maven`, `images`, `github-release`) can land on a shared persistent self-hosted
+  runner, that `docs.yml`'s Pages deploy has `id-token: write` there, and that the token lookup is reachable from `pull_request` workflows (`gates.yml`). Not changed by me (AGENTS.md section 4); the review's fixes are hosted `ubuntu-latest` for those jobs or ephemeral
+  runners in a restricted group.
+- Candidate fixes that need their own card: `allow-flight=true` in the cells (floating kick); ViaProxy debug logging and a fresh ViaProxy every 40 joins to tell a per-proxy count from a per-server one.
+
+**Scratch for manual deletion** (outside any repository): `C:\pw\ev-m1209`, `ev-m1209-*.out`, `ev-m1210`, `ev-m1211`, `ev-m1202`, `dis-ev-pin42`, `dis-ev-series`, `m1209-scratch`, `nukkit-cache` and `bds-cache` (the two Mojang/PowerNukkitX downloads, never committed),
+`gradle-home-T-M12-*`, the worktrees `T-M12-02`, `-05`, `-08`, `-09`, `-10`, `-11`, `led-1126`, the scripts `m12*.sh`, `m12*.py`, `viawatch.sh`, `dis-series.sh`, and `.claude\worktrees\agent-a73c3f12ea3a78e02` in the main checkout.
