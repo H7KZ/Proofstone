@@ -73,6 +73,7 @@ final class LoaderEnvironment {
         env.put("fabric".equals(cell.loader()) ? "FABRIC_LAUNCHER" : "NEOFORGE_INSTALLER", loader.containerPath());
         env.put("ONLINE_MODE", "FALSE");
         env.put("ENFORCE_SECURE_PROFILE", "FALSE");
+        env.put("ALLOW_FLIGHT", "TRUE"); // as PaperHost: no anti-fly kick while a client waits for its chunk (T-M12-14)
         env.put("LEVEL_TYPE", PaperHost.levelType(cell.mc()));
         env.put("SEED", PaperHost.SEED);
         env.put("SPAWN_PROTECTION", "0");

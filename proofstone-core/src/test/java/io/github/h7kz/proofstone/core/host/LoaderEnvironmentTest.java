@@ -37,6 +37,7 @@ class LoaderEnvironmentTest {
                 .containsEntry("VERSION", "26.3")
                 .containsEntry("ONLINE_MODE", "FALSE")
                 .containsEntry("ENFORCE_SECURE_PROFILE", "FALSE")
+                .containsEntry("ALLOW_FLIGHT", "TRUE")
                 .containsEntry("LEVEL_TYPE", "minecraft:flat")
                 .containsEntry("EULA", "TRUE")
                 .containsEntry("PROOFSTONE_AGENT_TOKEN", "tok")
