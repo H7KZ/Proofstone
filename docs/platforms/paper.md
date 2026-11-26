@@ -26,6 +26,21 @@ bridged Paper cell does not hold it.
 
 ## Gotchas
 
+- **A native join stalls after `LoginFinished`: Paper never sends the configuration packets (T-M12-02, 13 of 1400 joins on paper@1.21.11).** The client logs `CONFIGURATION_STALLED` (login
+  acknowledged, configuration never finished), the harness shows `could not join ... disconnect.endOfStream` at +30 s. No proxy is involved. Counted loops, both sides, of one stalled join:
+  - **Client** (raw reads and writes at the head of the Netty pipeline, `client-raw-io-diagnostic.patch`): writes 17 B (intention) and 28 B (hello) at +1 ms, **reads exactly 50 B** (login compression and
+    `LoginFinished`) at +42 ms, **writes the 3 B `LoginAcknowledged` and the write completes** (+42 ms), then nothing for 29.6 s until the connection closes. The reads were recorded in 11 stalls: all 11 are exactly 50 B (in two reads of 4 B and 46 B in 5 of them); the writes in the last 3 (N14 twice, D2): all 3 show the acknowledgement written and flushed.
+  - **Server:** the log has `UUID of player X is ...` and no `logged in`; 29 s later `lost connection: Timed out`. Paper's `eth0` sends about 800 B for the join and then only 77 B background pulses, where a clean join
+    puts 36 to 70 KB on the wire. Socket queues are empty both ways. **A thread dump 19 s into the stall shows every thread idle**: the server thread parked between ticks, all four Netty IO threads in `epollWait`,
+    the login thread pool idle. No deadlock, no busy thread. Paper is waiting and the client is waiting.
+  - **Count and timing.** All 13 stalls fall at join 61 to 98 of a 100-join server (71 to 148 s after boot, so it is the join count, not the uptime). Ten loops of 50 joins gave **0 stalls in 500** (about 4.6 expected
+    if the count did not matter, p about 0.01). One identity repeats beyond chance: repeat 74 (`Tc8a136e9`) stalled in 4 of 14 loops.
+  - **Excluded:** the driver not sending the acknowledgement (it is written and flushed); the client not reading (the bytes never arrive); a busy or blocked server (idle threads, empty queues); load (the loops ran idle, and
+    a stressor gave the same rate in T-M6-109); an acknowledgement that arrives too early (holding it 10 ms gave 1 stall in 500, with the ack written 19 ms after `LoginFinished`: not prevented); ViaProxy (none here).
+  - **Not shown:** what makes Paper ignore or never see the acknowledgement, and why it needs about 60 earlier joins. Next experiments: a Paper-side packet trace of the login to configuration switch; the loop on another
+    Paper build (1.20.6 and 26.3 stall in the hosted runs); keep the player data and user cache empty between joins.
+    _paper@1.21.11 (native) · T-M12-02_
+
 - **A drag is answered in pieces (T-M11-09).** For each quick-craft stage (start, every add) 26.3 sends only a cursor update, because the
   driver's carried claim never matches. The end sends one `ContainerSetSlot` per changed slot (state id bumps), then the cursor update. `Window.drag`
   therefore waits for a counted sync and for the cursor update of the last stage, or a test reading `cursor()` on the first slot packet races. A creative
