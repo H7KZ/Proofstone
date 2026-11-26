@@ -66,6 +66,36 @@ Local real-server runs, one full `:conformance:run` per row, through this ViaPro
   `IndexOutOfBoundsException` in `S2CLoginCompressionPacket.read` (and `ERROR IN Protocol1_20_2To1_20_3 IN REMAP OF DISGUISED_CHAT`);
   seen both times at join 42 or 43 of a 100-join cell. _1.8.8 (bridged) · ROADMAP "T-M6-109 differential runs"_
 
+### The join stall after `LoginFinished`: counted loops and both sides (T-M12-02, 2026-11-26)
+
+Tooling: [scripts/spike/join-stall/](../../scripts/spike/join-stall/) (`loop.sh`, `viawatch.sh`, `client-raw-io-diagnostic.patch`). Each loop is one locked invocation, Windows 11, Docker Desktop:
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/spike/join-stall/loop.sh build/spike/join-stall/<run> 100 paper@1.8.8 ViaProxy.jar
+PROOFSTONE_ACCEPT_EULA=true bash scripts/spike/join-stall/loop.sh build/spike/join-stall/<run> 100 paper@1.21.11 itzg/minecraft-server dump
+```
+
+It runs `:conformance:run -Dproofstone.repeat=<n>` on smoke c02 (one cell boot, n joins one after another) and a read-only watcher of the container's sockets
+(`/proc/net/tcp` and `tcp6`), its `eth0` byte counters and, with `dump`, one JVM thread dump of the Paper server when a join sits at `UUID of player ...`.
+
+| Loops | Cell | Joins | Stalls (k of n) | Where |
+|---|---|---|---|---|
+| L1 to L5 (100 each) | paper@1.8.8, bridged | 500 | 7 of 500: L1 runs 92, 97; L2 36, 87; L4 40; L5 9, 100 (L3 none) | below |
+| N1 to N14 (100 each) | paper@1.21.11, native | 1400 | 13 of 1400: runs 62, 74, 78 (N1); 74, 98 (N3); 94 (N4); 61, 64 (N7); 67 (N8); 76 (N9); 87 (N11); 74, 85 (N14) | [paper.md](paper.md) |
+| D1 to D5 (100 each, login acknowledgement held 10 ms) | paper@1.21.11, native | 500 | 1 of 500 (D2 run 74, ack written 19 ms after `LoginFinished`) | [paper.md](paper.md) |
+| S1 to S10 (50 each) | paper@1.21.11, native | 500 | 0 of 500 | [paper.md](paper.md) |
+
+**Bridged paper@1.8.8, 7 stalls, two shapes (both: ViaProxy logs `Connected successfully! Switching to CONFIGURATION state` and never `Configuration finished!`, Paper has the player in):**
+- **Shape Q, quiet, 4 of 7 (L1 runs 92, 97; L5 runs 9, 100).** No error in ViaProxy's log; Paper logs `lost connection: Timed out` about 29 s later. In L5, where the watcher worked
+  (the L1 watcher saw nothing: it read IPv4 only), both stalls show the same picture: **ViaProxy's socket to Paper holds an unread receive queue from the first second (about 3.8 KB) that
+  grows for the whole stall (3.7 to 4.4 KB over 29 s)**, with an empty send queue. Paper kept sending (its keepalives) and ViaProxy read none of it. So ViaProxy stops reading its server
+  connection: that is the lost `restoreAutoRead` the source read suggested (`LoginPacketHandler` disables auto-read at login success; only the client's `LoginAcknowledged` handler restores it). Shown: the
+  proxy does not read the server socket. Not shown: the line of code that fails to restore it.
+- **Shape E, exception, 3 of 7 (L2 runs 36, 87; L4 run 40).** ViaProxy logs `Caught unhandled netty exception`: `DecoderException: IndexOutOfBoundsException: readerIndex(1) + length(1) exceeds writerIndex(1)` on the proxy to server
+  leg (the `S2CLoginCompressionPacket.read` shape of T-M6-109), and Paper logs `Connection reset by peer` in the same second. The proxy closes its server channel and says nothing to the client, which waits.
+- Clean controls: 493 of 500 joins. The client's own transcript is empty on a failed repeat (an evidence gap of the harness, not fixed here).
+- The watcher of L1 was broken (IPv4 only, the container match truncated); L1 is counted for the stalls, not for the queue evidence.
+
 ### Bridged login stall (M5 follow-up, 2026-11-08)
 - **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,
   Java 25) lists `--auth-method` (default NONE), `--proxy-online-mode` (default false), `--chat-signing`,

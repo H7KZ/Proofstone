@@ -1,0 +1,59 @@
+diff --git a/drivers/mcpl/src/main/java/io/github/h7kz/proofstone/driver/mcpl/McplDriver.java b/drivers/mcpl/src/main/java/io/github/h7kz/proofstone/driver/mcpl/McplDriver.java
+index 9745b736..3e2c1c91 100644
+--- a/drivers/mcpl/src/main/java/io/github/h7kz/proofstone/driver/mcpl/McplDriver.java
++++ b/drivers/mcpl/src/main/java/io/github/h7kz/proofstone/driver/mcpl/McplDriver.java
+@@ -57,6 +57,38 @@ public final class McplDriver implements ClientDriver {
+                 .create();
+         McplSession session = newSession(network, spec);
+         network.addListener(session.listener());
++        final java.util.List<String> psDiag = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
++        final long psT0 = System.nanoTime();
++        final boolean[] psAckHeld = {false};
++        network.addListener(new org.geysermc.mcprotocollib.network.event.session.SessionAdapter() {
++            @Override public void connected(org.geysermc.mcprotocollib.network.event.session.ConnectedEvent event) {
++                network.getChannel().pipeline().addFirst("ps-diag", new io.netty.channel.ChannelDuplexHandler() {
++                    @Override public void write(io.netty.channel.ChannelHandlerContext ctx, Object msg, io.netty.channel.ChannelPromise promise) throws Exception {
++                        int n = msg instanceof io.netty.buffer.ByteBuf b ? b.readableBytes() : -1;
++                        final String at = "+" + ((System.nanoTime() - psT0) / 1_000_000) + "ms write " + n + "B";
++                        promise.addListener(f -> psDiag.add(at + (f.isSuccess() ? " flushed ok +" + ((System.nanoTime() - psT0) / 1_000_000) + "ms" : " FAILED " + f.cause())));
++                        // EXPERIMENT (T-M12-02): PS_ACK_DELAY_MS holds the 3 byte login acknowledgement back; unset = no change
++                        String delay = System.getenv("PS_ACK_DELAY_MS");
++                        if (delay != null && n == 3 && !psAckHeld[0]) {
++                            psAckHeld[0] = true;
++                            ctx.executor().schedule(() -> { ctx.write(msg, promise); ctx.flush(); }, Long.parseLong(delay), java.util.concurrent.TimeUnit.MILLISECONDS);
++                            return;
++                        }
++                        super.write(ctx, msg, promise);
++                    }
++                    @Override public void channelRead(io.netty.channel.ChannelHandlerContext ctx, Object msg) throws Exception {
++                        if (msg instanceof io.netty.buffer.ByteBuf b) {
++                            psDiag.add("+" + ((System.nanoTime() - psT0) / 1_000_000) + "ms read " + b.readableBytes() + "B");
++                        }
++                        super.channelRead(ctx, msg);
++                    }
++                    @Override public void channelInactive(io.netty.channel.ChannelHandlerContext ctx) throws Exception {
++                        psDiag.add("+" + ((System.nanoTime() - psT0) / 1_000_000) + "ms channelInactive");
++                        super.channelInactive(ctx);
++                    }
++                });
++            }
++        });
+         network.connect(false);
+         String where = spec.username() + " -> " + spec.host() + ":" + spec.port();
+         Instant started = Instant.now();
+@@ -70,6 +102,7 @@ public final class McplDriver implements ClientDriver {
+             Await.until("first tick (SetHealth) for " + where, session::joinFinished, finished -> finished,
+                     left.isNegative() || left.isZero() ? Duration.ofMillis(1) : left);
+         } catch (AwaitTimeoutException e) {
++            System.err.println("PS-DIAG timeout " + where + " raw reads: " + psDiag);
+             session.close();
+             // The stage comes from what the client saw (T-M6-14); the harness adds the server's side.
+             List<String> transcript = session.transcript();
+@@ -79,6 +112,7 @@ public final class McplDriver implements ClientDriver {
+                     diagnosis.lastReceived());
+         }
+         if (session.state() == McplSession.State.DISCONNECTED) {
++            System.err.println("PS-DIAG disconnected " + where + " raw reads: " + psDiag);
+             session.close();
+             // A pack the client could not take is part of why: the server's kick alone would hide it (T-M8-10).
+             String packs = session.resourcePacks().stream().filter(push -> push.problem() != null)
