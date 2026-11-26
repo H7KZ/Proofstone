@@ -112,6 +112,33 @@ It runs `:conformance:run -Dproofstone.repeat=<n>` on smoke c02 (one cell boot, 
   - **Not shown:** why the hop between the client's acknowledgement and Paper stops there, and why it needs about 60 earlier joins on one ViaProxy. Next experiments: ViaProxy's debug log for the stalled join (`-Dviaproxy...` or the CLI debug flag, not tried), a loop with a fresh ViaProxy every 40 joins (the count is per proxy or per server?), a native 26.3 loop for the control.
     _paper@1.21.11 (bridged) · T-M12-02_
 
+### The mechanism: an unsynchronised auto-read stack in ViaProxy (T-M12-15, 2026-11-26)
+
+**Result: the stall is a data race in ViaProxy's `ChannelUtil` (pinned 3.4.15-SNAPSHOT, `3e81750`). It leaves the proxy's server channel with auto-read off for good, so ViaProxy never reads Paper again.**
+Upstream `master` has the same code (checked 2026-11-26). Nothing in Proofstone, the driver or Paper is involved.
+
+The code: `disableAutoRead` pushes the channel's current auto-read flag on a per-channel `Stack` and sets it false; `restoreAutoRead` throws if the flag is already true, else pops the stack and sets the flag to the popped value.
+Two independent pairs of calls use the **server channel** during one login, on two different event loops:
+1. `CompressionPacketHandler`: disable on the server channel's loop (S2C `LoginCompression`); restore in the write-completion listener of the forwarded packet, which runs on the **client** channel's loop.
+2. `LoginPacketHandler` (S2C `LoginFinished`): disable on the server channel's loop; restore in the write listener of the forwarded `LoginAcknowledged` (`ConfigurationPacketHandler`).
+
+`Stack` methods are synchronised one by one, but "read the flag, push, set the flag" and "check the flag, pop, set the flag" are not atomic, and the two pairs overlap in a window of about a millisecond. The wrong interleaving (the compression restore pops `true` before the login disable pushes, the login disable reads the flag before the compression restore sets it,
+and the login disable sets false after the compression restore sets true) ends with flag `false` and stack `[false]`. The acknowledgement's restore then pops `false` and sets false again: **auto-read stays off, ViaProxy reads nothing more from Paper, Paper waits for the acknowledgement that it already got through ViaProxy's closed read side,**
+and the client times out after 30 s at `CONFIGURATION_STALLED`. The two shapes of the 1.8.8 loops are the same fault seen from outside: the quiet one is the unread receive queue (auto-read off); the `IndexOutOfBoundsException` is a half-read compression packet on the same channel (not shown separately).
+The other outcome of the same race is harmless and common: the acknowledgement's restore finds the flag already true and throws `Race condition detected` inside a write listener, where Netty swallows it.
+
+Evidence (diagnostic build: log lines in `ChannelUtil` and `ConfigurationPacketHandler` compiled into two classes of the pinned jar, `viaproxy-diag-image.sh`; a full rebuild floats the ViaVersion snapshot and does not start):
+- **A stalled join caught with the diagnostic proxy** (loop of 100, bridged paper@1.21.11, 1 stall at join 28, `JoinTimeoutException ... CONFIGURATION_STALLED`). The server channel's calls, in the log's order: `disable (was=true)`, `restore`, `disable (was=false)`, the acknowledgement's `restore`, then **no `Configuration finished!`** and no further auto-read call. A healthy join shows `disable`, `disable (was=false)`, `restore`, `restore`, `disable`, `restore`.
+  The `restore` and the second `disable` swapped places, and the second `disable` read `was=false` although the restore had just run: the lost update.
+- **The same race without the stall, 14 times in 700 joins** (loops of 100 with the popped value logged): the sequence `disable, disable (was=false), restore (popped true)` and then the acknowledgement's restore throwing `Race condition detected` (14 `restore-race` lines, one per such join, every join completed). The flag was `true` in these, because the second `disable`'s set came before the restore's set. The stalled outcome is the narrower interleaving of the two. The 700 joins gave no second stall (1 stall in 800 joins with the diagnostic proxy against 13 in 1400 without; the log lines shift the timing, so the rates are not comparable).
+- **The unmodified class reproduces it alone** (`AutoReadRaceStress.java`: the same call pattern, one thread for the server loop and one for the client loop, an `EmbeddedChannel`, the pinned jar's `ChannelUtil`, no Paper, no network): 3 runs of 200000 iterations left **0, 1 and 7 channels with auto-read false** after the acknowledgement's restore. That is the stall's final state, produced without a server.
+- The earlier counts fit: the race needs two events about a millisecond apart, so it is a per-join probability (a few in a thousand), not a count of joins. The "join 61 to 98" and "0 of 500 in 50-join loops" in the table above are a small-sample pattern; the stress run has no join count at all.
+- **Not shown:** the flag value of the stalled join after its last restore (that stall was caught before the popped value was logged, and no second stall came in 700 joins). The stall is therefore shown as the logged call order plus the stress reproduction of the final state, not as a logged `popped=false`.
+
+**What this means for the cells.** Every bridged cell (paper@1.21.11 and every cell below 26.3) runs a ViaProxy that can stall a join at about 1 in 100 (1.8.8: 7 in 500; 1.21.11: 13 in 1400). It is not fixable in Proofstone without a retry (forbidden by AGENTS.md section 3), a change of the ViaProxy pin, or a patched ViaProxy.
+Open for the maintainer: report it upstream (ViaVersion/ViaProxy; the report text is in T-M12-15 of [M12-followups.md](../plan/tasks/M12-followups.md)), and decide on a ViaProxy pin newer than `3e81750` once upstream fixes it (ADR-0008, `updateVersions`).
+Tooling: `scripts/spike/join-stall/` (`viaproxy-diag-image.sh`, `viaproxy-autoread-diagnostic.patch`, `proofstone-viaproxy-image-override.patch`, `AutoReadRaceStress.java`). Not part of any runtime path; `versions.yml`, the pin and the driver are unchanged.
+
 ### Bridged login stall (M5 follow-up, 2026-11-08)
 - **The image's CLI has no username or Bedrock option.** `cli --help` on the pinned image (ViaProxy 3.4.15-SNAPSHOT,
   Java 25) lists `--auth-method` (default NONE), `--proxy-online-mode` (default false), `--chat-signing`,
