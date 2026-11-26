@@ -64,6 +64,13 @@ class NetherNetFrameCodecTest {
     }
 
     @Test
+    void theOfferIdentityIsMadeWithTheKeyOfTheLoginChain() throws Exception {
+        Identity identity = new Identity("Alex", "2535400000000007", java.time.Clock.systemUTC());
+        var offer = NetherNetTransport.offerIdentity(identity.keys(), "2535400000000007", "Alex");
+        assertThat(offer.publicKey()).as("Geyser refuses a login whose key differs from the offer's").isEqualTo(identity.keys().getPublic());
+    }
+
+    @Test
     void theNetherNetStagesAreNamedAsTheAdrSaysAndRakNetStaysTheDefault() {
         assertThat(BedrockRpc.JoinStage.valueOf("SIGNALLING")).isNotNull();
         assertThat(BedrockRpc.JoinStage.valueOf("NETHERNET_CONNECT")).isNotNull();

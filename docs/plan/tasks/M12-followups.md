@@ -251,10 +251,19 @@ Real server: 3 of 3 separate invocations green on the final code after four red 
 
 **Do.** C-G01 to C-G04 on NetherNet; update `docs/platforms/geyser.md` and `docs/platforms/nethernet.md`.
 
+**Result (2026-11-26).** `-Dproofstone.geyser.transport=nethernet` (`GeyserHostOptions.transport`, enum `GeyserTransport`) runs the Geyser cell with
+`bedrock.transport: nethernet`, waits for Geyser's `Built-in signaling started on http://0.0.0.0:19132` line and joins the driver over NetherNet; the default stays
+`both` (RakNet driver), so the fallback exists and nothing else changed. The choice is a run option, not a `versions.yml` field: the row schema
+(`proofstone-protocol/schemas/versions.schema.json`, `additionalProperties: false`) would need a change this card does not authorize. Run 1 was red (8 of 8
+`INVALID`, `Please log into Xbox`): Geyser's log said `the login key does not match the admitted transport identity`; the offer identity is now made with the
+session's own key pair (PowerNukkitX never checked it). Then green: `ConformanceGeyserTest` 8 tests, 3 reasoned skips (resource packs, forms, window clicks), 0 failures,
+errors 0, in 4 invocations (nn2, acc 1 to 3; the last three on the final code after the review). Independent sonnet review: no blocker, findings applied.
+Flipping the default to `nethernet` is left until Geyser drops RakNet; not run: the other Geyser tests (`geyserTest`) over NetherNet.
+
 **Don't.** Remove the RakNet path.
 
 **Acceptance.**
-- [ ] C-G01 to C-G04 green in three separate invocations, XML read.
+- [x] C-G01 to C-G04 green in three separate invocations, XML read (acc 1 to 3; C-G05 too).
 - [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`; `scripts/dockerlock.sh` + `PROOFSTONE_ACCEPT_EULA=true ./gradlew :conformance:run --no-parallel --max-workers=1`

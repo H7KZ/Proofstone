@@ -192,6 +192,25 @@ Facts the runs showed:
 - No Docker image change was needed: the pinned `java25` image has the OpenSSL 3 the native needs, and the natives travel in the jar. Not run: aarch64 (the library for it is in the jar, checked as ELF machine 183).
 - Still not run: Geyser over NetherNet (T-M12-10), BDS (T-M12-11).
 
+## T-M12-10: the Geyser cell over NetherNet (2026-11-26)
+
+`-Dproofstone.geyser.transport=nethernet` (default `both`, RakNet) makes the cell write `bedrock.transport: nethernet` into Geyser's config, wait for
+Geyser's `Built-in signaling started on http://0.0.0.0:19132` line, and build the Bedrock driver with `nethernet`. Invocation (one per run):
+
+```bash
+PROOFSTONE_ACCEPT_EULA=true bash scripts/dockerlock.sh ./gradlew :conformance:run \
+  -Dproofstone.cells=geyser@2.12.1+paper@26.3 -Dproofstone.geyser.transport=nethernet --no-parallel --max-workers=1
+```
+
+| Run | Result | Cause and change |
+|---|---|---|
+| nn run 1 | red: 8 of 8 `INVALID`, `Please log into Xbox to join this server.` at `LOGIN_SENT`; NetherNet itself connected | Geyser's log: `Refused a login from ..., the login key does not match the admitted transport identity`. Geyser binds the offer identity's key to the login chain's key; PowerNukkitX 3.0.6 reads the offer identity unverified and never checked. The offer identity is now made with the session's own key pair |
+| nn2 run 1 | green: C-G01 to C-G05 pass, 3 reasoned skips (resource packs, forms, window clicks), 0 failures | |
+| acc 1 to 3 | green x3: 8 tests, 3 reasoned skips, 0 failures (see [M12-followups.md](../plan/tasks/M12-followups.md)) | three separate invocations on the final code, after the review |
+
+Facts: Geyser with `transport: nethernet` logs `Built-in signaling started on http://0.0.0.0:19132, with NetherNet on UDP port 19133` and no RakNet line;
+the join against Geyser needs the offer key to equal the login key (against PowerNukkitX it does not matter).
+
 ## Gotchas
 
 - PowerNukkitX 3.0.6 serves signalling on **TCP** 19132 and Query on UDP 19132, so NetherNet media gets an ephemeral UDP port per

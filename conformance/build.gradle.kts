@@ -108,7 +108,7 @@ fun Test.realServerScenarios(taskDescription: String) {
     }
     // The run-time cell selector, scope, driver and flake-detector repeat count reach the test JVM from the Gradle
     // command line (test-api spec §1, self-tests section 4).
-    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.driver", "proofstone.repeat")) {
+    for (name in listOf("proofstone.cells", "proofstone.scope", "proofstone.driver", "proofstone.repeat", "proofstone.geyser.transport")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
     }
     // The result depends on Docker and the EULA, so always run when asked. A skip is never a pass (AGENTS.md §3).

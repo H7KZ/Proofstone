@@ -22,25 +22,27 @@ final class GeyserConfig {
     static final String WEBRTC_PORT = "19133";
 
     /** Section, key and the value the cell needs; the line {@code <key>: <default>} of that section is replaced. */
-    private static final List<String[]> EDITS = List.of(
-            new String[] {"bedrock", "transport", "both"},
-            new String[] {"bedrock", "webrtc-port", WEBRTC_PORT},
-            new String[] {"bedrock.signaling", "stun-discovery", "false"},
-            new String[] {"java", "auth-type", "floodgate"},
-            new String[] {"advanced.bedrock", "validate-bedrock-login", "false"});
+    private static List<String[]> edits(GeyserTransport transport) {
+        return List.of(
+                new String[] {"bedrock", "transport", transport.geyserValue()},
+                new String[] {"bedrock", "webrtc-port", WEBRTC_PORT},
+                new String[] {"bedrock.signaling", "stun-discovery", "false"},
+                new String[] {"java", "auth-type", "floodgate"},
+                new String[] {"advanced.bedrock", "validate-bedrock-login", "false"});
+    }
 
     private GeyserConfig() {
     }
 
     /** The rendered file for the pinned build. */
-    static String render(String version, int build) {
-        return render(template(version, build), version, build);
+    static String render(String version, int build, GeyserTransport transport) {
+        return render(template(version, build), version, build, transport);
     }
 
     /** The edit of {@code template}; each key is found once in its own section, or it is an error. */
-    static String render(String template, String version, int build) {
+    static String render(String template, String version, int build, GeyserTransport transport) {
         List<String> lines = new ArrayList<>(template.lines().toList());
-        for (String[] edit : EDITS) {
+        for (String[] edit : edits(transport)) {
             replace(lines, edit[0], edit[1], edit[2], version, build);
         }
         return String.join("\n", lines) + "\n";
@@ -49,7 +51,7 @@ final class GeyserConfig {
     /** The values the cell sets, for a test and the docs. */
     static Map<String, String> values() {
         Map<String, String> values = new java.util.LinkedHashMap<>();
-        EDITS.forEach(edit -> values.put(edit[0] + "." + edit[1], edit[2]));
+        edits(GeyserTransport.BOTH).forEach(edit -> values.put(edit[0] + "." + edit[1], edit[2]));
         return values;
     }
 

@@ -149,6 +149,8 @@ tasks.register<Test>("geyserTest") {
         rootProject.layout.projectDirectory.file("drivers/bedrock/build/libs/bedrock-host-all.jar").asFile.absolutePath)
     systemProperty("proofstone.geyserDownloads",
         rootProject.layout.projectDirectory.dir("build/geyser-downloads").asFile.absolutePath)
+    // both (default) or nethernet: how the Geyser cell's Bedrock clients connect (T-M12-10, ADR-0021)
+    providers.systemProperty("proofstone.geyser.transport").orNull?.let { systemProperty("proofstone.geyser.transport", it) }
     // The public-API Geyser test (GeyserApiContract) runs through the JUnit extension, found by auto-detection as in a user
     // project; it leaves the classes without @Proofstone alone. The cell is named by -Dproofstone.cells or PROOFSTONE_CELLS.
     systemProperty("junit.jupiter.extensions.autodetection.enabled", "true")

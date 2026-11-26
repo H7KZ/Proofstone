@@ -22,7 +22,7 @@ import org.testcontainers.utility.MountableFile;
  * keeps its default route; the Bedrock client joins from the driver host over the cell network.
  *
  * <p>Start order: stand-in, then the server (DNS and JVM trust pointed at the stand-in), then the driver host. Ready means
- * the stand-in's ready line, Geyser's {@code Started Geyser on UDP port 19132} and Paper's {@code Done (}, agent health
+ * the stand-in's ready line, Geyser's ready line for the cell's {@link GeyserTransport} ({@code Started Geyser on UDP port 19132} for {@code both}, {@code Built-in signaling started on http://0.0.0.0:19132} for {@code nethernet}) and Paper's {@code Done (}, agent health
  * with the {@code floodgate} token, and the driver host's health. A failed start stops every container and reports every
  * container's log tail, the Floodgate key and tokens redacted. This cell has Xbox authentication disabled
  * ({@code validate-bedrock-login: false}): {@code cell.json} says {@code offline-stub}.
@@ -41,7 +41,6 @@ public final class GeyserHost implements AutoCloseable {
     static final String DECOY_KEY_FILE = "decoy-key.pem";
     static final String DECOY_PATH = "/plugins/floodgate/" + DECOY_KEY_FILE;
     static final String FLOODGATE_CONFIG_PATH = "/plugins/floodgate/config.yml";
-    static final String GEYSER_READY = "Started Geyser on UDP port " + BEDROCK_PORT;
 
     private final Network network;
     private final StandInHost standIn;
@@ -52,9 +51,11 @@ public final class GeyserHost implements AutoCloseable {
     private final FloodgateKey decoy;
     /** The name guard and the stand-in and driver host log guards over the cell's whole life (T-M10-06). */
     private final CellGuards guards;
+    private final GeyserTransport transport;
 
     private GeyserHost(Network network, StandInHost standIn, PaperHost server, BedrockDriverHost driverHost,
-            FloodgateKey key, FloodgateKey decoy, GeyserFault fault) {
+            FloodgateKey key, FloodgateKey decoy, GeyserFault fault, GeyserTransport transport) {
+        this.transport = transport;
         this.guards = new CellGuards(standIn.logs(), driverHost.logs(), fault == GeyserFault.STAND_IN_ABSENT);
         this.decoy = decoy;
         this.network = network;
@@ -84,7 +85,7 @@ public final class GeyserHost implements AutoCloseable {
         Path geyserJar = GeyserJars.geyser(cell, options.downloads(), options.fetcher());
         Path floodgateJar = GeyserJars.floodgate(cell, options.downloads(), options.fetcher());
         FloodgateKey key = FloodgateKey.generate();
-        String config = GeyserConfig.render(cell.version(), cell.build());
+        String config = GeyserConfig.render(cell.version(), cell.build(), options.transport());
         // Key mismatch: Geyser on the same server takes the key Floodgate holds in key.pem, whatever its own setting says (geyser.md),
         // so Floodgate is told to read another file. Geyser then encrypts with the key, and Floodgate decrypts with the decoy.
         FloodgateKey decoy = fault == GeyserFault.KEY_MISMATCH ? FloodgateKey.generate() : null;
@@ -108,7 +109,8 @@ public final class GeyserHost implements AutoCloseable {
                     container -> prepareServer(container, inputs));
             PaperHost running = server;
             started.add(new NamedTail("server", running::logTail));
-            Await.until("the server log shows \"" + GEYSER_READY + "\"", () -> running.logs().contains(GEYSER_READY),
+            String readyLine = options.transport().readyLine();
+            Await.until("the server log shows \"" + readyLine + "\"", () -> running.logs().contains(readyLine),
                     Boolean::booleanValue, options.auxTimeout());
             Await.until("agent health lists the " + FLOODGATE_TOKEN + " token", () -> hasToken(running),
                     Boolean::booleanValue, options.auxTimeout());
@@ -129,7 +131,7 @@ public final class GeyserHost implements AutoCloseable {
             closeAll(failure, driverHost, server, standIn, network);
             throw failure;
         }
-        return new GeyserHost(network, standIn, server, driverHost, key, decoy, fault);
+        return new GeyserHost(network, standIn, server, driverHost, key, decoy, fault, options.transport());
     }
 
     /** Everything copied into or set on the server beyond a plain Paper cell. */
@@ -211,7 +213,7 @@ public final class GeyserHost implements AutoCloseable {
 
     /** The Bedrock driver that talks to this cell's driver host. */
     public BedrockDriver driver() {
-        return driverHost.driver();
+        return driverHost.driver(transport.driverTransport());
     }
 
     /** The name a Bedrock client joins on the cell network. */

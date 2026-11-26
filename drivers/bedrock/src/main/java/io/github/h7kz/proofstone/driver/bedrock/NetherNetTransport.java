@@ -3,6 +3,9 @@ package io.github.h7kz.proofstone.driver.bedrock;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import java.net.InetSocketAddress;
+import java.security.KeyPair;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import org.cloudburstmc.netty.channel.nethernet.NetherNetChannelFactory;
@@ -60,6 +63,16 @@ final class NetherNetTransport {
         NetherNetNative.initialize();
     }
 
+    /**
+     * The identity assertion of the offer: signed with the session's own key pair, so the key it names is the key of the login chain.
+     * Geyser refuses a login whose key differs ("the login key does not match the admitted transport identity", T-M12-10 run 1);
+     * PowerNukkitX reads the offer identity unverified and never noticed. The pair is the one {@link Identity} made for this session.
+     */
+    static OperatorIdentity offerIdentity(KeyPair keys, String xuid, String name) throws Exception {
+        return new OperatorIdentity(keys.getPrivate(), keys.getPublic(), Instant.now().plus(Duration.ofDays(1)), "proofstone")
+                .forPlayer(xuid, name);
+    }
+
     /** The probe result: the HTTP scheme the server answered on and its status text. */
     record Probe(String scheme, String motd) {
     }
@@ -75,8 +88,8 @@ final class NetherNetTransport {
      * A bootstrap that connects over NetherNet and builds the Bedrock session as RakNet does. The frame codec stands in for RakNet's
      * frame id codec; the rest of the pipeline is the library's own.
      */
-    static void configure(Bootstrap bootstrap, String xuid, String name, SessionInitializer session) throws Exception {
-        OperatorIdentity identity = OperatorIdentity.generate("proofstone").forPlayer(xuid, name);
+    static void configure(Bootstrap bootstrap, KeyPair keys, String xuid, String name, SessionInitializer session) throws Exception {
+        OperatorIdentity identity = offerIdentity(keys, xuid, name);
         bootstrap.channelFactory(NetherNetChannelFactory.client(() -> new NetherNetHTTPClientSignaling(HttpSignalingSettings.DEFAULT)))
                 .option(NetherChannelOption.NETHER_CLIENT_IDENTITY, identity)
                 // One handshake attempt: the library would otherwise send another offer after a failed one (ADR-0007, ADR-0021).

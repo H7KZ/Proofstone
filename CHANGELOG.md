@@ -11,6 +11,11 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the 
   self-made offer identity, one handshake attempt, stages `SIGNALLING` and `NETHERNET_CONNECT`. `BedrockDriver(transport, "nethernet")` selects it.
   Joined PowerNukkitX 3.0.6 through the driver host RPC (T-M12-09, ADR-0021). The login claims of a 1.26.60 client are now sent on every transport.
 
+### Changed
+- Geyser cell: `-Dproofstone.geyser.transport=nethernet` runs the cell with `bedrock.transport: nethernet` and the Bedrock driver over NetherNet;
+  the default stays `both` (RakNet). C-G01 to C-G05 are green over NetherNet. The NetherNet offer identity now uses the session's own key, which
+  Geyser requires to match the login (T-M12-10).
+
 ### Fixed
 - Bukkit agent: a console command's reply is captured on servers that log asynchronously (Paper 1.16.5, Log4j `AsyncLogger`): the capture waits
   for its own end marker before it detaches, so `list` no longer comes back blank and the paper@1.16.5 cell passes its conformance (T-M12-12).
