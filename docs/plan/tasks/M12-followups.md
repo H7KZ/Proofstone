@@ -281,10 +281,15 @@ Flipping the default to `nethernet` is left until Geyser drops RakNet; not run: 
 **Do.** Run the documented join under `scripts/dockerlock.sh`; write each run in `docs/platforms/nethernet.md`. Any download is
 written down first (version, URL, sha256, size).
 
+**Result (2026-11-26).** No: BDS 1.26.66.1 accepts the NetherNet transport and the self-made offer identity (signalling, data channels and `NetworkSettings` work) but refuses the
+unsigned login with `MALFORMED_PACKET` / `TERMINATING_CONNECTION` / `Connection Request invalid.`, in 2 of 2 runs (b1 the driver host, b2 the driver host and a client that can read the
+violation), the same text as over RakNet. T-M10-02 stays closed. The binary was the one already cached and verified (sha256 `e87bcd95...a6bf`, 98,095,547 bytes); nothing was downloaded
+and nothing committed. `scripts/spike/bds/bds-spike.sh` gained `TRANSPORT`, and `BdsJoinNn.java` is the NetherNet variant of `BdsJoin.java`. See [nethernet.md](../../platforms/nethernet.md).
+
 **Don't.** Use an account or a secret, or commit a Mojang binary. Reopens T-M10-02 only if the join works.
 
 **Acceptance.**
-- [ ] `docs/platforms/nethernet.md` has every run as invocation and result.
+- [x] `docs/platforms/nethernet.md` has every run as invocation and result.
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`
 

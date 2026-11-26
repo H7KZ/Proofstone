@@ -16,6 +16,7 @@
 #   ONLINE_MODE    BDS online-mode, default false
 #   NET_ALLOWED    1 (default) = add @minecraft/server-net to config/default/permissions.json; 0 = BDS's shipped list
 #   EGRESS         closed (default: BDS and the driver host lose their default route before they start) | open
+#   TRANSPORT      nethernet (default, T-M12-11) | raknet (the T-M10-01 runs): BDS's transport=, and the transport of the driver host join
 #   JOIN           1 (default) = join with the driver host; 0 = skip the join
 #   DRIVER_JAR     default drivers/bedrock/build/libs/bedrock-host-all.jar (./gradlew :drivers:bedrock:shadowJar)
 # Inputs are copied into containers, never bind-mounted (AGENTS.md section 3). The EULA is read from the command environment only.
@@ -29,6 +30,8 @@ BDS_SHA256=${BDS_SHA256:-e87bcd95bec5cc34b065ca956825c6abb7a0c356ae7940830284506
 SERVER_VERSION=${SERVER_VERSION:?set SERVER_VERSION (the @minecraft/server version)}
 NET_VERSION=${NET_VERSION:-1.0.0-beta}
 BETA=${BETA:-1}; ONLINE_MODE=${ONLINE_MODE:-false}; NET_ALLOWED=${NET_ALLOWED:-1}; EGRESS=${EGRESS:-closed}; JOIN=${JOIN:-1}
+TRANSPORT=${TRANSPORT:-nethernet}
+case "$TRANSPORT" in nethernet|raknet) ;; *) echo "TRANSPORT must be nethernet or raknet" >&2; exit 2;; esac
 DRIVER_JAR=${DRIVER_JAR:-$ROOT/drivers/bedrock/build/libs/bedrock-host-all.jar}
 JDK=${JDK:-/c/Users/honzi/.gradle/jdks/eclipse_adoptium-25-amd64-windows.2}
 # The pinned java25 digest of itzg/minecraft-server (versions.yml), used for every container: no new image.
@@ -46,7 +49,7 @@ mkdir -p "$OUT/stage"
 
 [ "$(sha256sum "$BDS_ZIP" | cut -d' ' -f1)" = "$BDS_SHA256" ] || { echo "BDS zip sha256 mismatch: $BDS_ZIP" >&2; exit 2; }
 [ -f "$DRIVER_JAR" ] || { echo "missing $DRIVER_JAR (./gradlew :drivers:bedrock:shadowJar)" >&2; exit 2; }
-mark "PARAMS bds=$(basename "$BDS_ZIP") server=$SERVER_VERSION net=$NET_VERSION beta=$BETA online=$ONLINE_MODE netAllowed=$NET_ALLOWED egress=$EGRESS join=$JOIN"
+mark "PARAMS bds=$(basename "$BDS_ZIP") server=$SERVER_VERSION net=$NET_VERSION beta=$BETA online=$ONLINE_MODE netAllowed=$NET_ALLOWED egress=$EGRESS join=$JOIN transport=$TRANSPORT"
 
 # --- stage the pack and the two Java tools (in $OUT). BDS itself is unpacked inside its container from the zip (copied in),
 # so the host keeps no second copy of it (the T-M10-01 r1 red was a full host disk while unpacking on the host). ---
@@ -61,7 +64,7 @@ cat >"$S/in/setup.sh" <<SETUP
 set -e
 [ -f /bds/.staged ] && exit 0
 mkdir -p /bds && unzip -q /in/bds.zip -d /bds && rm /in/bds.zip
-sed -i -e 's/^online-mode=.*/online-mode=$ONLINE_MODE/' -e 's/^allow-list=.*/allow-list=false/' -e 's/^transport=.*/transport=raknet/' \
+sed -i -e 's/^online-mode=.*/online-mode=$ONLINE_MODE/' -e 's/^allow-list=.*/allow-list=false/' -e 's/^transport=.*/transport=$TRANSPORT/' \
   -e 's/^enable-lan-visibility=.*/enable-lan-visibility=false/' -e 's/^view-distance=.*/view-distance=4/' \
   -e 's/^content-log-console-output-enabled=.*/content-log-console-output-enabled=true/' \
   -e 's/^content-log-file-enabled=.*/content-log-file-enabled=true/' -e 's/^difficulty=.*/difficulty=peaceful/' /bds/server.properties
@@ -179,7 +182,7 @@ if [ "$JOIN" = 1 ]; then
     -H "X-Proofstone-Request-Id: spike-$RANDOM" "$@"; }
   mark "DRIVER health: $(rpc http://127.0.0.1:25590/rpc/v1/health || true)"
   mark "JOIN begin name=PsBds1"
-  JR=$(rpc -X POST -d '{"host":"bds","port":19132,"name":"PsBds1","xuid":"2535400000000001","joinTimeoutMillis":30000}' \
+  JR=$(rpc -X POST -d '{"host":"bds","port":19132,"name":"PsBds1","xuid":"2535400000000001","joinTimeoutMillis":30000,"transport":"'$TRANSPORT'"}' \
     http://127.0.0.1:25590/rpc/v1/sessions || true)
   mark "JOIN result: $JR"
   mark "EVENT playerJoin: $(ctl 'http://127.0.0.1:8080/ctl/await-event?type=playerJoin&timeoutMs=15000' || true)"
@@ -194,10 +197,12 @@ fi
 # --- a second join with the spike client BdsJoin (the same library, PacketViolationWarningPacket decodable), to read BDS's answer ---
 if [ "${JOIN2:-1}" = 1 ]; then
   mkdir -p "$S/bj"
-  "$JDK/bin/javac" --release 21 -nowarn -cp "$(hostpath "$DRIVER_JAR")" -d "$(hostpath "$S/bj")" "$(hostpath "$HERE/BdsJoin.java")" 2>/dev/null
+  # BdsJoin (RakNet, T-M10-01) or BdsJoinNn (NetherNet through the driver host's own transport, T-M12-11)
+  if [ "$TRANSPORT" = nethernet ]; then JOINCLASS=io.github.h7kz.proofstone.driver.bedrock.BdsJoinNn; JOINSRC=BdsJoinNn.java; else JOINCLASS=BdsJoin; JOINSRC=BdsJoin.java; fi
+  "$JDK/bin/javac" --release 21 -nowarn -cp "$(hostpath "$DRIVER_JAR")" -d "$(hostpath "$S/bj")" "$(hostpath "$HERE/$JOINSRC")"
   docker create --name "$DRV-2" --network "$NET" --dns $HLIP "${CAPS[@]}" -e PS_XUID=2535400000000002 \
     -e "JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStore=/trust/cacerts -Djavax.net.ssl.trustStorePassword=changeit" \
-    --entrypoint sh "$IMAGE" -c "$ROUTE; exec java -cp /driver/bedrock-host-all.jar:/bj BdsJoin bds 19132 PsBds2 30" >/dev/null
+    --entrypoint sh "$IMAGE" -c "$ROUTE; exec java -cp /driver/bedrock-host-all.jar:/bj $JOINCLASS bds 19132 PsBds2 30" >/dev/null
   docker cp "$(hostpath "$S/drv")" "$DRV-2:/driver"; docker cp "$(hostpath "$S/bj")" "$DRV-2:/bj"; docker cp "$(hostpath "$S/trust")" "$DRV-2:/trust"
   mark "JOIN2 begin (BdsJoin) name=PsBds2"
   docker start -a "$DRV-2" >"$OUT/join2.log" 2>&1 || true

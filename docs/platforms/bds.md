@@ -19,6 +19,9 @@ and answered `players` reads through the inverted transport (the pack long-polls
 So T-M10-02 and T-M10-03 are closed as "not feasible" with a link here (`M10-ecosystem.md`). What would reopen them: a BDS build that
 accepts an offline login, or an offline Bedrock client that speaks NetherNet and the login BDS expects, shown by a run.
 
+**Update 2026-11-26 (T-M12-11):** over NetherNet, with the self-made offer identity, BDS completes signalling, the data channels and `NetworkSettings`, then refuses the
+login with the same `MALFORMED_PACKET` / `Connection Request invalid.`. The verdict stands. See [nethernet.md](nethernet.md).
+
 ## The pin (what ran)
 
 | Fact | Value |
