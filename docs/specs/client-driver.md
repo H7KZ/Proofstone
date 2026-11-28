@@ -167,7 +167,8 @@ that never sends the first `SetHealth` still fails as `JOIN_TELEPORT_HELD_NO_HEA
 - Core puts the server and ViaProxy on one Docker network (the server has the alias `server`) and starts
   `ghcr.io/viaversion/viaproxy@<digest>` (`drivers.viaproxy` in `versions.yml`; a `TODO` digest is an error):
   - in `cli` mode, with the image entrypoint overridden, so no file is copied or mounted;
-  - `--target-address server:25565`, `--target-version <row mc>`, `--auth-method NONE` (offline), and
+  - `--target-address server:25565`, `--target-version <row mc>`, `--auth-method NONE` (offline),
+    `--compression-threshold -1` (no compression on the proxy-to-client leg; it removes a data race in ViaProxy, T-M12-17), and
     `--bind-address 0.0.0.0:25568`;
   - ready when the bind port is in the container's listening socket table.
 - The driver connects to ViaProxy's mapped port, and `Cell.bridged()` returns true. Reports and display names say

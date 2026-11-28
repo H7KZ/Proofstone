@@ -354,6 +354,31 @@ and nothing committed. `scripts/spike/bds/bds-spike.sh` gained `TRANSPORT`, and 
 
 **Verify.** `bash scripts/gates.sh --max-workers=1`
 
+### T-M12-17 · ViaProxy starts without compression: the bridged join stall is gone
+- tier: sonnet
+- depends: T-M12-15
+- modules: proofstone-core, docs/platforms
+- adrs: 0004
+- specs: specs/client-driver.md section 5
+- test-first: yes
+
+**Goal.** No bridged join stalls after `LoginFinished` because of ViaProxy's auto-read race.
+
+**Evidence.** T-M12-15: the race is between ViaProxy's compression pair and its login pair on the server channel. The compression pair runs only when ViaProxy's own `--compression-threshold` is above -1 (default 256). A first attempt, the server's `NETWORK_COMPRESSION_THRESHOLD=-1`, was the wrong knob and did not help.
+
+**Do.** Pass `--compression-threshold -1` in `ViaProxyHost`; a unit test on the container command; counted loops.
+
+**Don't.** Retry a join, patch or re-pin ViaProxy, touch a test.
+
+**Result (2026-11-28).** `ViaProxyFlagsTest` (new, green) asserts the flag. With the flag, the diagnostic proxy shows no `CompressionPacketHandler` call in 101 joins. Counted loops on c02, `-Dproofstone.repeat=100`: bridged paper@1.21.11 0 stalls in 500 joins (baseline 13 in 1400), bridged paper@1.8.8 0 stalls in 500 (baseline 7 in 500). The race itself stays in ViaProxy (upstream report still open).
+
+**Acceptance.**
+- [x] The new unit test passes; XML read.
+- [x] 1000 bridged joins without a stall (500 on paper@1.21.11, 500 on paper@1.8.8), XML read.
+- [x] `bash scripts/gates.sh --max-workers=1` green (check + docsCheck).
+
+**Verify.** `bash scripts/gates.sh --max-workers=1`; `bash scripts/dockerlock.sh ./gradlew :conformance:run -Dproofstone.cells=paper@1.21.11 -Dproofstone.repeat=100 --tests '*ConformanceSmokeTest.c02*' --no-parallel --max-workers=1` (PROOFSTONE_ACCEPT_EULA=true in the environment)
+
 ### T-M12-14 · Cells allow flight: no anti-fly kick for a client waiting for its chunk
 - tier: haiku
 - depends: —
