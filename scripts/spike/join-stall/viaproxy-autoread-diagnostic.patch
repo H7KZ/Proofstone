@@ -17,14 +17,29 @@ index 98352d8..5a2d36a 100644
              });
          } else if (packet instanceof C2SConfigFinishConfigurationPacket) {
 diff --git a/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java b/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java
-index 017a74c..1503a40 100644
+index 017a74c..9d27aed 100644
 --- a/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java
 +++ b/src/main/java/net/raphimc/viaproxy/proxy/util/ChannelUtil.java
-@@ -31,18 +31,24 @@ public class ChannelUtil {
+@@ -24,6 +24,14 @@ import java.util.Stack;
+ 
+ public class ChannelUtil {
+ 
++    private static String psCaller() {
++        StackTraceElement[] st = new Throwable().getStackTrace();
++        StringBuilder b = new StringBuilder();
++        for (int i = 2; i < st.length && i < 7; i++) b.append(st[i].getClassName().substring(st[i].getClassName().lastIndexOf(46) + 1)).append('.').append(st[i].getMethodName()).append(':').append(st[i].getLineNumber()).append(' ');
++        return b.toString();
++    }
++
++
+     private static final AttributeKey<Stack<Boolean>> LAST_AUTO_READ = AttributeKey.valueOf("last-auto-read");
+ 
+     public static void disableAutoRead(final Channel channel) {
+@@ -31,18 +39,24 @@ public class ChannelUtil {
              channel.attr(LAST_AUTO_READ).set(new Stack<>());
          }
  
-+        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" disableAutoRead ch="+channel.id().asShortText()+" was="+channel.config().isAutoRead()+" thr="+Thread.currentThread().getName());
++        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" disableAutoRead ch="+channel.id().asShortText()+" was="+channel.config().isAutoRead()+" thr="+Thread.currentThread().getName()+" by="+psCaller());
          channel.attr(LAST_AUTO_READ).get().push(channel.config().isAutoRead());
          channel.config().setAutoRead(false);
      }
@@ -41,7 +56,7 @@ index 017a74c..1503a40 100644
 -        channel.config().setAutoRead(channel.attr(LAST_AUTO_READ).get().pop());
 +        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" restoreAutoRead ch="+channel.id().asShortText()+" thr="+Thread.currentThread().getName());
 +        final boolean popped = channel.attr(LAST_AUTO_READ).get().pop();
-+        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" restore ch="+channel.id().asShortText()+" popped="+popped+" stackLeft="+channel.attr(LAST_AUTO_READ).get().size()+" thr="+Thread.currentThread().getName());
++        System.out.println("[PSDIAG] "+System.currentTimeMillis()+" restore ch="+channel.id().asShortText()+" popped="+popped+" stackLeft="+channel.attr(LAST_AUTO_READ).get().size()+" thr="+Thread.currentThread().getName()+" by="+psCaller());
 +        channel.config().setAutoRead(popped);
      }
  
