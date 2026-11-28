@@ -2629,3 +2629,35 @@ the ViaProxy image; and the join-stall class (bridged cells, about 1 per 100 joi
 
 **Scratch for manual deletion** (outside any repository): `C:\pw\ev-m1209`, `ev-m1209-*.out`, `ev-m1210`, `ev-m1211`, `ev-m1202`, `dis-ev-pin42`, `dis-ev-series`, `m1209-scratch`, `nukkit-cache` and `bds-cache` (the two Mojang/PowerNukkitX downloads, never committed),
 `gradle-home-T-M12-*`, the worktrees `T-M12-02`, `-05`, `-08`, `-09`, `-10`, `-11`, `led-1126`, the scripts `m12*.sh`, `m12*.py`, `viawatch.sh`, `dis-series.sh`, and `.claude\worktrees\agent-a73c3f12ea3a78e02` in the main checkout.
+
+## Ledger update (2026-11-28): final hosted repeat series, the join-stall mechanism
+
+**Merged:** Proofstone #235 (T-M12-14, cells allow flight: the folia@26.3 "kicked for floating too long!" red is gone), #236 (T-M12-15, the ViaProxy stall mechanism), #237 (callers read from stack frames; a mitigation rejected). Disenchantment #101 pins develop `adc5532` in both places (`proofstone.version` stays 0.2.0).
+
+**Pin-bump evidence.** The PR's own e2e run landed on the self-hosted runner, whose pull of the ViaProxy image from ghcr.io is refused (`403 denied`), so its bridged cells are INVALID, not results. Hosted run 45800502383 (evidence branch, hosted-only runner pick, never merged): all 8 cells green on attempt 2. Attempt 1: paper@1.21.7 a Maven Central transfer error (infra); paper@1.18.2 `StatsE2E.anAnvilDisenchantDoesNotTouchTheGrindstoneCounters` red once (expected `disenchants=1`, was 0), which is a finding: the counters are read right after the post-event, and a later 5-repeat series on that cell was clean. Both jobs were re-run as failed jobs only (the re-run also repeated the 1.18.2 red). folia@26.3 green on the first attempt.
+
+**Repeat series, `-Dproofstone.repeat=5`, hosted runners, one cell at a time, evidence branches (never merged):**
+
+| cell | pin | run | result |
+|---|---|---|---|
+| paper@26.3 | 42c0732 | 45789459751 | 5 of 5 clean |
+| paper@1.21.11 | 42c0732 | 45794683733 | RED: 1 `CONFIGURATION_STALLED` join stall (the flake gate then reported the differing verdicts) |
+| paper@1.21.7 | 42c0732 | 45800130919 | 5 of 5 clean |
+| paper@1.21.4 | adc5532 | 45809125324 | RED: 1 `CONFIGURATION_STALLED` join stall |
+| paper@1.20.6 | adc5532 | 45813438154 | 5 of 5 clean |
+| paper@1.20.4 | adc5532 | 45817843881 | 5 of 5 clean (6 reasoned skips) |
+| paper@1.18.2 | adc5532 | 45821842312 | 5 of 5 clean |
+| folia@26.3 | adc5532 | 46111043236 | 5 of 5 clean |
+
+The first three ran on the older pin because the series was moved to `adc5532` after paper@1.21.7; the pin differs only by the allow-flight change. Earlier on the self-hosted runner: paper@26.3 5 of 5 clean, folia@26.3 red (the floating kick, fixed), the six bridged cells INVALID (image pull 403). Master's scheduled e2e on 2026-11-26 (run 45819726516) had a join stall on paper@1.21.4; the one on 2026-11-27 (run 45996689457) is INVALID (self-hosted 403 on six bridged cells).
+
+**Is "every cell 5 of 5 clean" met? No.** 6 of 8 cells were clean in their series and 2 (paper@1.21.11, paper@1.21.4) were red with one join stall each. Both are bridged cells, and the stall is a known defect of the pinned ViaProxy, not of a test.
+
+**The join stall (T-M12-15).** A data race in ViaProxy's `ChannelUtil` (pinned `3e81750`, same on upstream master): the compression pair (`CompressionPacketHandler.handleP2S`, restored from a write listener on the client channel's loop) and the login pair (`LoginPacketHandler.handleP2S`, restored by the acknowledgement's listener) disable and restore auto-read on the server channel without a lock; one interleaving leaves auto-read off, ViaProxy stops reading Paper, and the client times out at `CONFIGURATION_STALLED`. Shown: the call order of a caught stall, 14 harmless occurrences of the race in 700 joins, the callers by stack frame (200 joins), and a stress test of the unmodified class (8 of 600000 left auto-read off). Not shown: the flag value of the stalled join after its last restore. Rejected mitigation: `NETWORK_COMPRESSION_THRESHOLD=-1` (the compression handler still runs in 101 of 101 joins and a stall still came). No retry, pin change or patched ViaProxy was done; that is the maintainer's decision.
+
+**Still open (maintainer):**
+- Report the race upstream (ViaVersion/ViaProxy; text in T-M12-15 of [M12-followups.md](tasks/M12-followups.md)); decide on a newer ViaProxy pin once fixed.
+- The self-hosted runner's ghcr.io pull is refused (403): look at its Docker credentials. Until then the PR e2e gate of Disenchantment cannot be green on bridged cells when that runner is picked.
+- An automated security review flagged the runner selection (`_runner.yml`, `RUNNER_TOKEN`, secrets-bearing release jobs and the Pages deploy on a shared persistent self-hosted runner, token lookup reachable from `pull_request` in `gates.yml`). Not changed.
+- Rows paper@1.21.4 and 1.21.7 stay `experimental` until per-row conformance evidence (ADR-0015). T-M8-26 not started. Tags, Central and image publishing are untouched.
+- Delete scratch (not inside a repo): in `C:\pw`: `T-M12-*`, `led*`, `dis-ev-*`, `gradle-home-*`, `vp-image`, `vp-stress`, `viaproxy-build`, `viaproxy-src`, `m1209-scratch`, `nukkit-cache`, `bds-cache`, `ev-m12*`, `t1215-*`, `t1216*`, `dis-series*`; and `C:\Users\honzi\Documents\GitHub\Proofstone\.claude\worktrees\agent-a73c3f12ea3a78e02`, the untracked `CONTINUATION-PROMPT.md`, and the evidence branches `test/series-hosted`, `test/series-hosted2`, `test/pin-hosted` in Disenchantment.
