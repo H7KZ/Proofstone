@@ -42,7 +42,11 @@ public final class ViaProxyHost implements AutoCloseable {
                         "--bind-address", "0.0.0.0:" + PROXY_PORT,
                         "--target-address", PaperHost.NETWORK_ALIAS + ":" + PaperHost.GAME_PORT,
                         "--target-version", cell.mc(),
-                        "--auth-method", "NONE")
+                        "--auth-method", "NONE",
+                        // ViaProxy compresses the proxy-to-client leg at 256 bytes by default. That adds a second disable/restore pair of
+                        // auto-read on its server channel at login, and a data race between the two pairs stalls about 1 join in 100
+                        // (T-M12-15, docs/platforms/viaproxy.md "The mechanism"). The leg is inside the cell network, so compression buys nothing.
+                        "--compression-threshold", "-1")
                 .withLogConsumer(frame -> logs.append(frame.getUtf8String()));
     }
 
