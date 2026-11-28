@@ -2661,3 +2661,35 @@ The first three ran on the older pin because the series was moved to `adc5532` a
 - An automated security review flagged the runner selection (`_runner.yml`, `RUNNER_TOKEN`, secrets-bearing release jobs and the Pages deploy on a shared persistent self-hosted runner, token lookup reachable from `pull_request` in `gates.yml`). Not changed.
 - Rows paper@1.21.4 and 1.21.7 stay `experimental` until per-row conformance evidence (ADR-0015). T-M8-26 not started. Tags, Central and image publishing are untouched.
 - Delete scratch (not inside a repo): in `C:\pw`: `T-M12-*`, `led*`, `dis-ev-*`, `gradle-home-*`, `vp-image`, `vp-stress`, `viaproxy-build`, `viaproxy-src`, `m1209-scratch`, `nukkit-cache`, `bds-cache`, `ev-m12*`, `t1215-*`, `t1216*`, `dis-series*`; and `C:\Users\honzi\Documents\GitHub\Proofstone\.claude\worktrees\agent-a73c3f12ea3a78e02`, the untracked `CONTINUATION-PROMPT.md`, and the evidence branches `test/series-hosted`, `test/series-hosted2`, `test/pin-hosted` in Disenchantment.
+
+## Ledger update (2026-11-28, final): the join stall is fixed; every cell 5 of 5 clean
+
+**This supersedes the "is every cell 5 of 5 clean? No" and "no mitigation" statements of the update above.**
+
+**Merged:** Proofstone #239 (T-M12-17: ViaProxy starts with `--compression-threshold -1`; `ViaProxyFlagsTest`); Disenchantment #102 pins `f5e8f76` in both places (`PROOFSTONE_REF`, `proofstone.ref`; `proofstone.version` stays 0.2.0).
+
+**Fix.** The race in ViaProxy's `ChannelUtil` needs two overlapping auto-read pairs on the server channel. The compression pair runs only when ViaProxy's own `--compression-threshold` is above -1 (default 256). With `-1` the pair does not exist (diagnostic proxy: no `CompressionPacketHandler` call in 101 joins). The first attempt, the server's `NETWORK_COMPRESSION_THRESHOLD=-1`, was the wrong knob and did not help (T-M12-16). Local evidence on c02, `-Dproofstone.repeat=100`: **0 stalls in 1000 bridged joins** (paper@1.21.11 500, paper@1.8.8 500; baseline 13 in 1400 and 7 in 500). `:conformance:smoke` green in 3 separate invocations (paper@1.8.8 and paper@1.21.11), XML read.
+
+**Repeat series on the fixed pin `f5e8f76`, `-Dproofstone.repeat=5`, hosted runners, one cell per run (evidence branch `test/series-hosted3`, never merged):**
+
+| cell | run | k of n clean | tests run | skipped |
+|---|---|---|---|---|
+| paper@26.3 | 46120320657 | 5 of 5 | 256 | 1 |
+| paper@1.21.11 | 46122757843 | 5 of 5 | 256 | 1 |
+| paper@1.21.7 | 46125750276 | 5 of 5 | 256 | 1 |
+| paper@1.21.4 | 46128642811 | 5 of 5 | 256 | 1 |
+| paper@1.20.6 | 46130732948 | 5 of 5 | 256 | 1 |
+| paper@1.20.4 | 46132647175 | 5 of 5 | 256 | 6 (reasoned) |
+| paper@1.18.2 | 46134355369 | 5 of 5 | 256 | 6 (reasoned) |
+| folia@26.3 | 46136687798 | 5 of 5 | 256 | 1 |
+
+All 8 runs: failures 0, errors 0, 0 join-stall reports. Skips carry reasons and are skips, not passes.
+
+**Is "every cell 5 of 5 clean" met? Yes**, on `f5e8f76`: 8 of 8 cells, 5 of 5 repeats each, on hosted runners. Limits: n is 5 per cell (about 1 in 100 stalls before the fix, so 40 bridged-or-not repeats is modest evidence on its own; the 1000 local joins carry the statistical weight). Disenchantment's own PR e2e run on #102 landed on the self-hosted runner and is INVALID (ghcr.io pull 403), so its red bridged cells are not results.
+
+**Still open (maintainer):**
+- File the race upstream (ViaVersion/ViaProxy; text in T-M12-15 of [M12-followups.md](tasks/M12-followups.md)). The race is still in ViaProxy; the cells no longer reach it.
+- Self-hosted runner: ghcr.io pull refused (403); until fixed, PR e2e on Disenchantment is invalid for bridged cells whenever that runner is picked.
+- Runner-selection security review flag (`_runner.yml`, `RUNNER_TOKEN`, secrets-bearing jobs on a shared persistent runner). Not changed.
+- Rows paper@1.21.4 and 1.21.7 stay `experimental` until per-row conformance evidence (ADR-0015). T-M8-26 not started. Tags, Central and image publishing untouched.
+- Delete scratch (outside any repo): in `C:\pw`: `T-M12-*`, `led*`, `dis-ev-*`, `gradle-home-*`, `vp-image`, `vp-stress`, `viaproxy-build`, `viaproxy-src`, `m1209-scratch`, `nukkit-cache`, `bds-cache`, `ev-m12*`, `t121*`, `dis-series*`; the worktree `.claude/worktrees/agent-a73c3f12ea3a78e02`; the untracked `CONTINUATION-PROMPT.md`; Disenchantment evidence branches `test/series-hosted`, `test/series-hosted2`, `test/series-hosted3`, `test/pin-hosted`.
